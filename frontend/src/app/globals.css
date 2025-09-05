@@ -1,0 +1,165 @@
+@import "tailwindcss";
+
+/* CSS Variables */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --font-sarabun: 'Sarabun', sans-serif;
+  --font-geist-sans: var(--font-geist-sans);
+  --font-geist-mono: var(--font-geist-mono);
+}
+
+/* Smooth transition utilities */
+.transition-smooth {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transition-smooth-fast {
+  transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hardware acceleration for better performance */
+.transform-gpu {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+/* Base Styles */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sarabun), Arial, Helvetica, sans-serif;
+  font-feature-settings: "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom animations - minimal and subtle */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Animation Classes */
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-slide-in {
+  animation: slide-in 0.4s ease-out;
+}
+
+/* Utilities */
+.gradient-text-soft {
+  background: linear-gradient(135deg, #64748b, #475569);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hover-soft {
+  transition: opacity 0.2s ease;
+}
+
+.hover-soft:hover {
+  opacity: 0.8;
+}
+
+.glass-soft {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.shadow-soft {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.shadow-soft-lg {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.btn-minimal {
+  transition: background-color 0.2s ease;
+}
+
+.btn-minimal:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Selection */
+::selection {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: inherit;
+}
+
+/* Focus Styles */
+*:focus {
+  outline: 2px solid rgb(59 130 246 / 0.5);
+  outline-offset: 2px;
+}
+
+/* Custom Properties for Soft Theme */
+.bg-soft-blue {
+  background-color: #f1f5f9;
+}
+
+.bg-soft-indigo {
+  background-color: #f8fafc;
+}
+
+.bg-soft-gray {
+  background-color: #f9fafb;
+}
+
+.text-soft-gray {
+  color: #64748b;
+}
