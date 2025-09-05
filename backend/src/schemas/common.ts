@@ -52,6 +52,9 @@ export const PatientSchema = z.object({
   phone: z.string().max(20).optional(),
   email: z.string().email().max(100).optional(),
   address: z.string().max(500).optional(),
+  district: z.string().max(100).optional(),
+  province: z.string().max(100).optional(),
+  postalCode: z.string().max(10).optional(),
   emergencyContactName: z.string().max(100).optional(),
   emergencyContactPhone: z.string().max(20).optional(),
   emergencyContactRelation: z.string().max(50).optional(),
@@ -82,6 +85,9 @@ export const CreatePatientRequestSchema = z.object({
   phone: z.string().max(20).optional(),
   email: z.string().email().max(100).optional(),
   address: z.string().max(500).optional(),
+  district: z.string().max(100).optional(),
+  province: z.string().max(100).optional(),
+  postalCode: z.string().max(10).optional(),
   emergencyContactName: z.string().max(100).optional(),
   emergencyContactPhone: z.string().max(20).optional(),
   emergencyContactRelation: z.string().max(50).optional(),
@@ -207,3 +213,32 @@ export type VisitQuery = z.infer<typeof VisitQuerySchema>;
 export type Pagination = z.infer<typeof PaginationSchema>;
 export type Error = z.infer<typeof ErrorSchema>;
 export type Meta = z.infer<typeof MetaSchema>;
+
+// =============================================================================
+// 6. ERROR TYPES AND CLASSES
+// =============================================================================
+
+export class AppError extends Error {
+  public readonly statusCode: number;
+  public readonly code: string;
+  public readonly isOperational: boolean;
+
+  constructor(message: string, statusCode: number = 500, code: string = 'INTERNAL_ERROR') {
+    super(message);
+    this.statusCode = statusCode;
+    this.code = code;
+    this.isOperational = true;
+
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+export const ErrorTypes = {
+  BAD_REQUEST: (message: string = 'Bad Request') => new AppError(message, 400, 'BAD_REQUEST'),
+  UNAUTHORIZED: (message: string = 'Unauthorized') => new AppError(message, 401, 'UNAUTHORIZED'),
+  FORBIDDEN: (message: string = 'Forbidden') => new AppError(message, 403, 'FORBIDDEN'),
+  NOT_FOUND: (message: string = 'Not Found') => new AppError(message, 404, 'NOT_FOUND'),
+  CONFLICT: (message: string = 'Conflict') => new AppError(message, 409, 'CONFLICT'),
+  VALIDATION_ERROR: (message: string = 'Validation Error') => new AppError(message, 422, 'VALIDATION_ERROR'),
+  INTERNAL_ERROR: (message: string = 'Internal Server Error') => new AppError(message, 500, 'INTERNAL_ERROR'),
+};

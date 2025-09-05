@@ -162,6 +162,57 @@ class FormDataCleaner {
   }
 
   /**
+   * Disable autofill for form inputs
+   */
+  public static disableAutofill(formKey?: string): void {
+    try {
+      if (typeof window === 'undefined') return;
+
+      // Add autocomplete="off" to all form inputs
+      const inputs = document.querySelectorAll('input, textarea, select');
+      inputs.forEach((input: any) => {
+        input.setAttribute('autocomplete', 'off');
+        input.setAttribute('autocorrect', 'off');
+        input.setAttribute('autocapitalize', 'off');
+        input.setAttribute('spellcheck', 'false');
+      });
+
+      // Add autocomplete="off" to all forms
+      const forms = document.querySelectorAll('form');
+      forms.forEach((form: any) => {
+        form.setAttribute('autocomplete', 'off');
+      });
+
+      console.log(`✅ Autofill disabled for ${formKey || 'all form elements'}`);
+    } catch (error) {
+      console.error('❌ Error disabling autofill:', error);
+    }
+  }
+
+  /**
+   * Reset form inputs
+   */
+  public static resetFormInputs(formKey?: string): void {
+    try {
+      if (typeof window === 'undefined') return;
+
+      // Clear all form inputs
+      const inputs = document.querySelectorAll('input, textarea, select');
+      inputs.forEach((input: any) => {
+        if (input.type === 'checkbox' || input.type === 'radio') {
+          input.checked = false;
+        } else {
+          input.value = '';
+        }
+      });
+
+      console.log(`✅ Form inputs reset for ${formKey || 'all forms'}`);
+    } catch (error) {
+      console.error('❌ Error resetting form inputs:', error);
+    }
+  }
+
+  /**
    * Get storage usage info
    */
   public static getStorageInfo(): {

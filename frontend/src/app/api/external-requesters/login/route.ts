@@ -115,7 +115,17 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    return NextResponse.json(response, { status: 200 });
+    const nextResponse = NextResponse.json(response, { status: 200 });
+
+    // Set cookie
+    nextResponse.cookies.set('external-requester-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 // 24 hours
+    });
+
+    return nextResponse;
 
   } catch (error) {
     console.error('External requester login error:', error);

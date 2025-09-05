@@ -476,7 +476,16 @@ class APIClient {
       
       const response: AxiosResponse<APIResponse<T>> = await this.axiosInstance(config);
       console.log('✅ API response received:', response.status, response.data);
-      return response.data;
+      
+      // Transform backend response to frontend format
+      const transformedResponse: APIResponse<T> = {
+        data: response.data.data,
+        meta: response.data.meta,
+        error: response.data.error,
+        statusCode: response.data.statusCode
+      };
+      
+      return transformedResponse;
     } catch (error) {
       console.error('💥 API request failed:', error);
       throw error; // Will be handled by interceptor
@@ -498,8 +507,8 @@ class APIClient {
     });
     
     // Store tokens if login successful
-    if (response.success && response.data) {
-      this.setAuthTokens(response.data.accessToken, response.data.refreshToken);
+    if (response.data) {
+      this.setAuthTokens(response.data.token, response.data.refreshToken);
     }
     
     return response;
@@ -648,7 +657,7 @@ class APIClient {
   /**
    * Create new patient
    */
-  async createPatient(data: Omit<MedicalPatient, 'id' | 'created_at' | 'updated_at'>): Promise<APIResponse<MedicalPatient>> {
+  async createPatient(data: CreatePatientRequest): Promise<APIResponse<MedicalPatient>> {
     return this.request<MedicalPatient>({
       method: 'POST',
       url: '/medical/patients',

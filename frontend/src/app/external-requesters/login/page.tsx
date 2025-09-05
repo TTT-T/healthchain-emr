@@ -90,7 +90,7 @@ export default function ExternalRequesterLogin() {
       } else {
         setLoginResult({
           success: false,
-          message: result.error || 'การเข้าสู่ระบบล้มเหลว'
+          message: result.message || 'การเข้าสู่ระบบล้มเหลว'
         })
       }
 
@@ -106,44 +106,47 @@ export default function ExternalRequesterLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center py-4 sm:py-8 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-sm sm:max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md">
         {/* Header */}
-        <div className="text-center mb-6 sm:mb-8">
-          <div className="flex justify-center mb-3 sm:mb-4">
-            <div className="p-3 sm:p-4 bg-blue-600 rounded-full">
-              <Building2 className="h-10 w-10 sm:h-12 sm:w-12 text-white" />
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-3xl flex items-center justify-center shadow-xl">
+              <Building2 className="h-10 w-10 text-white" />
             </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-            External Requester
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
+            Organization Portal
           </h1>
-          <p className="text-sm sm:text-base text-gray-600">
-            เข้าสู่ระบบ Consent Engine
+          <p className="text-gray-600 text-lg">
+            ระบบขอข้อมูลสำหรับองค์กร
           </p>
         </div>
 
         {/* Login Form */}
-        <Card className="shadow-xl border-0 bg-white">
-          <CardHeader className="text-center pb-3 sm:pb-4">
-            <CardTitle className="text-lg sm:text-xl font-semibold text-gray-900">เข้าสู่ระบบ</CardTitle>
-            <CardDescription className="text-sm sm:text-base text-gray-600">
+        <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm rounded-3xl">
+          <CardHeader className="text-center pb-6">
+            <CardTitle className="text-2xl font-semibold text-gray-900 flex items-center justify-center gap-2">
+              <Building2 className="h-6 w-6 text-emerald-600" />
+              เข้าสู่ระบบ
+            </CardTitle>
+            <CardDescription className="text-gray-600">
               สำหรับองค์กรที่ได้รับการอนุมัติแล้ว
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+          <CardContent className="space-y-6 p-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3">
-                  อีเมล
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  อีเมลองค์กร
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <Mail className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
                     type="email"
-                    className="w-full pl-10 pr-4 py-3 text-gray-900 font-medium border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white shadow-sm"
+                    className="w-full pl-12 pr-4 py-4 text-gray-900 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 bg-white hover:border-gray-300"
                     placeholder="your-email@organization.com"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
@@ -153,16 +156,16 @@ export default function ExternalRequesterLogin() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   รหัสผ่าน
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <Lock className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    className="w-full pl-10 pr-12 py-3 text-gray-900 font-medium border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white shadow-sm"
+                    className="w-full pl-12 pr-12 py-4 text-gray-900 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 bg-white hover:border-gray-300"
                     placeholder="••••••••"
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
@@ -170,13 +173,13 @@ export default function ExternalRequesterLogin() {
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <EyeOff className="h-5 w-5" />
                     ) : (
-                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <Eye className="h-5 w-5" />
                     )}
                   </button>
                 </div>
@@ -196,59 +199,66 @@ export default function ExternalRequesterLogin() {
                 </Alert>
               )}
 
-              <Button
+              <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
                 disabled={isLoading || (loginResult?.success === true)}
+                className={`w-full flex justify-center items-center py-4 px-6 border border-transparent text-lg font-semibold rounded-2xl text-white transition-all duration-200 transform ${
+                  isLoading || loginResult?.success === true
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-emerald-200'
+                }`}
               >
                 {isLoading ? (
                   <>
-                    <div className="animate-spin h-5 w-5 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
+                    <div className="animate-spin h-6 w-6 mr-3 border-2 border-white border-t-transparent rounded-full"></div>
                     กำลังเข้าสู่ระบบ...
                   </>
                 ) : loginResult?.success ? (
                   <>
-                    <CheckCircle className="h-5 w-5 mr-2" />
+                    <CheckCircle className="h-6 w-6 mr-3" />
                     เข้าสู่ระบบสำเร็จ
                   </>
                 ) : (
                   <>
-                    <LogIn className="h-5 w-5 mr-2" />
+                    <LogIn className="h-6 w-6 mr-3" />
                     เข้าสู่ระบบ
                   </>
                 )}
-              </Button>
+              </button>
             </form>
 
-            <div className="text-center space-y-4">
+            <div className="text-center space-y-6">
               <div className="text-sm text-gray-600">
-                <Link href="/external-requesters/forgot-password" className="text-blue-600 hover:text-blue-800 font-medium">
+                <Link href="/external-requesters/forgot-password" className="text-emerald-600 hover:text-emerald-800 font-medium">
                   ลืมรหัสผ่าน?
                 </Link>
               </div>
               
-              <div className="border-t border-gray-200 pt-4">
-                <p className="text-sm text-gray-600 mb-3">
+              <div className="border-t border-gray-200 pt-6">
+                <p className="text-sm text-gray-600 mb-4">
                   ยังไม่ได้ลงทะเบียน?
                 </p>
-                <Link href="/external-requesters/register">
-                  <Button variant="outline" className="w-full border-2 border-gray-300 text-gray-700 hover:bg-gray-50">
-                    ลงทะเบียนองค์กร
-                  </Button>
-                </Link>
+                <div className="space-y-3">
+                  <Link href="/external-requesters/register">
+                    <button className="w-full py-3 px-4 border-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50 rounded-2xl font-medium transition-all duration-200">
+                      ลงทะเบียนองค์กร
+                    </button>
+                  </Link>
+                  <p className="text-sm text-gray-600 mb-4"></p>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Additional Info */}
-        <div className="mt-6 text-center">
+        <div className="mt-8 text-center">
           <div className="flex items-center justify-center space-x-2 text-sm text-gray-600 mb-4">
             <Shield className="h-4 w-4" />
             <span>การเชื่อมต่อที่ปลอดภัยด้วย SSL</span>
           </div>
           <div className="space-y-2 text-xs text-gray-500">
-            <p>ต้องการความช่วยเหลือ? ติดต่อ support@emr-system.com</p>
+            <p>ต้องการความช่วยเหลือ? ติดต่อ support@healthchain.com</p>
             <p>หรือโทร 02-123-4567 (วันจันทร์-ศุกร์ 8:00-17:00)</p>
           </div>
         </div>

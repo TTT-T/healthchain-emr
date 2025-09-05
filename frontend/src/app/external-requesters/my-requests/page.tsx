@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { ExternalRequesterSidebar, ExternalRequesterMobileSidebar } from '@/components/ExternalRequesterSidebar'
 import { 
   FileText, 
   Eye, 
@@ -158,28 +157,20 @@ export default function MyRequestsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex">
-      {/* Sidebar */}
-      <ExternalRequesterSidebar className="hidden lg:block w-80 xl:w-96 flex-shrink-0" />
-      
-      {/* Main Content */}
-      <div className="flex-1 min-w-0">
-        <div className="py-4 sm:py-6 lg:py-8 xl:py-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* Header with Mobile Menu */}
-            <div className="mb-6 sm:mb-8 lg:mb-12">
-              <div className="flex items-center justify-between mb-3 lg:mb-4">
-                <div className="min-w-0 flex-1">
-                  <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 truncate">
-                    คำขอของฉัน
-                  </h1>
-                </div>
-                <ExternalRequesterMobileSidebar />
-              </div>
-              <p className="text-sm sm:text-base lg:text-lg text-gray-800 leading-relaxed font-medium">
-                จัดการและติดตามคำขอเข้าถึงข้อมูลทางการแพทย์ทั้งหมดของคุณ
-              </p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="py-4 sm:py-6 lg:py-8 xl:py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="mb-6 sm:mb-8 lg:mb-12">
+            <div className="mb-3 lg:mb-4">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900">
+                คำขอของฉัน
+              </h1>
             </div>
+            <p className="text-sm sm:text-base lg:text-lg text-gray-800 leading-relaxed font-medium">
+              จัดการและติดตามคำขอเข้าถึงข้อมูลทางการแพทย์ทั้งหมดของคุณ
+            </p>
+          </div>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
@@ -375,7 +366,6 @@ export default function MyRequestsPage() {
               หากมีปัญหาในการเข้าถึงข้อมูล โปรดติดต่อทีมสนับสนุนได้ที่ support@emr-system.com
             </AlertDescription>
           </Alert>
-          </div>
         </div>
       </div>
     </div>

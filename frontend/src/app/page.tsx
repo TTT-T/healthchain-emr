@@ -49,16 +49,16 @@ export default function Home() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-8 sm:mb-12 px-4">
               <Link 
-                href="/login" 
+                href="#login-options" 
                 className="bg-gradient-to-r from-blue-400 to-indigo-500 hover:from-blue-500 hover:to-indigo-600 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1"
               >
-                เริ่มใช้งานฟรี
+                เข้าสู่ระบบ
               </Link>
               <Link 
-                href="/accounts/patient/records" 
+                href="#registration-options" 
                 className="bg-white border-2 border-blue-300 text-blue-500 hover:bg-blue-50 font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1"
               >
-                ดูประวัติสุขภาพ
+                สมัครสมาชิก
               </Link>
             </div>
           </div>
@@ -76,6 +76,154 @@ export default function Home() {
             <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-purple-100">
               <div className="text-4xl font-bold text-purple-400 mb-2">24/7</div>
               <div className="text-slate-500">การเข้าถึงข้อมูล</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Login Options Section */}
+      <section id="login-options" className="py-20 px-4 bg-white/30">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-slate-700 mb-4">เลือกประเภทการเข้าสู่ระบบ</h2>
+            <p className="text-xl text-slate-500">เลือกประเภทการเข้าสู่ระบบที่เหมาะสมกับคุณ</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* General Login */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 hover:shadow-xl transition-all border border-blue-200 group">
+              <div className="w-16 h-16 bg-blue-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-slate-700 mb-4">การเข้าสู่ระบบทั่วไป</h3>
+              <p className="text-slate-600 mb-6 leading-relaxed">
+                สำหรับผู้ป่วยและบุคลากรทางการแพทย์ที่ต้องการเข้าถึงระบบ EMR
+              </p>
+              <ul className="text-sm text-slate-600 mb-8 space-y-2">
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  ผู้ป่วย
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  แพทย์
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  พยาบาล
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  เจ้าหน้าที่
+                </li>
+              </ul>
+              <Link 
+                href="/login" 
+                className="block w-full bg-blue-400 hover:bg-blue-500 text-white font-semibold py-3 px-6 rounded-xl transition-all text-center"
+              >
+                เข้าสู่ระบบ
+              </Link>
+            </div>
+
+            {/* External Login */}
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl p-8 hover:shadow-xl transition-all border border-emerald-200 group">
+              <div className="w-16 h-16 bg-emerald-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-slate-700 mb-4">การเข้าสู่ระบบ External</h3>
+              <p className="text-slate-600 mb-6 leading-relaxed">
+                สำหรับองค์กรภายนอกที่ต้องการเข้าถึงข้อมูลสุขภาพ ระบบจัดการคำขอข้อมูลสุขภาพ
+                
+              </p>
+              <ul className="text-sm text-slate-600 mb-8 space-y-2">
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  โรงพยาบาล
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  คลินิก
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  บริษัทประกัน
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  สถาบันวิจัย
+                </li>
+              </ul>
+              <Link 
+                href="/external-requesters/login" 
+                className="block w-full bg-emerald-400 hover:bg-emerald-500 text-white font-semibold py-3 px-6 rounded-xl transition-all text-center"
+              >
+                เข้าสู่ระบบ
+              </Link>
+            </div>
+
+            {/* Admin Login */}
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-8 hover:shadow-xl transition-all border border-purple-200 group">
+              <div className="w-16 h-16 bg-purple-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-slate-700 mb-4">การเข้าสู่ระบบ Admin</h3>
+              <p className="text-slate-600 mb-6 leading-relaxed">
+                สำหรับบุคลากรภายในที่ต้องการเข้าถึงระบบจัดการ ระบบจัดการคำขอข้อมูลสุขภาพ
+              </p>
+              <ul className="text-sm text-slate-600 mb-8 space-y-2">
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-purple-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  ผู้ดูแลระบบ
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-purple-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  เจ้าหน้าที่ IT
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-purple-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  เจ้าหน้าที่ระบบ
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-purple-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  เจ้าหน้าที่ความปลอดภัย
+                </li>
+              </ul>
+              <Link 
+                href="/admin/login" 
+                className="block w-full bg-purple-400 hover:bg-purple-500 text-white font-semibold py-3 px-6 rounded-xl transition-all text-center"
+              >
+                เข้าสู่ระบบ
+              </Link>
             </div>
           </div>
         </div>
@@ -283,6 +431,154 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Registration Options Section */}
+      <section id="registration-options" className="py-20 px-4 bg-white/30">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-slate-700 mb-4">เลือกประเภทการสมัครสมาชิก</h2>
+            <p className="text-xl text-slate-500">เลือกประเภทการสมัครที่เหมาะสมกับคุณ</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* General Registration */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 hover:shadow-xl transition-all border border-blue-200 group">
+              <div className="w-16 h-16 bg-blue-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-slate-700 mb-4">การสมัครทั่วไป</h3>
+              <p className="text-slate-600 mb-6 leading-relaxed">
+                สำหรับผู้ป่วยและบุคลากรทางการแพทย์ที่ต้องการเข้าถึงระบบ EMR
+              </p>
+              <ul className="text-sm text-slate-600 mb-8 space-y-2">
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  ผู้ป่วย
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  แพทย์
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  พยาบาล
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  เจ้าหน้าที่
+                </li>
+              </ul>
+              <Link 
+                href="/register" 
+                className="block w-full bg-blue-400 hover:bg-blue-500 text-white font-semibold py-3 px-6 rounded-xl transition-all text-center"
+              >
+                สมัครสมาชิก
+              </Link>
+            </div>
+
+            {/* External Registration */}
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl p-8 hover:shadow-xl transition-all border border-emerald-200 group">
+              <div className="w-16 h-16 bg-emerald-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-slate-700 mb-4">การสมัคร External</h3>
+              <p className="text-slate-600 mb-6 leading-relaxed">
+                สำหรับองค์กรภายนอกที่ต้องการเข้าถึงข้อมูลสุขภาพ ระบบจัดการคำขอข้อมูลสุขภาพ
+                
+              </p>
+              <ul className="text-sm text-slate-600 mb-8 space-y-2">
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  โรงพยาบาล
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  คลินิก
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  บริษัทประกัน
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  สถาบันวิจัย
+                </li>
+              </ul>
+              <Link 
+                href="/external-requesters/register" 
+                className="block w-full bg-emerald-400 hover:bg-emerald-500 text-white font-semibold py-3 px-6 rounded-xl transition-all text-center"
+              >
+                สมัครองค์กร
+              </Link>
+            </div>
+
+            {/* Admin Registration */}
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-8 hover:shadow-xl transition-all border border-purple-200 group">
+              <div className="w-16 h-16 bg-purple-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-slate-700 mb-4">การสมัครผ่าน Admin</h3>
+              <p className="text-slate-600 mb-6 leading-relaxed">
+                สำหรับบุคลากรภายในที่ต้องการเข้าถึงระบบจัดการ ระบบจัดการคำขอข้อมูลสุขภาพ
+              </p>
+              <ul className="text-sm text-slate-600 mb-8 space-y-2">
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-purple-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  ผู้ดูแลระบบ
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-purple-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  เจ้าหน้าที่ IT
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-purple-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  เจ้าหน้าที่ระบบ
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-purple-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  เจ้าหน้าที่ความปลอดภัย
+                </li>
+              </ul>
+              <Link 
+                href="/admin/login" 
+                className="block w-full bg-purple-400 hover:bg-purple-500 text-white font-semibold py-3 px-6 rounded-xl transition-all text-center"
+              >
+                เข้าสู่ระบบ Admin
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-20 px-4 bg-gradient-to-r from-blue-600 to-emerald-600">
         <div className="max-w-4xl mx-auto text-center text-white">
@@ -292,16 +588,16 @@ export default function Home() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link 
-              href="/accounts/patient/dashboard" 
+              href="/register" 
               className="bg-white text-blue-600 hover:bg-gray-100 font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1"
             >
               สมัครสมาชิกฟรี
             </Link>
             <Link 
-              href="/accounts/patient/profile" 
+              href="/emr" 
               className="border-2 border-white text-white hover:bg-white hover:text-blue-600 font-semibold py-4 px-8 rounded-xl transition-all transform hover:-translate-y-1"
             >
-              ดูข้อมูลเพิ่มเติม
+              เข้าระบบ EMR
             </Link>
           </div>
         </div>
@@ -326,20 +622,52 @@ export default function Home() {
             <div>
               <h3 className="font-semibold mb-4">บริการ</h3>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white transition">บันทึกสุขภาพ</a></li>
-                <li><a href="#" className="hover:text-white transition">การคาดการณ์ AI</a></li>
-                <li><a href="#" className="hover:text-white transition">แลกเปลี่ยนข้อมูล</a></li>
-                <li><a href="#" className="hover:text-white transition">การตรวจสุขภาพ</a></li>
+                <li><Link href="/emr" className="hover:text-white transition">บันทึกสุขภาพ</Link></li>
+                <li><Link href="/emr/dashboard" className="hover:text-white transition">แดชบอร์ด EMR</Link></li>
+                <li><Link href="/emr/register-patient" className="hover:text-white transition">ลงทะเบียนผู้ป่วย</Link></li>
+                <li><Link href="/emr/checkin" className="hover:text-white transition">เช็คอินผู้ป่วย</Link></li>
+                <li><Link href="/emr/vital-signs" className="hover:text-white transition">วัดสัญญาณชีพ</Link></li>
+                <li><Link href="/emr/doctor-visit" className="hover:text-white transition">ตรวจโดยแพทย์</Link></li>
+                <li><Link href="/emr/pharmacy" className="hover:text-white transition">จ่ายยา</Link></li>
+                <li><Link href="/emr/lab-result" className="hover:text-white transition">ผลแล็บ</Link></li>
               </ul>
             </div>
             
             <div>
-              <h3 className="font-semibold mb-4">เกี่ยวกับเรา</h3>
+              <h3 className="font-semibold mb-4">บัญชีผู้ใช้</h3>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white transition">เกี่ยวกับบริษัท</a></li>
-                <li><a href="#" className="hover:text-white transition">ทีมงาน</a></li>
-                <li><a href="#" className="hover:text-white transition">ข่าวสาร</a></li>
-                <li><a href="#" className="hover:text-white transition">อาชีพ</a></li>
+                <li><Link href="/accounts/patient/dashboard" className="hover:text-white transition">แดชบอร์ดผู้ป่วย</Link></li>
+                <li><Link href="/accounts/patient/records" className="hover:text-white transition">ประวัติการรักษา</Link></li>
+                <li><Link href="/accounts/patient/appointments" className="hover:text-white transition">นัดหมาย</Link></li>
+                <li><Link href="/accounts/patient/medications" className="hover:text-white transition">ยาที่ใช้</Link></li>
+                <li><Link href="/accounts/patient/lab-results" className="hover:text-white transition">ผลแล็บ</Link></li>
+                <li><Link href="/accounts/patient/documents" className="hover:text-white transition">เอกสาร</Link></li>
+                <li><Link href="/accounts/patient/ai-insights" className="hover:text-white transition">AI Insights</Link></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 className="font-semibold mb-4">ระบบจัดการ</h3>
+              <ul className="space-y-2 text-gray-400">
+                <li><Link href="/admin" className="hover:text-white transition">แดชบอร์ด Admin</Link></li>
+                <li><Link href="/admin/role-management" className="hover:text-white transition">จัดการบทบาท</Link></li>
+                <li><Link href="/admin/consent-dashboard" className="hover:text-white transition">Consent Dashboard</Link></li>
+                <li><Link href="/admin/activity-logs" className="hover:text-white transition">Activity Logs</Link></li>
+                <li><Link href="/admin/database" className="hover:text-white transition">จัดการฐานข้อมูล</Link></li>
+                <li><Link href="/admin/settings" className="hover:text-white transition">ตั้งค่าระบบ</Link></li>
+                <li><Link href="/external-requesters" className="hover:text-white transition">External Requesters</Link></li>
+                <li><Link href="/consent/dashboard" className="hover:text-white transition">Consent Management</Link></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 className="font-semibold mb-4">หน้าอื่นๆ</h3>
+              <ul className="space-y-2 text-gray-400">
+                <li><Link href="/health" className="hover:text-white transition">Health Check</Link></li>
+                <li><Link href="/setup-profile" className="hover:text-white transition">ตั้งค่าโปรไฟล์</Link></li>
+                <li><Link href="/verify-email" className="hover:text-white transition">ยืนยันอีเมล</Link></li>
+                <li><Link href="/logout" className="hover:text-white transition">ออกจากระบบ</Link></li>
+                <li><Link href="/debug-auth" className="hover:text-white transition">Debug Auth</Link></li>
               </ul>
             </div>
             

@@ -97,18 +97,49 @@ class Application {
    */
   private initializeRoutes(): void {
     // Health check
-    this.app.get('/health', (req: Request, res: Response) => {
-      res.json({
-        status: 'OK',
-        timestamp: new Date().toISOString(),
-        environment: config.nodeEnv,
-        version: '1.0.0',
-        services: {
-          database: 'connected', // Could be dynamic check
-          ai: 'available',
-          consent: 'active'
-        }
-      });
+    this.app.get('/health', async (req: Request, res: Response) => {
+      try {
+        const startTime = Date.now();
+        
+        // Check database connection
+        const { db } = await import('./database');
+        await db.query('SELECT 1');
+        const dbResponseTime = Date.now() - startTime;
+        
+        const healthStatus = {
+          data: {
+            status: 'ok',
+            time: new Date().toISOString(),
+            version: '1.0.0',
+            environment: config.server.nodeEnv,
+            services: {
+              database: {
+                status: 'connected',
+                responseTime: `${dbResponseTime}ms`
+              },
+              api: {
+                status: 'running',
+                port: config.server.port
+              }
+            }
+          },
+          meta: null,
+          error: null,
+          statusCode: 200
+        };
+        
+        res.status(200).json(healthStatus);
+      } catch (error) {
+        res.status(503).json({
+          data: null,
+          meta: null,
+          error: {
+            code: 'SERVICE_UNAVAILABLE',
+            message: 'Service unavailable'
+          },
+          statusCode: 503
+        });
+      }
     });
 
     // API Routes
@@ -152,13 +183,13 @@ class Application {
       console.log('✅ Database system initialized successfully');
 
       // Start server
-      const port = config.port || 3001;
+      const port = config.server.port || 3001;
       
       this.app.listen(port, () => {
         console.log(`
 🚀 EMR Backend Server Started Successfully!
 📍 Port: ${port}
-🌍 Environment: ${config.nodeEnv}
+🌍 Environment: ${config.server.nodeEnv}
 🔧 API Base URL: http://localhost:${port}/api
 
 📋 Available Services:

@@ -175,6 +175,12 @@ export const config = {
     level: env.LOG_LEVEL,
     file: env.LOG_FILE,
   },
+  
+  // Security Configuration
+  security: {
+    bcryptRounds: 12,
+    encryptionKey: env.JWT_SECRET.substring(0, 32), // Use first 32 chars of JWT secret
+  },
 };
 
 // =============================================================================

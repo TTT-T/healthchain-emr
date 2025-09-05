@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { db } from '../database';
-import config from '../config/config';
+import config from '../config';
 import { User } from '../types';
 
 // Extend Request interface to include user
@@ -23,8 +23,13 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
-        success: false,
-        message: 'Access token is required'
+        data: null,
+        meta: null,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Access token is required'
+        },
+        statusCode: 401
       });
     }
     
@@ -38,8 +43,13 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     
     if (!user || !user.is_active) {
       return res.status(401).json({
-        success: false,
-        message: 'User account is inactive'
+        data: null,
+        meta: null,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'User account is inactive'
+        },
+        statusCode: 401
       });
     }
     
@@ -50,22 +60,37 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
       return res.status(401).json({
-        success: false,
-        message: 'Invalid token'
+        data: null,
+        meta: null,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Invalid token'
+        },
+        statusCode: 401
       });
     }
     
     if (error instanceof jwt.TokenExpiredError) {
       return res.status(401).json({
-        success: false,
-        message: 'Token expired'
+        data: null,
+        meta: null,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Token expired'
+        },
+        statusCode: 401
       });
     }
     
     console.error('Authentication error:', error);
     return res.status(500).json({
-      success: false,
-      message: 'Internal server error'
+      data: null,
+      meta: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Internal server error'
+      },
+      statusCode: 500
     });
   }
 };

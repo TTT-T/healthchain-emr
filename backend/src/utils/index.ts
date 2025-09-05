@@ -492,22 +492,25 @@ export const verifyRefreshToken = (token: string): RefreshTokenPayload | null =>
   return JWTUtils.verifyRefreshToken(token);
 };
 
-export const successResponse = <T>(message: string, data?: T, metadata?: any): APIResponse<T> => {
+export const successResponse = <T>(message: string, data?: T, metadata?: any): any => {
   return {
-    success: true,
-    message,
     data,
-    metadata,
+    meta: metadata ? { pagination: metadata.pagination } : null,
+    error: null,
     statusCode: 200
-  } as APIResponse<T>;
+  };
 };
 
-export const errorResponse = (message: string, statusCode?: number, errors?: any): APIResponse<null> => {
+export const errorResponse = (message: string, statusCode?: number, errors?: any): any => {
   return {
-    success: false,
-    message,
     data: null,
-    errors
+    meta: null,
+    error: {
+      code: 'ERROR',
+      message,
+      details: errors
+    },
+    statusCode: statusCode || 500
   };
 };
 

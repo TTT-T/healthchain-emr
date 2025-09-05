@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { ExternalRequesterSidebar, ExternalRequesterMobileSidebar } from '@/components/ExternalRequesterSidebar'
 import { 
   Bell, 
   CheckCircle, 
@@ -145,7 +144,6 @@ export default function NotificationsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex">
       {/* Sidebar */}
-      <ExternalRequesterSidebar className="hidden lg:block w-80 xl:w-96 flex-shrink-0" />
       
       {/* Main Content */}
       <div className="flex-1 min-w-0">
@@ -164,7 +162,6 @@ export default function NotificationsPage() {
                     </Badge>
                   )}
                 </div>
-                <ExternalRequesterMobileSidebar />
               </div>
               <p className="text-sm sm:text-base lg:text-lg text-gray-800 leading-relaxed font-medium">
                 ข่าวสารและการแจ้งเตือนสำคัญเกี่ยวกับคำขอและระบบ

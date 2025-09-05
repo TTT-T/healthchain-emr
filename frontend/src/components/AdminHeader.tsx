@@ -1,17 +1,16 @@
 "use client";
 
 import React from 'react';
-import { useSidebar } from './SidebarContextAdmin';
 import { useAuth } from "@/contexts/AuthContext";
-import { Menu, Bell, Search, User, Settings, LogOut, Shield } from 'lucide-react';
+import { Bell, Search, User, Settings, LogOut, Menu, Shield } from 'lucide-react';
 
 interface AdminHeaderProps {
   title: string;
   subtitle?: string;
+  onToggleSidebar?: () => void;
 }
 
-export default function AdminHeader({ title, subtitle }: AdminHeaderProps) {
-  const { toggleSidebar } = useSidebar();
+export default function AdminHeader({ title, subtitle, onToggleSidebar }: AdminHeaderProps) {
   const { logout } = useAuth();
 
   // Handle logout
@@ -30,7 +29,7 @@ export default function AdminHeader({ title, subtitle }: AdminHeaderProps) {
         <div className="flex items-center gap-4 min-w-0 flex-1">
           {/* Mobile Menu Button */}
           <button
-            onClick={toggleSidebar}
+            onClick={onToggleSidebar}
             className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
           >
             <Menu size={20} className="text-gray-600" />
@@ -55,7 +54,7 @@ export default function AdminHeader({ title, subtitle }: AdminHeaderProps) {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <input
               type="text"
-              placeholder="Search..."
+              placeholder="ค้นหา..."
               className="pl-10 pr-4 py-2 w-48 xl:w-64 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             />
           </div>
@@ -75,7 +74,7 @@ export default function AdminHeader({ title, subtitle }: AdminHeaderProps) {
                 <User className="text-blue-600" size={14} />
               </div>
               <div className="hidden xl:block text-left">
-                <div className="text-xs font-medium text-gray-900">Admin User</div>
+                <div className="text-xs font-medium text-gray-900">ผู้ดูแลระบบ</div>
                 <div className="text-xs text-gray-500">Administrator</div>
               </div>
             </button>
@@ -84,17 +83,17 @@ export default function AdminHeader({ title, subtitle }: AdminHeaderProps) {
             <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
               <div className="p-2">
                 <div className="px-3 py-2 border-b border-gray-100">
-                  <div className="font-medium text-gray-900 text-sm">Admin User</div>
+                  <div className="font-medium text-gray-900 text-sm">ผู้ดูแลระบบ</div>
                   <div className="text-xs text-gray-500">admin@healthchain.com</div>
                 </div>
                 <div className="mt-2 space-y-1">
                   <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors">
                     <User size={16} className="text-gray-400" />
-                    Profile
+                    โปรไฟล์
                   </button>
                   <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors">
                     <Settings size={16} className="text-gray-400" />
-                    Settings
+                    ตั้งค่า
                   </button>
                   <hr className="my-1" />
                   <button 
@@ -102,7 +101,7 @@ export default function AdminHeader({ title, subtitle }: AdminHeaderProps) {
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
                   >
                     <LogOut size={16} className="text-red-500" />
-                    Sign Out
+                    ออกจากระบบ
                   </button>
                 </div>
               </div>

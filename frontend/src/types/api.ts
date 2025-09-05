@@ -98,7 +98,7 @@ export interface RegisterRequest {
 
 export interface AuthResponse {
   user: Omit<User, 'password'>;
-  accessToken: string;
+  token: string;
   refreshToken: string;
   requiresProfileSetup?: boolean;
   redirectTo?: string;
@@ -205,29 +205,16 @@ export interface ConsentContractRequest {
 export interface MedicalPatient {
   id: string;
   hospitalNumber: string;
-  nationalId: string;
-  thaiName: string;
-  englishName?: string;
+  firstName: string;
+  lastName: string;
   gender: 'male' | 'female' | 'other';
-  birthDate: string;
-  age?: number;
+  dateOfBirth: string;
   phone?: string;
   email?: string;
   address?: string;
   district?: string;
   province?: string;
   postalCode?: string;
-  emergencyContact?: {
-    name: string;
-    phone: string;
-    relationship: string;
-  };
-  insuranceNumber?: string;
-  insuranceProvider?: string;
-  allergies?: string[];
-  chronicConditions?: string[];
-  currentMedications?: string[];
-  bloodType?: string;
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
@@ -235,28 +222,17 @@ export interface MedicalPatient {
 }
 
 export interface CreatePatientRequest {
-  nationalId: string;
-  thaiName: string;
-  englishName?: string;
+  hospitalNumber: string;
+  firstName: string;
+  lastName: string;
   gender: 'male' | 'female' | 'other';
-  birthDate: string;
+  dateOfBirth: string;
   phone?: string;
   email?: string;
   address?: string;
   district?: string;
   province?: string;
   postalCode?: string;
-  emergencyContact?: {
-    name: string;
-    phone: string;
-    relationship: string;
-  };
-  insuranceNumber?: string;
-  insuranceProvider?: string;
-  allergies?: string[];
-  chronicConditions?: string[];
-  currentMedications?: string[];
-  bloodType?: string;
 }
 
 // Visit Types

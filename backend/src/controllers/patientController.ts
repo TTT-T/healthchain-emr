@@ -31,7 +31,7 @@ export const createPatient = async (req: Request, res: Response, next: NextFunct
     
     // Check if patient already exists with this national ID
     const existingPatient = await db.query(
-      'SELECT id FROM patients WHERE national_id = $1',
+      'SELECT id FROM patients WHERE email = $1',
       [validatedData.nationalId]
     );
     
@@ -52,28 +52,23 @@ export const createPatient = async (req: Request, res: Response, next: NextFunct
       const firstName = nameParts[0] || 'Unknown';
       const lastName = nameParts.slice(1).join(' ') || 'Unknown';
       
-      // Insert patient
+      // Insert patient (using actual database schema)
       const patientResult = await client.query(`
         INSERT INTO patients (
-          hospital_number, national_id, first_name, last_name, thai_name, 
-          gender, date_of_birth, phone, email, address, district, province, 
-          postal_code, created_by, updated_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $14)
+          hospital_number, first_name, last_name, 
+          gender, date_of_birth, phone, email, address,
+          created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *
       `, [
-        hn,
-        dbData.national_id,
-        firstName,
-        lastName,
-        dbData.thai_name,
-        dbData.gender,
-        dbData.date_of_birth,
-        dbData.phone || null,
-        dbData.email || null,
-        dbData.address || null,
-        dbData.district || null,
-        dbData.province || null,
-        dbData.postal_code || null,
+        validatedData.hospitalNumber, // Use the hospital number from request
+        validatedData.firstName,
+        validatedData.lastName,
+        validatedData.gender,
+        validatedData.dateOfBirth,
+        validatedData.phone || null,
+        validatedData.email || null,
+        validatedData.address || null,
         req.user?.id
       ]);
       
@@ -88,9 +83,9 @@ export const createPatient = async (req: Request, res: Response, next: NextFunct
             emergency_contact_relationship = $3
           WHERE id = $4
         `, [
-          validatedData.emergencyContact.name,
-          validatedData.emergencyContact.phone,
-          validatedData.emergencyContact.relationship,
+          validatedData.emergencyContactName,
+          validatedData.emergencyContactPhone,
+          validatedData.emergencyContactRelation,
           patient.id
         ]);
       }
@@ -104,7 +99,7 @@ export const createPatient = async (req: Request, res: Response, next: NextFunct
       action: 'CREATE_PATIENT',
       resource: 'PATIENT',
       resourceId: result.id,
-      details: { hospitalNumber: result.hospital_number, nationalId: validatedData.nationalId },
+      details: { hospitalNumber: result.hospital_number },
       ipAddress: req.ip || 'unknown'
     });
     
@@ -112,23 +107,16 @@ export const createPatient = async (req: Request, res: Response, next: NextFunct
     const patientData = {
       id: result.id,
       hospitalNumber: result.hospital_number,
-      nationalId: result.national_id,
+      nationalId: null, // Not available in current schema
       firstName: result.first_name,
       lastName: result.last_name,
-      thaiName: result.thai_name,
+      thaiName: null, // Not available in current schema
       gender: result.gender,
       birthDate: result.date_of_birth,
       phone: result.phone,
       email: result.email,
-      address: result.address,
-      district: result.district,
-      province: result.province,
-      postalCode: result.postal_code,
-      emergencyContact: result.emergency_contact_name ? {
-        name: result.emergency_contact_name,
-        phone: result.emergency_contact_phone,
-        relationship: result.emergency_contact_relationship
-      } : null,
+      address: result.address || null,
+      emergencyContact: null, // Not available in current schema
       createdAt: result.created_at,
       updatedAt: result.updated_at
     };
@@ -154,7 +142,7 @@ export const getPatient = async (req: Request, res: Response) => {
   try {
     const { identifier } = req.params;
     
-    // Check if identifier is UUID (ID) or HN
+    // Check if identifier is UUID (ID) or hospital number
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
     const field = isUUID ? 'id' : 'hospital_number';
     
@@ -177,23 +165,16 @@ export const getPatient = async (req: Request, res: Response) => {
     const patientData = {
       id: patient.id,
       hospitalNumber: patient.hospital_number,
-      nationalId: patient.national_id,
+      nationalId: null, // Not available in current schema
       firstName: patient.first_name,
       lastName: patient.last_name,
-      thaiName: patient.thai_name,
+      thaiName: null, // Not available in current schema
       gender: patient.gender,
       birthDate: patient.date_of_birth,
       phone: patient.phone,
       email: patient.email,
-      address: patient.address,
-      district: patient.district,
-      province: patient.province,
-      postalCode: patient.postal_code,
-      emergencyContact: patient.emergency_contact_name ? {
-        name: patient.emergency_contact_name,
-        phone: patient.emergency_contact_phone,
-        relationship: patient.emergency_contact_relationship
-      } : null,
+      address: patient.address || null,
+      emergencyContact: null, // Not available in current schema
       createdAt: patient.created_at,
       updatedAt: patient.updated_at
     };
@@ -214,33 +195,21 @@ export const getPatient = async (req: Request, res: Response) => {
  */
 export const searchPatients = async (req: Request, res: Response) => {
   try {
-    const { query, searchType, page, limit } = searchPatientSchema.parse({
+    const { search, page, pageSize } = searchPatientSchema.parse({
       ...req.query,
       page: req.query.page ? parseInt(req.query.page as string) : 1,
-      limit: req.query.limit ? parseInt(req.query.limit as string) : 20
+      pageSize: req.query.pageSize ? parseInt(req.query.pageSize as string) : 20
     });
     
-    const offset = (page - 1) * limit;
+    const offset = (page - 1) * pageSize;
     
     let searchQuery = '';
     let searchParams: any[] = [];
     
-    switch (searchType) {
-      case 'hn':
-        searchQuery = 'WHERE hospital_number ILIKE $1';
-        searchParams = [`%${query}%`];
-        break;
-      case 'nationalId':
-        searchQuery = 'WHERE national_id = $1';
-        searchParams = [query];
-        break;
-      case 'phone':
-        searchQuery = 'WHERE phone ILIKE $1';
-        searchParams = [`%${query}%`];
-        break;
-      default: // name
-        searchQuery = 'WHERE (thai_name ILIKE $1 OR first_name ILIKE $1 OR last_name ILIKE $1)';
-        searchParams = [`%${query}%`];
+    if (search) {
+      // Simple search across multiple fields
+      searchQuery = 'WHERE (phone ILIKE $1 OR first_name ILIKE $1 OR last_name ILIKE $1 OR email ILIKE $1)';
+      searchParams = [`%${search}%`];
     }
     
     // Get total count
@@ -255,19 +224,19 @@ export const searchPatients = async (req: Request, res: Response) => {
     // Get patients
     const result = await db.query(`
       SELECT 
-        id, hospital_number, national_id, thai_name, first_name, last_name, 
+        id, first_name, last_name, 
         gender, date_of_birth, phone, email,
         created_at, updated_at
       FROM patients 
       ${searchQuery}
       ORDER BY created_at DESC
       LIMIT $${searchParams.length + 1} OFFSET $${searchParams.length + 2}
-    `, [...searchParams, limit, offset]);
+    `, [...searchParams, pageSize, offset]);
     
     const patients = result.rows.map(row => ({
       id: row.id,
       hospitalNumber: row.hospital_number,
-      nationalId: row.national_id,
+      nationalId: null, // Not available in current schema
       firstName: row.first_name,
       lastName: row.last_name,
       thaiName: row.thai_name,
@@ -279,12 +248,12 @@ export const searchPatients = async (req: Request, res: Response) => {
       updatedAt: row.updated_at
     }));
     
-    const totalPages = Math.ceil(total / limit);
+    const totalPages = Math.ceil(total / pageSize);
     
     res.json(successResponse('ค้นหาผู้ป่วยสำเร็จ', patients, {
       pagination: {
         page,
-        limit,
+        pageSize,
         total,
         totalPages,
         hasNext: page < totalPages,
@@ -335,11 +304,6 @@ export const updatePatient = async (req: Request, res: Response) => {
       updateValues.push(validatedData.thaiName);
     }
     
-    if (validatedData.englishName) {
-      updateFields.push(`english_name = $${paramCount++}`);
-      updateValues.push(validatedData.englishName);
-    }
-    
     if (validatedData.phone) {
       updateFields.push(`phone = $${paramCount++}`);
       updateValues.push(validatedData.phone);
@@ -370,9 +334,6 @@ export const updatePatient = async (req: Request, res: Response) => {
       updateValues.push(validatedData.postalCode);
     }
     
-    updateFields.push(`updated_by = $${paramCount++}`);
-    updateValues.push(req.user?.id);
-    
     updateFields.push(`updated_at = NOW()`);
     
     updateValues.push(id); // WHERE condition
@@ -398,7 +359,7 @@ export const updatePatient = async (req: Request, res: Response) => {
     const patientData = {
       id: patient.id,
       hospitalNumber: patient.hospital_number,
-      nationalId: patient.national_id,
+      nationalId: null, // Not available in current schema
       firstName: patient.first_name,
       lastName: patient.last_name,
       thaiName: patient.thai_name,
@@ -453,7 +414,7 @@ export const listPatients = async (req: Request, res: Response) => {
     // Get patients
     const result = await db.query(`
       SELECT 
-        id, hospital_number, national_id, thai_name, first_name, last_name, 
+        id, hospital_number, first_name, last_name, 
         gender, date_of_birth, phone, email,
         created_at, updated_at
       FROM patients 
@@ -464,10 +425,10 @@ export const listPatients = async (req: Request, res: Response) => {
     const patients = result.rows.map(row => ({
       id: row.id,
       hospitalNumber: row.hospital_number,
-      nationalId: row.national_id,
+      nationalId: null, // Not available in current schema
       firstName: row.first_name,
       lastName: row.last_name,
-      thaiName: row.thai_name,
+      thaiName: null, // Not available in current schema
       gender: row.gender,
       birthDate: row.date_of_birth,
       phone: row.phone,
@@ -521,11 +482,10 @@ export const deletePatient = async (req: Request, res: Response) => {
       UPDATE patients 
       SET 
         is_active = FALSE, 
-        updated_at = CURRENT_TIMESTAMP,
-        updated_by = $2
+        updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
-      RETURNING id, hospital_number, thai_name
-    `, [id, req.user?.id]);
+      RETURNING id, hospital_number, first_name, last_name
+    `, [id]);
     
     const patient = result.rows[0];
     
@@ -539,7 +499,7 @@ export const deletePatient = async (req: Request, res: Response) => {
         patientInfo: {
           id: patient.id,
           hospitalNumber: patient.hospital_number,
-          thaiName: patient.thai_name
+          thaiName: `${patient.first_name} ${patient.last_name}`
         },
         method: 'soft_delete'
       },
@@ -549,11 +509,12 @@ export const deletePatient = async (req: Request, res: Response) => {
     
     res.status(200).json(
       successResponse(
-        'ลบข้อมูลผู้ป่วยสำเร็จ',
+        'Patient deleted successfully',
         {
+          message: 'Patient deleted successfully',
           id: patient.id,
           hospitalNumber: patient.hospital_number,
-          thaiName: patient.thai_name,
+          thaiName: `${patient.first_name} ${patient.last_name}`,
           deletedAt: new Date().toISOString()
         }
       )
@@ -601,7 +562,7 @@ export const getPatientProfile = async (req: Request, res: Response) => {
     const patientData = {
       id: patient.id,
       hospitalNumber: patient.hospital_number,
-      nationalId: patient.national_id,
+      nationalId: null, // Not available in current schema
       firstName: patient.first_name,
       lastName: patient.last_name,
       thaiName: patient.thai_name,

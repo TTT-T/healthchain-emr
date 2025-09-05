@@ -34,8 +34,7 @@ import {
 
 const router = Router();
 
-// Apply authentication to all medical routes
-router.use(authenticate);
+// Authentication is handled by individual route modules
 
 /**
  * Medical API Routes

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import EMRSidebar from '../../components/EMRSidebar';
+import EMRHeader from '../../components/EMRHeader';
 import { Menu } from 'lucide-react';
 
 interface EMRLayoutProps {
@@ -61,24 +62,12 @@ export default function EMRLayout({ children }: EMRLayoutProps) {
           ? (sidebarCollapsed ? 'lg:ml-12' : 'lg:ml-56')
           : 'ml-0'
       }`}>
-        {/* Mobile Header with Menu Button */}
-        {isMobile && (
-          <div className="lg:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-30">
-            <button
-              onClick={openMobileMenu}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              title="เปิดเมนู"
-            >
-              <Menu className="h-6 w-6 text-gray-600" />
-            </button>
-            <div className="flex items-center">
-              <div className="w-6 h-6 bg-blue-600 rounded-lg flex items-center justify-center mr-2">
-                <span className="text-xs text-white font-bold">E</span>
-              </div>
-              <h1 className="text-lg font-bold text-gray-900">EMR</h1>
-            </div>
-          </div>
-        )}
+        {/* Header */}
+        <EMRHeader 
+          title="EMR System"
+          subtitle="ระบบบันทึกข้อมูลทางการแพทย์"
+          onToggleSidebar={isMobile ? openMobileMenu : undefined}
+        />
         
         {/* Main Content */}
         <div className="flex-1 overflow-auto h-full">

@@ -166,7 +166,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response = await apiClient.login({ username, password });
       console.log('📥 AuthContext: Login response received:', response);
       
-      if (response.success && response.data) {
+      if (response.data) {
         console.log('✅ AuthContext: Login successful, setting user:', response.data.user);
         console.log('🔍 AuthContext: Token verification after login:');
         console.log('  - Access token stored:', !!apiClient.getAccessToken());
@@ -180,9 +180,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.log('✅ AuthContext: Login process completed successfully');
         
       } else {
-        console.error('❌ AuthContext: Login failed:', response.message);
+        console.error('❌ AuthContext: Login failed:', response.error?.message);
         setIsLoading(false);
-        throw new Error(response.message || 'Login failed');
+        throw new Error(response.error?.message || 'Login failed');
       }
     } catch (error) {
       console.error('💥 AuthContext: Login error caught:', error);

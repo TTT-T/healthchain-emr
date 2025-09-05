@@ -265,6 +265,9 @@ export const login = async (req: Request, res: Response) => {
     // Generate tokens
     const { accessToken, refreshToken } = generateTokens(user);
     
+    // Clear existing sessions for this user to avoid duplicates
+    await db.query('DELETE FROM user_sessions WHERE user_id = $1', [user.id]);
+    
     // Create session
     await db.createSession({
       userId: user.id,
@@ -286,11 +289,26 @@ export const login = async (req: Request, res: Response) => {
       userAgent: req.get('User-Agent') || 'unknown'
     });
     
-    // Remove password from response
+    // Remove password from response and transform field names
     const { password_hash, ...userWithoutPassword } = user;
     
-    const authResponse: AuthResponse = {
-      user: userWithoutPassword,
+    // Transform user object to match expected format
+    const transformedUser = {
+      id: userWithoutPassword.id,
+      username: userWithoutPassword.username,
+      email: userWithoutPassword.email,
+      firstName: userWithoutPassword.first_name,
+      lastName: userWithoutPassword.last_name,
+      role: userWithoutPassword.role,
+      isActive: userWithoutPassword.is_active,
+      profileCompleted: userWithoutPassword.profile_completed,
+      emailVerified: userWithoutPassword.email_verified,
+      createdAt: userWithoutPassword.created_at,
+      updatedAt: userWithoutPassword.updated_at
+    };
+    
+    const authResponse: any = {
+      user: transformedUser,
       accessToken,
       refreshToken
     };

@@ -1,308 +1,383 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
   Building2, 
-  Shield, 
   FileText, 
-  Search,
+  Clock, 
   CheckCircle, 
+  XCircle, 
+  AlertTriangle,
+  BarChart3,
+  RefreshCw,
   ArrowRight,
-  Users,
-  Database,
-  Lock,
-  Zap,
-  Hospital,
-  CreditCard,
-  Scale,
-  UserPlus,
-  Clock
+  TrendingUp
 } from 'lucide-react'
 
-export default function ExternalRequestersLanding() {
-  const organizationTypes = [
-    {
-      icon: <Hospital className="h-6 w-6 text-blue-600" />,
-      title: 'โรงพยาบาล & คลินิก',
-      description: 'สำหรับการส่งต่อผู้ป่วยและการรักษาต่อเนื่อง',
-      examples: ['โรงพยาบาลรัฐ/เอกชน', 'คลินิกเฉพาะทาง', 'ศูนย์การแพทย์']
-    },
-    {
-      icon: <CreditCard className="h-6 w-6 text-green-600" />,
-      title: 'บริษัทประกัน',
-      description: 'สำหรับการตรวจสอบและเคลมประกันสุขภาพ',
-      examples: ['ประกันชีวิต', 'ประกันสุขภาพ', 'ประกันอุบัติเหตุ']
-    },
-    {
-      icon: <FileText className="h-6 w-6 text-purple-600" />,
-      title: 'สถาบันวิจัย',
-      description: 'สำหรับการวิจัยทางการแพทย์และสาธารณสุข',
-      examples: ['มหาวิทยาลัย', 'สถาบันวิจัย', 'องค์กรวิชาการ']
-    },
-    {
-      icon: <Building2 className="h-6 w-6 text-orange-600" />,
-      title: 'หน่วยงานราชการ',
-      description: 'สำหรับการรายงานและการดำเนินนโยบาย',
-      examples: ['กระทรวงสาธารณสุข', 'ประกันสังคม', 'สำนักงานสถิติ']
-    },
-    {
-      icon: <Scale className="h-6 w-6 text-red-600" />,
-      title: 'หน่วยงานกฎหมาย',
-      description: 'สำหรับกระบวนการทางกฎหมายและคดีความ',
-      examples: ['สำนักงานทนายความ', 'ศาล', 'สำนักงานตำรวจ']
-    },
-    {
-      icon: <Shield className="h-6 w-6 text-indigo-600" />,
-      title: 'องค์กรตรวจสอบ',
-      description: 'สำหรับการตรวจสอบคุณภาพและมาตรฐาน',
-      examples: ['หน่วยงานรับรอง', 'องค์กรตรวจสอบ', 'คณะกรรมการ']
-    }
-  ]
+interface UserData {
+  id: string
+  email: string
+  organizationName: string
+  organizationType: string
+  status: string
+  dataAccessLevel: string
+  lastLogin: string
+  createdAt: string
+}
 
-  const features = [
-    {
-      icon: <Shield className="h-8 w-8 text-blue-600" />,
-      title: 'ระบบ Consent Engine',
-      description: 'การขอความยินยอมแบบอัตโนมัติที่ปลอดภัยและโปร่งใส',
-      details: ['Smart Contract Logic', 'การยืนยันตัวตนแบบดิจิทัล', 'บันทึกการเข้าถึงทุกครั้ง']
-    },
-    {
-      icon: <Database className="h-8 w-8 text-green-600" />,
-      title: 'ข้อมูลมาตรฐาน',
-      description: 'ข้อมูลทางการแพทย์ที่ได้มาตรฐานสากล HL7 FHIR',
-      details: ['ข้อมูลเวชระเบียน', 'ผลตรวจทางห้องปฏิบัติการ', 'ข้อมูลการจ่ายยา']
-    },
-    {
-      icon: <Lock className="h-8 w-8 text-purple-600" />,
-      title: 'ความปลอดภัย',
-      description: 'การเข้ารหัสและการควบคุมการเข้าถึงระดับสูง',
-      details: ['เข้ารหัส End-to-End', 'การควบคุมสิทธิ์แบบละเอียด', 'การตรวจสอบการใช้งาน']
-    },
-    {
-      icon: <Zap className="h-8 w-8 text-orange-600" />,
-      title: 'ประสิทธิภาพสูง',
-      description: 'ระบบตอบสนองเร็วและรองรับการใช้งานจำนวนมาก',
-      details: ['API แบบ Real-time', 'การจัดการคิวอัตโนมัติ', 'รายงานและสถิติ']
-    }
-  ]
+interface DashboardStats {
+  totalRequests: number
+  pendingRequests: number
+  approvedRequests: number
+  rejectedRequests: number
+  monthlyUsage: number
+  maxMonthlyUsage: number
+  activeConnections: number
+  dataTransferred: number
+}
 
-  const processSteps = [
-    {
-      step: 1,
-      title: 'ลงทะเบียนองค์กร',
-      description: 'กรอกข้อมูลองค์กรและอัปโหลดเอกสารประกอบ',
-      time: '15-20 นาที'
-    },
-    {
-      step: 2,
-      title: 'ตรวจสอบข้อมูล',
-      description: 'ทีมงานตรวจสอบเอกสารและข้อมูลที่ส่งมา',
-      time: '3-5 วันทำการ'
-    },
-    {
-      step: 3,
-      title: 'การอนุมัติ',
-      description: 'รับการแจ้งผลการอนุมัติและข้อมูลการเข้าใช้งาน',
-      time: '1 วันทำการ'
-    },
-    {
-      step: 4,
-      title: 'เริ่มใช้งาน',
-      description: 'เข้าสู่ระบบและเริ่มส่งคำขอเข้าถึงข้อมูล',
-      time: 'ทันที'
-    }
-  ]
+interface RecentRequest {
+  id: string
+  type: string
+  patientId: string
+  status: string
+  requestedAt: string
+  processedAt?: string
+  purpose: string
+}
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-purple-800 text-white py-12 sm:py-16 lg:py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold mb-4 sm:mb-6 lg:mb-8">
-            ระบบ Consent Engine
-          </h1>
-          <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl mb-6 sm:mb-8 text-blue-100 font-medium">
-            สำหรับองค์กรภายนอกที่ต้องการเข้าถึงข้อมูลทางการแพทย์
-          </p>
-          <p className="text-base sm:text-lg lg:text-xl mb-8 sm:mb-10 max-w-4xl mx-auto text-blue-50 leading-relaxed">
-            ระบบการจัดการความยินยอมแบบอัตโนมัติที่ปลอดภัย โปร่งใส และเป็นไปตามมาตรฐานสากล 
-            สำหรับการเข้าถึงข้อมูลสุขภาพผู้ป่วยอย่างถูกต้องตามกฎหมาย
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center">
-            <Link href="/external-requesters/register">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto border-2 border-white bg-white/10 text-white hover:bg-white hover:text-blue-700 px-8 sm:px-10 py-4 text-lg font-semibold shadow-lg transition-all duration-200 backdrop-blur-sm">
-                <UserPlus className="h-6 w-6 mr-3" />
-                ลงทะเบียนใหม่
-              </Button>
-            </Link>
-            <Link href="/external-requesters/status">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto border-2 border-white bg-white/10 text-white hover:bg-white hover:text-blue-700 px-8 sm:px-10 py-4 text-lg font-semibold shadow-lg transition-all duration-200 backdrop-blur-sm">
-                <Search className="h-6 w-6 mr-3" />
-                ตรวจสอบสถานะ
-              </Button>
-            </Link>
-          </div>
+export default function ExternalRequestersHomePage() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<UserData | null>(null)
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([])
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
+
+  useEffect(() => {
+    // Simulate loading
+    setTimeout(() => {
+      // Mock user data
+      setUser({
+        id: '1',
+        email: 'admin@hospital.com',
+        organizationName: 'โรงพยาบาลกรุงเทพ',
+        organizationType: 'hospital',
+        status: 'active',
+        dataAccessLevel: 'premium',
+        lastLogin: new Date().toISOString(),
+        createdAt: '2024-01-15T00:00:00Z'
+      })
+
+      // Mock stats data
+      setStats({
+        totalRequests: 1247,
+        pendingRequests: 23,
+        approvedRequests: 1156,
+        rejectedRequests: 68,
+        monthlyUsage: 89,
+        maxMonthlyUsage: 100,
+        activeConnections: 12,
+        dataTransferred: 2.4
+      })
+
+      // Mock recent requests
+      setRecentRequests([
+        {
+          id: 'REQ-001',
+          type: 'Medical Records',
+          patientId: 'P-12345',
+          status: 'approved',
+          requestedAt: '2024-12-18T10:30:00Z',
+          processedAt: '2024-12-18T10:35:00Z',
+          purpose: 'การรักษาต่อเนื่อง'
+        },
+        {
+          id: 'REQ-002',
+          type: 'Lab Results',
+          patientId: 'P-12346',
+          status: 'pending',
+          requestedAt: '2024-12-18T11:15:00Z',
+          purpose: 'การตรวจสอบผลแล็บ'
+        },
+        {
+          id: 'REQ-003',
+          type: 'Prescription History',
+          patientId: 'P-12347',
+          status: 'rejected',
+          requestedAt: '2024-12-18T09:45:00Z',
+          processedAt: '2024-12-18T09:50:00Z',
+          purpose: 'การตรวจสอบประวัติยา'
+        }
+      ])
+
+      setLoading(false)
+    }, 1000)
+  }, [])
+
+  const refreshData = () => {
+    setLastRefresh(new Date())
+    // In real implementation, this would fetch fresh data
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'approved': return 'text-green-600 bg-green-100'
+      case 'pending': return 'text-yellow-600 bg-yellow-100'
+      case 'rejected': return 'text-red-600 bg-red-100'
+      default: return 'text-gray-600 bg-gray-100'
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'approved': return <CheckCircle className="h-4 w-4" />
+      case 'pending': return <Clock className="h-4 w-4" />
+      case 'rejected': return <XCircle className="h-4 w-4" />
+      default: return <AlertTriangle className="h-4 w-4" />
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'approved': return 'อนุมัติแล้ว'
+      case 'pending': return 'รอดำเนินการ'
+      case 'rejected': return 'ปฏิเสธ'
+      default: return 'ไม่ทราบสถานะ'
+    }
+  }
+
+  const handleLogout = () => {
+    // Handle logout logic
+    router.push('/')
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-slate-600">กำลังโหลดข้อมูล...</p>
         </div>
       </div>
+    )
+  }
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
-        {/* Organization Types */}
-        <section className="mb-16 lg:mb-20">
-          <div className="text-center mb-12 lg:mb-16">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">
-              ประเภทองค์กรที่รองรับ
-            </h2>
-            <p className="text-base sm:text-lg text-gray-700 max-w-3xl mx-auto leading-relaxed">
-              ระบบรองรับการลงทะเบียนสำหรับองค์กรต่างประเภทที่มีความจำเป็นในการเข้าถึงข้อมูลทางการแพทย์
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            {organizationTypes.map((type, index) => (
-              <Card key={index} className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg bg-white group hover:-translate-y-1">
-                <CardHeader className="p-6 lg:p-8">
-                  <CardTitle className="flex items-center space-x-4 text-lg lg:text-xl">
-                    <div className="p-3 bg-blue-100 rounded-xl group-hover:bg-blue-200 transition-colors">
-                      {type.icon}
-                    </div>
-                    <span className="font-bold text-gray-900">{type.title}</span>
-                  </CardTitle>
-                  <CardDescription className="text-base text-gray-700 leading-relaxed mt-3">
-                    {type.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="px-6 lg:px-8 pb-6 lg:pb-8">
-                  <div className="space-y-2">
-                    {type.examples.map((example, i) => (
-                      <Badge key={i} variant="outline" className="mr-2 mb-2 text-sm px-3 py-1 font-medium text-gray-700 border-gray-300">
-                        {example}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        {/* Features */}
-        <section className="mb-16 lg:mb-20">
-          <div className="text-center mb-12 lg:mb-16">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">
-              คุณสมบัติเด่น
-            </h2>
-            <p className="text-base sm:text-lg text-gray-700 max-w-3xl mx-auto leading-relaxed">
-              ระบบที่ออกแบบมาเพื่อความปลอดภัย ความถูกต้อง และการใช้งานที่มีประสิทธิภาพ
-            </p>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
-            {features.map((feature, index) => (
-              <Card key={index} className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg bg-white group hover:-translate-y-1">
-                <CardHeader className="p-6 lg:p-8">
-                  <CardTitle className="flex items-center space-x-4 text-xl lg:text-2xl">
-                    <div className="p-3 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl group-hover:scale-110 transition-transform">
-                      {feature.icon}
-                    </div>
-                    <span className="font-bold text-gray-900">{feature.title}</span>
-                  </CardTitle>
-                  <CardDescription className="text-base lg:text-lg text-gray-700 leading-relaxed mt-3">
-                    {feature.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="px-6 lg:px-8 pb-6 lg:pb-8">
-                  <ul className="space-y-3">
-                    {feature.details.map((detail, i) => (
-                      <li key={i} className="flex items-center space-x-3 text-sm lg:text-base text-gray-700">
-                        <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
-                        <span className="font-medium">{detail}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        {/* Process Steps */}
-        <section className="mb-16 lg:mb-20">
-          <div className="text-center mb-12 lg:mb-16">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">
-              ขั้นตอนการลงทะเบียน
-            </h2>
-            <p className="text-base sm:text-lg text-gray-700 max-w-3xl mx-auto leading-relaxed">
-              กระบวนการลงทะเบียนที่ง่ายและรวดเร็ว พร้อมการติดตามสถานะแบบ Real-time
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
-            {processSteps.map((step, index) => (
-              <div key={index} className="relative">
-                <Card className="text-center hover:shadow-xl transition-all duration-300 border-0 shadow-lg bg-white group hover:-translate-y-1">
-                  <CardHeader className="p-6 lg:p-8">
-                    <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 lg:mb-6 text-2xl lg:text-3xl font-bold shadow-lg group-hover:scale-110 transition-transform">
-                      {step.step}
-                    </div>
-                    <CardTitle className="text-lg lg:text-xl font-bold text-gray-900 mb-2">{step.title}</CardTitle>
-                    <CardDescription className="text-sm lg:text-base text-gray-700 leading-relaxed">
-                      {step.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="px-6 lg:px-8 pb-6 lg:pb-8">
-                    <div className="flex items-center justify-center space-x-2 text-sm lg:text-base text-blue-600 font-medium">
-                      <Clock className="h-4 w-4 lg:h-5 lg:w-5" />
-                      <span>{step.time}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-                {index < processSteps.length - 1 && (
-                  <div className="hidden lg:block absolute top-1/2 -right-4 xl:-right-6 transform -translate-y-1/2 z-10">
-                    <ArrowRight className="h-8 w-8 text-blue-400" />
-                  </div>
-                )}
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Welcome Section */}
+        <div className="mb-8">
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-slate-800 mb-2">
+                  ยินดีต้อนรับ, {user?.organizationName}
+                </h1>
+                <p className="text-slate-600 mb-4">
+                  สถานะ: <span className="font-semibold text-emerald-600">{user?.status}</span> | 
+                  ระดับการเข้าถึง: <span className="font-semibold text-blue-600">{user?.dataAccessLevel}</span>
+                </p>
+                <p className="text-sm text-slate-500">
+                  อัปเดตล่าสุด: {lastRefresh.toLocaleString('th-TH')}
+                </p>
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Call to Action */}
-        <section className="text-center">
-          <Card className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200 shadow-xl">
-            <CardContent className="py-12 lg:py-16 px-6 lg:px-12">
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 lg:mb-6">
-                พร้อมเริ่มต้นใช้งานแล้วหรือยัง?
-              </h2>
-              <p className="text-base sm:text-lg text-gray-700 mb-8 lg:mb-10 max-w-3xl mx-auto leading-relaxed">
-                ลงทะเบียนองค์กรของคุณวันนี้ เพื่อเข้าถึงข้อมูลทางการแพทย์อย่างปลอดภัยและถูกต้องตามกฎหมาย
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center">
-                <Link href="/external-requesters/register">
-                  <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-10 lg:px-12 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200">
-                    <UserPlus className="h-6 w-6 mr-3" />
-                    เริ่มลงทะเบียน
-                  </Button>
-                </Link>
-                <Link href="/external-requesters/status">
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto border-2 border-blue-400 text-blue-700 hover:bg-blue-50 px-8 lg:px-10 py-4 text-lg font-semibold transition-all duration-200">
-                    <Search className="h-6 w-6 mr-3" />
-                    ตรวจสอบสถานะคำขอ
-                  </Button>
-                </Link>
+              <div className="text-right">
+                <button
+                  onClick={refreshData}
+                  className="p-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-colors"
+                  title="รีเฟรชข้อมูล"
+                >
+                  <RefreshCw className="h-5 w-5" />
+                </button>
               </div>
-            </CardContent>
-          </Card>
-        </section>
+            </div>
+          </div>
+        </div>
 
-        {/* Info Alert */}
-        <Alert className="mt-8 lg:mt-12 border-2 border-blue-300 bg-blue-50 shadow-xl">
-          <Shield className="h-5 w-5 lg:h-6 lg:w-6 text-blue-600" />
-          <AlertDescription className="text-blue-800 text-base lg:text-lg font-medium leading-relaxed">
-            <strong>หมายเหตุด้านความปลอดภัย:</strong> ระบบนี้เป็นไปตามมาตรฐาน PDPA และกฎหมายคุ้มครองข้อมูลส่วนบุคคล 
-            ข้อมูลทั้งหมดจะถูกเข้ารหัสและบันทึกการเข้าถึงเพื่อการตรวจสอบ
-          </AlertDescription>
-        </Alert>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-slate-500 text-sm mb-1">คำขอทั้งหมด</p>
+                <p className="text-3xl font-bold text-slate-800">{stats?.totalRequests.toLocaleString()}</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <FileText className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+            <div className="mt-4 flex items-center text-sm">
+              <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+              <span className="text-green-600">+12% จากเดือนที่แล้ว</span>
+            </div>
+          </div>
+
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-slate-500 text-sm mb-1">รอดำเนินการ</p>
+                <p className="text-3xl font-bold text-yellow-600">{stats?.pendingRequests}</p>
+              </div>
+              <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
+                <Clock className="h-6 w-6 text-yellow-600" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="w-full bg-yellow-100 rounded-full h-2">
+                <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '18%' }}></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-slate-500 text-sm mb-1">อนุมัติแล้ว</p>
+                <p className="text-3xl font-bold text-green-600">{stats?.approvedRequests}</p>
+              </div>
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                <CheckCircle className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="w-full bg-green-100 rounded-full h-2">
+                <div className="bg-green-500 h-2 rounded-full" style={{ width: '93%' }}></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-slate-500 text-sm mb-1">การใช้งานรายเดือน</p>
+                <p className="text-3xl font-bold text-purple-600">{stats?.monthlyUsage}%</p>
+              </div>
+              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                <BarChart3 className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="w-full bg-purple-100 rounded-full h-2">
+                <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${stats?.monthlyUsage}%` }}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        {/* Recent Requests */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-slate-800">คำขอล่าสุด</h2>
+            <Link
+              href="/external-requesters/my-requests"
+              className="text-emerald-600 hover:text-emerald-700 font-medium flex items-center"
+            >
+              ดูทั้งหมด
+              <ArrowRight className="h-4 w-4 ml-1" />
+            </Link>
+          </div>
+          
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50/50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-slate-600">ประเภท</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-slate-600">ผู้ป่วย</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-slate-600">วัตถุประสงค์</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-slate-600">วันที่</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-slate-600">สถานะ</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-slate-600">การดำเนินการ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {recentRequests.map((request) => (
+                    <tr key={request.id} className="hover:bg-slate-50/50">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          <FileText className="h-4 w-4 text-slate-400 mr-2" />
+                          <span className="text-sm font-medium text-slate-800">{request.type}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-slate-600">{request.patientId}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-slate-600">{request.purpose}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-slate-600">
+                          {new Date(request.requestedAt).toLocaleDateString('th-TH')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
+                          {getStatusIcon(request.status)}
+                          <span className="ml-1">{getStatusText(request.status)}</span>
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <button className="text-emerald-600 hover:text-emerald-700 text-sm font-medium">
+                          ดูรายละเอียด
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* System Status */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-slate-800 mb-6">สถานะระบบ</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-2">API Gateway</h3>
+                  <p className="text-slate-600 text-sm">Gateway สำหรับการเข้าถึง API</p>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-green-400 rounded-full mr-2"></div>
+                  <span className="text-green-600 font-medium">ปกติ</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-2">Database</h3>
+                  <p className="text-slate-600 text-sm">ฐานข้อมูลหลัก</p>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-green-400 rounded-full mr-2"></div>
+                  <span className="text-green-600 font-medium">ปกติ</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-2">Security System</h3>
+                  <p className="text-slate-600 text-sm">ระบบความปลอดภัย</p>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-green-400 rounded-full mr-2"></div>
+                  <span className="text-green-600 font-medium">ปกติ</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
