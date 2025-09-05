@@ -18,6 +18,10 @@
     "type-check": "tsc --noEmit",
     "db:init": "tsx src/scripts/db-cli.ts init",
     "db:reset": "tsx src/scripts/db-cli.ts reset --force",
+    "perf:api": "node src/scripts/performance-test.js",
+    "perf:db": "tsx src/scripts/database-performance-test.ts",
+    "perf:concurrent": "node src/scripts/concurrent-users-test.js",
+    "perf:all": "npm run perf:api && npm run perf:db && npm run perf:concurrent",
     "db:status": "tsx src/scripts/db-cli.ts status",
     "db:health": "tsx src/scripts/db-cli.ts health",
     "db:migrations": "tsx src/scripts/db-cli.ts migrations",
@@ -67,8 +71,6 @@
     "pg": "^8.16.3",
     "pg-pool": "^3.6.1",
     "redis": "^4.7.1",
-    "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1",
     "uuid": "^9.0.1",
     "winston": "^3.17.0",
     "zod": "^3.22.4"
@@ -91,10 +93,15 @@
     "@types/uuid": "^9.0.8",
     "@typescript-eslint/eslint-plugin": "^6.13.1",
     "@typescript-eslint/parser": "^6.13.1",
+    "artillery": "^2.0.24",
+    "autocannon": "^8.0.0",
     "eslint": "^8.55.0",
     "jest": "^29.7.0",
+    "k6": "^0.0.0",
     "nodemon": "^3.1.10",
     "supertest": "^6.3.3",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.2",
     "tsx": "^4.6.2",
@@ -106,8 +113,13 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "roots": ["<rootDir>/src"],
-    "testMatch": ["**/__tests__/**/*.ts", "**/?(*.)+(spec|test).ts"],
+    "roots": [
+      "<rootDir>/src"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.ts",
+      "**/?(*.)+(spec|test).ts"
+    ],
     "transform": {
       "^.+\\.ts$": "ts-jest"
     },
@@ -118,8 +130,14 @@
       "!src/scripts/**"
     ],
     "coverageDirectory": "coverage",
-    "coverageReporters": ["text", "lcov", "html"],
-    "setupFilesAfterEnv": ["<rootDir>/src/tests/setup.ts"],
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/src/tests/setup.ts"
+    ],
     "testTimeout": 10000
   }
 }

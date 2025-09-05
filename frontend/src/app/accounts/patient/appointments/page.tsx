@@ -45,11 +45,14 @@ const PatientAppointments = () => {
     const fetchAppointments = async () => {
       try {
         setLoading(true);
-        // TODO: Replace with real API call when appointments API is ready
-        // const response = await apiClient.getPatientAppointments();
-        
-        // For now, show empty state since we don't have real appointments data
-        setAppointments([]);
+        if (user?.id) {
+          const response = await apiClient.getPatientAppointments(user.id);
+          if (response.success && response.data) {
+            setAppointments(response.data);
+          } else {
+            setError(response.error?.message || "ไม่สามารถดึงข้อมูลนัดหมายได้");
+          }
+        }
         
       } catch (err) {
         console.error('Error fetching appointments:', err);

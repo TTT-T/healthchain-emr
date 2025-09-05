@@ -1212,13 +1212,49 @@ class APIClient {
     });
   }
 
+  // =============================================================================
+  // PATIENT PORTAL API
+  // =============================================================================
+
   /**
-   * Get patient medications
+   * Get patient medical records
    */
-  async getPatientMedications(patientId: string): Promise<APIResponse<any[]>> {
+  async getPatientRecords(patientId: string): Promise<APIResponse<any[]>> {
     return this.request<any[]>({
       method: 'GET',
-      url: `/medical/patients/${patientId}/medications`
+      url: `/patients/${patientId}/records`
+    });
+  }
+
+  /**
+   * Create patient medical record
+   */
+  async createPatientRecord(patientId: string, data: any): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'POST',
+      url: `/patients/${patientId}/records`,
+      data
+    });
+  }
+
+  /**
+   * Update patient medical record
+   */
+  async updatePatientRecord(patientId: string, recordId: string, data: any): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: `/patients/${patientId}/records/${recordId}`,
+      data
+    });
+  }
+
+  /**
+   * Delete patient medical record
+   */
+  async deletePatientRecord(patientId: string, recordId: string): Promise<APIResponse<void>> {
+    return this.request<void>({
+      method: 'DELETE',
+      url: `/patients/${patientId}/records/${recordId}`
     });
   }
 
@@ -1228,7 +1264,220 @@ class APIClient {
   async getPatientLabResults(patientId: string): Promise<APIResponse<any[]>> {
     return this.request<any[]>({
       method: 'GET',
-      url: `/medical/patients/${patientId}/lab-results`
+      url: `/patients/${patientId}/lab-results`
+    });
+  }
+
+  /**
+   * Get specific lab result
+   */
+  async getPatientLabResult(patientId: string, resultId: string): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: `/patients/${patientId}/lab-results/${resultId}`
+    });
+  }
+
+  /**
+   * Create patient lab result
+   */
+  async createPatientLabResult(patientId: string, data: any): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'POST',
+      url: `/patients/${patientId}/lab-results`,
+      data
+    });
+  }
+
+  /**
+   * Update patient lab result
+   */
+  async updatePatientLabResult(patientId: string, resultId: string, data: any): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: `/patients/${patientId}/lab-results/${resultId}`,
+      data
+    });
+  }
+
+  /**
+   * Get patient medications
+   */
+  async getPatientMedications(patientId: string): Promise<APIResponse<any[]>> {
+    return this.request<any[]>({
+      method: 'GET',
+      url: `/patients/${patientId}/medications`
+    });
+  }
+
+  /**
+   * Add patient medication
+   */
+  async addPatientMedication(patientId: string, data: any): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'POST',
+      url: `/patients/${patientId}/medications`,
+      data
+    });
+  }
+
+  /**
+   * Update patient medication
+   */
+  async updatePatientMedication(patientId: string, medId: string, data: any): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: `/patients/${patientId}/medications/${medId}`,
+      data
+    });
+  }
+
+  /**
+   * Get patient documents
+   */
+  async getPatientDocuments(patientId: string): Promise<APIResponse<any[]>> {
+    return this.request<any[]>({
+      method: 'GET',
+      url: `/patients/${patientId}/documents`
+    });
+  }
+
+  /**
+   * Upload patient document
+   */
+  async uploadPatientDocument(patientId: string, formData: FormData): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'POST',
+      url: `/patients/${patientId}/documents`,
+      data: formData,
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  }
+
+  /**
+   * Delete patient document
+   */
+  async deletePatientDocument(patientId: string, docId: string): Promise<APIResponse<void>> {
+    return this.request<void>({
+      method: 'DELETE',
+      url: `/patients/${patientId}/documents/${docId}`
+    });
+  }
+
+  /**
+   * Download patient document
+   */
+  async downloadPatientDocument(patientId: string, docId: string): Promise<Blob> {
+    const response = await this.axiosInstance.get(`/patients/${patientId}/documents/${docId}/download`, {
+      responseType: 'blob'
+    });
+    return response.data;
+  }
+
+  /**
+   * Get patient notifications
+   */
+  async getPatientNotifications(patientId: string): Promise<APIResponse<any[]>> {
+    return this.request<any[]>({
+      method: 'GET',
+      url: `/patients/${patientId}/notifications`
+    });
+  }
+
+  /**
+   * Create patient notification
+   */
+  async createPatientNotification(patientId: string, data: any): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'POST',
+      url: `/patients/${patientId}/notifications`,
+      data
+    });
+  }
+
+  /**
+   * Mark notification as read
+   */
+  async markNotificationAsRead(patientId: string, notifId: string): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: `/patients/${patientId}/notifications/${notifId}/read`
+    });
+  }
+
+  /**
+   * Delete patient notification
+   */
+  async deletePatientNotification(patientId: string, notifId: string): Promise<APIResponse<void>> {
+    return this.request<void>({
+      method: 'DELETE',
+      url: `/patients/${patientId}/notifications/${notifId}`
+    });
+  }
+
+  /**
+   * Get patient AI insights
+   */
+  async getPatientAIInsights(patientId: string): Promise<APIResponse<any[]>> {
+    return this.request<any[]>({
+      method: 'GET',
+      url: `/patients/${patientId}/ai-insights`
+    });
+  }
+
+  /**
+   * Calculate patient AI insights
+   */
+  async calculatePatientAIInsights(patientId: string, data: any): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'POST',
+      url: `/patients/${patientId}/ai-insights/calculate`,
+      data
+    });
+  }
+
+  /**
+   * Get patient consent requests
+   */
+  async getPatientConsentRequests(patientId: string): Promise<APIResponse<any[]>> {
+    return this.request<any[]>({
+      method: 'GET',
+      url: `/patients/${patientId}/consent-requests`
+    });
+  }
+
+  /**
+   * Create consent request
+   */
+  async createConsentRequest(patientId: string, data: any): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'POST',
+      url: `/patients/${patientId}/consent-requests`,
+      data
+    });
+  }
+
+  /**
+   * Update consent request
+   */
+  async updateConsentRequest(patientId: string, requestId: string, data: any): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: `/patients/${patientId}/consent-requests/${requestId}`,
+      data
+    });
+  }
+
+  /**
+   * Respond to consent request
+   */
+  async respondToConsentRequest(patientId: string, requestId: string, data: any): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'POST',
+      url: `/patients/${patientId}/consent-requests/${requestId}/respond`,
+      data
     });
   }
 
@@ -1242,7 +1491,7 @@ class APIClient {
   async getPatientAppointments(patientId: string): Promise<APIResponse<Appointment[]>> {
     return this.request<Appointment[]>({
       method: 'GET',
-      url: `/medical/patients/${patientId}/appointments`
+      url: `/patients/${patientId}/appointments`
     });
   }
 

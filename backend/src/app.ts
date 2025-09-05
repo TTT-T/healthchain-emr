@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import { Request, Response, NextFunction } from 'express';
 import config from './config/index';
 import { databaseInitializer } from './database/init';
+import { setupSwagger } from './config/swagger';
 
 // Routes
 import authRoutes from './routes/auth';
@@ -15,6 +16,7 @@ import aiRoutes from './routes/ai';
 import consentRoutes from './routes/consent';
 import adminRoutes from './routes/admin';
 import profileRoutes from './routes/profile';
+import externalRequestersRoutes from './routes/external-requesters';
 
 // Middleware
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
@@ -88,6 +90,9 @@ class Application {
     // Request logging
     this.app.use(requestLogger);
 
+    // Setup Swagger documentation
+    setupSwagger(this.app);
+
     // Trust proxy (for production behind reverse proxy)
     this.app.set('trust proxy', 1);
   }
@@ -150,6 +155,7 @@ class Application {
     this.app.use('/api/consent', consentRoutes);     // 3. Consent Engine
     this.app.use('/api/admin', adminRoutes);         // 1. Admin functions
     this.app.use('/api/profile', profileRoutes);     // Profile management
+    this.app.use('/api/external-requesters', externalRequestersRoutes); // External Requesters
 
     // 404 handler
     this.app.use('*', (req: Request, res: Response) => {
@@ -198,6 +204,7 @@ class Application {
   3. 📝 Consent Engine - /api/consent
   4. 👤 Authentication - /api/auth
   5. ⚙️  Admin Panel - /api/admin
+  6. 🌐 External Requesters - /api/external-requesters
 
 🔍 Health Check: http://localhost:${port}/health
         `);

@@ -48,14 +48,14 @@ export default function MedicalDocuments() {
       setIsLoading(true);
       setError(null);
       
-      // TODO: เมื่อ backend API สำหรับ documents พร้อมแล้ว ให้ใช้ apiClient.get('/documents')
-      // const response = await apiClient.get('/documents');
-      // if (response.data) {
-      //   setDocuments(response.data);
-      // }
-      
-      // ตอนนี้แสดง empty state เนื่องจากยังไม่มี API จริง
-      setDocuments([]);
+      if (user?.id) {
+        const response = await apiClient.getPatientDocuments(user.id);
+        if (response.success && response.data) {
+          setDocuments(response.data);
+        } else {
+          setError(response.error?.message || "ไม่สามารถดึงข้อมูลเอกสารได้");
+        }
+      }
     } catch (err) {
       console.error("Error fetching documents:", err);
       setError("เกิดข้อผิดพลาดในการดึงข้อมูลเอกสาร");

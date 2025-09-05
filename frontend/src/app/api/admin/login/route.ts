@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
 
 interface AdminLoginRequest {
   email: string;
@@ -9,13 +8,18 @@ interface AdminLoginRequest {
 interface AdminLoginResponse {
   success: boolean;
   message: string;
-  token?: string;
-  user?: {
-    id: string;
-    email: string;
-    role: string;
-    permissions: string[];
-    organizationId?: string;
+  data?: {
+    user: {
+      id: string;
+      email: string;
+      role: string;
+      firstName: string;
+      lastName: string;
+      isActive: boolean;
+      emailVerified: boolean;
+    };
+    accessToken: string;
+    refreshToken: string;
   };
   error?: string;
 }
@@ -41,77 +45,64 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // จำลองการตรวจสอบข้อมูลจากฐานข้อมูล
-    // ในระบบจริงจะต้องเช็คกับฐานข้อมูล users table โดย role = 'admin'
-    // const user = await db.users.findUnique({
-    //   where: { 
-    //     email: body.email,
-    //     role: 'admin',
-    //     is_active: true
-    //   }
-    // });
-    
-    // if (!user) {
-    //   return NextResponse.json({
-    //     success: false,
-    //     message: 'ไม่พบผู้ดูแลระบบ'
-    //   }, { status: 401 });
-    // }
-
-    // const isPasswordValid = await bcrypt.compare(body.password, user.password_hash);
-    // if (!isPasswordValid) {
-    //   return NextResponse.json({
-    //     success: false,
-    //     message: 'รหัสผ่านไม่ถูกต้อง'
-    //   }, { status: 401 });
-    // }
-
-    // จำลองข้อมูลผู้ดูแลระบบ (สำหรับการทดสอบ)
-    const mockAdmin = {
-      id: 'admin-001',
-      email: body.email,
-      role: 'admin',
-      permissions: [
-        'user_management',
-        'system_monitoring',
-        'audit_logs',
-        'database_management',
-        'consent_management',
-        'external_requester_approval'
-      ],
-      organizationId: 'org-001'
-    };
-
-    // สร้าง JWT token
-    const token = jwt.sign(
-      {
-        userId: mockAdmin.id,
-        email: mockAdmin.email,
-        role: mockAdmin.role,
-        permissions: mockAdmin.permissions,
-        organizationId: mockAdmin.organizationId
+    // Forward request to backend
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+    const backendResponse = await fetch(`${backendUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': request.headers.get('User-Agent') || 'NextJS-Frontend',
+        'X-Forwarded-For': request.headers.get('X-Forwarded-For') || '127.0.0.1'
       },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '24h' }
-    );
+      body: JSON.stringify({
+        email: body.email,
+        password: body.password
+      })
+    });
 
-    // Log successful login (จำลอง)
-    console.log(`Admin login successful: ${body.email}`);
+    const backendData = await backendResponse.json();
 
+    // If backend request failed, return the error
+    if (!backendResponse.ok) {
+      return NextResponse.json({
+        success: false,
+        message: backendData.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ'
+      }, { status: backendResponse.status });
+    }
+
+    // Check if user has admin role
+    if (backendData.data?.user?.role !== 'admin') {
+      return NextResponse.json({
+        success: false,
+        message: 'คุณไม่มีสิทธิ์เข้าถึงระบบผู้ดูแล'
+      }, { status: 403 });
+    }
+
+    // If backend request succeeded, return the data
     const response = NextResponse.json({
       success: true,
-      message: 'เข้าสู่ระบบสำเร็จ',
-      token,
-      user: mockAdmin
+      message: backendData.message || 'เข้าสู่ระบบสำเร็จ',
+      data: backendData.data
     }, { status: 200 });
 
-    // Set cookie
-    response.cookies.set('admin-token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 // 24 hours
-    });
+    // Set cookies if tokens are available
+    if (backendData.data?.accessToken) {
+      response.cookies.set('admin-token', backendData.data.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 // 24 hours
+      });
+    }
+
+    if (backendData.data?.refreshToken) {
+      response.cookies.set('admin-refresh-token', backendData.data.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 // 7 days
+      });
+    }
 
     return response;
 

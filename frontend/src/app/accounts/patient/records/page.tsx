@@ -34,14 +34,14 @@ export default function Records() {
       setIsLoading(true);
       setError(null);
       
-      // TODO: เมื่อ backend API สำหรับ medical records พร้อมแล้ว ให้ใช้ apiClient.get('/medical-records')
-      // const response = await apiClient.get('/medical-records');
-      // if (response.data) {
-      //   setRecords(response.data);
-      // }
-      
-      // ตอนนี้แสดง empty state เนื่องจากยังไม่มี API จริง
-      setRecords([]);
+      if (user?.id) {
+        const response = await apiClient.getPatientRecords(user.id);
+        if (response.success && response.data) {
+          setRecords(response.data);
+        } else {
+          setError(response.error?.message || "ไม่สามารถดึงข้อมูลประวัติการรักษาได้");
+        }
+      }
     } catch (err) {
       console.error("Error fetching records:", err);
       setError("เกิดข้อผิดพลาดในการดึงข้อมูลประวัติการรักษา");

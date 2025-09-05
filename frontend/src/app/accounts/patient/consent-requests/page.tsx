@@ -38,14 +38,12 @@ export default function ConsentRequests() {
     const fetchConsentRequests = async () => {
       try {
         if (user?.id) {
-          // TODO: Replace with actual API call when backend is ready
-          // const response = await apiClient.get(`/api/patients/${user.id}/consent-requests`);
-          // if (response.data) {
-          //   setConsentRequests(response.data);
-          // }
-          
-          // For now, show empty state until real API is implemented
-          setConsentRequests([]);
+          const response = await apiClient.getPatientConsentRequests(user.id);
+          if (response.success && response.data) {
+            setConsentRequests(response.data);
+          } else {
+            setError(response.error?.message || "ไม่สามารถดึงข้อมูลคำขอ consent ได้");
+          }
         }
       } catch (err) {
         console.error('Error fetching consent requests:', err);

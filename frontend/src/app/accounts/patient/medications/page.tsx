@@ -52,14 +52,12 @@ const PatientMedications = () => {
     const fetchMedications = async () => {
       try {
         if (user?.id) {
-          // TODO: Replace with actual API call when backend is ready
-          // const response = await apiClient.get(`/api/patients/${user.id}/medications`);
-          // if (response.data) {
-          //   setMedications(response.data);
-          // }
-          
-          // For now, show empty state until real API is implemented
-          setMedications([]);
+          const response = await apiClient.getPatientMedications(user.id);
+          if (response.success && response.data) {
+            setMedications(response.data);
+          } else {
+            setError(response.error?.message || "ไม่สามารถดึงข้อมูลยาได้");
+          }
         }
       } catch (err) {
         console.error('Error fetching medications:', err);

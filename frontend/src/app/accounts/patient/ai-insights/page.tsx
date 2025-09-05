@@ -42,14 +42,14 @@ export default function AIInsights() {
       setIsLoading(true);
       setError(null);
       
-      // TODO: เมื่อ backend API สำหรับ AI insights พร้อมแล้ว ให้ใช้ apiClient.get('/ai-insights')
-      // const response = await apiClient.get('/ai-insights');
-      // if (response.data) {
-      //   setHealthData(response.data);
-      // }
-      
-      // ตอนนี้แสดง empty state เนื่องจากยังไม่มี API จริง
-      setHealthData(null);
+      if (user?.id) {
+        const response = await apiClient.getPatientAIInsights(user.id);
+        if (response.success && response.data) {
+          setHealthData(response.data);
+        } else {
+          setError(response.error?.message || "ไม่สามารถดึงข้อมูล AI insights ได้");
+        }
+      }
     } catch (err) {
       console.error("Error fetching health insights:", err);
       setError("เกิดข้อผิดพลาดในการดึงข้อมูลการวิเคราะห์สุขภาพ");

@@ -68,22 +68,28 @@ export default function Pharmacy() {
     try {
       console.log(`🔍 Searching for prescription by ${searchType}:`, searchQuery);
       
-      // For now, use mock data since we don't have prescription search API yet
-      // TODO: Replace with real API call when prescription endpoint is available
+      // ค้นหาผู้ป่วยจาก API
+      const response = await PatientService.searchPatients(searchQuery, searchType);
       
-      // Mock prescription data (this would come from API)
-      const mockPrescription: PrescriptionData = {
+      if (response.data && response.data.length > 0) {
+        const patient = response.data[0];
+        
+        // Map ข้อมูลผู้ป่วยจาก API response
+        const mappedPatient: Patient = {
+          hn: patient.hn,
+          nationalId: patient.national_id || '',
+          thaiName: patient.thai_name || 'ไม่ระบุชื่อ',
+          gender: patient.gender || 'ไม่ระบุ',
+          birthDate: patient.birth_date || '',
+          queueNumber: 'Q001', // Default queue number
+          treatmentType: 'OPD - ตรวจรักษาทั่วไป', // Default treatment
+          assignedDoctor: 'นพ.สมชาย วงศ์แพทย์' // Default doctor
+        };
+
+        // Mock prescription data (this would come from API)
+        const mockPrescription: PrescriptionData = {
         prescriptionId: `RX${new Date().getFullYear()}${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
-        patient: {
-          hn: searchQuery.startsWith('HN') ? searchQuery : "HN2025001",
-          nationalId: "1234567890123",
-          thaiName: "นายสมชาย ใจดี",
-          gender: "ชาย",
-          birthDate: "1985-05-15",
-          queueNumber: searchQuery.startsWith('Q') ? searchQuery : "Q001",
-          treatmentType: "OPD - ตรวจรักษาทั่วไป",
-          assignedDoctor: "นพ.สมชาย วงศ์แพทย์"
-        },
+        patient: mappedPatient,
         prescribedBy: "นพ.สมชาย วงศ์แพทย์",
         prescribedDate: new Date().toISOString().slice(0, 16),
         diagnosis: "Upper Respiratory Tract Infection (J06.9)",
@@ -122,9 +128,8 @@ export default function Pharmacy() {
         setSuccess("พบใบสั่งยาแล้ว");
       } else {
         setSelectedPrescription(null);
-        setError("ไม่พบใบสั่งยาในระบบ กรุณาตรวจสอบข้อมูล");
+        setError("ไม่พบข้อมูลผู้ป่วยในระบบ กรุณาตรวจสอบข้อมูล");
       }
-      
     } catch (error) {
       console.error("❌ Error searching prescription:", error);
       setError("เกิดข้อผิดพลาดในการค้นหา กรุณาลองอีกครั้ง");

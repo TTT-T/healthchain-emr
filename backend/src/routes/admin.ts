@@ -1,51 +1,53 @@
-import { Router } from 'express';
+import express from 'express';
 import { authenticate, authorize } from '../middleware/auth';
+import { asyncHandler } from '../middleware/errorHandler';
 
-const router = Router();
+// Import admin controllers
+import {
+  getAllUsers,
+  getUserById,
+  createUser,
+  updateUser,
+  deleteUser
+} from '../controllers/adminUserManagementController';
 
-// Apply authentication to all admin routes
+import {
+  getSystemHealth,
+  getSystemStats
+} from '../controllers/adminSystemMonitoringController';
+
+import {
+  getAuditLogs,
+  getAuditLogById,
+  getAuditLogStats
+} from '../controllers/adminAuditLogsController';
+
+const router = express.Router();
+
+// Apply authentication and admin authorization to all routes
 router.use(authenticate);
-router.use(authorize(['admin'])); // Only admins can access these routes
+router.use(authorize(['admin']));
 
 /**
- * Admin Panel Routes
- * ระบบจัดการแอดมิน
+ * User Management Routes
  */
+router.get('/users', asyncHandler(getAllUsers));
+router.get('/users/:id', asyncHandler(getUserById));
+router.post('/users', asyncHandler(createUser));
+router.put('/users/:id', asyncHandler(updateUser));
+router.delete('/users/:id', asyncHandler(deleteUser));
 
-// User management
-router.get('/users', (req, res) => {
-  res.json({ message: 'Get all users' });
-});
+/**
+ * System Monitoring Routes
+ */
+router.get('/system/health', asyncHandler(getSystemHealth));
+router.get('/system/stats', asyncHandler(getSystemStats));
 
-router.post('/users', (req, res) => {
-  res.json({ message: 'Create new user' });
-});
-
-router.put('/users/:id', (req, res) => {
-  res.json({ message: `Update user ${req.params.id}` });
-});
-
-router.delete('/users/:id', (req, res) => {
-  res.json({ message: `Delete user ${req.params.id}` });
-});
-
-// System monitoring
-router.get('/system/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    database: 'connected',
-    services: {
-      auth: 'running',
-      medical: 'running',
-      ai: 'running',
-      consent: 'running'
-    }
-  });
-});
-
-// Audit logs
-router.get('/audit-logs', (req, res) => {
-  res.json({ message: 'Get audit logs' });
-});
+/**
+ * Audit Logs Routes
+ */
+router.get('/audit-logs', asyncHandler(getAuditLogs));
+router.get('/audit-logs/stats', asyncHandler(getAuditLogStats));
+router.get('/audit-logs/:id', asyncHandler(getAuditLogById));
 
 export default router;

@@ -56,14 +56,14 @@ export default function LabResults() {
       setIsLoading(true);
       setError(null);
       
-      // TODO: Replace with actual API call when backend is ready
-      // const response = await apiClient.get(`/api/patients/${user.id}/lab-results`);
-      // if (response.data) {
-      //   setResults(response.data);
-      // }
-      
-      // For now, show empty state until real API is implemented
-      setResults([]);
+      if (user?.id) {
+        const response = await apiClient.getPatientLabResults(user.id);
+        if (response.success && response.data) {
+          setResults(response.data);
+        } else {
+          setError(response.error?.message || "ไม่สามารถดึงข้อมูลผลแลปได้");
+        }
+      }
       
     } catch (err) {
       console.error('Error fetching lab results:', err);

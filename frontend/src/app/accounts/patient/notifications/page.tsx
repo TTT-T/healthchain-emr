@@ -34,14 +34,14 @@ export default function Notifications() {
       setIsLoading(true);
       setError(null);
       
-      // TODO: เมื่อ backend API สำหรับ notifications พร้อมแล้ว ให้ใช้ apiClient.get('/notifications')
-      // const response = await apiClient.get('/notifications');
-      // if (response.data) {
-      //   setNotifications(response.data);
-      // }
-      
-      // ตอนนี้แสดง empty state เนื่องจากยังไม่มี API จริง
-      setNotifications([]);
+      if (user?.id) {
+        const response = await apiClient.getPatientNotifications(user.id);
+        if (response.success && response.data) {
+          setNotifications(response.data);
+        } else {
+          setError(response.error?.message || "ไม่สามารถดึงข้อมูลการแจ้งเตือนได้");
+        }
+      }
     } catch (err) {
       console.error("Error fetching notifications:", err);
       setError("เกิดข้อผิดพลาดในการดึงข้อมูลการแจ้งเตือน");

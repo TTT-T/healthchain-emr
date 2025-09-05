@@ -44,58 +44,66 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ตรวจสอบว่าอีเมลซ้ำหรือไม่ (จำลอง)
-    // ในระบบจริงจะต้องเช็คกับ database
-    // const existingUser = await db.user.findUnique({ where: { email: body.email } });
-    // if (existingUser) {
-    //   return NextResponse.json({ error: 'อีเมลนี้มีผู้ใช้แล้ว' }, { status: 409 });
-    // }
-
-    // เตรียมข้อมูลสำหรับบันทึกลง database
+    // เตรียมข้อมูลสำหรับส่งไปยัง backend
     const userData = {
       email: body.email,
-      // password: await bcrypt.hash(body.password, 10), // hash password
-      password: body.password, // ในตัวอย่างนี้ไม่ได้ hash
-      idCard: body.idCard,
-      titlePrefix: body.titlePrefix, // อาจเป็น "พลตำรวจ" ถ้าผู้ใช้เลือก "อื่นๆ"
+      password: body.password,
       firstName: body.firstName,
       lastName: body.lastName,
-      birthDate: new Date(body.birthDate),
-      gender: body.gender,
-      phone: body.phone,
-      userType: body.userType,
-      createdAt: new Date(),
-      profileCompleted: false // จะเป็น true หลังจากทำ setup-profile เสร็จ
+      phoneNumber: body.phone,
+      role: 'patient' // Default role for registration
     };
 
-    console.log('User data to save:', userData);
-
-    // บันทึกลง database (จำลอง)
-    // const newUser = await db.user.create({ data: userData });
-
-    // สร้าง JWT token (จำลอง)
-    // const token = jwt.sign(
-    //   { userId: newUser.id, email: newUser.email },
-    //   process.env.JWT_SECRET!,
-    //   { expiresIn: '24h' }
-    // );
-
-    // ส่งกลับข้อมูลผู้ใช้ (ไม่รวม password)
-    const responseData = {
-      message: 'สร้างบัญชีสำเร็จ',
-      user: {
-        id: 'user_123', // จำลอง ID
-        email: userData.email,
-        titlePrefix: userData.titlePrefix,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        userType: userData.userType,
-        profileCompleted: userData.profileCompleted
+    // Forward request to backend
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+    const backendResponse = await fetch(`${backendUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': request.headers.get('User-Agent') || 'NextJS-Frontend',
+        'X-Forwarded-For': request.headers.get('X-Forwarded-For') || '127.0.0.1'
       },
-      // token: token // ใน production จริง
-    };
+      body: JSON.stringify(userData)
+    });
 
-    return NextResponse.json(responseData, { status: 201 });
+    const backendData = await backendResponse.json();
+
+    // If backend request failed, return the error
+    if (!backendResponse.ok) {
+      return NextResponse.json({
+        success: false,
+        message: backendData.message || 'เกิดข้อผิดพลาดในการสร้างบัญชี',
+        error: backendData.message
+      }, { status: backendResponse.status });
+    }
+
+    // If backend request succeeded, return the data
+    const response = NextResponse.json({
+      success: true,
+      message: backendData.message || 'สร้างบัญชีสำเร็จ',
+      data: backendData.data
+    }, { status: 201 });
+
+    // Set cookies if tokens are available
+    if (backendData.data?.accessToken) {
+      response.cookies.set('access_token', backendData.data.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 // 1 hour
+      });
+    }
+
+    if (backendData.data?.refreshToken) {
+      response.cookies.set('refresh_token', backendData.data.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 // 7 days
+      });
+    }
+
+    return response;
 
   } catch (error) {
     console.error('Registration error:', error);

@@ -29,6 +29,18 @@ export const apiEndpoints = {
     prescriptions: (id: string) => `/medical/patients/${id}/prescriptions`,
     insurance: '/medical/insurance/claims',
   },
+
+  // Patient Portal APIs
+  patientPortal: {
+    records: (id: string) => `/patients/${id}/records`,
+    labResults: (id: string) => `/patients/${id}/lab-results`,
+    appointments: (id: string) => `/patients/${id}/appointments`,
+    medications: (id: string) => `/patients/${id}/medications`,
+    documents: (id: string) => `/patients/${id}/documents`,
+    notifications: (id: string) => `/patients/${id}/notifications`,
+    aiInsights: (id: string) => `/patients/${id}/ai-insights`,
+    consentRequests: (id: string) => `/patients/${id}/consent-requests`,
+  },
   
   // AI Risk Assessment
   ai: {

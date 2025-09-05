@@ -1,5 +1,15 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
+import { asyncHandler } from '../middleware/errorHandler';
+import {
+  createConsentContract,
+  executeConsentContract,
+  getConsentContract,
+  getPatientConsentContracts,
+  revokeConsentContract,
+  getConsentAccessLogs,
+  logConsentAccess
+} from '../controllers/consentEngineController';
 
 const router = Router();
 
@@ -12,189 +22,46 @@ router.use(authenticate);
  */
 
 // Create consent contract
-router.post('/contracts', authorize(['patient', 'doctor', 'admin']), (req, res) => {
-  // Mock Smart Contract-like logic
-  const contractData = {
-    contractId: `CNT-${Date.now()}`,
-    patientId: req.body.patientId,
-    requesterId: req.body.requesterId,
-    dataTypes: req.body.dataTypes || ['medical_records', 'lab_results'],
-    purpose: req.body.purpose,
-    duration: req.body.duration || '30 days',
-    conditions: {
-      accessLevel: req.body.accessLevel || 'read_only',
-      timeRestrictions: req.body.timeRestrictions || 'business_hours',
-      purposeRestrictions: req.body.purposeRestrictions || ['medical_treatment']
-    },
-    status: 'pending',
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
-    smartContractRules: {
-      autoExpire: true,
-      autoRevoke: {
-        onSuspiciousActivity: true,
-        onDataBreach: true,
-        onPolicyViolation: true
-      },
-      auditLogging: true,
-      encryptionRequired: true
-    }
-  };
-  
-  res.json({
-    success: true,
-    message: 'Consent contract created successfully',
-    data: contractData
-  });
-});
+router.post('/contracts', 
+  authorize(['patient', 'doctor', 'admin', 'external_user']), 
+  asyncHandler(createConsentContract)
+);
 
-// Get consent contracts
-router.get('/contracts', authorize(['patient', 'doctor', 'admin', 'external_user']), (req, res) => {
-  // Mock contract data
-  const contracts = [
-    {
-      contractId: 'CNT-1642345678901',
-      patientId: 'PAT-001',
-      requesterId: 'DOC-001',
-      dataTypes: ['medical_records', 'lab_results'],
-      purpose: 'Medical consultation',
-      status: 'active',
-      createdAt: '2024-01-15T10:30:00Z',
-      expiresAt: '2024-02-15T10:30:00Z'
-    },
-    {
-      contractId: 'CNT-1642345678902',
-      patientId: 'PAT-001',
-      requesterId: 'INS-001',
-      dataTypes: ['medical_records'],
-      purpose: 'Insurance claim processing',
-      status: 'pending',
-      createdAt: '2024-01-20T14:15:00Z',
-      expiresAt: '2024-02-20T14:15:00Z'
-    }
-  ];
-  
-  res.json({
-    success: true,
-    message: 'Consent contracts retrieved',
-    data: contracts
-  });
-});
+// Get consent contract by ID
+router.get('/contracts/:id', 
+  authorize(['patient', 'doctor', 'admin', 'external_user']), 
+  asyncHandler(getConsentContract)
+);
 
-// Approve/Reject consent contract
-router.patch('/contracts/:contractId/status', authorize(['patient', 'admin']), (req, res) => {
-  const { contractId } = req.params;
-  const { status, reason } = req.body; // 'approved', 'rejected', 'revoked'
-  
-  // Mock Smart Contract execution
-  const updateResult = {
-    contractId,
-    previousStatus: 'pending',
-    newStatus: status,
-    updatedAt: new Date().toISOString(),
-    reason: reason || 'User decision',
-    smartContractAction: {
-      executed: true,
-      conditions: {
-        patientConsent: status === 'approved',
-        legalCompliance: true,
-        dataProtectionCompliance: true
-      },
-      nextActions: status === 'approved' ? 
-        ['grant_access', 'start_audit_logging', 'notify_parties'] : 
-        ['deny_access', 'notify_requester', 'archive_request']
-    }
-  };
-  
-  res.json({
-    success: true,
-    message: `Consent contract ${status} successfully`,
-    data: updateResult
-  });
-});
+// Get patient consent contracts
+router.get('/contracts/patient/:patientId', 
+  authorize(['patient', 'doctor', 'admin']), 
+  asyncHandler(getPatientConsentContracts)
+);
+
+// Revoke consent contract
+router.post('/contracts/:id/revoke', 
+  authorize(['patient', 'admin']), 
+  asyncHandler(revokeConsentContract)
+);
 
 // Execute smart contract conditions
-router.post('/contracts/:contractId/execute', authorize(['admin']), (req, res) => {
-  const { contractId } = req.params;
-  const { action } = req.body; // 'grant_access', 'revoke_access', 'audit_check'
-  
-  // Mock Smart Contract execution logic
-  const executionResult = {
-    contractId,
-    action,
-    executedAt: new Date().toISOString(),
-    success: true,
-    conditions: {
-      contractValid: true,
-      patientConsent: true,
-      timeWithinLimit: true,
-      purposeCompliant: true
-    },
-    auditLog: {
-      action: action,
-      executor: req.user?.id,
-      timestamp: new Date().toISOString(),
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent')
-    },
-    nextExecution: action === 'grant_access' ? 
-      { action: 'audit_check', scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() } : 
-      null
-  };
-  
-  res.json({
-    success: true,
-    message: 'Smart contract executed successfully',
-    data: executionResult
-  });
-});
+router.post('/contracts/:id/execute', 
+  authorize(['admin', 'doctor']), 
+  asyncHandler(executeConsentContract)
+);
 
-// Get contract audit logs
-router.get('/contracts/:contractId/audit', authorize(['patient', 'admin']), (req, res) => {
-  const { contractId } = req.params;
-  
-  // Mock audit log data
-  const auditLogs = [
-    {
-      id: 1,
-      contractId,
-      action: 'contract_created',
-      timestamp: '2024-01-15T10:30:00Z',
-      actor: 'PAT-001',
-      details: 'Patient created consent contract'
-    },
-    {
-      id: 2,
-      contractId,
-      action: 'contract_approved',
-      timestamp: '2024-01-15T10:35:00Z',
-      actor: 'PAT-001',
-      details: 'Patient approved consent contract'
-    },
-    {
-      id: 3,
-      contractId,
-      action: 'access_granted',
-      timestamp: '2024-01-15T10:36:00Z',
-      actor: 'SYSTEM',
-      details: 'Smart contract granted data access'
-    },
-    {
-      id: 4,
-      contractId,
-      action: 'data_accessed',
-      timestamp: '2024-01-15T11:00:00Z',
-      actor: 'DOC-001',
-      details: 'Doctor accessed patient medical records'
-    }
-  ];
-  
-  res.json({
-    success: true,
-    message: 'Contract audit logs retrieved',
-    data: auditLogs
-  });
-});
+// Get consent access logs
+router.get('/contracts/:id/access-logs', 
+  authorize(['patient', 'admin', 'doctor']), 
+  asyncHandler(getConsentAccessLogs)
+);
+
+// Log consent access
+router.post('/contracts/:id/access-logs', 
+  authorize(['admin', 'doctor', 'external_user']), 
+  asyncHandler(logConsentAccess)
+);
 
 // Smart contract dashboard
 router.get('/dashboard', authorize(['admin']), (req, res) => {
