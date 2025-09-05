@@ -171,9 +171,8 @@ program
 
 // Run specific migration up
 program
-  .command('migrate:up')
+  .command('migrate:up <migration-name>')
   .description('Run specific migration up')
-  .argument('<migration-name>', 'Migration name to run')
   .action(async (migrationName) => {
     try {
       console.log(`🔄 Running migration up: ${migrationName}`);
@@ -187,9 +186,8 @@ program
 
 // Run specific migration down
 program
-  .command('migrate:down')
+  .command('migrate:down <migration-name>')
   .description('Run specific migration down')
-  .argument('<migration-name>', 'Migration name to rollback')
   .action(async (migrationName) => {
     try {
       console.log(`🔄 Running migration down: ${migrationName}`);
