@@ -1,6 +1,23 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { db } from '../database';
+import { databaseManager } from '../database/connection';
+
+// Create a database helper that combines databaseManager and DatabaseSchema
+const db = {
+  ...databaseManager,
+  query: databaseManager.query.bind(databaseManager),
+  transaction: databaseManager.transaction.bind(databaseManager),
+  getUserById: async (userId: string) => {
+    const query = `
+      SELECT id, username, email, first_name, last_name,
+             role, is_active, profile_completed, email_verified,
+             created_at, updated_at
+      FROM users WHERE id = $1
+    `;
+    const result = await databaseManager.query(query, [userId]);
+    return result.rows[0] || null;
+  }
+};
 import config from '../config';
 import { User } from '../types';
 

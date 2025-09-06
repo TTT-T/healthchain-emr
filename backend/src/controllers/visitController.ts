@@ -1,6 +1,26 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { db } from '../database';
+import { databaseManager } from '../database/connection';
+
+// Create a database helper that combines databaseManager and DatabaseSchema
+const db = {
+  ...databaseManager,
+  query: databaseManager.query.bind(databaseManager),
+  transaction: databaseManager.transaction.bind(databaseManager),
+  createAuditLog: async (logData: any) => {
+    const query = `
+      INSERT INTO audit_logs (
+        user_id, action, resource, resource_id, details, ip_address, user_agent
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `;
+    await databaseManager.query(query, [
+      logData.userId, logData.action, logData.resource,
+      logData.resourceId, JSON.stringify(logData.details || {}),
+      logData.ipAddress, logData.userAgent
+    ]);
+  }
+};
 import { 
   successResponse, 
   errorResponse

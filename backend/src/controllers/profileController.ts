@@ -7,6 +7,26 @@ import {
 } from '../utils/index';
 import { UserRole } from '../types/index';
 
+// Create a database helper that combines databaseManager and DatabaseSchema
+const db = {
+  ...databaseManager,
+  query: databaseManager.query.bind(databaseManager),
+  transaction: databaseManager.transaction.bind(databaseManager),
+  createAuditLog: async (logData: any) => {
+    const query = `
+      INSERT INTO audit_logs (
+        user_id, action, resource, resource_id, details, ip_address, user_agent
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `;
+    await db.query(query, [
+      logData.userId, logData.action, logData.resource,
+      logData.resourceId, JSON.stringify(logData.details || {}),
+      logData.ipAddress, logData.userAgent
+    ]);
+  }
+};
+
 // Validation schema สำหรับการอัปเดตโปรไฟล์
 const profileSetupSchema = z.object({
   thai_name: z.string().optional(),
@@ -120,7 +140,7 @@ export const setupProfile = async (req: Request, res: Response) => {
     const validatedData = profileSetupSchema.parse(req.body);
     
     // เริ่มต้น transaction เพื่ออัปเดตทั้ง user และสร้าง patient record
-    const result = await databaseManager.transaction(async (client) => {
+    const result = await db.transaction(async (client) => {
       // 1. อัปเดต user profile_completed = true
       await client.query(`
         UPDATE users 
@@ -208,7 +228,7 @@ export const setupProfile = async (req: Request, res: Response) => {
     });
 
     // Log audit
-    await databaseManager.createAuditLog({
+    await db.createAuditLog({
       userId: req.user?.id,
       action: 'profile_setup',
       resource: 'patient',
@@ -260,7 +280,7 @@ export const getProfile = async (req: Request, res: Response) => {
     }
 
     // Get user profile
-    const userResult = await databaseManager.query(`
+    const userResult = await db.query(`
       SELECT 
         id, username, email, first_name, last_name, thai_name, 
         role, phone, phone_number, is_active, is_verified, profile_completed,
@@ -280,7 +300,7 @@ export const getProfile = async (req: Request, res: Response) => {
     // If user is a patient, get patient info too
     let patientInfo = null;
     if (user.role === 'patient') {
-      const patientResult = await databaseManager.query(`
+      const patientResult = await db.query(`
         SELECT 
           id, patient_number, thai_first_name, thai_last_name, date_of_birth, gender, 
           phone, email, address, current_address, id_card_address,
@@ -421,7 +441,7 @@ export const updateProfile = async (req: Request, res: Response) => {
       userUpdates.push(`updated_at = CURRENT_TIMESTAMP`);
       userValues.push(req.user.id);
       
-      await databaseManager.query(`
+      await db.query(`
         UPDATE users 
         SET ${userUpdates.join(', ')} 
         WHERE id = $${paramIndex}
@@ -459,7 +479,7 @@ export const updateProfile = async (req: Request, res: Response) => {
         patientUpdates.push(`updated_at = CURRENT_TIMESTAMP`);
         patientValues.push(req.user.id);
         
-        await databaseManager.query(`
+        await db.query(`
           UPDATE patients 
           SET ${patientUpdates.join(', ')} 
           WHERE created_by = $${patientParamIndex}

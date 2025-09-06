@@ -23,6 +23,135 @@ import { emailService } from '../services/emailService';
 import { databaseManager } from '../database/connection';
 import { DatabaseSchema } from '../database/index';
 
+// Create a database helper that combines databaseManager and DatabaseSchema
+const db = {
+  ...databaseManager,
+  query: databaseManager.query.bind(databaseManager),
+  transaction: databaseManager.transaction.bind(databaseManager),
+  // Add methods from DatabaseSchema
+  getUserByUsernameOrEmail: async (username: string, email: string) => {
+    const query = `
+      SELECT 
+        id, username, email, password_hash, first_name, last_name,
+        role, is_active, profile_completed, email_verified,
+        created_at, updated_at
+      FROM users
+      WHERE username = $1 OR email = $2
+    `;
+    const result = await db.query(query, [username, email]);
+    return result.rows[0] || null;
+  },
+  createUser: async (userData: any) => {
+    const query = `
+      INSERT INTO users (
+        username, email, password_hash, first_name, last_name, 
+        phone, role, is_active, email_verified, profile_completed
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false)
+      RETURNING id, username, email, first_name, last_name, role, is_active, email_verified, profile_completed
+    `;
+    const result = await db.query(query, [
+      userData.username, userData.email, userData.password,
+      userData.firstName, userData.lastName, userData.phoneNumber,
+      userData.role, userData.isActive, userData.isEmailVerified
+    ]);
+    return result.rows[0];
+  },
+  createSession: async (sessionData: any) => {
+    const query = `
+      INSERT INTO user_sessions (user_id, session_token, expires_at, ip_address, user_agent)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id
+    `;
+    const result = await db.query(query, [
+      sessionData.userId, sessionData.refreshToken,
+      sessionData.expiresAt, sessionData.ipAddress, sessionData.userAgent
+    ]);
+    return result.rows[0];
+  },
+  createAuditLog: async (logData: any) => {
+    const query = `
+      INSERT INTO audit_logs (
+        user_id, action, resource, resource_id, details, ip_address, user_agent
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `;
+    await db.query(query, [
+      logData.userId, logData.action, logData.resource,
+      logData.resourceId, JSON.stringify(logData.details || {}),
+      logData.ipAddress, logData.userAgent
+    ]);
+  },
+  getUserById: async (userId: string) => {
+    const query = `
+      SELECT id, username, email, first_name, last_name,
+             role, is_active, profile_completed, email_verified,
+             created_at, updated_at
+      FROM users WHERE id = $1
+    `;
+    const result = await db.query(query, [userId]);
+    return result.rows[0] || null;
+  },
+  updateUserLastLogin: async (userId: string) => {
+    const query = `
+      UPDATE users 
+      SET last_login = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+    `;
+    await db.query(query, [userId]);
+  },
+  getSessionByRefreshToken: async (refreshToken: string) => {
+    const query = `
+      SELECT s.id, s.user_id, s.session_token, s.expires_at, s.created_at,
+             u.username, u.email, u.role, u.is_active, u.profile_completed, u.email_verified
+      FROM user_sessions s
+      JOIN users u ON s.user_id = u.id
+      WHERE s.session_token = $1 AND u.is_active = true
+    `;
+    const result = await db.query(query, [refreshToken]);
+    return result.rows[0] || null;
+  },
+  updateSession: async (sessionId: string, updateData: any) => {
+    const query = `
+      UPDATE user_sessions 
+      SET session_token = COALESCE($2, session_token),
+          expires_at = COALESCE($3, expires_at),
+          created_at = COALESCE($4, created_at)
+      WHERE id = $1
+    `;
+    await db.query(query, [
+      sessionId, updateData.refreshToken, updateData.expiresAt, updateData.lastUsedAt
+    ]);
+  },
+  deleteSessionByRefreshToken: async (refreshToken: string) => {
+    const query = `DELETE FROM user_sessions WHERE session_token = $1`;
+    await db.query(query, [refreshToken]);
+  },
+  getUserByEmail: async (email: string) => {
+    const query = `
+      SELECT id, username, email, password_hash, first_name, last_name,
+             role, is_active, profile_completed, email_verified,
+             created_at, updated_at
+      FROM users WHERE email = $1
+    `;
+    const result = await db.query(query, [email]);
+    return result.rows[0] || null;
+  },
+  updateUser: async (userId: string, updateData: any) => {
+    const fields = Object.keys(updateData);
+    const values = Object.values(updateData);
+    const setClause = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
+    const query = `
+      UPDATE users 
+      SET ${setClause}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *
+    `;
+    const result = await db.query(query, [userId, ...values]);
+    return result.rows[0];
+  }
+};
+
 // Validation schemas
 const registerSchema = z.object({
   username: z.string().min(3).max(50).optional(),
@@ -64,7 +193,7 @@ export const register = async (req: Request, res: Response) => {
     const username = validatedData.username || validatedData.email.split('@')[0];
     
     // Check if user already exists
-    const existingUser = await databaseManager.getUserByUsernameOrEmail(
+    const existingUser = await db.getUserByUsernameOrEmail(
       username, 
       validatedData.email
     );
@@ -79,7 +208,7 @@ export const register = async (req: Request, res: Response) => {
     const hashedPassword = await hashPassword(validatedData.password);
     
     // Create user
-    const newUser = await databaseManager.createUser({
+    const newUser = await db.createUser({
       username: username,
       email: validatedData.email,
       password: hashedPassword,
@@ -118,7 +247,7 @@ export const register = async (req: Request, res: Response) => {
     const { accessToken, refreshToken } = generateTokens(newUser);
     
     // Create session
-    await databaseManager.createSession({
+    await db.createSession({
       userId: newUser.id,
       accessToken,
       refreshToken,
@@ -128,7 +257,7 @@ export const register = async (req: Request, res: Response) => {
     });
     
     // Log audit
-    await databaseManager.createAuditLog({
+    await db.createAuditLog({
       userId: newUser.id,
       action: 'USER_REGISTER',
       resource: 'USER',
@@ -198,7 +327,7 @@ export const login = async (req: Request, res: Response) => {
     console.log('🔍 Login attempt for:', usernameOrEmail);
     
     // Find user by username or email
-    const user = await databaseManager.getUserByUsernameOrEmail(
+    const user = await db.getUserByUsernameOrEmail(
       usernameOrEmail, 
       usernameOrEmail
     );
@@ -245,7 +374,7 @@ export const login = async (req: Request, res: Response) => {
     if (!isPasswordValid) {
       console.log('❌ Password validation failed for user:', user.email);
       // Log failed login attempt
-      await databaseManager.createAuditLog({
+      await db.createAuditLog({
         userId: user.id,
         action: 'LOGIN_FAILED',
         resource: 'USER',
@@ -263,16 +392,16 @@ export const login = async (req: Request, res: Response) => {
     console.log('✅ Password validation successful for user:', user.email);
     
     // Update last login
-    await databaseManager.updateUserLastLogin(user.id);
+    await db.updateUserLastLogin(user.id);
     
     // Generate tokens
     const { accessToken, refreshToken } = generateTokens(user);
     
     // Clear existing sessions for this user to avoid duplicates
-    await databaseManager.query('DELETE FROM user_sessions WHERE user_id = $1', [user.id]);
+    await db.query('DELETE FROM user_sessions WHERE user_id = $1', [user.id]);
     
     // Create session
-    await databaseManager.createSession({
+    await db.createSession({
       userId: user.id,
       accessToken,
       refreshToken,
@@ -282,7 +411,7 @@ export const login = async (req: Request, res: Response) => {
     });
     
     // Log successful login
-    await databaseManager.createAuditLog({
+    await db.createAuditLog({
       userId: user.id,
       action: 'LOGIN_SUCCESS',
       resource: 'USER',
@@ -358,7 +487,7 @@ export const refreshToken = async (req: Request, res: Response) => {
     const validatedData = refreshTokenSchema.parse(req.body);
     
     // Find session
-    const session = await databaseManager.getSessionByRefreshToken(validatedData.refreshToken);
+    const session = await db.getSessionByRefreshToken(validatedData.refreshToken);
     
     if (!session || session.expiresAt < new Date()) {
       return res.status(401).json(
@@ -369,7 +498,7 @@ export const refreshToken = async (req: Request, res: Response) => {
     console.log('🔍 Session found:', { id: session.id, userId: session.userId, userIdType: typeof session.userId });
     
     // Get user
-    const user = await databaseManager.getUserById(session.userId);
+    const user = await db.getUserById(session.userId);
     
     console.log('🔍 User lookup result:', { user: user ? 'found' : 'not found', userId: session.userId });
     
@@ -383,14 +512,14 @@ export const refreshToken = async (req: Request, res: Response) => {
     const { accessToken, refreshToken: newRefreshToken } = generateTokens(user);
     
     // Update session
-    await databaseManager.updateSession(session.id, {
+    await db.updateSession(session.id, {
       refreshToken: newRefreshToken,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       lastUsedAt: new Date()
     });
     
     // Log audit
-    await databaseManager.createAuditLog({
+    await db.createAuditLog({
       userId: user.id,
       action: 'TOKEN_REFRESH',
       resource: 'SESSION',
@@ -431,12 +560,12 @@ export const logout = async (req: Request, res: Response) => {
     
     if (refreshToken) {
       // Delete session
-      await databaseManager.deleteSessionByRefreshToken(refreshToken);
+      await db.deleteSessionByRefreshToken(refreshToken);
       
       // Log audit if user is available
       const user = (req as any).user;
       if (user) {
-        await databaseManager.createAuditLog({
+        await db.createAuditLog({
           userId: user.id,
           action: 'LOGOUT',
           resource: 'SESSION',
@@ -475,7 +604,7 @@ export const getProfile = async (req: Request, res: Response) => {
     }
     
     // Get fresh user data
-    const currentUser = await databaseManager.getUserById(user.id);
+    const currentUser = await db.getUserById(user.id);
     
     if (!currentUser) {
       return res.status(404).json(
@@ -524,7 +653,7 @@ export const updateProfile = async (req: Request, res: Response) => {
     
     // Check if email is being changed and already exists
     if (validatedData.email && validatedData.email !== user.email) {
-      const existingUser = await databaseManager.getUserByEmail(validatedData.email);
+      const existingUser = await db.getUserByEmail(validatedData.email);
       if (existingUser) {
         return res.status(409).json(
           errorResponse('Email already exists', 409)
@@ -533,10 +662,10 @@ export const updateProfile = async (req: Request, res: Response) => {
     }
     
     // Update user
-    const updatedUser = await databaseManager.updateUser(user.id, validatedData);
+    const updatedUser = await db.updateUser(user.id, validatedData);
     
     // Log audit
-    await databaseManager.createAuditLog({
+    await db.createAuditLog({
       userId: user.id,
       action: 'PROFILE_UPDATE',
       resource: 'USER',
@@ -591,7 +720,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
     }
 
     // Log audit
-    await databaseManager.createAuditLog({
+    await db.createAuditLog({
       userId: result.userId!,
       action: 'EMAIL_VERIFIED',
       resource: 'USER',
@@ -631,7 +760,7 @@ export const resendVerificationEmail = async (req: Request, res: Response) => {
     }
 
     // Find user
-    const user = await databaseManager.getUserByUsernameOrEmail(email, email);
+    const user = await db.getUserByUsernameOrEmail(email, email);
     
     if (!user) {
       return res.status(404).json(
@@ -742,7 +871,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
     console.log('🔍 Forgot password request for:', email);
 
     // Find user by email
-    const user = await databaseManager.getUserByEmail(email);
+    const user = await db.getUserByEmail(email);
     
     if (!user) {
       // For security, don't reveal if email exists or not
@@ -871,7 +1000,7 @@ export const resetPassword = async (req: Request, res: Response) => {
 
     // Invalidate all user sessions (optional - for security)
     try {
-      await databaseManager.query('DELETE FROM user_sessions WHERE user_id = $1', [userId]);
+      await db.query('DELETE FROM user_sessions WHERE user_id = $1', [userId]);
     } catch (error) {
       console.warn('Failed to invalidate user sessions:', error);
     }
