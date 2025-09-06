@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -106,8 +107,48 @@ const mockConsentContracts: ConsentContract[] = [
 
 export default function ConsentDashboard() {
   const [activeTab, setActiveTab] = useState('requests')
-  const [consentRequests, setConsentRequests] = useState<ConsentRequest[]>(mockConsentRequests)
-  const [consentContracts, setConsentContracts] = useState<ConsentContract[]>(mockConsentContracts)
+  const [consentRequests, setConsentRequests] = useState<ConsentRequest[]>([])
+  const [consentContracts, setConsentContracts] = useState<ConsentContract[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadConsentData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        // Load consent requests
+        const requestsResponse = await apiClient.getConsentRequests()
+        if (requestsResponse.success && requestsResponse.data) {
+          setConsentRequests(requestsResponse.data)
+        } else {
+          // Fallback to mock data if API fails
+          setConsentRequests(mockConsentRequests)
+        }
+
+        // Load consent contracts
+        const contractsResponse = await apiClient.getConsentContracts()
+        if (contractsResponse.success && contractsResponse.data) {
+          setConsentContracts(contractsResponse.data)
+        } else {
+          // Fallback to mock data if API fails
+          setConsentContracts(mockConsentContracts)
+        }
+
+      } catch (err) {
+        console.error('Error loading consent data:', err)
+        setError('ไม่สามารถโหลดข้อมูลได้')
+        // Use mock data as fallback
+        setConsentRequests(mockConsentRequests)
+        setConsentContracts(mockConsentContracts)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadConsentData()
+  }, [])
 
   const getRequesterIcon = (type: string) => {
     switch (type) {
@@ -159,19 +200,80 @@ export default function ConsentDashboard() {
     })
   }
 
-  const handleApproveRequest = (requestId: string) => {
-    // TODO: Implement consent approval logic
-    console.log('Approving request:', requestId)
+  const handleApproveRequest = async (requestId: string) => {
+    try {
+      const response = await apiClient.updateConsentStatus(requestId, 'approved')
+      if (response.success) {
+        setConsentRequests(prev => 
+          prev.map(req => 
+            req.id === requestId 
+              ? { ...req, status: 'approved' }
+              : req
+          )
+        )
+        setError(null)
+      } else {
+        setError(response.error?.message || 'ไม่สามารถอนุมัติคำขอได้')
+      }
+    } catch (err) {
+      console.error('Error approving request:', err)
+      setError('เกิดข้อผิดพลาดในการอนุมัติคำขอ')
+    }
   }
 
-  const handleRejectRequest = (requestId: string) => {
-    // TODO: Implement consent rejection logic
-    console.log('Rejecting request:', requestId)
+  const handleRejectRequest = async (requestId: string) => {
+    try {
+      const response = await apiClient.updateConsentStatus(requestId, 'rejected')
+      if (response.success) {
+        setConsentRequests(prev => 
+          prev.map(req => 
+            req.id === requestId 
+              ? { ...req, status: 'rejected' }
+              : req
+          )
+        )
+        setError(null)
+      } else {
+        setError(response.error?.message || 'ไม่สามารถปฏิเสธคำขอได้')
+      }
+    } catch (err) {
+      console.error('Error rejecting request:', err)
+      setError('เกิดข้อผิดพลาดในการปฏิเสธคำขอ')
+    }
   }
 
-  const handleRevokeContract = (contractId: string) => {
-    // TODO: Implement consent revocation logic
-    console.log('Revoking contract:', contractId)
+  const handleRevokeContract = async (contractId: string) => {
+    try {
+      const response = await apiClient.updateConsentStatus(contractId, 'revoked')
+      if (response.success) {
+        setConsentContracts(prev => 
+          prev.map(contract => 
+            contract.id === contractId 
+              ? { ...contract, status: 'revoked' }
+              : contract
+          )
+        )
+        setError(null)
+      } else {
+        setError(response.error?.message || 'ไม่สามารถยกเลิกสัญญาได้')
+      }
+    } catch (err) {
+      console.error('Error revoking contract:', err)
+      setError('เกิดข้อผิดพลาดในการยกเลิกสัญญา')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-muted-foreground">กำลังโหลดข้อมูล...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -188,6 +290,13 @@ export default function ConsentDashboard() {
           <span className="text-sm text-green-600 font-medium">ปลอดภัยด้วย Smart Contract Logic</span>
         </div>
       </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">

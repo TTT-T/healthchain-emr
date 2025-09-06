@@ -1,5 +1,8 @@
 'use client'
 
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -11,10 +14,80 @@ import {
   Users,
   FileText,
   Clock,
-  CheckCircle
+  CheckCircle,
+  Loader2
 } from 'lucide-react'
 
+interface ReportData {
+  totalRequests: number
+  approvedRequests: number
+  pendingRequests: number
+  rejectedRequests: number
+  monthlyUsage: number
+  maxMonthlyUsage: number
+  recentRequests: any[]
+  usageStats: any[]
+}
+
 export default function ReportsPage() {
+  const { user } = useAuth()
+  const [loading, setLoading] = useState(true)
+  const [reportData, setReportData] = useState<ReportData | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadReportData = async () => {
+      try {
+        setLoading(true)
+        const response = await apiClient.getExternalRequestersDashboardOverview()
+        
+        if (response.success && response.data) {
+          setReportData(response.data)
+        } else {
+          setError('ไม่สามารถโหลดข้อมูลรายงานได้')
+        }
+      } catch (error) {
+        console.error('Error loading report data:', error)
+        setError('เกิดข้อผิดพลาดในการโหลดข้อมูลรายงาน')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadReportData()
+  }, [])
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">กรุณาเข้าสู่ระบบก่อน</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">กำลังโหลดข้อมูลรายงาน...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600">{error}</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="py-4 sm:py-6 lg:py-8 xl:py-12">
@@ -38,7 +111,7 @@ export default function ReportsPage() {
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
                     <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1 truncate">คำขอทั้งหมด</p>
-                    <p className="text-xl sm:text-2xl font-bold text-gray-900">47</p>
+                    <p className="text-xl sm:text-2xl font-bold text-gray-900">{reportData?.totalRequests || 0}</p>
                   </div>
                   <div className="p-2 sm:p-3 rounded-lg bg-blue-100 flex-shrink-0">
                     <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
@@ -52,7 +125,7 @@ export default function ReportsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 mb-1">อนุมัติแล้ว</p>
-                    <p className="text-2xl font-bold text-green-600">38</p>
+                    <p className="text-2xl font-bold text-green-600">{reportData?.approvedRequests || 0}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-green-100">
                     <CheckCircle className="h-5 w-5 text-green-600" />
@@ -66,7 +139,7 @@ export default function ReportsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 mb-1">รอดำเนินการ</p>
-                    <p className="text-2xl font-bold text-yellow-600">6</p>
+                    <p className="text-2xl font-bold text-yellow-600">{reportData?.pendingRequests || 0}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-yellow-100">
                     <Clock className="h-5 w-5 text-yellow-600" />
@@ -80,7 +153,9 @@ export default function ReportsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 mb-1">อัตราความสำเร็จ</p>
-                    <p className="text-2xl font-bold text-blue-600">81%</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {reportData?.totalRequests ? Math.round((reportData.approvedRequests / reportData.totalRequests) * 100) : 0}%
+                    </p>
                   </div>
                   <div className="p-3 rounded-lg bg-blue-100">
                     <TrendingUp className="h-5 w-5 text-blue-600" />

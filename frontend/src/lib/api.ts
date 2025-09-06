@@ -1057,6 +1057,32 @@ class APIClient {
   }
 
   /**
+   * Get prescriptions by patient
+   */
+  async getPrescriptionsByPatient(patientId: string): Promise<APIResponse<MedicalPrescription[]>> {
+    return this.request<MedicalPrescription[]>({
+      method: 'GET',
+      url: `/medical/patients/${patientId}/prescriptions`
+    });
+  }
+
+  /**
+   * Complete prescription dispensing
+   */
+  async completePrescription(prescriptionId: string, data: {
+    pharmacistName: string;
+    pharmacistNotes?: string;
+    dispensedDate: string;
+    dispensedBy: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'POST',
+      url: `/medical/prescriptions/${prescriptionId}/complete`,
+      data
+    });
+  }
+
+  /**
    * Create medical record
    */
   async createMedicalRecord(patientId: string, data: Omit<MedicalRecord, 'id' | 'patientId' | 'created_at' | 'updated_at'>): Promise<APIResponse<MedicalRecord>> {
@@ -1136,6 +1162,17 @@ class APIClient {
       method: 'POST',
       url: '/consent/contracts',
       data
+    });
+  }
+
+  /**
+   * Get consent requests
+   */
+  async getConsentRequests(params?: { status?: string; patientId?: string }): Promise<APIResponse<any[]>> {
+    return this.request<any[]>({
+      method: 'GET',
+      url: '/consent/requests',
+      params
     });
   }
 
@@ -1659,6 +1696,689 @@ class APIClient {
     return this.request<void>({
       method: 'DELETE',
       url: `/appointments/${id}`
+    });
+  }
+
+  // =============================================================================
+  // ADMIN API
+  // =============================================================================
+
+  /**
+   * Get all users (Admin only)
+   */
+  async getUsers(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    role?: string;
+    status?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/admin/users',
+      params
+    });
+  }
+
+  /**
+   * Get user by ID (Admin only)
+   */
+  async getUserById(id: string): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: `/admin/users/${id}`
+    });
+  }
+
+  /**
+   * Create user (Admin only)
+   */
+  async createUser(data: any): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'POST',
+      url: '/admin/users',
+      data
+    });
+  }
+
+  /**
+   * Update user (Admin only)
+   */
+  async updateUser(id: string, data: any): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: `/admin/users/${id}`,
+      data
+    });
+  }
+
+  /**
+   * Delete user (Admin only)
+   */
+  async deleteUser(id: string): Promise<APIResponse<void>> {
+    return this.request<void>({
+      method: 'DELETE',
+      url: `/admin/users/${id}`
+    });
+  }
+
+  /**
+   * Get system health (Admin only)
+   */
+  async getSystemHealth(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/admin/system/health'
+    });
+  }
+
+  /**
+   * Get system statistics (Admin only)
+   */
+  async getSystemStats(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/admin/system/stats'
+    });
+  }
+
+  /**
+   * Get audit logs (Admin only)
+   */
+  async getAuditLogs(params?: {
+    page?: number;
+    limit?: number;
+    user_id?: string;
+    action?: string;
+    resource_type?: string;
+    start_date?: string;
+    end_date?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/admin/audit-logs',
+      params
+    });
+  }
+
+  /**
+   * Get audit log statistics (Admin only)
+   */
+  async getAuditLogStats(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/admin/audit-logs/stats'
+    });
+  }
+
+  /**
+   * Get database status (Admin only)
+   */
+  async getDatabaseStatus(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/admin/database/status'
+    });
+  }
+
+  /**
+   * Get database backups (Admin only)
+   */
+  async getDatabaseBackups(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/admin/database/backups'
+    });
+  }
+
+  /**
+   * Create database backup (Admin only)
+   */
+  async createDatabaseBackup(data: { type?: string; description?: string }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'POST',
+      url: '/admin/database/backup',
+      data
+    });
+  }
+
+  /**
+   * Optimize database (Admin only)
+   */
+  async optimizeDatabase(data: { type?: string }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'POST',
+      url: '/admin/database/optimize',
+      data
+    });
+  }
+
+  /**
+   * Get database performance metrics (Admin only)
+   */
+  async getDatabasePerformance(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/admin/database/performance'
+    });
+  }
+
+  /**
+   * Get all external requesters (Admin only)
+   */
+  async getExternalRequesters(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    organizationType?: string;
+    status?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/admin/external-requesters',
+      params
+    });
+  }
+
+  /**
+   * Get external requester by ID (Admin only)
+   */
+  async getExternalRequesterById(id: string): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: `/admin/external-requesters/${id}`
+    });
+  }
+
+  /**
+   * Update external requester status (Admin only)
+   */
+  async updateExternalRequesterStatus(id: string, data: {
+    status: string;
+    reason?: string;
+    verifiedBy?: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: `/admin/external-requesters/${id}/status`,
+      data
+    });
+  }
+
+  /**
+   * Get external requesters statistics (Admin only)
+   */
+  async getExternalRequestersStats(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/admin/external-requesters/stats'
+    });
+  }
+
+  /**
+   * Get system settings (Admin only)
+   */
+  async getSystemSettings(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/admin/settings'
+    });
+  }
+
+  /**
+   * Update system settings (Admin only)
+   */
+  async updateSystemSettings(settings: any): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: '/admin/settings',
+      data: { settings }
+    });
+  }
+
+  /**
+   * Reset system settings (Admin only)
+   */
+  async resetSystemSettings(category?: string): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'POST',
+      url: '/admin/settings/reset',
+      data: { category }
+    });
+  }
+
+  /**
+   * Get settings history (Admin only)
+   */
+  async getSettingsHistory(params?: {
+    page?: number;
+    limit?: number;
+    settingKey?: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/admin/settings/history',
+      params
+    });
+  }
+
+  /**
+   * Get all notifications (Admin only)
+   */
+  async getAllNotifications(params?: {
+    page?: number;
+    limit?: number;
+    type?: string;
+    status?: string;
+    userId?: string;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/admin/notifications',
+      params
+    });
+  }
+
+  /**
+   * Create system notification (Admin only)
+   */
+  async createSystemNotification(data: {
+    userIds?: string[];
+    type?: string;
+    title: string;
+    message: string;
+    data?: any;
+    priority?: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'POST',
+      url: '/admin/notifications',
+      data
+    });
+  }
+
+  /**
+   * Mark notifications as read (Admin only)
+   */
+  async markNotificationsAsRead(data: {
+    notificationIds: string[];
+    userId?: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: '/admin/notifications/mark-read',
+      data
+    });
+  }
+
+  /**
+   * Archive notifications (Admin only)
+   */
+  async archiveNotifications(data: {
+    notificationIds: string[];
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: '/admin/notifications/archive',
+      data
+    });
+  }
+
+  /**
+   * Delete notifications (Admin only)
+   */
+  async deleteNotifications(data: {
+    notificationIds: string[];
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'DELETE',
+      url: '/admin/notifications',
+      data
+    });
+  }
+
+  /**
+   * Get notification templates (Admin only)
+   */
+  async getNotificationTemplates(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/admin/notifications/templates'
+    });
+  }
+
+  /**
+   * Get all data requests (Admin only)
+   */
+  async getAllDataRequests(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    requesterId?: string;
+    requestType?: string;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/admin/request-history',
+      params
+    });
+  }
+
+  /**
+   * Get data request by ID (Admin only)
+   */
+  async getDataRequestById(id: string): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: `/admin/request-history/${id}`
+    });
+  }
+
+  /**
+   * Approve data request (Admin only)
+   */
+  async approveDataRequest(id: string, data: {
+    approvalNotes?: string;
+    dataAccessLevel?: string;
+    expirationDate?: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: `/admin/request-history/${id}/approve`,
+      data
+    });
+  }
+
+  /**
+   * Reject data request (Admin only)
+   */
+  async rejectDataRequest(id: string, data: {
+    rejectionReason: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: `/admin/request-history/${id}/reject`,
+      data
+    });
+  }
+
+  /**
+   * Get request statistics (Admin only)
+   */
+  async getRequestStatistics(params?: {
+    period?: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/admin/request-history/statistics',
+      params
+    });
+  }
+
+  // =============================================================================
+  // DOCTOR PROFILE API
+  // =============================================================================
+
+  /**
+   * Get doctor profile
+   */
+  async getDoctorProfile(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/profile/doctor'
+    });
+  }
+
+  /**
+   * Update doctor profile
+   */
+  async updateDoctorProfile(data: any): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: '/profile/doctor',
+      data
+    });
+  }
+
+  // =============================================================================
+  // NURSE PROFILE API
+  // =============================================================================
+
+  /**
+   * Get nurse profile
+   */
+  async getNurseProfile(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/profile/nurse'
+    });
+  }
+
+  /**
+   * Update nurse profile
+   */
+  async updateNurseProfile(data: any): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: '/profile/nurse',
+      data
+    });
+  }
+
+  // =============================================================================
+  // CHANGE PASSWORD API
+  // =============================================================================
+
+  /**
+   * Change user password
+   */
+  async changePassword(data: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: '/auth/change-password',
+      data
+    });
+  }
+
+  /**
+   * Validate password strength
+   */
+  async validatePasswordStrength(password: string): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'POST',
+      url: '/auth/validate-password',
+      data: { password }
+    });
+  }
+
+  /**
+   * Get password requirements
+   */
+  async getPasswordRequirements(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/auth/password-requirements'
+    });
+  }
+
+  // =============================================================================
+  // SECURITY SETTINGS API
+  // =============================================================================
+
+  /**
+   * Get security settings
+   */
+  async getSecuritySettings(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/security/settings'
+    });
+  }
+
+  /**
+   * Update security settings
+   */
+  async updateSecuritySettings(data: {
+    emailNotifications?: boolean;
+    smsNotifications?: boolean;
+    loginNotifications?: boolean;
+    securityAlerts?: boolean;
+    dataSharing?: boolean;
+    privacyLevel?: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: '/security/settings',
+      data
+    });
+  }
+
+  /**
+   * Terminate all sessions
+   */
+  async terminateAllSessions(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'POST',
+      url: '/security/sessions/terminate-all'
+    });
+  }
+
+  // =============================================================================
+  // EXTERNAL REQUESTERS PROFILE API
+  // =============================================================================
+
+  /**
+   * Get external requester profile
+   */
+  async getExternalRequesterProfile(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/external-requesters/profile'
+    });
+  }
+
+  /**
+   * Update external requester profile
+   */
+  async updateExternalRequesterProfile(data: {
+    organizationName: string;
+    organizationType: string;
+    registrationNumber?: string;
+    licenseNumber?: string;
+    taxId?: string;
+    primaryContactName: string;
+    primaryContactEmail: string;
+    primaryContactPhone?: string;
+    address?: any;
+    allowedRequestTypes?: string[];
+    dataAccessLevel?: string;
+    maxConcurrentRequests?: number;
+    complianceCertifications?: string[];
+    dataProtectionCertification?: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: '/external-requesters/profile',
+      data
+    });
+  }
+
+  /**
+   * Get external requester settings
+   */
+  async getExternalRequesterSettings(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/external-requesters/settings'
+    });
+  }
+
+  /**
+   * Update external requester settings
+   */
+  async updateExternalRequesterSettings(data: {
+    notificationPreferences?: any;
+    privacySettings?: any;
+    dataAccessLevel?: string;
+    maxConcurrentRequests?: number;
+    allowedRequestTypes?: string[];
+    complianceCertifications?: string[];
+    dataProtectionCertification?: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: '/external-requesters/settings',
+      data
+    });
+  }
+
+  // =============================================================================
+  // EXTERNAL REQUESTERS NOTIFICATIONS API
+  // =============================================================================
+
+  /**
+   * Get external requester notifications
+   */
+  async getExternalRequesterNotifications(params?: {
+    page?: number;
+    limit?: number;
+    type?: string;
+    isRead?: boolean;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/external-requesters/notifications',
+      params
+    });
+  }
+
+  /**
+   * Mark notification as read
+   */
+  async markNotificationAsRead(notificationId: string): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: `/external-requesters/notifications/${notificationId}/read`
+    });
+  }
+
+  /**
+   * Mark all notifications as read
+   */
+  async markAllNotificationsAsRead(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: '/external-requesters/notifications/mark-all-read'
+    });
+  }
+
+  /**
+   * Get notification statistics
+   */
+  async getNotificationStats(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/external-requesters/notifications/stats'
     });
   }
 }

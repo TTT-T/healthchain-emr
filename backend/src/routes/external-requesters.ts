@@ -15,6 +15,22 @@ import {
   getExternalRequestersDashboardOverview
 } from '../controllers/externalRequestersController';
 
+// Import external requesters profile controllers
+import {
+  getExternalRequesterProfile,
+  updateExternalRequesterProfile,
+  getExternalRequesterSettings,
+  updateExternalRequesterSettings
+} from '../controllers/externalRequestersProfileController';
+
+// Import external requesters notifications controllers
+import {
+  getExternalRequesterNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  getNotificationStats
+} from '../controllers/externalRequestersNotificationsController';
+
 const router = express.Router();
 
 // Apply authentication to all routes
@@ -44,5 +60,25 @@ router.get('/reports/:requestId', authorize(['external_user', 'external_admin', 
  * Dashboard Routes
  */
 router.get('/dashboard/overview', authorize(['external_admin', 'admin']), asyncHandler(getExternalRequestersDashboardOverview));
+
+/**
+ * Profile Management Routes
+ */
+router.get('/profile', authorize(['external_requester', 'external_admin']), asyncHandler(getExternalRequesterProfile));
+router.put('/profile', authorize(['external_requester', 'external_admin']), asyncHandler(updateExternalRequesterProfile));
+
+/**
+ * Settings Management Routes
+ */
+router.get('/settings', authorize(['external_requester', 'external_admin']), asyncHandler(getExternalRequesterSettings));
+router.put('/settings', authorize(['external_requester', 'external_admin']), asyncHandler(updateExternalRequesterSettings));
+
+/**
+ * Notifications Management Routes
+ */
+router.get('/notifications', authorize(['external_requester', 'external_admin']), asyncHandler(getExternalRequesterNotifications));
+router.put('/notifications/:id/read', authorize(['external_requester', 'external_admin']), asyncHandler(markNotificationAsRead));
+router.put('/notifications/mark-all-read', authorize(['external_requester', 'external_admin']), asyncHandler(markAllNotificationsAsRead));
+router.get('/notifications/stats', authorize(['external_requester', 'external_admin']), asyncHandler(getNotificationStats));
 
 export default router;

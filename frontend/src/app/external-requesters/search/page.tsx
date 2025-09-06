@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -78,53 +80,43 @@ export default function PatientSearchPage() {
     requestId?: string
   } | null>(null)
 
-  // Mock search function
+  // Real search function
   const handleSearch = async () => {
     if (!searchQuery.trim()) return
 
     setIsSearching(true)
     setSearchResults([])
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Mock results
-    const mockResults: Patient[] = [
-      {
-        id: 'pat-001',
-        patientId: 'HN-2025-001234',
-        firstName: 'สมชาย',
-        lastName: 'ใจดี',
-        dateOfBirth: '1985-03-15',
-        nationalId: '1234567890123',
-        phone: '081-234-5678',
-        email: 'somchai@email.com',
-        address: {
-          district: 'ปทุมวัน',
-          province: 'กรุงเทพมหานคร'
-        },
-        lastVisit: '2025-01-15',
-        hasActiveConsent: true
-      },
-      {
-        id: 'pat-002',
-        patientId: 'HN-2025-001235',
-        firstName: 'สมหญิง',
-        lastName: 'รักดี',
-        dateOfBirth: '1990-07-22',
-        nationalId: '1234567890124',
-        phone: '081-234-5679',
-        address: {
-          district: 'บางรัก',
-          province: 'กรุงเทพมหานคร'
-        },
-        lastVisit: '2024-12-20',
-        hasActiveConsent: false
+    try {
+      const response = await apiClient.searchPatientsForRequest({
+        query: searchQuery,
+        limit: 20
+      })
+      
+      if (response.success && response.data) {
+        setSearchResults(response.data.map((patient: any) => ({
+          id: patient.id,
+          patientId: patient.patientId || patient.id,
+          firstName: patient.firstName || patient.first_name,
+          lastName: patient.lastName || patient.last_name,
+          dateOfBirth: patient.dateOfBirth || patient.birth_date,
+          nationalId: patient.nationalId || patient.national_id,
+          phone: patient.phone || patient.phone_number,
+          email: patient.email,
+          address: {
+            district: patient.address?.district || patient.district,
+            province: patient.address?.province || patient.province
+          },
+          lastVisit: patient.lastVisit || patient.last_visit,
+          hasActiveConsent: patient.hasActiveConsent || patient.has_active_consent
+        })))
       }
-    ]
-    
-    setSearchResults(mockResults)
-    setIsSearching(false)
+    } catch (error) {
+      console.error('Error searching patients:', error)
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
   }
 
   const dataTypeOptions = [
@@ -172,16 +164,37 @@ export default function PatientSearchPage() {
       return
     }
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    // Create data request
+    const requestData = {
+      requester_name: formData.requesterName,
+      requester_organization: formData.organizationName,
+      requester_email: formData.requesterEmail,
+      requester_phone: formData.requesterPhone,
+      request_type: formData.requestType,
+      requested_data_types: formData.dataTypes,
+      purpose: formData.purpose,
+      data_usage_period: formData.validUntil,
+      consent_required: true,
+      patient_ids: [selectedPatient.patientId],
+      date_range_start: null,
+      date_range_end: null,
+      additional_requirements: formData.legalBasis
+    }
+
+    const response = await apiClient.createDataRequest(requestData)
     
-    const requestId = `REQ-${Date.now()}`
-    
-    setSubmitResult({
-      success: true,
-      message: 'ส่งคำขอสำเร็จ! ระบบจะดำเนินการขอความยินยอมจากผู้ป่วย',
-      requestId
-    })
+    if (response.success) {
+      setSubmitResult({
+        success: true,
+        message: 'ส่งคำขอสำเร็จ! ระบบจะดำเนินการขอความยินยอมจากผู้ป่วย',
+        requestId: response.data?.id || response.data?.requestId
+      })
+    } else {
+      setSubmitResult({
+        success: false,
+        message: response.error?.message || 'เกิดข้อผิดพลาดในการส่งคำขอ'
+      })
+    }
   }
 
   return (

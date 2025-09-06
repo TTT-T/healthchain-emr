@@ -35,7 +35,10 @@ import {
 import {
   createPrescription,
   getPrescriptions,
-  updatePrescription
+  updatePrescription,
+  completePrescription,
+  getPrescriptionById,
+  updatePrescriptionStatus
 } from '../controllers/prescriptionsController';
 
 // Patient Portal Controllers
@@ -153,6 +156,10 @@ router.put('/lab-orders/:id', authorize(['doctor', 'nurse', 'admin']), asyncHand
 router.post('/visits/:id/prescriptions', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createPrescription));
 router.get('/visits/:id/prescriptions', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getPrescriptions));
 router.put('/prescriptions/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(updatePrescription));
+router.post('/prescriptions/:id/complete', authorize(['pharmacist', 'admin']), asyncHandler(completePrescription));
+router.get('/prescriptions/:id', authorize(['doctor', 'nurse', 'admin', 'pharmacist']), asyncHandler(getPrescriptionById));
+router.patch('/prescriptions/:id/status', authorize(['doctor', 'nurse', 'admin', 'pharmacist']), asyncHandler(updatePrescriptionStatus));
+router.get('/patients/:patientId/prescriptions', authorize(['doctor', 'nurse', 'admin', 'pharmacist']), asyncHandler(getPrescriptions));
 
 // =============================================================================
 // PATIENT PORTAL APIs

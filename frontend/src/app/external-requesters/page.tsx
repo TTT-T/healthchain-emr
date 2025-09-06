@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
+import { apiClient } from '@/lib/api'
 import { 
   Building2, 
   FileText, 
@@ -57,69 +59,101 @@ export default function ExternalRequestersHomePage() {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
 
   useEffect(() => {
-    // Simulate loading
-    setTimeout(() => {
-      // Mock user data
-      setUser({
-        id: '1',
-        email: 'admin@hospital.com',
-        organizationName: 'โรงพยาบาลกรุงเทพ',
-        organizationType: 'hospital',
-        status: 'active',
-        dataAccessLevel: 'premium',
-        lastLogin: new Date().toISOString(),
-        createdAt: '2024-01-15T00:00:00Z'
-      })
-
-      // Mock stats data
-      setStats({
-        totalRequests: 1247,
-        pendingRequests: 23,
-        approvedRequests: 1156,
-        rejectedRequests: 68,
-        monthlyUsage: 89,
-        maxMonthlyUsage: 100,
-        activeConnections: 12,
-        dataTransferred: 2.4
-      })
-
-      // Mock recent requests
-      setRecentRequests([
-        {
-          id: 'REQ-001',
-          type: 'Medical Records',
-          patientId: 'P-12345',
-          status: 'approved',
-          requestedAt: '2024-12-18T10:30:00Z',
-          processedAt: '2024-12-18T10:35:00Z',
-          purpose: 'การรักษาต่อเนื่อง'
-        },
-        {
-          id: 'REQ-002',
-          type: 'Lab Results',
-          patientId: 'P-12346',
-          status: 'pending',
-          requestedAt: '2024-12-18T11:15:00Z',
-          purpose: 'การตรวจสอบผลแล็บ'
-        },
-        {
-          id: 'REQ-003',
-          type: 'Prescription History',
-          patientId: 'P-12347',
-          status: 'rejected',
-          requestedAt: '2024-12-18T09:45:00Z',
-          processedAt: '2024-12-18T09:50:00Z',
-          purpose: 'การตรวจสอบประวัติยา'
+    const loadDashboardData = async () => {
+      try {
+        setLoading(true)
+        
+        // Load user profile data
+        const profileResponse = await apiClient.getExternalRequesterProfile()
+        if (profileResponse.success && profileResponse.data) {
+          const profileData = profileResponse.data
+          setUser({
+            id: profileData.id,
+            email: profileData.primaryContactEmail,
+            organizationName: profileData.organizationName,
+            organizationType: profileData.organizationType,
+            status: profileData.status,
+            dataAccessLevel: profileData.dataAccessLevel,
+            lastLogin: profileData.lastLogin || new Date().toISOString(),
+            createdAt: profileData.createdAt
+          })
         }
-      ])
 
-      setLoading(false)
-    }, 1000)
+        // Load dashboard overview
+        const dashboardResponse = await apiClient.getExternalRequestersDashboardOverview()
+        if (dashboardResponse.success && dashboardResponse.data) {
+          const dashboardData = dashboardResponse.data
+          setStats({
+            totalRequests: dashboardData.totalRequests || 0,
+            pendingRequests: dashboardData.pendingRequests || 0,
+            approvedRequests: dashboardData.approvedRequests || 0,
+            rejectedRequests: dashboardData.rejectedRequests || 0,
+            monthlyUsage: dashboardData.monthlyUsage || 0,
+            maxMonthlyUsage: dashboardData.maxMonthlyUsage || 100,
+            activeConnections: dashboardData.activeConnections || 0,
+            dataTransferred: dashboardData.dataTransferred || 0
+          })
+
+          // Set recent requests
+          if (dashboardData.recentRequests) {
+            setRecentRequests(dashboardData.recentRequests.map((req: any) => ({
+              id: req.id,
+              type: req.requestType,
+              patientId: req.patientId,
+              status: req.status,
+              requestedAt: req.createdAt,
+              processedAt: req.updatedAt,
+              purpose: req.purpose
+            })))
+          }
+        }
+      } catch (error) {
+        console.error('Error loading dashboard data:', error)
+        // Set empty data if API fails
+        setUser(null)
+        setStats(null)
+        setRecentRequests([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadDashboardData()
   }, [])
 
-  const refreshData = () => {
+  const refreshData = async () => {
     setLastRefresh(new Date())
-    // In real implementation, this would fetch fresh data
+    // Reload dashboard data
+    try {
+      const dashboardResponse = await apiClient.getExternalRequestersDashboardOverview()
+      if (dashboardResponse.success && dashboardResponse.data) {
+        const dashboardData = dashboardResponse.data
+        setStats({
+          totalRequests: dashboardData.totalRequests || 0,
+          pendingRequests: dashboardData.pendingRequests || 0,
+          approvedRequests: dashboardData.approvedRequests || 0,
+          rejectedRequests: dashboardData.rejectedRequests || 0,
+          monthlyUsage: dashboardData.monthlyUsage || 0,
+          maxMonthlyUsage: dashboardData.maxMonthlyUsage || 100,
+          activeConnections: dashboardData.activeConnections || 0,
+          dataTransferred: dashboardData.dataTransferred || 0
+        })
+
+        if (dashboardData.recentRequests) {
+          setRecentRequests(dashboardData.recentRequests.map((req: any) => ({
+            id: req.id,
+            type: req.requestType,
+            patientId: req.patientId,
+            status: req.status,
+            requestedAt: req.createdAt,
+            processedAt: req.updatedAt,
+            purpose: req.purpose
+          })))
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing dashboard data:', error)
+    }
   }
 
   const getStatusColor = (status: string) => {

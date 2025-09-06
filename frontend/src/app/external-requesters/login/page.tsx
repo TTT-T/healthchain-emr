@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
+import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -61,25 +63,20 @@ export default function ExternalRequesterLogin() {
       }
 
       // Submit to API
-      const response = await fetch('/api/external-requesters/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
+      const response = await apiClient.loginExternalRequester({
+        email: formData.email,
+        password: formData.password
       })
 
-      const result = await response.json()
-
-      if (result.success) {
+      if (response.success) {
         setLoginResult({
           success: true,
           message: 'เข้าสู่ระบบสำเร็จ! กำลังนำไปยังหน้าหลัก...'
         })
         
         // Store token/session and redirect
-        if (result.token) {
-          localStorage.setItem('external-requester-token', result.token)
+        if (response.data?.token) {
+          localStorage.setItem('external-requester-token', response.data.token)
         }
         
         // Redirect to dashboard after 2 seconds
@@ -90,7 +87,7 @@ export default function ExternalRequesterLogin() {
       } else {
         setLoginResult({
           success: false,
-          message: result.message || 'การเข้าสู่ระบบล้มเหลว'
+          message: response.error?.message || 'การเข้าสู่ระบบล้มเหลว'
         })
       }
 

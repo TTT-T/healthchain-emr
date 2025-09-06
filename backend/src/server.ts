@@ -1,4 +1,5 @@
 import Application from './app';
+import WebSocketService from './services/websocketService';
 
 /**
  * EMR Backend Server
@@ -10,9 +11,14 @@ import Application from './app';
  */
 
 const app = new Application();
+let webSocketService: WebSocketService;
 
 // Start server
-app.start().catch((error) => {
+app.start().then((httpServer) => {
+  // Initialize WebSocket service
+  webSocketService = new WebSocketService(httpServer as any);
+  console.log('🔌 WebSocket service initialized');
+}).catch((error) => {
   console.error('Failed to start server:', error);
   process.exit(1);
 });

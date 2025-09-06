@@ -34,7 +34,29 @@ export default function NurseProfilePage() {
     const loadUserData = async () => {
       try {
         setIsLoading(true);
-        if (user) {
+        const response = await apiClient.getNurseProfile();
+        
+        if (response.success && response.data) {
+          const profile = response.data;
+          setFormData({
+            first_name: profile.user?.firstName || "",
+            last_name: profile.user?.lastName || "",
+            email: profile.user?.email || "",
+            phone: profile.user?.phone || "",
+            hospital: profile.nurse?.department || "",
+            department: profile.nurse?.department || "",
+            ward: profile.nurse?.department || "",
+            nursing_license: profile.nurse?.nursingLicenseNumber || "",
+            experience_years: profile.nurse?.yearsOfExperience || "",
+            education: profile.nurse?.education || "",
+            certifications: profile.nurse?.certifications || "",
+            shift: profile.nurse?.shiftPreference || "",
+            bio: profile.nurse?.bio || "",
+            position: profile.nurse?.position || "",
+            professional_license: profile.nurse?.nursingLicenseNumber || ""
+          });
+        } else if (user) {
+          // Fallback to user data if profile not found
           setFormData({
             first_name: user.firstName || "",
             last_name: user.lastName || "",
@@ -98,9 +120,25 @@ export default function NurseProfilePage() {
         return;
       }
       
-      const response = await apiClient.updateNurseProfile(formData);
+      // Prepare data for API
+      const updateData = {
+        firstName: formData.first_name,
+        lastName: formData.last_name,
+        email: formData.email,
+        phone: formData.phone,
+        department: formData.department,
+        specialization: formData.ward,
+        nursingLicenseNumber: formData.nursing_license,
+        yearsOfExperience: parseInt(formData.experience_years) || 0,
+        education: formData.education,
+        certifications: formData.certifications,
+        shiftPreference: formData.shift,
+        position: formData.position
+      };
+
+      const response = await apiClient.updateNurseProfile(updateData);
       
-      if (response.data && !response.error) {
+      if (response.success && response.data) {
         setSuccess('บันทึกข้อมูลสำเร็จ');
         setTimeout(() => setSuccess(null), 3000);
       } else {

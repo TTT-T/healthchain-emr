@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -15,37 +17,169 @@ import {
   Save,
   CheckCircle,
   Shield,
-  Calendar
+  Calendar,
+  Loader2,
+  AlertTriangle
 } from 'lucide-react'
 
 export default function ProfilePage() {
+  const { user } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  
   const [profileData, setProfileData] = useState({
-    organizationName: 'โรงพยาบาลจุฬาลงกรณ์',
+    organizationName: '',
     organizationType: 'hospital',
-    registrationNumber: 'REG-2025-001',
-    contactPerson: 'นายแพทย์สมชาย ใจดี',
-    position: 'ผู้อำนวยการ',
-    email: 'admin@chula-hospital.com',
-    phone: '02-123-4567',
-    address: '1873 ถนนพระราม 4 แขวงปทุมวัน เขตปทุมวัน กรุงเทพมหานคร 10330',
-    website: 'https://www.chula-hospital.com',
-    businessLicense: 'BL-2023-001234',
-    description: 'โรงพยาบาลเอกชนขนาดใหญ่ให้บริการรักษาพยาบาลครบวงจร'
+    registrationNumber: '',
+    licenseNumber: '',
+    taxId: '',
+    primaryContactName: '',
+    primaryContactEmail: '',
+    primaryContactPhone: '',
+    address: {
+      streetAddress: '',
+      subDistrict: '',
+      district: '',
+      province: '',
+      postalCode: '',
+      country: 'Thailand'
+    },
+    allowedRequestTypes: [],
+    dataAccessLevel: 'basic',
+    maxConcurrentRequests: 10,
+    complianceCertifications: [],
+    dataProtectionCertification: '',
+    status: 'pending',
+    isVerified: false
   })
 
-  const handleSave = () => {
-    // Mock save functionality
-    console.log('Saving profile data:', profileData)
-    setIsEditing(false)
-    alert('บันทึกข้อมูลเรียบร้อยแล้ว')
+  // Load profile data
+  useEffect(() => {
+    const loadProfileData = async () => {
+      try {
+        setIsLoading(true)
+        const response = await apiClient.getExternalRequesterProfile()
+        
+        if (response.success && response.data) {
+          const data = response.data
+          setProfileData({
+            organizationName: data.organizationName || '',
+            organizationType: data.organizationType || 'hospital',
+            registrationNumber: data.registrationNumber || '',
+            licenseNumber: data.licenseNumber || '',
+            taxId: data.taxId || '',
+            primaryContactName: data.primaryContactName || '',
+            primaryContactEmail: data.primaryContactEmail || '',
+            primaryContactPhone: data.primaryContactPhone || '',
+            address: data.address || {
+              streetAddress: '',
+              subDistrict: '',
+              district: '',
+              province: '',
+              postalCode: '',
+              country: 'Thailand'
+            },
+            allowedRequestTypes: data.allowedRequestTypes || [],
+            dataAccessLevel: data.dataAccessLevel || 'basic',
+            maxConcurrentRequests: data.maxConcurrentRequests || 10,
+            complianceCertifications: data.complianceCertifications || [],
+            dataProtectionCertification: data.dataProtectionCertification || '',
+            status: data.status || 'pending',
+            isVerified: data.isVerified || false
+          })
+        }
+      } catch (error) {
+        console.error("Error loading profile data:", error)
+        setError("เกิดข้อผิดพลาดในการโหลดข้อมูลโปรไฟล์")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadProfileData()
+  }, [])
+
+  const handleSave = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      setSuccess(null)
+
+      // Prepare data for API
+      const updateData = {
+        organizationName: profileData.organizationName,
+        organizationType: profileData.organizationType,
+        registrationNumber: profileData.registrationNumber,
+        licenseNumber: profileData.licenseNumber,
+        taxId: profileData.taxId,
+        primaryContactName: profileData.primaryContactName,
+        primaryContactEmail: profileData.primaryContactEmail,
+        primaryContactPhone: profileData.primaryContactPhone,
+        address: profileData.address,
+        allowedRequestTypes: profileData.allowedRequestTypes,
+        dataAccessLevel: profileData.dataAccessLevel,
+        maxConcurrentRequests: profileData.maxConcurrentRequests,
+        complianceCertifications: profileData.complianceCertifications,
+        dataProtectionCertification: profileData.dataProtectionCertification
+      }
+
+      const response = await apiClient.updateExternalRequesterProfile(updateData)
+      
+      if (response.success && response.data) {
+        setSuccess('บันทึกข้อมูลโปรไฟล์สำเร็จ')
+        setIsEditing(false)
+        setTimeout(() => setSuccess(null), 3000)
+      } else {
+        setError(response.error?.message || 'เกิดข้อผิดพลาดในการบันทึก')
+      }
+    } catch (error: any) {
+      console.error('Error saving profile:', error)
+      setError('เกิดข้อผิดพลาดในการบันทึก')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleInputChange = (field: string, value: string) => {
-    setProfileData(prev => ({
-      ...prev,
-      [field]: value
-    }))
+    if (field.includes('.')) {
+      const [parent, child] = field.split('.')
+      setProfileData(prev => ({
+        ...prev,
+        [parent]: {
+          ...(prev[parent as keyof typeof prev] as any),
+          [child]: value
+        }
+      }))
+    } else {
+      setProfileData(prev => ({
+        ...prev,
+        [field]: value
+      }))
+    }
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">กรุณาเข้าสู่ระบบก่อน</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">กำลังโหลดข้อมูลโปรไฟล์...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -70,22 +204,50 @@ export default function ProfilePage() {
               </p>
             </div>
 
+          {/* Error Message */}
+          {error && (
+            <Alert className="mb-6 border-red-200 bg-red-50">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800">{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* Success Message */}
+          {success && (
+            <Alert className="mb-6 border-green-200 bg-green-50">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">{success}</AlertDescription>
+            </Alert>
+          )}
+
           {/* Status Card */}
           <Card className="shadow-lg border-0 bg-white mb-8">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-green-100 rounded-lg">
-                    <CheckCircle className="h-8 w-8 text-green-600" />
+                  <div className={`p-3 rounded-lg ${
+                    profileData.isVerified ? 'bg-green-100' : 
+                    profileData.status === 'pending' ? 'bg-yellow-100' : 'bg-red-100'
+                  }`}>
+                    <CheckCircle className={`h-8 w-8 ${
+                      profileData.isVerified ? 'text-green-600' : 
+                      profileData.status === 'pending' ? 'text-yellow-600' : 'text-red-600'
+                    }`} />
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">สถานะการอนุมัติ</h3>
-                    <p className="text-green-600 font-medium">อนุมัติแล้ว - ใช้งานได้ปกติ</p>
+                    <p className={`font-medium ${
+                      profileData.isVerified ? 'text-green-600' : 
+                      profileData.status === 'pending' ? 'text-yellow-600' : 'text-red-600'
+                    }`}>
+                      {profileData.isVerified ? 'อนุมัติแล้ว - ใช้งานได้ปกติ' : 
+                       profileData.status === 'pending' ? 'รอการอนุมัติ' : 'ถูกระงับ'}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-gray-600">วันที่อนุมัติ</p>
-                  <p className="font-semibold text-gray-900">15 มกราคม 2025</p>
+                  <p className="text-sm text-gray-600">ระดับการเข้าถึงข้อมูล</p>
+                  <p className="font-semibold text-gray-900 capitalize">{profileData.dataAccessLevel}</p>
                 </div>
               </div>
             </CardContent>
@@ -105,9 +267,15 @@ export default function ProfilePage() {
                     </CardTitle>
                     <Button
                       onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+                      disabled={loading}
                       className={isEditing ? 'bg-green-600 hover:bg-green-700' : ''}
                     >
-                      {isEditing ? (
+                      {loading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          กำลังบันทึก...
+                        </>
+                      ) : isEditing ? (
                         <>
                           <Save className="h-4 w-4 mr-2" />
                           บันทึก
@@ -156,7 +324,16 @@ export default function ProfilePage() {
                           <option value="government">หน่วยงานราชการ</option>
                         </select>
                       ) : (
-                        <p className="text-gray-900 font-medium">โรงพยาบาล</p>
+                        <p className="text-gray-900 font-medium capitalize">
+                          {profileData.organizationType === 'hospital' ? 'โรงพยาบาล' :
+                           profileData.organizationType === 'clinic' ? 'คลินิก' :
+                           profileData.organizationType === 'insurance_company' ? 'บริษัทประกัน' :
+                           profileData.organizationType === 'research_institute' ? 'สถาบันวิจัย' :
+                           profileData.organizationType === 'government_agency' ? 'หน่วยงานราชการ' :
+                           profileData.organizationType === 'legal_entity' ? 'นิติบุคคล' :
+                           profileData.organizationType === 'audit_organization' ? 'องค์กรตรวจสอบ' :
+                           profileData.organizationType}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -176,12 +353,12 @@ export default function ProfilePage() {
                       {isEditing ? (
                         <input
                           type="text"
-                          value={profileData.businessLicense}
-                          onChange={(e) => handleInputChange('businessLicense', e.target.value)}
+                          value={profileData.licenseNumber}
+                          onChange={(e) => handleInputChange('licenseNumber', e.target.value)}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       ) : (
-                        <p className="text-gray-900 font-medium">{profileData.businessLicense}</p>
+                        <p className="text-gray-900 font-medium">{profileData.licenseNumber}</p>
                       )}
                     </div>
                   </div>

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -328,21 +330,13 @@ export default function ExternalRequesterRegistration() {
       }
 
       // Submit to API
-      const response = await fetch('/api/external-requesters/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
-      })
+      const response = await apiClient.registerExternalRequester(formData)
 
-      const result = await response.json()
-
-      if (result.success) {
+      if (response.success) {
         setSubmitResult({
           success: true,
-          message: `${result.message}\n\nรหัสคำขอ: ${result.requestId}\nระยะเวลาตรวจสอบโดยประมาณ: ${result.estimatedReviewTime}`,
-          requestId: result.requestId
+          message: `${response.message || 'ลงทะเบียนสำเร็จ'}\n\nรหัสคำขอ: ${response.data?.requestId || response.data?.id}\nระยะเวลาตรวจสอบโดยประมาณ: 3-5 วันทำการ`,
+          requestId: response.data?.requestId || response.data?.id
         })
         
         // เคลียร์ฟอร์มหลังจากส่งสำเร็จ
@@ -350,7 +344,7 @@ export default function ExternalRequesterRegistration() {
       } else {
         setSubmitResult({
           success: false,
-          message: result.error || 'เกิดข้อผิดพลาดในการส่งข้อมูล'
+          message: response.error?.message || 'เกิดข้อผิดพลาดในการส่งข้อมูล'
         })
       }
 

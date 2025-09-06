@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
+import { databaseManager } from '../database/connection';
 import {
   createConsentContract,
   executeConsentContract,
@@ -64,36 +65,41 @@ router.post('/contracts/:id/access-logs',
   asyncHandler(logConsentAccess)
 );
 
-// Smart contract dashboard
-router.get('/dashboard', authorize(['admin']), (req, res) => {
-  // Mock dashboard data
-  const dashboardData = {
-    totalContracts: 1547,
-    activeContracts: 892,
-    pendingContracts: 123,
-    expiredContracts: 532,
-    recentActivity: [
-      { contractId: 'CNT-001', action: 'approved', timestamp: '2024-01-20T10:00:00Z' },
-      { contractId: 'CNT-002', action: 'created', timestamp: '2024-01-20T09:30:00Z' }
-    ],
-    complianceMetrics: {
-      gdprCompliance: 98.5,
-      dataProtectionCompliance: 99.2,
-      auditCompleteness: 100
-    },
-    smartContractPerformance: {
-      averageExecutionTime: '0.5ms',
-      successRate: 99.8,
-      failureRate: 0.2
+// Get consent requests
+router.get('/requests', 
+  authorize(['admin', 'consent_admin', 'compliance_officer']), 
+  asyncHandler(async (req, res) => {
+    try {
+      // Get consent requests from database
+      const result = await databaseManager.query(`
+        SELECT 
+          cr.*,
+          p.first_name as patient_first_name,
+          p.last_name as patient_last_name,
+          p.hn as patient_hn
+        FROM consent_requests cr
+        LEFT JOIN patients p ON cr.patient_id = p.id
+        ORDER BY cr.created_at DESC
+        LIMIT 100
+      `);
+      
+      res.json({
+        success: true,
+        data: result.rows,
+        meta: { total: result.rows.length }
+      });
+    } catch (error) {
+      console.error('Get consent requests error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get consent requests'
+      });
     }
-  };
-  
-  res.json({
-    success: true,
-    message: 'Consent engine dashboard data retrieved',
-    data: dashboardData
-  });
-});
+  })
+);
+
+// Smart contract dashboard - use real data from controller
+router.get('/dashboard', authorize(['admin']), asyncHandler(getConsentDashboardOverview));
 
 // Consent dashboard overview
 router.get('/dashboard/overview', 

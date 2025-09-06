@@ -132,20 +132,74 @@ export default function ConsentRequests() {
     }
   };
 
-  const handleApprove = (requestId: string) => {
-    console.log("Approving request:", requestId);
-    // TODO: Implement approval logic
-    alert("อนุมัติคำขอเรียบร้อยแล้ว");
-    setShowDetailsModal(false);
+  const handleApprove = async (requestId: string) => {
+    try {
+      if (!user?.id) {
+        setError("ไม่พบข้อมูลผู้ใช้");
+        return;
+      }
+
+      const response = await apiClient.respondToConsentRequest(user.id, requestId, {
+        status: 'approved',
+        responseDate: new Date().toISOString(),
+        notes: 'ผู้ป่วยยินยอมให้เข้าถึงข้อมูล'
+      });
+
+      if (response.success) {
+        // Update local state
+        setConsentRequests(prev => 
+          prev.map(req => 
+            req.id === requestId 
+              ? { ...req, status: 'approved', responseDate: new Date().toISOString() }
+              : req
+          )
+        );
+        setShowDetailsModal(false);
+        setError(null);
+        alert("อนุมัติคำขอเรียบร้อยแล้ว");
+      } else {
+        setError(response.error?.message || "ไม่สามารถอนุมัติคำขอได้");
+      }
+    } catch (err) {
+      console.error('Error approving consent request:', err);
+      setError("เกิดข้อผิดพลาดในการอนุมัติคำขอ");
+    }
   };
 
-  const handleReject = (requestId: string) => {
+  const handleReject = async (requestId: string) => {
     const reason = prompt("กรุณาระบุเหตุผลในการปฏิเสธ:");
-    if (reason) {
-      console.log("Rejecting request:", requestId, "Reason:", reason);
-      // TODO: Implement rejection logic
-      alert("ปฏิเสธคำขอเรียบร้อยแล้ว");
-      setShowDetailsModal(false);
+    if (!reason) return;
+
+    try {
+      if (!user?.id) {
+        setError("ไม่พบข้อมูลผู้ใช้");
+        return;
+      }
+
+      const response = await apiClient.respondToConsentRequest(user.id, requestId, {
+        status: 'rejected',
+        responseDate: new Date().toISOString(),
+        notes: reason
+      });
+
+      if (response.success) {
+        // Update local state
+        setConsentRequests(prev => 
+          prev.map(req => 
+            req.id === requestId 
+              ? { ...req, status: 'rejected', responseDate: new Date().toISOString(), rejectionReason: reason }
+              : req
+          )
+        );
+        setShowDetailsModal(false);
+        setError(null);
+        alert("ปฏิเสธคำขอเรียบร้อยแล้ว");
+      } else {
+        setError(response.error?.message || "ไม่สามารถปฏิเสธคำขอได้");
+      }
+    } catch (err) {
+      console.error('Error rejecting consent request:', err);
+      setError("เกิดข้อผิดพลาดในการปฏิเสธคำขอ");
     }
   };
 

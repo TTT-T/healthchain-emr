@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,7 +19,8 @@ import {
   User,
   Building2,
   Filter,
-  Search
+  Search,
+  Loader2
 } from 'lucide-react'
 
 interface DataRequest {
@@ -74,56 +77,53 @@ const urgencyConfig = {
 }
 
 export default function MyRequestsPage() {
-  const [requests, setRequests] = useState<DataRequest[]>([
-    {
-      id: 'req-001',
-      requestId: 'REQ-2025-001234',
-      patientName: 'สมชาย ใจดี',
-      patientId: 'HN-2025-001234',
-      requestType: 'medical_records',
-      dataTypes: ['diagnosis', 'lab_results', 'medications'],
-      status: 'approved',
-      submittedAt: '2025-01-15T10:30:00Z',
-      updatedAt: '2025-01-16T14:20:00Z',
-      purpose: 'การรักษาต่อเนื่องและการส่งต่อผู้ป่วย',
-      urgencyLevel: 'high',
-      validUntil: '2025-02-15T23:59:59Z',
-      approvalDate: '2025-01-16T14:20:00Z',
-      downloadCount: 2,
-      lastDownload: '2025-01-17T09:15:00Z'
-    },
-    {
-      id: 'req-002',
-      requestId: 'REQ-2025-001235',
-      patientName: 'สมหญิง รักสุขภาพ',
-      patientId: 'HN-2025-001235',
-      requestType: 'insurance_claim',
-      dataTypes: ['diagnosis', 'treatment_history'],
-      status: 'pending',
-      submittedAt: '2025-01-17T15:45:00Z',
-      updatedAt: '2025-01-17T15:45:00Z',
-      purpose: 'การเคลมประกันสุขภาพ',
-      urgencyLevel: 'medium',
-      validUntil: '2025-02-17T23:59:59Z'
-    },
-    {
-      id: 'req-003',
-      requestId: 'REQ-2025-001236',
-      patientName: 'สมปอง แข็งแรง',
-      patientId: 'HN-2025-001236',
-      requestType: 'research',
-      dataTypes: ['demographics', 'diagnosis', 'lab_results'],
-      status: 'rejected',
-      submittedAt: '2025-01-10T11:00:00Z',
-      updatedAt: '2025-01-12T16:30:00Z',
-      purpose: 'การวิจัยเพื่อพัฒนาการรักษา',
-      urgencyLevel: 'low',
-      validUntil: '2025-03-10T23:59:59Z'
-    }
-  ])
+  const [requests, setRequests] = useState<DataRequest[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
+  const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null)
+  const [detailsError, setDetailsError] = useState<string | null>(null)
 
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Load requests data
+  useEffect(() => {
+    const loadRequestsData = async () => {
+      try {
+        setLoading(true)
+        const response = await apiClient.getAllDataRequests()
+        
+        if (response.success && response.data) {
+          const requestsData = response.data.requests || response.data
+          setRequests(requestsData.map((req: any) => ({
+            id: req.id,
+            requestId: req.id,
+            patientName: req.patientName || 'ไม่ระบุ',
+            patientId: req.patientId || 'ไม่ระบุ',
+            requestType: req.requestType,
+            dataTypes: req.requestedDataTypes || [],
+            status: req.status,
+            submittedAt: req.createdAt,
+            updatedAt: req.updatedAt,
+            purpose: req.purpose,
+            urgencyLevel: req.urgencyLevel || 'medium',
+            validUntil: req.validUntil || req.expiresAt,
+            approvalDate: req.approvedAt,
+            downloadCount: req.downloadCount || 0,
+            lastDownload: req.lastDownload
+          })))
+        }
+      } catch (error) {
+        console.error('Error loading requests data:', error)
+        setError('เกิดข้อผิดพลาดในการโหลดข้อมูลคำขอ')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadRequestsData()
+  }, [])
 
   const filteredRequests = requests.filter(request => {
     const matchesStatus = filterStatus === 'all' || request.status === filterStatus
@@ -144,16 +144,93 @@ export default function MyRequestsPage() {
     })
   }
 
-  const handleDownload = (requestId: string) => {
-    // Mock download functionality
-    console.log('Downloading data for request:', requestId)
-    alert(`เริ่มดาวน์โหลดข้อมูลสำหรับคำขอ ${requestId}`)
+  const handleDownload = async (requestId: string) => {
+    try {
+      setDownloadError(null)
+      setDownloadSuccess(null)
+      
+      // Get data request details first
+      const response = await apiClient.getDataRequestById(requestId)
+      
+      if (response.success && response.data) {
+        const requestData = response.data
+        
+        // Check if request is approved
+        if (requestData.status !== 'approved') {
+          setDownloadError('คำขอนี้ยังไม่ได้รับการอนุมัติ ไม่สามารถดาวน์โหลดข้อมูลได้')
+          return
+        }
+        
+        // Generate report for download
+        const reportResponse = await apiClient.generateDataRequestReport(requestId)
+        
+        if (reportResponse.success && reportResponse.data) {
+          // Create download link
+          const blob = new Blob([JSON.stringify(reportResponse.data, null, 2)], { 
+            type: 'application/json' 
+          })
+          const url = window.URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `data-request-${requestId}.json`
+          document.body.appendChild(a)
+          a.click()
+          window.URL.revokeObjectURL(url)
+          document.body.removeChild(a)
+          
+          setDownloadSuccess('ดาวน์โหลดข้อมูลสำเร็จ')
+          setTimeout(() => setDownloadSuccess(null), 3000)
+        } else {
+          setDownloadError('ไม่สามารถสร้างรายงานได้: ' + (reportResponse.error?.message || 'ไม่ทราบสาเหตุ'))
+        }
+      } else {
+        setDownloadError('ไม่พบข้อมูลคำขอ: ' + (response.error?.message || 'ไม่ทราบสาเหตุ'))
+      }
+    } catch (error) {
+      console.error('Error downloading data:', error)
+      setDownloadError('เกิดข้อผิดพลาดในการดาวน์โหลดข้อมูล')
+    }
   }
 
-  const handleViewDetails = (requestId: string) => {
-    // Mock view details functionality
-    console.log('Viewing details for request:', requestId)
-    alert(`แสดงรายละเอียดคำขอ ${requestId}`)
+  const handleViewDetails = async (requestId: string) => {
+    try {
+      setDetailsError(null)
+      
+      const response = await apiClient.getDataRequestById(requestId)
+      
+      if (response.success && response.data) {
+        const requestData = response.data
+        
+        // Show detailed information in a modal or redirect to details page
+        const details = `
+รายละเอียดคำขอ: ${requestId}
+สถานะ: ${requestData.status}
+ประเภทคำขอ: ${requestData.requestType}
+วัตถุประสงค์: ${requestData.purpose}
+วันที่ส่ง: ${new Date(requestData.createdAt).toLocaleDateString('th-TH')}
+วันที่อัปเดต: ${new Date(requestData.updatedAt).toLocaleDateString('th-TH')}
+        `
+        
+        // For now, we'll use alert but in a real app, this should be a modal
+        alert(details)
+      } else {
+        setDetailsError('ไม่พบข้อมูลคำขอ: ' + (response.error?.message || 'ไม่ทราบสาเหตุ'))
+      }
+    } catch (error) {
+      console.error('Error viewing details:', error)
+      setDetailsError('เกิดข้อผิดพลาดในการดูรายละเอียด')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">กำลังโหลดข้อมูลคำขอ...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -171,6 +248,35 @@ export default function MyRequestsPage() {
               จัดการและติดตามคำขอเข้าถึงข้อมูลทางการแพทย์ทั้งหมดของคุณ
             </p>
           </div>
+
+          {/* Error Messages */}
+          {error && (
+            <Alert className="mb-6 border-red-200 bg-red-50">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800">{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {downloadError && (
+            <Alert className="mb-6 border-red-200 bg-red-50">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800">{downloadError}</AlertDescription>
+            </Alert>
+          )}
+
+          {downloadSuccess && (
+            <Alert className="mb-6 border-green-200 bg-green-50">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">{downloadSuccess}</AlertDescription>
+            </Alert>
+          )}
+
+          {detailsError && (
+            <Alert className="mb-6 border-red-200 bg-red-50">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800">{detailsError}</AlertDescription>
+            </Alert>
+          )}
 
           {/* Stats Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">

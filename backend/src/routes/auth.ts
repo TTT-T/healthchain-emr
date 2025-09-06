@@ -11,7 +11,11 @@ import {
   forgotPassword,
   resetPassword
 } from '../controllers/authController';
-import { changePassword } from '../controllers/changePasswordController';
+import { 
+  changePassword, 
+  validatePasswordStrength, 
+  getPasswordRequirements 
+} from '../controllers/changePasswordController';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
@@ -315,5 +319,9 @@ router.post('/logout', logout);
 router.get('/profile', getProfile);
 router.put('/profile', updateProfile);
 router.put('/change-password', changePassword);
+
+// Password validation routes (public)
+router.post('/validate-password', validatePasswordStrength);
+router.get('/password-requirements', getPasswordRequirements);
 
 export default router;

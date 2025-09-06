@@ -267,11 +267,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return;
       }
       
-      // For now, just keep existing user data
-      // TODO: Implement getCurrentUser API endpoint
+      // Get fresh user data from API
+      const response = await apiClient.getProfile();
+      if (response.success && response.data) {
+        setUser(response.data);
+        setError(null);
+      } else {
+        setUser(null);
+        setError('Failed to load user profile');
+      }
       
     } catch (error) {
+      console.error('Refresh user error:', error);
       setUser(null);
+      setError('Failed to refresh user data');
     }
   };
 

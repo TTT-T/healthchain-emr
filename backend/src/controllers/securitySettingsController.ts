@@ -1,25 +1,10 @@
 import { Request, Response } from 'express';
-import { z } from 'zod';
-import DatabaseConnection from '../database/index';
-import { 
-  successResponse,
-  errorResponse
-} from '../utils/index';
+import { databaseManager } from '../database/connection';
 
-const db = DatabaseConnection.getInstance();
-
-// Validation schema สำหรับการตั้งค่าความปลอดภัย
-const securitySettingsSchema = z.object({
-  twoFactorEnabled: z.boolean().optional(),
-  emailNotifications: z.boolean().optional(),
-  smsNotifications: z.boolean().optional(),
-  loginAlerts: z.boolean().optional(),
-  sessionTimeout: z.number().min(5).max(480).optional(), // 5 minutes to 8 hours
-  requirePasswordChange: z.boolean().optional(),
-  passwordChangeInterval: z.number().min(30).max(365).optional(), // 30 days to 1 year
-  deviceTrust: z.boolean().optional(),
-  locationTracking: z.boolean().optional()
-});
+/**
+ * Security Settings Controller
+ * จัดการการตั้งค่าความปลอดภัย
+ */
 
 /**
  * Get user security settings
@@ -27,336 +12,327 @@ const securitySettingsSchema = z.object({
  */
 export const getSecuritySettings = async (req: Request, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json(
-        errorResponse('Authentication required', 401)
-      );
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        data: null,
+        meta: null,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'User not authenticated'
+        },
+        statusCode: 401
+      });
     }
 
-    // Get user security settings from database
-    const result = await db.query(
-      `SELECT 
-        two_factor_enabled,
-        email_notifications,
-        sms_notifications,
-        login_alerts,
-        session_timeout,
-        require_password_change,
-        password_change_interval,
-        device_trust,
-        location_tracking,
-        created_at,
-        updated_at
-      FROM user_security_settings 
-      WHERE user_id = $1`,
-      [req.user.id]
-    );
+    // Get user security settings
+    const settingsQuery = `
+      SELECT 
+        u.id, u.email, u.two_factor_enabled, u.two_factor_secret,
+        u.email_notifications, u.sms_notifications, u.login_notifications,
+        u.security_alerts, u.data_sharing, u.privacy_level,
+        u.last_password_change, u.password_expires_at,
+        u.account_locked, u.failed_login_attempts, u.locked_until,
+        u.created_at, u.updated_at
+      FROM users u
+      WHERE u.id = $1
+    `;
+
+    const result = await databaseManager.query(settingsQuery, [userId]);
 
     if (result.rows.length === 0) {
-      // Return default settings if no settings exist
-      const defaultSettings = {
-        twoFactorEnabled: false,
-        emailNotifications: true,
-        smsNotifications: false,
-        loginAlerts: true,
-        sessionTimeout: 60, // 1 hour
-        requirePasswordChange: false,
-        passwordChangeInterval: 90, // 90 days
-        deviceTrust: false,
-        locationTracking: false
-      };
-
-      return res.status(200).json(
-        successResponse(defaultSettings, 'Security settings retrieved')
-      );
+      return res.status(404).json({
+        data: null,
+        meta: null,
+        error: {
+          code: 'USER_NOT_FOUND',
+          message: 'User not found'
+        },
+        statusCode: 404
+      });
     }
 
-    const settings = result.rows[0];
-    const formattedSettings = {
-      twoFactorEnabled: settings.two_factor_enabled,
-      emailNotifications: settings.email_notifications,
-      smsNotifications: settings.sms_notifications,
-      loginAlerts: settings.login_alerts,
-      sessionTimeout: settings.session_timeout,
-      requirePasswordChange: settings.require_password_change,
-      passwordChangeInterval: settings.password_change_interval,
-      deviceTrust: settings.device_trust,
-      locationTracking: settings.location_tracking,
-      createdAt: settings.created_at,
-      updatedAt: settings.updated_at
+    const user = result.rows[0];
+
+    // Get recent login history
+    const loginHistoryQuery = `
+      SELECT 
+        id, ip_address, user_agent, login_time, logout_time, success, location
+      FROM login_history
+      WHERE user_id = $1
+      ORDER BY login_time DESC
+      LIMIT 10
+    `;
+
+    const loginHistory = await databaseManager.query(loginHistoryQuery, [userId]);
+
+    // Get active sessions
+    const activeSessionsQuery = `
+      SELECT 
+        id, session_token, ip_address, user_agent, created_at, last_activity, expires_at
+      FROM user_sessions
+      WHERE user_id = $1 AND is_active = true AND expires_at > NOW()
+      ORDER BY last_activity DESC
+    `;
+
+    const activeSessions = await databaseManager.query(activeSessionsQuery, [userId]);
+
+    const responseData = {
+      user: {
+        id: user.id,
+        email: user.email,
+        twoFactorEnabled: user.two_factor_enabled,
+        emailNotifications: user.email_notifications,
+        smsNotifications: user.sms_notifications,
+        loginNotifications: user.login_notifications,
+        securityAlerts: user.security_alerts,
+        dataSharing: user.data_sharing,
+        privacyLevel: user.privacy_level,
+        lastPasswordChange: user.last_password_change,
+        passwordExpiresAt: user.password_expires_at,
+        accountLocked: user.account_locked,
+        failedLoginAttempts: user.failed_login_attempts,
+        lockedUntil: user.locked_until,
+        createdAt: user.created_at,
+        updatedAt: user.updated_at
+      },
+      loginHistory: loginHistory.rows.map(session => ({
+        id: session.id,
+        ipAddress: session.ip_address,
+        userAgent: session.user_agent,
+        loginTime: session.login_time,
+        logoutTime: session.logout_time,
+        success: session.success,
+        location: session.location
+      })),
+      activeSessions: activeSessions.rows.map(session => ({
+        id: session.id,
+        ipAddress: session.ip_address,
+        userAgent: session.user_agent,
+        createdAt: session.created_at,
+        lastActivity: session.last_activity,
+        expiresAt: session.expires_at
+      }))
     };
 
-    return res.status(200).json(
-      successResponse(formattedSettings, 'Security settings retrieved')
-    );
+    res.status(200).json({
+      data: responseData,
+      meta: {
+        message: 'Security settings retrieved successfully',
+        totalActiveSessions: activeSessions.rows.length,
+        totalLoginHistory: loginHistory.rows.length
+      },
+      error: null,
+      statusCode: 200
+    });
 
   } catch (error) {
     console.error('Get security settings error:', error);
-    return res.status(500).json(
-      errorResponse('Internal server error', 500)
-    );
+    res.status(500).json({
+      data: null,
+      meta: null,
+      error: {
+        code: 'GET_SETTINGS_ERROR',
+        message: 'Failed to get security settings'
+      },
+      statusCode: 500
+    });
   }
 };
 
 /**
- * Update user security settings
+ * Update security settings
  * PUT /api/security/settings
  */
 export const updateSecuritySettings = async (req: Request, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json(
-        errorResponse('Authentication required', 401)
-      );
+    const userId = req.user?.id;
+    const {
+      emailNotifications,
+      smsNotifications,
+      loginNotifications,
+      securityAlerts,
+      dataSharing,
+      privacyLevel
+    } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        data: null,
+        meta: null,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'User not authenticated'
+        },
+        statusCode: 401
+      });
     }
 
-    const validatedData = securitySettingsSchema.parse(req.body);
-
-    // Check if settings exist
-    const existingResult = await db.query(
-      'SELECT id FROM user_security_settings WHERE user_id = $1',
-      [req.user.id]
-    );
-
-    if (existingResult.rows.length === 0) {
-      // Create new settings
-      await db.query(
-        `INSERT INTO user_security_settings (
-          user_id, two_factor_enabled, email_notifications, sms_notifications,
-          login_alerts, session_timeout, require_password_change,
-          password_change_interval, device_trust, location_tracking
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [
-          req.user.id,
-          validatedData.twoFactorEnabled || false,
-          validatedData.emailNotifications !== undefined ? validatedData.emailNotifications : true,
-          validatedData.smsNotifications || false,
-          validatedData.loginAlerts !== undefined ? validatedData.loginAlerts : true,
-          validatedData.sessionTimeout || 60,
-          validatedData.requirePasswordChange || false,
-          validatedData.passwordChangeInterval || 90,
-          validatedData.deviceTrust || false,
-          validatedData.locationTracking || false
-        ]
-      );
-    } else {
-      // Update existing settings
-      const updateFields = [];
-      const updateValues = [];
-      let paramIndex = 1;
-
-      if (validatedData.twoFactorEnabled !== undefined) {
-        updateFields.push(`two_factor_enabled = $${paramIndex}`);
-        updateValues.push(validatedData.twoFactorEnabled);
-        paramIndex++;
-      }
-
-      if (validatedData.emailNotifications !== undefined) {
-        updateFields.push(`email_notifications = $${paramIndex}`);
-        updateValues.push(validatedData.emailNotifications);
-        paramIndex++;
-      }
-
-      if (validatedData.smsNotifications !== undefined) {
-        updateFields.push(`sms_notifications = $${paramIndex}`);
-        updateValues.push(validatedData.smsNotifications);
-        paramIndex++;
-      }
-
-      if (validatedData.loginAlerts !== undefined) {
-        updateFields.push(`login_alerts = $${paramIndex}`);
-        updateValues.push(validatedData.loginAlerts);
-        paramIndex++;
-      }
-
-      if (validatedData.sessionTimeout !== undefined) {
-        updateFields.push(`session_timeout = $${paramIndex}`);
-        updateValues.push(validatedData.sessionTimeout);
-        paramIndex++;
-      }
-
-      if (validatedData.requirePasswordChange !== undefined) {
-        updateFields.push(`require_password_change = $${paramIndex}`);
-        updateValues.push(validatedData.requirePasswordChange);
-        paramIndex++;
-      }
-
-      if (validatedData.passwordChangeInterval !== undefined) {
-        updateFields.push(`password_change_interval = $${paramIndex}`);
-        updateValues.push(validatedData.passwordChangeInterval);
-        paramIndex++;
-      }
-
-      if (validatedData.deviceTrust !== undefined) {
-        updateFields.push(`device_trust = $${paramIndex}`);
-        updateValues.push(validatedData.deviceTrust);
-        paramIndex++;
-      }
-
-      if (validatedData.locationTracking !== undefined) {
-        updateFields.push(`location_tracking = $${paramIndex}`);
-        updateValues.push(validatedData.locationTracking);
-        paramIndex++;
-      }
-
-      if (updateFields.length > 0) {
-        updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
-        updateValues.push(req.user.id);
-        
-        await db.query(
-          `UPDATE user_security_settings 
-           SET ${updateFields.join(', ')} 
-           WHERE user_id = $${paramIndex}`,
-          updateValues
-        );
-      }
+    // Validate privacy level
+    const validPrivacyLevels = ['public', 'friends', 'private'];
+    if (privacyLevel && !validPrivacyLevels.includes(privacyLevel)) {
+      return res.status(400).json({
+        data: null,
+        meta: null,
+        error: {
+          code: 'INVALID_PRIVACY_LEVEL',
+          message: 'Invalid privacy level'
+        },
+        statusCode: 400
+      });
     }
 
-    // Log audit
-    await db.createAuditLog({
-      userId: req.user.id,
-      action: 'SECURITY_SETTINGS_UPDATE',
-      resource: 'USER_SECURITY',
-      resourceId: req.user.id,
-      details: { 
-        updatedFields: Object.keys(validatedData),
+    // Update security settings
+    const updateQuery = `
+      UPDATE users SET
+        email_notifications = COALESCE($1, email_notifications),
+        sms_notifications = COALESCE($2, sms_notifications),
+        login_notifications = COALESCE($3, login_notifications),
+        security_alerts = COALESCE($4, security_alerts),
+        data_sharing = COALESCE($5, data_sharing),
+        privacy_level = COALESCE($6, privacy_level),
+        updated_at = NOW()
+      WHERE id = $7
+      RETURNING *
+    `;
+
+    const result = await databaseManager.query(updateQuery, [
+      emailNotifications,
+      smsNotifications,
+      loginNotifications,
+      securityAlerts,
+      dataSharing,
+      privacyLevel,
+      userId
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        data: null,
+        meta: null,
+        error: {
+          code: 'USER_NOT_FOUND',
+          message: 'User not found'
+        },
+        statusCode: 404
+      });
+    }
+
+    // Log the update action
+    const logQuery = `
+      INSERT INTO audit_logs (
+        user_id, action, resource, resource_id, details, ip_address, user_agent, success
+      ) VALUES ($1, 'update', 'security_settings', $2, $3, $4, $5, true)
+    `;
+
+    await databaseManager.query(logQuery, [
+      userId,
+      userId,
+      JSON.stringify({
+        updatedFields: Object.keys(req.body),
+        timestamp: new Date().toISOString()
+      }),
+      req.ip || 'unknown',
+      req.get('User-Agent') || 'unknown'
+    ]);
+
+    res.status(200).json({
+      data: {
+        user: result.rows[0],
+        message: 'Security settings updated successfully'
+      },
+      meta: {
         updatedAt: new Date().toISOString()
       },
-      ipAddress: req.ip || 'unknown',
-      userAgent: req.get('User-Agent') || 'unknown'
+      error: null,
+      statusCode: 200
     });
-
-    return res.status(200).json(
-      successResponse(
-        null,
-        'Security settings updated successfully'
-      )
-    );
 
   } catch (error) {
     console.error('Update security settings error:', error);
-    
-    if (error instanceof z.ZodError) {
-      return res.status(400).json(
-        errorResponse('Invalid input data', 400, error.errors)
-      );
-    }
-
-    return res.status(500).json(
-      errorResponse('Internal server error', 500)
-    );
-  }
-};
-
-/**
- * Get user login sessions
- * GET /api/security/sessions
- */
-export const getUserSessions = async (req: Request, res: Response) => {
-  try {
-    if (!req.user?.id) {
-      return res.status(401).json(
-        errorResponse('Authentication required', 401)
-      );
-    }
-
-    // Get user sessions from database
-    const result = await db.query(
-      `SELECT 
-        id,
-        device_info,
-        ip_address,
-        user_agent,
-        location,
-        is_active,
-        last_activity,
-        created_at
-      FROM user_sessions 
-      WHERE user_id = $1 
-      ORDER BY last_activity DESC`,
-      [req.user.id]
-    );
-
-    const sessions = result.rows.map(session => ({
-      id: session.id,
-      deviceInfo: session.device_info,
-      ipAddress: session.ip_address,
-      userAgent: session.user_agent,
-      location: session.location,
-      isActive: session.is_active,
-      lastActivity: session.last_activity,
-      createdAt: session.created_at
-    }));
-
-    return res.status(200).json(
-      successResponse(sessions, 'User sessions retrieved')
-    );
-
-  } catch (error) {
-    console.error('Get user sessions error:', error);
-    return res.status(500).json(
-      errorResponse('Internal server error', 500)
-    );
-  }
-};
-
-/**
- * Terminate user session
- * DELETE /api/security/sessions/:sessionId
- */
-export const terminateSession = async (req: Request, res: Response) => {
-  try {
-    if (!req.user?.id) {
-      return res.status(401).json(
-        errorResponse('Authentication required', 401)
-      );
-    }
-
-    const { sessionId } = req.params;
-
-    // Verify session belongs to user
-    const sessionResult = await db.query(
-      'SELECT id FROM user_sessions WHERE id = $1 AND user_id = $2',
-      [sessionId, req.user.id]
-    );
-
-    if (sessionResult.rows.length === 0) {
-      return res.status(404).json(
-        errorResponse('Session not found', 404)
-      );
-    }
-
-    // Terminate session
-    await db.query(
-      'UPDATE user_sessions SET is_active = false, terminated_at = CURRENT_TIMESTAMP WHERE id = $1',
-      [sessionId]
-    );
-
-    // Log audit
-    await db.createAuditLog({
-      userId: req.user.id,
-      action: 'SESSION_TERMINATE',
-      resource: 'USER_SESSION',
-      resourceId: sessionId,
-      details: { 
-        terminatedAt: new Date().toISOString(),
-        ipAddress: req.ip || 'unknown'
+    res.status(500).json({
+      data: null,
+      meta: null,
+      error: {
+        code: 'UPDATE_SETTINGS_ERROR',
+        message: 'Failed to update security settings'
       },
-      ipAddress: req.ip || 'unknown',
-      userAgent: req.get('User-Agent') || 'unknown'
+      statusCode: 500
+    });
+  }
+};
+
+/**
+ * Terminate all sessions
+ * POST /api/security/sessions/terminate-all
+ */
+export const terminateAllSessions = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        data: null,
+        meta: null,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'User not authenticated'
+        },
+        statusCode: 401
+      });
+    }
+
+    // Terminate all active sessions except current one
+    const terminateQuery = `
+      UPDATE user_sessions 
+      SET is_active = false, updated_at = NOW()
+      WHERE user_id = $1 AND is_active = true
+      RETURNING id
+    `;
+
+    const result = await databaseManager.query(terminateQuery, [userId]);
+
+    // Log the action
+    const logQuery = `
+      INSERT INTO audit_logs (
+        user_id, action, resource, resource_id, details, ip_address, user_agent, success
+      ) VALUES ($1, 'terminate_sessions', 'user_sessions', $2, $3, $4, $5, true)
+    `;
+
+    await databaseManager.query(logQuery, [
+      userId,
+      userId,
+      JSON.stringify({
+        terminatedSessions: result.rows.length,
+        timestamp: new Date().toISOString()
+      }),
+      req.ip || 'unknown',
+      req.get('User-Agent') || 'unknown'
+    ]);
+
+    res.status(200).json({
+      data: {
+        message: 'All sessions terminated successfully',
+        terminatedCount: result.rows.length
+      },
+      meta: {
+        terminatedAt: new Date().toISOString()
+      },
+      error: null,
+      statusCode: 200
     });
 
-    return res.status(200).json(
-      successResponse(
-        null,
-        'Session terminated successfully'
-      )
-    );
-
   } catch (error) {
-    console.error('Terminate session error:', error);
-    return res.status(500).json(
-      errorResponse('Internal server error', 500)
-    );
+    console.error('Terminate sessions error:', error);
+    res.status(500).json({
+      data: null,
+      meta: null,
+      error: {
+        code: 'TERMINATE_SESSIONS_ERROR',
+        message: 'Failed to terminate sessions'
+      },
+      statusCode: 500
+    });
   }
 };

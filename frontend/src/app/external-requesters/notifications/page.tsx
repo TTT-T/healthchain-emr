@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -14,7 +16,8 @@ import {
   Mail,
   Settings,
   Eye,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react'
 
 interface Notification {
@@ -52,53 +55,77 @@ const typeConfig = {
 }
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: 'notif-001',
-      title: 'คำขอได้รับการอนุมัติ',
-      message: 'คำขอ REQ-2025-001234 สำหรับผู้ป่วย สมชาย ใจดี ได้รับการอนุมัติแล้ว คุณสามารถดาวน์โหลดข้อมูลได้ทันที',
-      type: 'success',
-      timestamp: '2025-01-16T14:20:00Z',
-      isRead: false,
-      relatedRequestId: 'REQ-2025-001234'
-    },
-    {
-      id: 'notif-002',
-      title: 'ต้องการข้อมูลเพิ่มเติม',
-      message: 'คำขอ REQ-2025-001235 ต้องการเอกสารประกอบเพิ่มเติม โปรดอัปเดตข้อมูลภายใน 7 วัน',
-      type: 'warning',
-      timestamp: '2025-01-15T10:30:00Z',
-      isRead: false,
-      actionRequired: true,
-      relatedRequestId: 'REQ-2025-001235'
-    },
-    {
-      id: 'notif-003',
-      title: 'ระบบปรับปรุง',
-      message: 'ระบบจะมีการปรับปรุงในวันที่ 20 มกราคม 2025 เวลา 02:00-06:00 น. อาจมีการหยุดให้บริการชั่วคราว',
-      type: 'info',
-      timestamp: '2025-01-14T16:45:00Z',
-      isRead: true
-    },
-    {
-      id: 'notif-004',
-      title: 'คำขอหมดอายุ',
-      message: 'คำขอ REQ-2025-001230 จะหมดอายุในอีก 3 วัน กรุณาดาวน์โหลดข้อมูลก่อนวันที่หมดอายุ',
-      type: 'warning',
-      timestamp: '2025-01-13T09:15:00Z',
-      isRead: true,
-      relatedRequestId: 'REQ-2025-001230'
-    },
-    {
-      id: 'notif-005',
-      title: 'อัปเดตนโยบายความเป็นส่วนตัว',
-      message: 'นโยบายความเป็นส่วนตัวของเราได้มีการอัปเดต โปรดอ่านและยอมรับนโยบายใหม่',
-      type: 'info',
-      timestamp: '2025-01-12T13:20:00Z',
-      isRead: true,
-      actionRequired: true
+  const { user } = useAuth()
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Load notifications data
+  useEffect(() => {
+    const loadNotificationsData = async () => {
+      try {
+        setLoading(true)
+        const response = await apiClient.getExternalRequesterNotifications({
+          page: 1,
+          limit: 50
+        })
+        
+        if (response.success && response.data) {
+          const notificationsData = response.data.notifications || []
+          setNotifications(notificationsData.map((notif: any) => ({
+            id: notif.id,
+            title: notif.title,
+            message: notif.message,
+            type: notif.type || 'info',
+            timestamp: notif.createdAt,
+            isRead: notif.isRead,
+            relatedRequestId: notif.data?.requestId,
+            actionRequired: notif.data?.actionRequired || false
+          })))
+        } else {
+          setError('ไม่สามารถโหลดการแจ้งเตือนได้')
+        }
+      } catch (error) {
+        console.error('Error loading notifications:', error)
+        setError('เกิดข้อผิดพลาดในการโหลดการแจ้งเตือน')
+      } finally {
+        setLoading(false)
+      }
     }
-  ])
+
+    loadNotificationsData()
+  }, [])
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">กรุณาเข้าสู่ระบบก่อน</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">กำลังโหลดการแจ้งเตือน...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600">{error}</p>
+        </div>
+      </div>
+    )
+  }
 
   const [filterType, setFilterType] = useState<string>('all')
   const [showOnlyUnread, setShowOnlyUnread] = useState(false)

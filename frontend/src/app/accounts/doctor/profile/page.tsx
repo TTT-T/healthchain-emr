@@ -32,7 +32,27 @@ export default function DoctorProfilePage() {
     const loadUserData = async () => {
       try {
         setIsLoading(true);
-        if (user) {
+        const response = await apiClient.getDoctorProfile();
+        
+        if (response.success && response.data) {
+          const profile = response.data;
+          setFormData({
+            first_name: profile.user?.firstName || "",
+            last_name: profile.user?.lastName || "",
+            email: profile.user?.email || "",
+            phone: profile.user?.phone || "",
+            hospital: profile.doctor?.department || "",
+            department: profile.doctor?.department || "",
+            specialty: profile.doctor?.specialization || "",
+            medical_license: profile.doctor?.medicalLicenseNumber || "",
+            experience_years: profile.doctor?.yearsOfExperience || "",
+            education: profile.doctor?.education || "",
+            bio: profile.doctor?.bio || "",
+            position: profile.doctor?.position || "",
+            professional_license: profile.doctor?.medicalLicenseNumber || ""
+          });
+        } else if (user) {
+          // Fallback to user data if profile not found
           setFormData({
             first_name: user.firstName || "",
             last_name: user.lastName || "",
@@ -94,9 +114,23 @@ export default function DoctorProfilePage() {
         return;
       }
       
-      const response = await apiClient.updateDoctorProfile(formData);
+      // Prepare data for API
+      const updateData = {
+        firstName: formData.first_name,
+        lastName: formData.last_name,
+        email: formData.email,
+        phone: formData.phone,
+        department: formData.department,
+        specialization: formData.specialty,
+        medicalLicenseNumber: formData.medical_license,
+        yearsOfExperience: parseInt(formData.experience_years) || 0,
+        education: formData.education,
+        position: formData.position
+      };
+
+      const response = await apiClient.updateDoctorProfile(updateData);
       
-      if (response.data && !response.error) {
+      if (response.success && response.data) {
         setSuccess('บันทึกข้อมูลสำเร็จ');
         setTimeout(() => setSuccess(null), 3000);
       } else {

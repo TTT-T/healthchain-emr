@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -106,37 +108,37 @@ export default function NewRequestPage() {
   const [selectedPatient, setSelectedPatient] = useState<PatientSearchResult | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
-  // Mock patient search
-  const handlePatientSearch = () => {
+  // Real patient search
+  const handlePatientSearch = async () => {
     if (!searchQuery.trim()) return
     
     setIsSearching(true)
-    // Simulate API call
-    setTimeout(() => {
-      const mockResults: PatientSearchResult[] = [
-        {
-          id: '1',
-          patientId: 'HN-2025-001234',
-          name: 'สมชาย ใจดี',
-          age: 45,
-          gender: 'ชาย',
-          lastVisit: '2024-12-15',
-          hospital: 'โรงพยาบาลกรุงเทพ'
-        },
-        {
-          id: '2',
-          patientId: 'HN-2025-001235',
-          name: 'สมหญิง รักสุขภาพ',
-          age: 38,
-          gender: 'หญิง',
-          lastVisit: '2024-12-10',
-          hospital: 'โรงพยาบาลกรุงเทพ'
-        }
-      ]
-      setSearchResults(mockResults)
+    
+    try {
+      const response = await apiClient.searchPatientsForRequest({
+        query: searchQuery,
+        limit: 10
+      })
+      
+      if (response.success && response.data) {
+        setSearchResults(response.data.map((patient: any) => ({
+          id: patient.id,
+          patientId: patient.patientId || patient.id,
+          name: `${patient.firstName || patient.first_name} ${patient.lastName || patient.last_name}`,
+          age: patient.age || 0,
+          gender: patient.gender || 'ไม่ระบุ',
+          lastVisit: patient.lastVisit || patient.last_visit,
+          hospital: patient.hospital || 'ไม่ระบุ'
+        })))
+      }
+    } catch (error) {
+      console.error('Error searching patients:', error)
+      setSearchResults([])
+    } finally {
       setIsSearching(false)
-    }, 1000)
+    }
   }
 
   const handlePatientSelect = (patient: PatientSearchResult) => {
@@ -177,14 +179,74 @@ export default function NewRequestPage() {
   }
 
   const handleSubmit = async () => {
+    if (!selectedPatient) {
+      setSubmitError('กรุณาเลือกผู้ป่วยก่อน')
+      return
+    }
+
+    if (!formData.purpose.trim()) {
+      setSubmitError('กรุณาระบุวัตถุประสงค์')
+      return
+    }
+
     setIsSubmitting(true)
+    setSubmitError(null)
     
-    // Simulate API call
-    setTimeout(() => {
-      console.log('Submitting request:', formData)
-      setSubmitSuccess(true)
+    try {
+      const requestData = {
+        requester_name: formData.requesterName,
+        requester_organization: formData.organizationName,
+        requester_email: formData.requesterEmail,
+        requester_phone: formData.requesterPhone,
+        request_type: formData.requestType,
+        requested_data_types: formData.dataTypes,
+        purpose: formData.purpose,
+        data_usage_period: formData.validUntil,
+        consent_required: true,
+        patient_ids: [selectedPatient.patientId],
+        date_range_start: null,
+        date_range_end: null,
+        additional_requirements: formData.legalBasis
+      }
+
+      const response = await apiClient.createDataRequest(requestData)
+      
+      if (response.success) {
+        setSubmitSuccess(true)
+        
+        // Reset form
+        setTimeout(() => {
+          setFormData({
+            patientId: '',
+            patientName: '',
+            requestType: 'medical_records',
+            dataTypes: [],
+            purpose: '',
+            urgencyLevel: 'medium',
+            validUntil: '',
+            legalBasis: '',
+            consentMethod: 'direct',
+            dataProtectionMeasures: [],
+            supportingDocuments: [],
+            requesterName: '',
+            requesterEmail: '',
+            requesterPhone: '',
+            organizationName: ''
+          })
+          setSelectedPatient(null)
+          setSearchQuery('')
+          setSearchResults([])
+          setSubmitSuccess(false)
+        }, 3000)
+      } else {
+        setSubmitError('เกิดข้อผิดพลาดในการส่งคำขอ: ' + (response.error?.message || 'ไม่ทราบสาเหตุ'))
+      }
+    } catch (error) {
+      console.error('Error submitting request:', error)
+      setSubmitError('เกิดข้อผิดพลาดในการส่งคำขอ')
+    } finally {
       setIsSubmitting(false)
-    }, 2000)
+    }
   }
 
   if (submitSuccess) {
@@ -244,6 +306,14 @@ export default function NewRequestPage() {
               กรอกข้อมูลและส่งคำขอเข้าถึงข้อมูลทางการแพทย์ของผู้ป่วย
             </p>
           </div>
+
+          {/* Error Message */}
+          {submitError && (
+            <Alert className="mb-6 border-red-200 bg-red-50">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800">{submitError}</AlertDescription>
+            </Alert>
+          )}
 
           <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-8">
             {/* Patient Search */}

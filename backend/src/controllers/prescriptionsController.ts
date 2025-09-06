@@ -441,3 +441,214 @@ async function generatePrescriptionNumber(): Promise<string> {
   const count = parseInt(result.rows[0].count) + 1;
   return `RX${year}${count.toString().padStart(6, '0')}`;
 }
+
+// Complete prescription dispensing
+export const completePrescription = async (req: Request, res: Response) => {
+  try {
+    const { prescriptionId } = req.params;
+    const { pharmacistName, pharmacistNotes, dispensedDate, dispensedBy } = req.body;
+
+    // Validate required fields
+    if (!pharmacistName || !dispensedDate || !dispensedBy) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: pharmacistName, dispensedDate, dispensedBy'
+      });
+    }
+
+    // Update prescription status to completed
+    const updatePrescriptionQuery = `
+      UPDATE prescriptions 
+      SET status = 'completed', 
+          updated_at = NOW()
+      WHERE prescription_number = $1 OR id = $1
+      RETURNING *
+    `;
+    
+    const prescriptionResult = await databaseManager.query(updatePrescriptionQuery, [prescriptionId]);
+    
+    if (prescriptionResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Prescription not found'
+      });
+    }
+
+    // Update all prescription items to dispensed
+    const updateItemsQuery = `
+      UPDATE prescription_items 
+      SET item_status = 'dispensed',
+          dispensed_by = $1,
+          dispensed_date = $2,
+          pharmacist_notes = $3,
+          updated_at = NOW()
+      WHERE prescription_id = $4
+    `;
+    
+    await databaseManager.query(updateItemsQuery, [
+      dispensedBy,
+      dispensedDate,
+      pharmacistNotes,
+      prescriptionResult.rows[0].id
+    ]);
+
+    // Log the dispensing activity
+    const logQuery = `
+      INSERT INTO prescription_activity_log (
+        prescription_id, 
+        action, 
+        performed_by, 
+        performed_at, 
+        notes
+      ) VALUES ($1, $2, $3, $4, $5)
+    `;
+    
+    await databaseManager.query(logQuery, [
+      prescriptionResult.rows[0].id,
+      'dispensed',
+      dispensedBy,
+      dispensedDate,
+      `Dispensed by ${pharmacistName}. Notes: ${pharmacistNotes || 'None'}`
+    ]);
+
+    res.json({
+      success: true,
+      message: 'Prescription completed successfully',
+      data: {
+        prescriptionId: prescriptionResult.rows[0].prescription_number,
+        status: 'completed',
+        dispensedBy,
+        dispensedDate,
+        pharmacistName,
+        pharmacistNotes
+      }
+    });
+
+  } catch (error) {
+    console.error('Complete prescription error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to complete prescription'
+    });
+  }
+};
+
+// Get prescription by ID
+export const getPrescriptionById = async (req: Request, res: Response) => {
+  try {
+    const { prescriptionId } = req.params;
+
+    const query = `
+      SELECT 
+        p.*,
+        pt.first_name, pt.last_name, pt.hn, pt.date_of_birth, pt.gender,
+        pt.phone, pt.email, pt.address,
+        d.first_name as doctor_first_name, d.last_name as doctor_last_name,
+        d.specialization, d.license_number
+      FROM prescriptions p
+      LEFT JOIN patients pt ON p.patient_id = pt.id
+      LEFT JOIN doctors d ON p.doctor_id = d.id
+      WHERE p.prescription_number = $1 OR p.id = $1
+    `;
+    
+    const result = await databaseManager.query(query, [prescriptionId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Prescription not found'
+      });
+    }
+
+    const prescription = result.rows[0];
+
+    // Get prescription items
+    const itemsQuery = `
+      SELECT * FROM prescription_items 
+      WHERE prescription_id = $1
+      ORDER BY created_at
+    `;
+    
+    const itemsResult = await databaseManager.query(itemsQuery, [prescription.id]);
+    prescription.items = itemsResult.rows;
+
+    res.json({
+      success: true,
+      data: prescription
+    });
+
+  } catch (error) {
+    console.error('Get prescription by ID error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get prescription'
+    });
+  }
+};
+
+// Update prescription status
+export const updatePrescriptionStatus = async (req: Request, res: Response) => {
+  try {
+    const { prescriptionId } = req.params;
+    const { status, notes, updatedBy } = req.body;
+
+    // Validate status
+    const validStatuses = ['pending', 'approved', 'dispensed', 'completed', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid status. Must be one of: ' + validStatuses.join(', ')
+      });
+    }
+
+    const query = `
+      UPDATE prescriptions 
+      SET status = $1, 
+          updated_at = NOW()
+      WHERE prescription_number = $2 OR id = $2
+      RETURNING *
+    `;
+    
+    const result = await databaseManager.query(query, [status, prescriptionId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Prescription not found'
+      });
+    }
+
+    // Log the status change
+    if (updatedBy) {
+      const logQuery = `
+        INSERT INTO prescription_activity_log (
+          prescription_id, 
+          action, 
+          performed_by, 
+          performed_at, 
+          notes
+        ) VALUES ($1, $2, $3, NOW(), $4)
+      `;
+      
+      await databaseManager.query(logQuery, [
+        result.rows[0].id,
+        'status_changed',
+        updatedBy,
+        `Status changed to ${status}. ${notes || ''}`
+      ]);
+    }
+
+    res.json({
+      success: true,
+      message: 'Prescription status updated successfully',
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Update prescription status error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update prescription status'
+    });
+  }
+};

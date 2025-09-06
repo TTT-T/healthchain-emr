@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Database, Server, HardDrive, RefreshCw, Download, Upload, AlertTriangle, CheckCircle, XCircle, Settings, Monitor, Trash2 } from 'lucide-react';
+import { apiClient } from '@/lib/api';
 
 interface DatabaseStats {
   name: string;
@@ -58,11 +59,80 @@ const mockTableInfo: TableInfo[] = [
 ];
 
 export default function DatabasePage() {
-  const [databases, setDatabases] = useState<DatabaseStats[]>(mockDatabaseStats);
-  const [tables, setTables] = useState<TableInfo[]>(mockTableInfo);
-  const [selectedDatabase, setSelectedDatabase] = useState<string>('healthchain_main');
+  const [databases, setDatabases] = useState<DatabaseStats[]>([]);
+  const [tables, setTables] = useState<TableInfo[]>([]);
+  const [selectedDatabase, setSelectedDatabase] = useState<string>('');
   const [isBackupRunning, setIsBackupRunning] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
+  const [databaseStatus, setDatabaseStatus] = useState<any>(null);
+  const [backups, setBackups] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadDatabaseData();
+  }, []);
+
+  const loadDatabaseData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Load database status
+      const statusResponse = await apiClient.getDatabaseStatus();
+      if (statusResponse.success) {
+        setDatabaseStatus(statusResponse.data);
+        
+        // Map database status to DatabaseStats format
+        const mappedDatabases: DatabaseStats[] = [{
+          name: statusResponse.data.database_name || 'healthchain_main',
+          size: statusResponse.data.database_size || 'Unknown',
+          tables: statusResponse.data.table_count || 0,
+          records: statusResponse.data.total_records || 0,
+          status: statusResponse.data.status === 'connected' ? 'healthy' : 'error',
+          lastBackup: statusResponse.data.last_backup || 'Never'
+        }];
+        setDatabases(mappedDatabases);
+        
+        if (mappedDatabases.length > 0) {
+          setSelectedDatabase(mappedDatabases[0].name);
+        }
+      }
+
+      // Load table information
+      const tablesResponse = await apiClient.getDatabaseTables();
+      if (tablesResponse.success) {
+        const mappedTables: TableInfo[] = tablesResponse.data.tables?.map((table: any) => ({
+          name: table.table_name,
+          records: table.row_count || 0,
+          size: table.table_size || 'Unknown',
+          lastUpdated: table.last_updated || 'Unknown',
+          status: 'active'
+        })) || [];
+        setTables(mappedTables);
+      }
+
+      // Load backups
+      const backupsResponse = await apiClient.getDatabaseBackups();
+      if (backupsResponse.success) {
+        setBackups(backupsResponse.data.backups || []);
+      }
+    } catch (error) {
+      console.error('Failed to load database data:', error);
+      setError('ไม่สามารถโหลดข้อมูลฐานข้อมูลได้');
+      
+      // Fallback to mock data if API fails
+      setDatabases(mockDatabaseStats);
+      setTables(mockTableInfo);
+      setSelectedDatabase('healthchain_main');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshData = () => {
+    loadDatabaseData();
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -93,24 +163,64 @@ export default function DatabasePage() {
 
   const handleBackup = async () => {
     setIsBackupRunning(true);
-    // Simulate backup process
-    setTimeout(() => {
+    try {
+      const response = await apiClient.createDatabaseBackup({
+        type: 'full',
+        description: 'Manual backup created from admin panel'
+      });
+      
+      if (response.success) {
+        console.log('Backup created:', response.data);
+        // Refresh all data
+        refreshData();
+      } else {
+        console.error('Backup failed:', response.error);
+        setError('ไม่สามารถสร้าง backup ได้: ' + (response.error?.message || 'ไม่ทราบสาเหตุ'));
+      }
+    } catch (error) {
+      console.error('Backup error:', error);
+      setError('เกิดข้อผิดพลาดในการสร้าง backup');
+    } finally {
       setIsBackupRunning(false);
-      console.log('Backup completed');
-    }, 3000);
+    }
   };
 
   const handleOptimize = async () => {
     setIsOptimizing(true);
-    // Simulate optimization process
-    setTimeout(() => {
+    try {
+      const response = await apiClient.optimizeDatabase({
+        type: 'full'
+      });
+      
+      if (response.success) {
+        console.log('Database optimized:', response.data);
+        // Refresh all data
+        refreshData();
+      } else {
+        console.error('Optimization failed:', response.error);
+        setError('ไม่สามารถ optimize ฐานข้อมูลได้: ' + (response.error?.message || 'ไม่ทราบสาเหตุ'));
+      }
+    } catch (error) {
+      console.error('Optimization error:', error);
+      setError('เกิดข้อผิดพลาดในการ optimize ฐานข้อมูล');
+    } finally {
       setIsOptimizing(false);
-      console.log('Optimization completed');
-    }, 5000);
+    }
   };
 
   const totalRecords = databases.reduce((sum, db) => sum + db.records, 0);
   const totalSize = databases.reduce((sum, db) => sum + parseFloat(db.size), 0);
+
+  if (loading) {
+    return (
+      <div className="w-full h-full bg-gray-50 p-2 lg:p-4 overflow-auto flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw size={48} className="animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">กำลังโหลดข้อมูลฐานข้อมูล...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full bg-gray-50 p-2 lg:p-4 overflow-auto">
@@ -125,6 +235,13 @@ export default function DatabasePage() {
             <p className="text-gray-600 mt-2">Monitor and manage system databases</p>
           </div>
           <div className="flex gap-3">
+            <button
+              onClick={refreshData}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+            >
+              <RefreshCw size={16} />
+              Refresh
+            </button>
             <button
               onClick={handleOptimize}
               disabled={isOptimizing}
@@ -144,6 +261,22 @@ export default function DatabasePage() {
           </div>
         </div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />
+            <p className="text-red-800">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              className="ml-auto text-red-600 hover:text-red-800"
+            >
+              <XCircle size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Overview Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-4 lg:mb-6 min-w-0">

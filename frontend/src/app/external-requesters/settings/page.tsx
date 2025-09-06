@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -18,10 +20,17 @@ import {
   AlertTriangle,
   CheckCircle,
   Smartphone,
-  Clock
+  Clock,
+  Loader2
 } from 'lucide-react'
 
 export default function SettingsPage() {
+  const { user } = useAuth()
+  const [loading, setLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -45,21 +54,130 @@ export default function SettingsPage() {
     dataAccessLogging: true
   })
 
-  const handlePasswordChange = () => {
+  const [settings, setSettings] = useState({
+    dataAccessLevel: 'basic',
+    maxConcurrentRequests: 10,
+    allowedRequestTypes: [],
+    complianceCertifications: [],
+    dataProtectionCertification: ''
+  })
+
+  // Load settings data
+  useEffect(() => {
+    const loadSettingsData = async () => {
+      try {
+        setIsLoading(true)
+        const response = await apiClient.getExternalRequesterSettings()
+        
+        if (response.success && response.data) {
+          const data = response.data
+          setSettings({
+            dataAccessLevel: data.dataAccessLevel || 'basic',
+            maxConcurrentRequests: data.maxConcurrentRequests || 10,
+            allowedRequestTypes: data.allowedRequestTypes || [],
+            complianceCertifications: data.complianceCertifications || [],
+            dataProtectionCertification: data.dataProtectionCertification || ''
+          })
+          
+          if (data.notificationPreferences) {
+            setNotifications({
+              emailApproval: data.notificationPreferences.emailApproval ?? true,
+              emailRejection: data.notificationPreferences.emailRejection ?? true,
+              emailExpiration: data.notificationPreferences.emailExpiration ?? true,
+              emailSystemUpdates: data.notificationPreferences.emailSystemUpdates ?? false,
+              pushNotifications: data.notificationPreferences.pushNotifications ?? true,
+              smsNotifications: data.notificationPreferences.smsNotifications ?? false
+            })
+          }
+          
+          if (data.privacySettings) {
+            setSecurity({
+              twoFactorAuth: data.privacySettings.twoFactorAuth ?? true,
+              sessionTimeout: data.privacySettings.sessionTimeout ?? '30',
+              loginNotifications: data.privacySettings.loginNotifications ?? true,
+              dataAccessLogging: data.privacySettings.dataAccessLogging ?? true
+            })
+          }
+        }
+      } catch (error) {
+        console.error("Error loading settings data:", error)
+        setError("เกิดข้อผิดพลาดในการโหลดการตั้งค่า")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadSettingsData()
+  }, [])
+
+  const handlePasswordChange = async () => {
     if (newPassword !== confirmPassword) {
-      alert('รหัสผ่านใหม่ไม่ตรงกัน')
+      setError('รหัสผ่านใหม่ไม่ตรงกัน')
       return
     }
     if (newPassword.length < 8) {
-      alert('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร')
+      setError('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร')
       return
     }
-    // Mock password change
-    console.log('Changing password...')
-    alert('เปลี่ยนรหัสผ่านเรียบร้อยแล้ว')
-    setCurrentPassword('')
-    setNewPassword('')
-    setConfirmPassword('')
+
+    try {
+      setLoading(true)
+      setError(null)
+      setSuccess(null)
+
+      const response = await apiClient.changePassword({
+        currentPassword,
+        newPassword,
+        confirmPassword
+      })
+
+      if (response.success) {
+        setSuccess('เปลี่ยนรหัสผ่านสำเร็จ')
+        setCurrentPassword('')
+        setNewPassword('')
+        setConfirmPassword('')
+        setTimeout(() => setSuccess(null), 3000)
+      } else {
+        setError(response.error?.message || 'เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน')
+      }
+    } catch (error: any) {
+      console.error('Error changing password:', error)
+      setError('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSaveSettings = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      setSuccess(null)
+
+      const updateData = {
+        notificationPreferences: notifications,
+        privacySettings: security,
+        dataAccessLevel: settings.dataAccessLevel,
+        maxConcurrentRequests: settings.maxConcurrentRequests,
+        allowedRequestTypes: settings.allowedRequestTypes,
+        complianceCertifications: settings.complianceCertifications,
+        dataProtectionCertification: settings.dataProtectionCertification
+      }
+
+      const response = await apiClient.updateExternalRequesterSettings(updateData)
+      
+      if (response.success) {
+        setSuccess('บันทึกการตั้งค่าสำเร็จ')
+        setTimeout(() => setSuccess(null), 3000)
+      } else {
+        setError(response.error?.message || 'เกิดข้อผิดพลาดในการบันทึก')
+      }
+    } catch (error: any) {
+      console.error('Error saving settings:', error)
+      setError('เกิดข้อผิดพลาดในการบันทึก')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleNotificationChange = (key: string, value: boolean) => {
@@ -76,10 +194,25 @@ export default function SettingsPage() {
     }))
   }
 
-  const saveSettings = () => {
-    // Mock save
-    console.log('Saving settings...', { notifications, security })
-    alert('บันทึกการตั้งค่าเรียบร้อยแล้ว')
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">กรุณาเข้าสู่ระบบก่อน</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">กำลังโหลดการตั้งค่า...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -100,280 +233,381 @@ export default function SettingsPage() {
                 </div>
               </div>
               <p className="text-sm sm:text-base lg:text-lg text-gray-800 leading-relaxed font-medium">
-                จัดการการตั้งค่าบัญชี ความปลอดภัย และการแจ้งเตือน
+                จัดการการตั้งค่าบัญชีและการแจ้งเตือน
               </p>
             </div>
 
-          <div className="space-y-8">
-            {/* Password Change */}
-            <Card className="shadow-lg border-0 bg-white">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-3 text-xl text-gray-900">
-                  <div className="p-2 bg-red-100 rounded-lg">
-                    <Key className="h-6 w-6 text-red-600" />
-                  </div>
-                  <span>เปลี่ยนรหัสผ่าน</span>
-                </CardTitle>
-                <CardDescription>
-                  เปลี่ยนรหัสผ่านเพื่อความปลอดภัยของบัญชี
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    รหัสผ่านปัจจุบัน
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showCurrentPassword ? 'text' : 'password'}
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="ใส่รหัสผ่านปัจจุบัน"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                    >
-                      {showCurrentPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    </button>
-                  </div>
-                </div>
+            {/* Error Message */}
+            {error && (
+              <Alert className="mb-6 border-red-200 bg-red-50">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">{error}</AlertDescription>
+              </Alert>
+            )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      รหัสผ่านใหม่
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showNewPassword ? 'text' : 'password'}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="ใส่รหัสผ่านใหม่"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                      >
-                        {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </button>
-                    </div>
-                  </div>
+            {/* Success Message */}
+            {success && (
+              <Alert className="mb-6 border-green-200 bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">{success}</AlertDescription>
+              </Alert>
+            )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      ยืนยันรหัสผ่านใหม่
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="ยืนยันรหัสผ่านใหม่"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                      >
-                        {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <Alert className="bg-yellow-50 border-yellow-200">
-                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                  <AlertDescription className="text-yellow-800">
-                    รหัสผ่านควรมีอย่างน้อย 8 ตัวอักษร ประกอบด้วยตัวพิมพ์ใหญ่ ตัวพิมพ์เล็ก ตัวเลข และอักขระพิเศษ
-                  </AlertDescription>
-                </Alert>
-
-                <Button onClick={handlePasswordChange} className="bg-red-600 hover:bg-red-700">
-                  <Save className="h-4 w-4 mr-2" />
-                  เปลี่ยนรหัสผ่าน
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Security Settings */}
-            <Card className="shadow-lg border-0 bg-white">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-3 text-xl text-gray-900">
-                  <div className="p-2 bg-orange-100 rounded-lg">
-                    <Shield className="h-6 w-6 text-orange-600" />
-                  </div>
-                  <span>ความปลอดภัย</span>
-                </CardTitle>
-                <CardDescription>
-                  การตั้งค่าความปลอดภัยและการยืนยันตัวตน
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <Smartphone className="h-5 w-5 text-blue-600" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Password Change */}
+              <div className="lg:col-span-2">
+                <Card className="shadow-lg border-0 bg-white">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3 text-xl text-gray-900">
+                      <div className="p-2 bg-red-100 rounded-lg">
+                        <Key className="h-6 w-6 text-red-600" />
+                      </div>
+                      <span>เปลี่ยนรหัสผ่าน</span>
+                    </CardTitle>
+                    <CardDescription>
+                      เปลี่ยนรหัสผ่านเพื่อความปลอดภัยของบัญชี
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
                     <div>
-                      <h3 className="font-medium text-gray-900">การยืนยันตัวตนแบบ 2 ขั้นตอน (2FA)</h3>
-                      <p className="text-sm text-gray-600">เพิ่มความปลอดภัยด้วยการยืนยันทางโทรศัพท์</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        รหัสผ่านปัจจุบัน
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showCurrentPassword ? 'text' : 'password'}
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="กรอกรหัสผ่านปัจจุบัน"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showCurrentPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge className={security.twoFactorAuth ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                      {security.twoFactorAuth ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}
-                    </Badge>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        รหัสผ่านใหม่
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showNewPassword ? 'text' : 'password'}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="กรอกรหัสผ่านใหม่"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        ยืนยันรหัสผ่านใหม่
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="ยืนยันรหัสผ่านใหม่"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        </button>
+                      </div>
+                    </div>
+
                     <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleSecurityChange('twoFactorAuth', !security.twoFactorAuth)}
+                      onClick={handlePasswordChange}
+                      disabled={loading || !currentPassword || !newPassword || !confirmPassword}
+                      className="w-full bg-red-600 hover:bg-red-700"
                     >
-                      {security.twoFactorAuth ? 'ปิด' : 'เปิด'}
+                      {loading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          กำลังเปลี่ยนรหัสผ่าน...
+                        </>
+                      ) : (
+                        <>
+                          <Key className="h-4 w-4 mr-2" />
+                          เปลี่ยนรหัสผ่าน
+                        </>
+                      )}
                     </Button>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <Lock className="h-5 w-5 text-purple-600" />
-                    <div>
-                      <h3 className="font-medium text-gray-900">การแจ้งเตือนการเข้าสู่ระบบ</h3>
-                      <p className="text-sm text-gray-600">รับแจ้งเตือนเมื่อมีการเข้าสู่ระบบใหม่</p>
+              {/* Quick Stats */}
+              <div className="space-y-6">
+                <Card className="shadow-lg border-0 bg-white">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3 text-lg text-gray-900">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Shield className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <span>ความปลอดภัย</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">2FA เปิดใช้งาน</span>
+                      <Badge className={security.twoFactorAuth ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                        {security.twoFactorAuth ? 'เปิด' : 'ปิด'}
+                      </Badge>
                     </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={security.loginNotifications}
-                      onChange={(e) => handleSecurityChange('loginNotifications', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <Settings className="h-5 w-5 text-gray-600" />
-                    <div>
-                      <h3 className="font-medium text-gray-900">บันทึกการเข้าถึงข้อมูล</h3>
-                      <p className="text-sm text-gray-600">บันทึกประวัติการเข้าถึงข้อมูลผู้ป่วย</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">การแจ้งเตือนการเข้าสู่ระบบ</span>
+                      <Badge className={security.loginNotifications ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                        {security.loginNotifications ? 'เปิด' : 'ปิด'}
+                      </Badge>
                     </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={security.dataAccessLogging}
-                      onChange={(e) => handleSecurityChange('dataAccessLogging', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <Clock className="h-5 w-5 text-red-600" />
-                    <div>
-                      <h3 className="font-medium text-gray-900">หมดเวลาเซสชัน</h3>
-                      <p className="text-sm text-gray-600">เวลาก่อนออกจากระบบอัตโนมัติ (นาที)</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">การบันทึกการเข้าถึงข้อมูล</span>
+                      <Badge className={security.dataAccessLogging ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                        {security.dataAccessLogging ? 'เปิด' : 'ปิด'}
+                      </Badge>
                     </div>
-                  </div>
-                  <select
-                    value={security.sessionTimeout}
-                    onChange={(e) => handleSecurityChange('sessionTimeout', e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="15">15 นาที</option>
-                    <option value="30">30 นาที</option>
-                    <option value="60">1 ชั่วโมง</option>
-                    <option value="120">2 ชั่วโมง</option>
-                  </select>
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
 
-            {/* Notification Settings */}
-            <Card className="shadow-lg border-0 bg-white">
+                <Card className="shadow-lg border-0 bg-white">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-3 text-lg text-gray-900">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <Bell className="h-5 w-5 text-green-600" />
+                      </div>
+                      <span>การแจ้งเตือน</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">อีเมล</span>
+                      <Badge className={notifications.emailApproval ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                        {notifications.emailApproval ? 'เปิด' : 'ปิด'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Push</span>
+                      <Badge className={notifications.pushNotifications ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                        {notifications.pushNotifications ? 'เปิด' : 'ปิด'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">SMS</span>
+                      <Badge className={notifications.smsNotifications ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                        {notifications.smsNotifications ? 'เปิด' : 'ปิด'}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Notifications Settings */}
+            <Card className="shadow-lg border-0 bg-white mt-8">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-3 text-xl text-gray-900">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Bell className="h-6 w-6 text-blue-600" />
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <Bell className="h-6 w-6 text-green-600" />
                   </div>
                   <span>การแจ้งเตือน</span>
                 </CardTitle>
                 <CardDescription>
-                  จัดการการแจ้งเตือนทางอีเมล SMS และแอปพลิเคชัน
+                  จัดการการแจ้งเตือนต่างๆ ของระบบ
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <h4 className="font-medium text-gray-900 mb-3">อีเมล</h4>
-                  
-                  {[
-
-                    { key: 'emailApproval', label: 'คำขอได้รับการอนุมัติ', desc: 'แจ้งเตือนเมื่อคำขอได้รับการอนุมัติ' },
-                    { key: 'emailRejection', label: 'คำขอถูกปฏิเสธ', desc: 'แจ้งเตือนเมื่อคำขอถูกปฏิเสธ' },
-                    { key: 'emailExpiration', label: 'คำขอใกล้หมดอายุ', desc: 'แจ้งเตือนก่อนคำขอหมดอายุ 3 วัน' },
-                    { key: 'emailSystemUpdates', label: 'อัปเดตระบบ', desc: 'แจ้งเตือนการปรับปรุงระบบและฟีเจอร์ใหม่' }
-                  ].map((item) => (
-                    <div key={item.key} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                      <div>
-                        <h5 className="font-medium text-gray-900">{item.label}</h5>
-                        <p className="text-sm text-gray-600">{item.desc}</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={notifications[item.key as keyof typeof notifications] as boolean}
-                          onChange={(e) => handleNotificationChange(item.key, e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                      </label>
-                    </div>
-                  ))}
-
-                </div>
-
-                <div className="pt-6 border-t border-gray-200">
-                  <h4 className="font-medium text-gray-900 mb-3">อื่นๆ</h4>
-                  
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                      <div>
-                        <h5 className="font-medium text-gray-900">การแจ้งเตือนแบบ Push</h5>
-                        <p className="text-sm text-gray-600">แจ้งเตือนผ่านเบราว์เซอร์</p>
+                    <h4 className="font-semibold text-gray-900 flex items-center space-x-2">
+                      <Mail className="h-4 w-4 text-blue-600" />
+                      <span>การแจ้งเตือนทางอีเมล</span>
+                    </h4>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-700">การอนุมัติคำขอ</span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={notifications.emailApproval}
+                            onChange={(e) => handleNotificationChange('emailApproval', e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
                       </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-700">การปฏิเสธคำขอ</span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={notifications.emailRejection}
+                            onChange={(e) => handleNotificationChange('emailRejection', e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-700">การหมดอายุคำขอ</span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={notifications.emailExpiration}
+                            onChange={(e) => handleNotificationChange('emailExpiration', e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-700">การอัปเดตระบบ</span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={notifications.emailSystemUpdates}
+                            onChange={(e) => handleNotificationChange('emailSystemUpdates', e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-gray-900 flex items-center space-x-2">
+                      <Smartphone className="h-4 w-4 text-green-600" />
+                      <span>การแจ้งเตือนอื่นๆ</span>
+                    </h4>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-700">Push Notifications</span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={notifications.pushNotifications}
+                            onChange={(e) => handleNotificationChange('pushNotifications', e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-700">SMS Notifications</span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={notifications.smsNotifications}
+                            onChange={(e) => handleNotificationChange('smsNotifications', e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Security Settings */}
+            <Card className="shadow-lg border-0 bg-white mt-8">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-3 text-xl text-gray-900">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <Shield className="h-6 w-6 text-red-600" />
+                  </div>
+                  <span>การตั้งค่าความปลอดภัย</span>
+                </CardTitle>
+                <CardDescription>
+                  จัดการการตั้งค่าความปลอดภัยของบัญชี
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700">Two-Factor Authentication</span>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={notifications.pushNotifications}
-                          onChange={(e) => handleNotificationChange('pushNotifications', e.target.checked)}
+                          checked={security.twoFactorAuth}
+                          onChange={(e) => handleSecurityChange('twoFactorAuth', e.target.checked)}
                           className="sr-only peer"
                         />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
 
-                    <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                      <div>
-                        <h5 className="font-medium text-gray-900">SMS</h5>
-                        <p className="text-sm text-gray-600">แจ้งเตือนผ่านข้อความ SMS</p>
-                      </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700">การแจ้งเตือนการเข้าสู่ระบบ</span>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={notifications.smsNotifications}
-                          onChange={(e) => handleNotificationChange('smsNotifications', e.target.checked)}
+                          checked={security.loginNotifications}
+                          onChange={(e) => handleSecurityChange('loginNotifications', e.target.checked)}
                           className="sr-only peer"
                         />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700">การบันทึกการเข้าถึงข้อมูล</span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={security.dataAccessLogging}
+                          onChange={(e) => handleSecurityChange('dataAccessLogging', e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Session Timeout (นาที)
+                      </label>
+                      <select
+                        value={security.sessionTimeout}
+                        onChange={(e) => handleSecurityChange('sessionTimeout', e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="15">15 นาที</option>
+                        <option value="30">30 นาที</option>
+                        <option value="60">1 ชั่วโมง</option>
+                        <option value="120">2 ชั่วโมง</option>
+                        <option value="480">8 ชั่วโมง</option>
+                      </select>
                     </div>
                   </div>
                 </div>
@@ -381,22 +615,25 @@ export default function SettingsPage() {
             </Card>
 
             {/* Save Button */}
-            <div className="flex justify-end">
-              <Button onClick={saveSettings} className="bg-green-600 hover:bg-green-700">
-                <Save className="h-4 w-4 mr-2" />
-                บันทึกการตั้งค่า
+            <div className="mt-8 flex justify-end">
+              <Button
+                onClick={handleSaveSettings}
+                disabled={loading}
+                className="bg-blue-600 hover:bg-blue-700 px-8 py-3"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    กำลังบันทึก...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    บันทึกการตั้งค่า
+                  </>
+                )}
               </Button>
             </div>
-
-            {/* Help Alert */}
-            <Alert className="bg-blue-50 border-blue-200">
-              <CheckCircle className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800">
-                <strong>เคล็ดลับ:</strong> การตั้งค่าความปลอดภัยที่แนะนำคือเปิดใช้งาน 2FA และการแจ้งเตือนการเข้าสู่ระบบ 
-                เพื่อป้องกันการเข้าถึงที่ไม่ได้รับอนุญาต
-              </AlertDescription>
-            </Alert>
-          </div>
           </div>
         </div>
       </div>

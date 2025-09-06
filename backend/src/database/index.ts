@@ -1118,6 +1118,51 @@ export class DatabaseSchema {
       return { success: false, error: 'Failed to update password' };
     }
   }
+
+  /**
+   * Create password reset token (instance method)
+   */
+  async createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<{ success: boolean; error?: string }> {
+    return DatabaseSchema.createPasswordResetToken(userId, token, expiresAt);
+  }
+
+  /**
+   * Validate password reset token (instance method)
+   */
+  async validatePasswordResetToken(token: string): Promise<{ success: boolean; userId?: string; error?: string }> {
+    return DatabaseSchema.validatePasswordResetToken(token);
+  }
+
+  /**
+   * Update user password (instance method)
+   */
+  async updateUserPassword(userId: string, newPasswordHash: string): Promise<{ success: boolean; error?: string }> {
+    return DatabaseSchema.updateUserPassword(userId, newPasswordHash);
+  }
+
+  /**
+   * Mark password reset token as used (instance method)
+   */
+  async markPasswordResetTokenAsUsed(token: string): Promise<{ success: boolean; error?: string }> {
+    return DatabaseSchema.markPasswordResetTokenAsUsed(token);
+  }
+
+  /**
+   * Invalidate user sessions (instance method)
+   */
+  async invalidateUserSessions(userId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await DatabaseSchema.db.query(
+        'DELETE FROM user_sessions WHERE user_id = $1',
+        [userId]
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error('Invalidate user sessions error:', error);
+      return { success: false, error: 'Failed to invalidate sessions' };
+    }
+  }
 }
 
 export const db = DatabaseConnection.getInstance();

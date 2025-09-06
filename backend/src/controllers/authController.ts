@@ -764,7 +764,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
     // Save reset token to database
-    const tokenResult = await db.createPasswordResetToken(user.id, resetToken, expiresAt);
+    const tokenResult = await DatabaseSchema.createPasswordResetToken(user.id, resetToken, expiresAt);
     
     if (!tokenResult.success) {
       console.error('Failed to create reset token:', tokenResult.error);
@@ -842,7 +842,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     console.log('🔍 Reset password request with token:', token.substring(0, 10) + '...');
 
     // Validate reset token
-    const tokenValidation = await db.validatePasswordResetToken(token);
+    const tokenValidation = await DatabaseSchema.validatePasswordResetToken(token);
     
     if (!tokenValidation.success) {
       return res.status(400).json(
@@ -856,7 +856,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     const hashedPassword = await hashPassword(new_password);
 
     // Update user password
-    const updateResult = await db.updateUserPassword(userId, hashedPassword);
+    const updateResult = await DatabaseSchema.updateUserPassword(userId, hashedPassword);
     
     if (!updateResult.success) {
       console.error('Failed to update password:', updateResult.error);
@@ -866,10 +866,14 @@ export const resetPassword = async (req: Request, res: Response) => {
     }
 
     // Mark token as used
-    await db.markPasswordResetTokenAsUsed(token);
+    await DatabaseSchema.markPasswordResetTokenAsUsed(token);
 
     // Invalidate all user sessions (optional - for security)
-    await db.invalidateUserSessions(userId);
+    try {
+      await db.query('DELETE FROM user_sessions WHERE user_id = $1', [userId]);
+    } catch (error) {
+      console.warn('Failed to invalidate user sessions:', error);
+    }
 
     console.log('✅ Password reset successful for user:', userId);
 

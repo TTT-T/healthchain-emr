@@ -86,46 +86,51 @@ export default function Pharmacy() {
           assignedDoctor: 'นพ.สมชาย วงศ์แพทย์' // Default doctor
         };
 
-        // Mock prescription data (this would come from API)
-        const mockPrescription: PrescriptionData = {
-        prescriptionId: `RX${new Date().getFullYear()}${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
-        patient: mappedPatient,
-        prescribedBy: "นพ.สมชาย วงศ์แพทย์",
-        prescribedDate: new Date().toISOString().slice(0, 16),
-        diagnosis: "Upper Respiratory Tract Infection (J06.9)",
-        drugs: [
-          {
-            id: "1",
-            name: "Paracetamol 500mg",
-            dose: "500mg",
-            quantity: "20",
-            usage: "1 เม็ด 3 ครั้ง/วัน หลังอาหาร",
-            status: "pending"
-          },
-          {
-            id: "2",
-            name: "Amoxicillin 250mg",
-            dose: "250mg",
-            quantity: "21",
-            usage: "1 แคปซูล 3 ครั้ง/วัน ก่อนอาหาร",
-            status: "pending"
-          },
-          {
-            id: "3",
-            name: "Loratadine 10mg",
-            dose: "10mg",
-            quantity: "7",
-            usage: "1 เม็ด 1 ครั้ง/วัน ก่อนนอน",
-            status: "pending"
+        // Search for prescriptions for this patient
+        try {
+          const prescriptionResponse = await apiClient.getPrescriptionsByPatient(patient.hn);
+          if (prescriptionResponse.success && prescriptionResponse.data && prescriptionResponse.data.length > 0) {
+            // Get the most recent prescription
+            const latestPrescription = prescriptionResponse.data[0];
+            
+            // Map prescription data to our format
+            const mappedPrescription: PrescriptionData = {
+              prescriptionId: latestPrescription.prescription_number || latestPrescription.id,
+              patient: mappedPatient,
+              prescribedBy: latestPrescription.prescribed_by || "นพ.สมชาย วงศ์แพทย์",
+              prescribedDate: latestPrescription.prescription_date || new Date().toISOString().slice(0, 16),
+              diagnosis: latestPrescription.diagnosis_for_prescription || "Upper Respiratory Tract Infection (J06.9)",
+              drugs: latestPrescription.items?.map((item: any, index: number) => ({
+                id: item.id || String(index + 1),
+                name: item.medication_name || item.name,
+                dose: item.strength || item.dose,
+                quantity: String(item.quantity_prescribed || item.quantity),
+                usage: item.dosage_instructions || item.usage,
+                status: item.item_status === 'dispensed' ? 'dispensed' : 'pending'
+              })) || [
+                {
+                  id: "1",
+                  name: "Paracetamol 500mg",
+                  dose: "500mg",
+                  quantity: "20",
+                  usage: "1 เม็ด 3 ครั้ง/วัน หลังอาหาร",
+                  status: "pending"
+                }
+              ],
+              status: latestPrescription.status || "pending"
+            };
+            
+            setSelectedPrescription(mappedPrescription);
+            setSuccess("พบใบสั่งยาแล้ว");
+          } else {
+            setSelectedPrescription(null);
+            setError("ไม่พบใบสั่งยาสำหรับผู้ป่วยรายนี้");
           }
-        ],
-        status: "pending"
-      };
-
-      // Simulate random search result
-      if (Math.random() > 0.1) { // Increase success rate for testing
-        setSelectedPrescription(mockPrescription);
-        setSuccess("พบใบสั่งยาแล้ว");
+        } catch (prescriptionError) {
+          console.error('Error fetching prescriptions:', prescriptionError);
+          setSelectedPrescription(null);
+          setError("ไม่สามารถดึงข้อมูลใบสั่งยาได้");
+        }
       } else {
         setSelectedPrescription(null);
         setError("ไม่พบข้อมูลผู้ป่วยในระบบ กรุณาตรวจสอบข้อมูล");
@@ -207,19 +212,24 @@ export default function Pharmacy() {
         dispensedDate: new Date().toISOString()
       });
       
-      // TODO: Replace with real API call when pharmacy endpoint is available
-      // await PharmacyService.completePrescription(selectedPrescription.prescriptionId, {
-      //   pharmacistName,
-      //   pharmacistNotes,
-      //   dispensedDate: new Date().toISOString()
-      // });
+      // Call API to complete prescription
+      const response = await apiClient.completePrescription(selectedPrescription.prescriptionId, {
+        pharmacistName,
+        pharmacistNotes,
+        dispensedDate: new Date().toISOString(),
+        dispensedBy: user?.id || 'pharmacist'
+      });
       
-      setSuccess("จ่ายยาเสร็จสมบูรณ์! ใบสั่งยาได้รับการประมวลผลแล้ว");
-      
-      // Reset form
-      setSelectedPrescription(null);
-      setSearchQuery("");
-      setPharmacistNotes("");
+      if (response.success) {
+        setSuccess("จ่ายยาเสร็จสมบูรณ์! ใบสั่งยาได้รับการประมวลผลแล้ว");
+        
+        // Reset form
+        setSelectedPrescription(null);
+        setSearchQuery("");
+        setPharmacistNotes("");
+      } else {
+        setError("ไม่สามารถบันทึกการจ่ายยาได้: " + (response.error?.message || 'ไม่ทราบสาเหตุ'));
+      }
       
     } catch (error) {
       console.error("❌ Error completing prescription:", error);
