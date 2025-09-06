@@ -2,13 +2,17 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
-import FormDataCleaner from "@/lib/formDataCleaner";
+// import { useAuth } from "@/contexts/AuthContext";
+// import FormDataCleaner from "@/lib/formDataCleaner";
 
 function LoginClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, isLoading, error, clearError, isAuthenticated, user } = useAuth();
+  // const { login, isLoading, error, clearError, isAuthenticated, user } = useAuth();
+  
+  // Local state management (like admin/external login)
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     username: "", // Clear pre-filled values
@@ -33,22 +37,23 @@ function LoginClient() {
       rememberMe: false
     });
     
-    // Use FormDataCleaner to clear all cached data
-    FormDataCleaner.clearAllFormData();
-    FormDataCleaner.clearFormData('loginForm');
+    // Temporarily disable FormDataCleaner to test if it's causing refresh
+    // FormDataCleaner.clearAllFormData();
+    // FormDataCleaner.clearFormData('loginForm');
     
     // Disable autofill for the login form (will be applied when form renders)
-    setTimeout(() => {
-      FormDataCleaner.disableAutofill('loginForm');
-      FormDataCleaner.resetFormInputs('loginForm');
-    }, 100);
+    // setTimeout(() => {
+    //   FormDataCleaner.disableAutofill('loginForm');
+    //   // Don't reset form inputs to prevent interference
+    //   // FormDataCleaner.resetFormInputs('loginForm');
+    // }, 100);
     
   }, []);
 
   // Clear auth error when component mounts - don't redirect here
   useEffect(() => {
-    clearError();
-  }, [clearError]);
+    setError(null); // Use local state instead of clearError
+  }, []);
 
   // Handle success/error messages from URL parameters
   useEffect(() => {
@@ -63,7 +68,7 @@ function LoginClient() {
         setSuccessMessage('Email verified successfully! You can now login.');
       }
     }
-  }, [clearError, searchParams, isAuthenticated, isLoading, user]);
+  }, [searchParams]);
 
   // Clear messages after 5 seconds
   useEffect(() => {
@@ -107,24 +112,93 @@ function LoginClient() {
       return;
     }
 
+    // Clear previous errors
+    setErrors({});
+    setSuccessMessage(null);
+    setIsLoading(true);
+    setError(null);
+
     try {
-      await login(
-        formData.username.trim(),
-        formData.password,
-        formData.rememberMe
-      );
-      
-      // Success - auth context will handle the redirect
-      
-    } catch (error: any) {
-      // Error will be handled by auth context
-      console.error('Login failed:', error);
-      
-      // Check if it's an unverified email error
-      if (error?.response?.data?.error === 'Please verify your email before logging in') {
-        setShowResendVerification(true);
-        setResendEmail(formData.username);
+      // Use fetch API like admin/external login
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: formData.username.trim(),
+          password: formData.password,
+          rememberMe: formData.rememberMe
+        })
+      });
+
+      const result = await response.json();
+      console.log('🔍 API Response:', result);
+
+      if (result.success && result.data) {
+        // Login successful
+        console.log('✅ Login successful:', result.data);
+        
+        // Store tokens
+        if (result.data.accessToken) {
+          localStorage.setItem('access_token', result.data.accessToken);
+        }
+        if (result.data.refreshToken) {
+          localStorage.setItem('refresh_token', result.data.refreshToken);
+        }
+        
+        // Store remember me preference
+        if (formData.rememberMe) {
+          localStorage.setItem('rememberMe', 'true');
+        } else {
+          localStorage.removeItem('rememberMe');
+        }
+        
+        // Redirect to dashboard
+        router.push('/emr/dashboard');
+        
+      } else {
+        // Login failed
+        const errorMessage = result.message || result.error?.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
+        console.error('❌ Login failed:', errorMessage);
+        
+        // Check if it's an unverified email error
+        if (errorMessage.includes('verify your email') || 
+            errorMessage.includes('email verification') ||
+            errorMessage.includes('Please verify your email')) {
+          // Store email for verification page
+          localStorage.setItem('pendingVerificationEmail', formData.username);
+          // Redirect to verification page
+          router.push(`/verify-email?email=${encodeURIComponent(formData.username)}`);
+          return;
+        }
+        
+        // Handle other login errors
+        if (errorMessage.includes('Invalid credentials') || 
+            errorMessage.includes('Invalid username or password') ||
+            errorMessage.includes('User not found') ||
+            errorMessage.includes('Request failed with status code 401')) {
+          setErrors({ 
+            submit: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่' 
+          });
+        } else if (errorMessage.includes('Account is deactivated')) {
+          setErrors({ 
+            submit: 'บัญชีของคุณถูกระงับ กรุณาติดต่อผู้ดูแลระบบ' 
+          });
+        } else {
+          setErrors({ 
+            submit: errorMessage
+          });
+        }
       }
+
+    } catch (error: any) {
+      console.error('💥 Login error:', error);
+      setErrors({ 
+        submit: 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง' 
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -263,7 +337,11 @@ function LoginClient() {
             </div>
           )}
 
-          <form className="space-y-6" onSubmit={handleSubmit} id="loginForm">
+          <form 
+            className="space-y-6" 
+            id="loginForm"
+            onSubmit={handleSubmit}
+          >
             <input type="hidden" name="remember" value={formData.rememberMe.toString()} />
             
             {/* Username Field */}
@@ -369,11 +447,52 @@ function LoginClient() {
               </div>
 
               <div className="text-sm">
-                <a href="#" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
+                <button 
+                  type="button" 
+                  className="font-medium text-blue-600 hover:text-blue-500 transition-colors bg-transparent border-none cursor-pointer underline"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // TODO: Implement forgot password
+                    alert('ฟีเจอร์ลืมรหัสผ่านจะเปิดให้ใช้งานในเร็วๆ นี้');
+                  }}
+                >
                   ลืมรหัสผ่าน?
-                </a>
+                </button>
               </div>
             </div>
+
+            {/* Error Message */}
+            {errors.submit && (
+              <div className="rounded-md bg-red-50 p-4 border border-red-200">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-red-800">{errors.submit}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Success Message */}
+            {successMessage && (
+              <div className="rounded-md bg-green-50 p-4 border border-green-200">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-green-800">{successMessage}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Submit Button */}
             <div className="pt-2">
@@ -422,7 +541,7 @@ function LoginClient() {
             <p className="text-amber-700 mb-6">
               กรุณายืนยันที่อยู่อีเมลของคุณเพื่อดำเนินการต่อ กรอกอีเมลเพื่อส่งอีเมลยืนยันใหม่
             </p>
-            <form onSubmit={handleResendVerification} className="space-y-4">
+            <div className="space-y-4">
               <div>
                 <label htmlFor="resend-email" className="block text-sm font-medium text-amber-800 mb-2">
                   ที่อยู่อีเมล
@@ -439,7 +558,8 @@ function LoginClient() {
               </div>
               <div className="flex space-x-3">
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleResendVerification}
                   disabled={isResendingEmail}
                   className={`flex-1 py-3 px-4 border border-transparent text-sm font-semibold rounded-xl text-white transition-all duration-200 ${
                     isResendingEmail 
@@ -457,7 +577,7 @@ function LoginClient() {
                   ยกเลิก
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         )}
 

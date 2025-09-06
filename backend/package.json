@@ -36,6 +36,7 @@
     "db:seed": "tsx src/scripts/db-cli.ts seed",
     "db:cli": "tsx src/scripts/db-cli.ts",
     "test:api": "tsx src/scripts/test-api.ts",
+    "test:email": "tsx src/scripts/test-email-service.ts",
     "validate": "npm run type-check && npm run lint && npm run test:contract",
     "validate:system": "tsx src/scripts/validate-system.ts",
     "pre-commit": "npm run validate && npm run test",

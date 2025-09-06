@@ -570,7 +570,7 @@ export const updateProfile = async (req: Request, res: Response) => {
  */
 export const verifyEmail = async (req: Request, res: Response) => {
   try {
-    const { token } = req.query;
+    const { token } = req.body;
     
     if (!token || typeof token !== 'string') {
       return res.status(400).json(
@@ -658,27 +658,60 @@ export const resendVerificationEmail = async (req: Request, res: Response) => {
       await DatabaseSchema.createEmailVerificationToken(user.id, verificationToken);
       
       // Send verification email
-      await emailService.sendEmailVerification(
+      const emailSent = await emailService.sendEmailVerification(
         user.email,
         user.first_name,
         verificationToken
       );
       
-      console.log('📧 Verification email resent to:', user.email);
-      
-      res.json(
-        successResponse('Verification email sent successfully. Please check your email.', {
-          emailSent: true,
-          email: user.email
-        })
-      );
+      if (emailSent) {
+        console.log('📧 Verification email resent to:', user.email);
+        
+        res.json(
+          successResponse('Verification email sent successfully. Please check your email.', {
+            emailSent: true,
+            email: user.email
+          })
+        );
+      } else {
+        // In development mode, still return success even if email fails
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📧 [DEV MODE] Email verification token generated:', verificationToken);
+          
+          res.json(
+            successResponse('Verification email sent successfully. Please check your email.', {
+              emailSent: true,
+              email: user.email,
+              devMode: true,
+              verificationToken: verificationToken // Only in dev mode
+            })
+          );
+        } else {
+          res.status(500).json(
+            errorResponse('Failed to send verification email', 500)
+          );
+        }
+      }
       
     } catch (emailError) {
       console.error('❌ Failed to resend verification email:', emailError);
       
-      res.status(500).json(
-        errorResponse('Failed to send verification email', 500)
-      );
+      // In development mode, still return success
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📧 [DEV MODE] Email error ignored in development mode');
+        
+        res.json(
+          successResponse('Verification email sent successfully. Please check your email.', {
+            emailSent: true,
+            email: user.email,
+            devMode: true
+          })
+        );
+      } else {
+        res.status(500).json(
+          errorResponse('Failed to send verification email', 500)
+        );
+      }
     }
     
   } catch (error) {

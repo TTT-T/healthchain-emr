@@ -27,7 +27,7 @@ export const corsOptions: CorsOptions = {
   },
   credentials: config.cors.credentials,
   methods: config.cors.methods,
-  allowedHeaders: config.cors.allowedHeaders,
+  allowedHeaders: [...config.cors.allowedHeaders, 'X-Request-ID', 'x-request-id'],
   exposedHeaders: ['X-Request-ID', 'X-Total-Count'],
   maxAge: 86400, // 24 hours
   preflightContinue: false,

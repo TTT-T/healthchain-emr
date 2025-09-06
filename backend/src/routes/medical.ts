@@ -28,6 +28,11 @@ import {
   updateLabOrder
 } from '../controllers/labOrdersController';
 import {
+  createLabResult,
+  getLabResults,
+  getLabOrdersByVisit
+} from '../controllers/labController';
+import {
   createPrescription,
   getPrescriptions,
   updatePrescription
@@ -38,8 +43,6 @@ import {
   createVisit as createPatientVisit, 
   getVisit as getPatientVisit, 
   updateVisit as updatePatientVisit, 
-  getPatientVisits, 
-  searchVisits, 
   completeVisit as completePatientVisit 
 } from '../controllers/visitController';
 import {
@@ -160,21 +163,20 @@ router.use('/patients', patientRoutes);
 
 // Visit management routes
 router.post('/visits', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createVisit));
-router.get('/visits/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getVisit));
+router.get('/visits/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getVisitById));
 router.put('/visits/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(updateVisit));
 router.patch('/visits/:id/complete', authorize(['doctor', 'nurse', 'admin']), asyncHandler(completeVisit));
-router.get('/visits/search', authorize(['doctor', 'nurse', 'admin']), asyncHandler(searchVisits));
-router.get('/patients/:patientId/visits', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getPatientVisits));
+router.get('/visits/search', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAllVisits));
+router.get('/patients/:patientId/visits', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAllVisits));
 
 // Vital Signs routes
-router.post('/vital-signs', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createVitalSigns));
-router.get('/visits/:visitId/vital-signs', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getVitalSignsByVisit));
+router.post('/vital-signs', authorize(['doctor', 'nurse', 'admin']), asyncHandler(recordVitalSigns));
+router.get('/visits/:visitId/vital-signs', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getVitalSigns));
 router.put('/vital-signs/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(updateVitalSigns));
-router.delete('/vital-signs/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(deleteVitalSigns));
 
 // Lab Orders and Results routes
 router.post('/lab-orders', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createLabOrder));
-router.get('/lab-orders/:id', authorize(['doctor', 'nurse', 'admin', 'lab_tech']), asyncHandler(getLabOrder));
+router.get('/lab-orders/:id', authorize(['doctor', 'nurse', 'admin', 'lab_tech']), asyncHandler(getLabOrders));
 router.put('/lab-orders/:id', authorize(['doctor', 'nurse', 'admin', 'lab_tech']), asyncHandler(updateLabOrder));
 router.get('/visits/:visitId/lab-orders', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getLabOrdersByVisit));
 router.post('/lab-results', authorize(['lab_tech', 'doctor', 'admin']), asyncHandler(createLabResult));

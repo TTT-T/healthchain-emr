@@ -8,14 +8,12 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/:path*`,
+        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/:path*`,
       },
     ];
   },
   // Enable compression
   compress: true,
-  // Disable telemetry in production
-  telemetry: false,
 };
 
 export default nextConfig;

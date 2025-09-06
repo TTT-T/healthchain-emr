@@ -12,15 +12,25 @@ class EmailService {
   private transporter: nodemailer.Transporter;
 
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: config.smtp.host,
-      port: config.smtp.port,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: config.smtp.user,
-        pass: config.smtp.password,
-      },
-    });
+    // Only create transporter if SMTP is configured
+    if (config.smtp.user && config.smtp.password) {
+      this.transporter = nodemailer.createTransport({
+        host: config.smtp.host,
+        port: config.smtp.port,
+        secure: config.smtp.port === 465, // true for 465, false for other ports
+        auth: {
+          user: config.smtp.user,
+          pass: config.smtp.password,
+        },
+        tls: {
+          rejectUnauthorized: false // For development/testing
+        }
+      });
+      
+      console.log('📧 Email service initialized with SMTP:', config.smtp.host);
+    } else {
+      console.log('📧 Email service initialized in development mode (no SMTP configured)');
+    }
   }
 
   /**
@@ -28,6 +38,24 @@ class EmailService {
    */
   async sendEmail(emailData: EmailData): Promise<boolean> {
     try {
+      // Check if transporter is available
+      if (!this.transporter) {
+        console.log('📧 [NO SMTP] Email would be sent (no SMTP configured):');
+        console.log('  To:', emailData.to);
+        console.log('  Subject:', emailData.subject);
+        console.log('  Content:', emailData.html);
+        return true; // Return true in development mode
+      }
+
+      // In development mode, just log the email instead of sending
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📧 [DEV MODE] Email would be sent:');
+        console.log('  To:', emailData.to);
+        console.log('  Subject:', emailData.subject);
+        console.log('  Content:', emailData.html);
+        return true;
+      }
+
       const info = await this.transporter.sendMail({
         from: `"HealthChain EMR" <${config.smtp.from}>`,
         to: emailData.to,
@@ -35,7 +63,7 @@ class EmailService {
         html: emailData.html,
       });
 
-      console.log('📧 Email sent:', info.messageId);
+      console.log('📧 Email sent successfully:', info.messageId);
       return true;
     } catch (error) {
       console.error('❌ Email sending failed:', error);

@@ -194,7 +194,7 @@ router.post('/refresh-token', refreshToken);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/verify-email', verifyEmail);
+router.post('/verify-email', verifyEmail);
 
 /**
  * @swagger

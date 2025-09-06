@@ -83,7 +83,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               // Auth error - clear everything
               console.log('🔑 Authentication error - clearing tokens');
               apiClient.clearTokens();
-              FormDataCleaner.clearAllFormData();
+              // FormDataCleaner.clearAllFormData(); // Disabled to prevent refresh
               setUser(null);
               setError(null);
             } else {
@@ -103,7 +103,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.error('❌ AuthContext init error:', error);
         // Clear everything on init error
         apiClient.clearTokens();
-        FormDataCleaner.clearAllFormData();
+        // FormDataCleaner.clearAllFormData(); // Disabled to prevent refresh
         setUser(null);
         setError(null);
       } finally {
@@ -194,7 +194,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
       setIsLoading(false);
       const apiError = error as APIError;
-      setError(apiError.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
+      
+      // Don't set error in context - let the component handle all errors
+      // This prevents unnecessary re-renders and redirects
+      console.log('💥 AuthContext: Throwing error for component to handle:', apiError.message);
       throw error;
     }
   };
@@ -212,7 +215,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         role: 'patient' as UserRole // Default role for registration
       });
       
-      if (response.success && response.data) {
+      if (response.data && !response.error) {
         // Clear the tokens and user data after successful registration
         // User needs to login again to access profile setup
         apiClient.clearTokens();
@@ -221,7 +224,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Return response data for caller to handle
         return response.data;
       } else {
-        throw new Error(response.message || 'Registration failed');
+        throw new Error(response.error?.message || 'Registration failed');
       }
     } catch (error) {
       const apiError = error as APIError;
@@ -259,7 +262,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       localStorage.removeItem('rememberMe');
       
       // Clear all form data
-      FormDataCleaner.clearAllFormData();
+      // FormDataCleaner.clearAllFormData(); // Disabled to prevent refresh
       
       console.log('✅ Logout completed');
       

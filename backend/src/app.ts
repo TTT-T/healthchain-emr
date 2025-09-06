@@ -17,6 +17,7 @@ import consentRoutes from './routes/consent';
 import adminRoutes from './routes/admin';
 import profileRoutes from './routes/profile';
 import externalRequestersRoutes from './routes/external-requesters';
+import healthRoutes from './routes/health';
 
 // Middleware
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
@@ -148,6 +149,7 @@ class Application {
     });
 
     // API Routes
+    this.app.use('/api/health', healthRoutes);       // Health check
     this.app.use('/api/auth', authRoutes);           // 1. Authentication & Authorization
     this.app.use('/api/patients', patientRoutes);    // Patient Management
     this.app.use('/api/medical', medicalRoutes);     // 1. EMR Web Application

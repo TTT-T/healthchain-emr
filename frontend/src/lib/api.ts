@@ -127,7 +127,7 @@ class APIClient {
             if (refreshToken) {
               const response = await this.refreshToken({ refreshToken });
               
-              if (response.success && response.data) {
+              if (response.data && !response.error) {
                 const { accessToken } = response.data;
                 console.log('✅ Token refresh successful');
                 
@@ -507,8 +507,8 @@ class APIClient {
     });
     
     // Store tokens if login successful
-    if (response.data) {
-      this.setAuthTokens(response.data.token, response.data.refreshToken);
+    if (response.data && !response.error) {
+      this.setAuthTokens(response.data.accessToken, response.data.refreshToken);
     }
     
     return response;
@@ -529,7 +529,7 @@ class APIClient {
     console.log('📥 Registration response:', response);
     
     // Store tokens if registration successful
-    if (response.success && response.data) {
+    if (response.data && !response.error) {
       this.setAuthTokens(response.data.accessToken, response.data.refreshToken);
     }
     
@@ -544,6 +544,28 @@ class APIClient {
       method: 'POST',
       url: '/auth/refresh-token',
       data
+    });
+  }
+
+  /**
+   * Resend verification email
+   */
+  async resendVerificationEmail(email: string): Promise<APIResponse<{ message: string }>> {
+    return this.request({
+      method: 'POST',
+      url: '/auth/resend-verification',
+      data: { email }
+    });
+  }
+
+  /**
+   * Verify email with token
+   */
+  async verifyEmail(token: string): Promise<APIResponse<{ message: string }>> {
+    return this.request({
+      method: 'POST',
+      url: '/auth/verify-email',
+      data: { token }
     });
   }
 
