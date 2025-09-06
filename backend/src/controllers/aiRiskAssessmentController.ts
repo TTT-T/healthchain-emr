@@ -14,6 +14,7 @@ interface RiskFactors {
   bloodPressure: { systolic: number; diastolic: number };
   bloodGlucose: number;
   cholesterol: number;
+  heart_rate?: number;
   familyHistory: string[];
   lifestyle: {
     smoking: boolean;
@@ -633,6 +634,77 @@ function calculateHeartDiseaseRisk(patientData: RiskFactors): RiskAssessmentResu
 }
 
 /**
+ * Calculate cancer risk
+ */
+function calculateCancerRisk(patientData: RiskFactors): RiskAssessmentResult {
+  let riskScore = 0;
+  let recommendations: string[] = [];
+
+  // Age factor (cancer risk increases with age)
+  if (patientData.age >= 65) riskScore += 3;
+  else if (patientData.age >= 50) riskScore += 2;
+  else if (patientData.age >= 35) riskScore += 1;
+
+  // BMI factor
+  if (patientData.bmi >= 30) {
+    riskScore += 2;
+    recommendations.push('ลดน้ำหนักให้อยู่ในเกณฑ์ปกติ');
+  }
+
+  // Lifestyle factors
+  if (patientData.lifestyle.smoking) {
+    riskScore += 4;
+    recommendations.push('หยุดสูบบุหรี่ทันที');
+  }
+
+  if (patientData.lifestyle.diet === 'unhealthy') {
+    riskScore += 2;
+    recommendations.push('ปรับปรุงการรับประทานอาหาร');
+  }
+
+  if (!patientData.lifestyle.exercise || patientData.lifestyle.exercise === 'sedentary') {
+    riskScore += 1;
+    recommendations.push('ออกกำลังกายอย่างสม่ำเสมอ');
+  }
+
+  // Family history
+  if (patientData.familyHistory.includes('cancer')) {
+    riskScore += 2;
+  }
+
+  // Calculate risk level and probability
+  let riskLevel: 'low' | 'moderate' | 'high' | 'very_high';
+  let probability: number;
+
+  if (riskScore >= 10) {
+    riskLevel = 'very_high';
+    probability = 70;
+  } else if (riskScore >= 7) {
+    riskLevel = 'high';
+    probability = 45;
+  } else if (riskScore >= 4) {
+    riskLevel = 'moderate';
+    probability = 25;
+  } else {
+    riskLevel = 'low';
+    probability = 10;
+  }
+
+  if (recommendations.length === 0) {
+    recommendations.push('รักษาสุขภาพให้แข็งแรง');
+    recommendations.push('ตรวจสุขภาพประจำปี');
+  }
+
+  return {
+    riskLevel,
+    probability,
+    factors: patientData,
+    recommendations,
+    nextAssessmentDate: new Date(Date.now() + 12 * 30 * 24 * 60 * 60 * 1000) // 12 months
+  };
+}
+
+/**
  * Calculate stroke risk
  */
 function calculateStrokeRisk(patientData: RiskFactors): RiskAssessmentResult {
@@ -702,71 +774,6 @@ function calculateStrokeRisk(patientData: RiskFactors): RiskAssessmentResult {
   };
 }
 
-/**
- * Calculate cancer risk (general)
- */
-function calculateCancerRisk(patientData: RiskFactors): RiskAssessmentResult {
-  let riskScore = 0;
-  let recommendations: string[] = [];
-
-  // Age factor
-  if (patientData.age >= 65) riskScore += 3;
-  else if (patientData.age >= 50) riskScore += 2;
-  else if (patientData.age >= 40) riskScore += 1;
-
-  // Smoking
-  if (patientData.lifestyle.smoking) {
-    riskScore += 4;
-    recommendations.push('หยุดสูบบุหรี่');
-  }
-
-  // BMI
-  if (patientData.bmi >= 30) {
-    riskScore += 2;
-    recommendations.push('ลดน้ำหนัก');
-  }
-
-  // Family history
-  if (patientData.familyHistory.includes('cancer')) {
-    riskScore += 2;
-  }
-
-  // Alcohol consumption
-  if (patientData.lifestyle.alcohol) {
-    riskScore += 1;
-    recommendations.push('ลดการดื่มแอลกอฮอล์');
-  }
-
-  // Calculate risk level and probability
-  let riskLevel: 'low' | 'moderate' | 'high' | 'very_high';
-  let probability: number;
-
-  if (riskScore >= 8) {
-    riskLevel = 'very_high';
-    probability = 60;
-  } else if (riskScore >= 5) {
-    riskLevel = 'high';
-    probability = 35;
-  } else if (riskScore >= 3) {
-    riskLevel = 'moderate';
-    probability = 20;
-  } else {
-    riskLevel = 'low';
-    probability = 10;
-  }
-
-  if (recommendations.length === 0) {
-    recommendations.push('ตรวจคัดกรองมะเร็งตามอายุ', 'รักษาสุขภาพให้แข็งแรง');
-  }
-
-  return {
-    riskLevel,
-    probability,
-    factors: patientData,
-    recommendations,
-    nextAssessmentDate: new Date(Date.now() + 12 * 30 * 24 * 60 * 60 * 1000) // 12 months
-  };
-}
 
 /**
  * Update AI model performance
@@ -812,3 +819,119 @@ async function updateModelPerformance(assessmentType: string, riskLevel: string)
     console.error('Error updating model performance:', error);
   }
 }
+
+/**
+ * Get AI dashboard overview
+ * GET /api/ai/dashboard/risk-overview
+ */
+export const getAIDashboardOverview = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+
+    // Get total assessments count
+    const totalAssessmentsResult = await databaseManager.query(`
+      SELECT COUNT(*) as total
+      FROM risk_assessments
+    `);
+
+    // Get assessments by type
+    const assessmentsByTypeResult = await databaseManager.query(`
+      SELECT 
+        assessment_type,
+        COUNT(*) as count,
+        AVG(probability) as avg_probability
+      FROM risk_assessments
+      GROUP BY assessment_type
+      ORDER BY count DESC
+    `);
+
+    // Get risk level distribution
+    const riskLevelDistributionResult = await databaseManager.query(`
+      SELECT 
+        risk_level,
+        COUNT(*) as count
+      FROM risk_assessments
+      GROUP BY risk_level
+      ORDER BY 
+        CASE risk_level
+          WHEN 'very_high' THEN 1
+          WHEN 'high' THEN 2
+          WHEN 'moderate' THEN 3
+          WHEN 'low' THEN 4
+        END
+    `);
+
+    // Get recent assessments
+    const recentAssessmentsResult = await databaseManager.query(`
+      SELECT 
+        ra.*,
+        u.first_name,
+        u.last_name,
+        p.thai_name
+      FROM risk_assessments ra
+      LEFT JOIN users u ON ra.assessed_by = u.id
+      LEFT JOIN patients p ON ra.patient_id = p.created_by
+      ORDER BY ra.assessment_date DESC
+      LIMIT 10
+    `);
+
+    // Get model performance
+    const modelPerformanceResult = await databaseManager.query(`
+      SELECT 
+        model_name,
+        assessment_type,
+        accuracy,
+        total_predictions,
+        correct_predictions,
+        last_updated
+      FROM ai_model_performance
+      ORDER BY accuracy DESC
+    `);
+
+    const dashboardData = {
+      summary: {
+        totalAssessments: parseInt(totalAssessmentsResult.rows[0].total),
+        assessmentsByType: assessmentsByTypeResult.rows.map(row => ({
+          type: row.assessment_type,
+          count: parseInt(row.count),
+          avgProbability: parseFloat(row.avg_probability)
+        })),
+        riskLevelDistribution: riskLevelDistributionResult.rows.map(row => ({
+          level: row.risk_level,
+          count: parseInt(row.count)
+        }))
+      },
+      recentAssessments: recentAssessmentsResult.rows.map(row => ({
+        id: row.id,
+        patientName: row.thai_name || `${row.first_name} ${row.last_name}`,
+        assessmentType: row.assessment_type,
+        riskLevel: row.risk_level,
+        probability: row.probability,
+        assessmentDate: row.assessment_date,
+        assessedBy: row.first_name && row.last_name ? `${row.first_name} ${row.last_name}` : 'System'
+      })),
+      modelPerformance: modelPerformanceResult.rows.map(row => ({
+        modelName: row.model_name,
+        assessmentType: row.assessment_type,
+        accuracy: parseFloat(row.accuracy),
+        totalPredictions: parseInt(row.total_predictions),
+        correctPredictions: parseInt(row.correct_predictions),
+        lastUpdated: row.last_updated
+      }))
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'AI dashboard overview retrieved successfully',
+      data: dashboardData
+    });
+
+  } catch (error) {
+    console.error('Error getting AI dashboard overview:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: null
+    });
+  }
+};

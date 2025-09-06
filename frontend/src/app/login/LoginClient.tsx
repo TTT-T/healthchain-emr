@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { showError, showSuccess, showWarning, showFeatureComingSoon } from "@/lib/alerts";
 // import { useAuth } from "@/contexts/AuthContext";
 // import FormDataCleaner from "@/lib/formDataCleaner";
 
@@ -133,11 +134,9 @@ function LoginClient() {
       });
 
       const result = await response.json();
-      console.log('🔍 API Response:', result);
 
       if (result.success && result.data) {
         // Login successful
-        console.log('✅ Login successful:', result.data);
         
         // Store tokens
         if (result.data.accessToken) {
@@ -154,22 +153,37 @@ function LoginClient() {
           localStorage.removeItem('rememberMe');
         }
         
+        // Show success notification
+        showSuccess('เข้าสู่ระบบสำเร็จ', 'ยินดีต้อนรับสู่ระบบบันทึกสุขภาพอิเล็กทรอนิกส์');
+        
         // Redirect to dashboard
         router.push('/emr/dashboard');
         
       } else {
         // Login failed
         const errorMessage = result.message || result.error?.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
-        console.error('❌ Login failed:', errorMessage);
+        showError('เข้าสู่ระบบไม่สำเร็จ', errorMessage);
         
         // Check if it's an unverified email error
         if (errorMessage.includes('verify your email') || 
             errorMessage.includes('email verification') ||
-            errorMessage.includes('Please verify your email')) {
+            errorMessage.includes('Please verify your email') ||
+            result.metadata?.requiresEmailVerification) {
+          
           // Store email for verification page
-          localStorage.setItem('pendingVerificationEmail', formData.username);
-          // Redirect to verification page
-          router.push(`/verify-email?email=${encodeURIComponent(formData.username)}`);
+          const emailToStore = result.metadata?.email || formData.username;
+          localStorage.setItem('pendingVerificationEmail', emailToStore);
+          
+          // Show specific error message for email verification
+          setErrors({ 
+            submit: 'กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ ตรวจสอบอีเมลของคุณและคลิกลิงก์ยืนยัน',
+            emailVerification: true
+          });
+          
+          // Redirect to verification page after a short delay
+          setTimeout(() => {
+            router.push(`/verify-email?email=${encodeURIComponent(emailToStore)}`);
+          }, 2000);
           return;
         }
         
@@ -193,10 +207,7 @@ function LoginClient() {
       }
 
     } catch (error: any) {
-      console.error('💥 Login error:', error);
-      setErrors({ 
-        submit: 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง' 
-      });
+      showError('ข้อผิดพลาดเครือข่าย', 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
     } finally {
       setIsLoading(false);
     }
@@ -447,18 +458,12 @@ function LoginClient() {
               </div>
 
               <div className="text-sm">
-                <button 
-                  type="button" 
-                  className="font-medium text-blue-600 hover:text-blue-500 transition-colors bg-transparent border-none cursor-pointer underline"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // TODO: Implement forgot password
-                    alert('ฟีเจอร์ลืมรหัสผ่านจะเปิดให้ใช้งานในเร็วๆ นี้');
-                  }}
+                <Link 
+                  href="/forgot-password"
+                  className="font-medium text-blue-600 hover:text-blue-500 transition-colors underline"
                 >
                   ลืมรหัสผ่าน?
-                </button>
+                </Link>
               </div>
             </div>
 
@@ -471,8 +476,37 @@ function LoginClient() {
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                     </svg>
                   </div>
-                  <div className="ml-3">
+                  <div className="ml-3 flex-1">
                     <p className="text-sm font-medium text-red-800">{errors.submit}</p>
+                    
+                    {/* Email Verification Actions */}
+                    {errors.emailVerification && (
+                      <div className="mt-3 space-y-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Link
+                            href={`/verify-email?email=${encodeURIComponent(formData.username)}`}
+                            className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                          >
+                            📧 ขอยืนยันอีเมลอีกครั้ง
+                          </Link>
+                          
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setErrors({});
+                              setFormData(prev => ({ ...prev, username: '', password: '' }));
+                            }}
+                            className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                          >
+                            🔄 ลองใหม่
+                          </button>
+                        </div>
+                        
+                        <p className="text-xs text-red-600">
+                          💡 หากไม่ได้รับอีเมล กรุณาตรวจสอบ Spam folder หรือใช้ปุ่ม "ขอยืนยันอีเมลอีกครั้ง"
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

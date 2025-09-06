@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import Cookies from 'js-cookie';
+import { showError, showWarning } from '@/lib/alerts';
 
 // Types
 import { 
@@ -49,7 +50,6 @@ class APIClient {
   }> = [];
 
   constructor() {
-    console.log('🏗️ Creating API Client with baseURL:', API_BASE_URL);
     this.axiosInstance = axios.create({
       baseURL: API_BASE_URL,
       timeout: 30000, // 30 seconds
@@ -58,7 +58,6 @@ class APIClient {
       },
     });
 
-    console.log('🏗️ Axios instance created with baseURL:', this.axiosInstance.defaults.baseURL);
     this.setupInterceptors();
   }
 
@@ -70,19 +69,10 @@ class APIClient {
     this.axiosInstance.interceptors.request.use(
       (config) => {
         const token = this.getAccessToken();
-        console.log('🌐 API Request:', config.method?.toUpperCase(), config.url);
-        console.log('🔑 Token available:', !!token);
-        console.log('🔑 Token value:', token ? token.substring(0, 30) + '...' : 'null');
-        console.log('🔧 Config headers before:', config.headers);
         
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
-          console.log('🔐 Authorization header set');
-        } else {
-          console.log('❌ No token available');
         }
-        
-        console.log('🔧 Config headers after:', config.headers);
         
         // Add request ID for tracking
         config.headers['X-Request-ID'] = this.generateRequestId();
@@ -90,7 +80,6 @@ class APIClient {
         return config;
       },
       (error) => {
-        console.error('❌ Request interceptor error:', error);
         return Promise.reject(error);
       }
     );
@@ -122,14 +111,12 @@ class APIClient {
 
           try {
             const refreshToken = this.getRefreshToken();
-            console.log('🔄 Attempting token refresh...');
             
             if (refreshToken) {
               const response = await this.refreshToken({ refreshToken });
               
               if (response.data && !response.error) {
                 const { accessToken } = response.data;
-                console.log('✅ Token refresh successful');
                 
                 this.setAccessToken(accessToken);
                 
@@ -142,11 +129,9 @@ class APIClient {
                 }
                 return this.axiosInstance(originalRequest);
               } else {
-                console.error('❌ Token refresh failed:', response.message);
                 throw new Error('Token refresh failed');
               }
             } else {
-              console.error('❌ No refresh token available');
               throw new Error('No refresh token');
             }
           } catch (refreshError) {
@@ -617,6 +602,124 @@ class APIClient {
       method: 'PUT',
       url: '/auth/profile',
       data
+    });
+  }
+
+  /**
+   * Update doctor profile
+   */
+  async updateDoctorProfile(data: {
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+    phone?: string;
+    hospital?: string;
+    department?: string;
+    specialty?: string;
+    medical_license?: string;
+    experience_years?: string;
+    education?: string;
+    bio?: string;
+    position?: string;
+    professional_license?: string;
+  }): Promise<APIResponse<User>> {
+    return this.request<User>({
+      method: 'PUT',
+      url: '/profile/doctor',
+      data
+    });
+  }
+
+  /**
+   * Update nurse profile
+   */
+  async updateNurseProfile(data: {
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+    phone?: string;
+    hospital?: string;
+    department?: string;
+    ward?: string;
+    nursing_license?: string;
+    experience_years?: string;
+    education?: string;
+    certifications?: string;
+    shift?: string;
+    bio?: string;
+    position?: string;
+    professional_license?: string;
+  }): Promise<APIResponse<User>> {
+    return this.request<User>({
+      method: 'PUT',
+      url: '/profile/nurse',
+      data
+    });
+  }
+
+  /**
+   * Change user password
+   */
+  async changePassword(data: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: '/auth/change-password',
+      data
+    });
+  }
+
+  /**
+   * Get user security settings
+   */
+  async getSecuritySettings(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/security/settings'
+    });
+  }
+
+  /**
+   * Update user security settings
+   */
+  async updateSecuritySettings(data: {
+    twoFactorEnabled?: boolean;
+    emailNotifications?: boolean;
+    smsNotifications?: boolean;
+    loginAlerts?: boolean;
+    sessionTimeout?: number;
+    requirePasswordChange?: boolean;
+    passwordChangeInterval?: number;
+    deviceTrust?: boolean;
+    locationTracking?: boolean;
+  }): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: '/security/settings',
+      data
+    });
+  }
+
+  /**
+   * Get user login sessions
+   */
+  async getUserSessions(): Promise<APIResponse<any[]>> {
+    return this.request<any[]>({
+      method: 'GET',
+      url: '/security/sessions'
+    });
+  }
+
+  /**
+   * Terminate user session
+   */
+  async terminateSession(sessionId: string): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'DELETE',
+      url: `/security/sessions/${sessionId}`
     });
   }
 

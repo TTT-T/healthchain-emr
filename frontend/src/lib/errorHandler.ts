@@ -1,4 +1,5 @@
 import { APIError } from '@/types/api';
+import { showError, showWarning, showInfo } from '@/lib/alerts';
 
 /**
  * Format API error messages for display to users
@@ -196,8 +197,17 @@ export function handleAPIError(error: APIError | Error | unknown, options?: {
   
   // Show toast notification if requested
   if (options?.showToast) {
-    // You can integrate with your toast library here
-    console.warn('Toast notification:', finalMessage);
+    const { action } = createErrorMessage(error);
+    
+    if (isAuthError(error)) {
+      showWarning('เซสชันหมดอายุ', finalMessage);
+    } else if (isNetworkError(error)) {
+      showError('ข้อผิดพลาดเครือข่าย', finalMessage);
+    } else if (isValidationError(error)) {
+      showError('ข้อมูลไม่ถูกต้อง', finalMessage);
+    } else {
+      showError('ข้อผิดพลาด', finalMessage);
+    }
   }
   
   // Redirect on authentication errors if requested
@@ -208,4 +218,103 @@ export function handleAPIError(error: APIError | Error | unknown, options?: {
   }
   
   return finalMessage;
+}
+
+/**
+ * Enhanced error handler with automatic alert display
+ */
+export function handleErrorWithAlert(error: APIError | Error | unknown, options?: {
+  title?: string;
+  customMessage?: string;
+  showRetry?: boolean;
+  onRetry?: () => void;
+  redirectOnAuth?: boolean;
+}): string {
+  const { message, action } = createErrorMessage(error);
+  const finalMessage = options?.customMessage || message;
+  const title = options?.title || 'ข้อผิดพลาด';
+  
+  // Log error in development
+  if (process.env.NODE_ENV === 'development') {
+    console.error('Error with Alert:', getErrorDetails(error));
+  }
+  
+  // Show appropriate alert based on error type
+  if (isAuthError(error)) {
+    showWarning('เซสชันหมดอายุ', finalMessage);
+    
+    // Auto redirect on auth error
+    if (options?.redirectOnAuth && typeof window !== 'undefined') {
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000);
+    }
+  } else if (isNetworkError(error)) {
+    showError('ข้อผิดพลาดเครือข่าย', finalMessage);
+  } else if (isValidationError(error)) {
+    showError('ข้อมูลไม่ถูกต้อง', finalMessage);
+  } else {
+    showError(title, finalMessage);
+  }
+  
+  return finalMessage;
+}
+
+/**
+ * Handle form validation errors with field-specific messages
+ */
+export function handleValidationErrors(errors: Record<string, string>): void {
+  const firstError = Object.values(errors)[0];
+  if (firstError) {
+    showError('ข้อมูลไม่ถูกต้อง', firstError);
+  }
+}
+
+/**
+ * Handle network errors with retry option
+ */
+export function handleNetworkError(error: APIError | Error | unknown, onRetry?: () => void): void {
+  const message = formatAPIError(error);
+  
+  if (onRetry) {
+    showError('ข้อผิดพลาดเครือข่าย', message, {
+      action: {
+        label: 'ลองใหม่',
+        onClick: onRetry
+      }
+    });
+  } else {
+    showError('ข้อผิดพลาดเครือข่าย', message);
+  }
+}
+
+/**
+ * Handle authentication errors with redirect
+ */
+export function handleAuthError(error: APIError | Error | unknown): void {
+  const message = formatAPIError(error);
+  showWarning('เซสชันหมดอายุ', message);
+  
+  // Auto redirect to login
+  if (typeof window !== 'undefined') {
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 2000);
+  }
+}
+
+/**
+ * Handle server errors with appropriate messaging
+ */
+export function handleServerError(error: APIError | Error | unknown): void {
+  const message = formatAPIError(error);
+  showError('ข้อผิดพลาดเซิร์ฟเวอร์', message);
+}
+
+/**
+ * Handle permission errors
+ */
+export function handlePermissionError(error: APIError | Error | unknown): void {
+  const message = formatAPIError(error);
+  showError('ไม่มีสิทธิ์', message);
 }

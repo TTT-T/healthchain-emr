@@ -1,0 +1,159 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthChain EMR - Email Templates Preview</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            color: #3b82f6;
+            margin: 0 0 10px 0;
+        }
+        .header p {
+            color: #64748b;
+            margin: 0;
+        }
+        .templates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .template-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+        .template-card:hover {
+            transform: translateY(-2px);
+        }
+        .template-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+        .template-description {
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        .template-link {
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .template-link:hover {
+            background: #2563eb;
+        }
+        .features {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-top: 30px;
+        }
+        .features h2 {
+            color: #1f2937;
+            margin-bottom: 20px;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .feature-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+        .feature-icon {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 HealthChain EMR - Email Templates</h1>
+            <p>ชุดเทมเพลตอีเมลที่สวยงามและใช้งานง่ายสำหรับระบบ EMR</p>
+        </div>
+        
+        <div class="templates-grid">
+            <div class="template-card">
+                <div class="template-title">📧 Email Verification</div>
+                <div class="template-description">
+                    เทมเพลตสำหรับยืนยันอีเมลผู้ใช้ใหม่ พร้อมการออกแบบที่สวยงามและข้อมูลที่ชัดเจน
+                </div>
+                <a href="email-verification.html" class="template-link" target="_blank">ดูตัวอย่าง</a>
+            </div>
+            
+            <div class="template-card">
+                <div class="template-title">🔐 Password Reset</div>
+                <div class="template-description">
+                    เทมเพลตสำหรับรีเซ็ตรหัสผ่าน พร้อมเคล็ดลับความปลอดภัยและคำแนะนำ
+                </div>
+                <a href="password-reset.html" class="template-link" target="_blank">ดูตัวอย่าง</a>
+            </div>
+        </div>
+        
+        <div class="features">
+            <h2>🌟 ฟีเจอร์ของ Email Templates</h2>
+            <div class="features-grid">
+                <div class="feature-item">
+                    <span class="feature-icon">🎨</span>
+                    <span>การออกแบบที่สวยงามและทันสมัย</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">📱</span>
+                    <span>รองรับการแสดงผลบนมือถือ</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🔒</span>
+                    <span>ข้อมูลความปลอดภัยที่ชัดเจน</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🌐</span>
+                    <span>รองรับภาษาไทย</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">⚡</span>
+                    <span>โหลดเร็วและใช้งานง่าย</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🎯</span>
+                    <span>ข้อมูลที่จัดระเบียบและเข้าใจง่าย</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

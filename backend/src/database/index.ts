@@ -401,6 +401,7 @@ export class DatabaseSchema {
       this.createUserSessionsTable(),
       this.createPasswordResetTokensTable(),
       this.createEmailVerificationTokensTable(),
+      this.createUserSecuritySettingsTable(),
       this.createAuditLogsTable(),
       this.createDepartmentsTable(),
       this.createPatientsTable(),
@@ -503,6 +504,30 @@ export class DatabaseSchema {
         expires_at TIMESTAMP NOT NULL,
         used_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+  }
+
+  /**
+   * Create user security settings table
+   */
+  private static createUserSecuritySettingsTable(): string {
+    return `
+      CREATE TABLE IF NOT EXISTS user_security_settings (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        two_factor_enabled BOOLEAN DEFAULT FALSE,
+        email_notifications BOOLEAN DEFAULT TRUE,
+        sms_notifications BOOLEAN DEFAULT FALSE,
+        login_alerts BOOLEAN DEFAULT TRUE,
+        session_timeout INTEGER DEFAULT 60,
+        require_password_change BOOLEAN DEFAULT FALSE,
+        password_change_interval INTEGER DEFAULT 90,
+        device_trust BOOLEAN DEFAULT FALSE,
+        location_tracking BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id)
       );
     `;
   }
@@ -1000,6 +1025,97 @@ export class DatabaseSchema {
     } catch (error) {
       console.error('Email verification error:', error);
       return { success: false, error: 'Failed to verify email' };
+    }
+  }
+
+  /**
+   * Create password reset token
+   */
+  static async createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Delete any existing reset tokens for this user
+      await this.db.query(
+        'DELETE FROM password_reset_tokens WHERE user_id = $1',
+        [userId]
+      );
+
+      // Create new reset token
+      await this.db.query(
+        'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
+        [userId, token, expiresAt]
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error('Create password reset token error:', error);
+      return { success: false, error: 'Failed to create reset token' };
+    }
+  }
+
+  /**
+   * Validate password reset token
+   */
+  static async validatePasswordResetToken(token: string): Promise<{ success: boolean; userId?: string; error?: string }> {
+    try {
+      const result = await this.db.query(
+        'SELECT user_id, expires_at, used_at FROM password_reset_tokens WHERE token = $1',
+        [token]
+      );
+
+      if (result.rows.length === 0) {
+        return { success: false, error: 'Invalid token' };
+      }
+
+      const tokenData = result.rows[0];
+
+      // Check if token is expired
+      if (new Date() > new Date(tokenData.expires_at)) {
+        return { success: false, error: 'Token expired' };
+      }
+
+      // Check if token is already used
+      if (tokenData.used_at) {
+        return { success: false, error: 'Token already used' };
+      }
+
+      return { success: true, userId: tokenData.user_id };
+    } catch (error) {
+      console.error('Validate password reset token error:', error);
+      return { success: false, error: 'Failed to validate token' };
+    }
+  }
+
+  /**
+   * Mark password reset token as used
+   */
+  static async markPasswordResetTokenAsUsed(token: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await this.db.query(
+        'UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE token = $1',
+        [token]
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error('Mark password reset token as used error:', error);
+      return { success: false, error: 'Failed to mark token as used' };
+    }
+  }
+
+  /**
+   * Update user password
+   */
+  static async updateUserPassword(userId: string, newPasswordHash: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await this.db.query(
+        'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        [newPasswordHash, userId]
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error('Update user password error:', error);
+      return { success: false, error: 'Failed to update password' };
     }
   }
 }

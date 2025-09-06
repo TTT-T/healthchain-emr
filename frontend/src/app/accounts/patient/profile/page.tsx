@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
 import AppLayout from "@/components/AppLayout";
+import Link from "next/link";
 
 interface PatientData {
   // Basic user info
@@ -887,18 +888,24 @@ export default function Profile() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <h4 className="font-medium text-slate-700">ความปลอดภัย</h4>
-                      <button className="w-full text-left px-4 py-3 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
+                      <Link
+                        href="/accounts/change-password"
+                        className="w-full text-left px-4 py-3 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors block"
+                      >
                         <div className="flex items-center justify-between">
                           <span className="text-slate-700">เปลี่ยนรหัสผ่าน</span>
                           <span className="text-slate-400">→</span>
                         </div>
-                      </button>
-                      <button className="w-full text-left px-4 py-3 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
+                      </Link>
+                      <Link
+                        href="/accounts/security-settings"
+                        className="w-full text-left px-4 py-3 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors block"
+                      >
                         <div className="flex items-center justify-between">
-                          <span className="text-slate-700">การยืนยันตัวตน 2 ขั้นตอน</span>
-                          <span className="text-slate-400">ปิด</span>
+                          <span className="text-slate-700">การตั้งค่าความปลอดภัย</span>
+                          <span className="text-slate-400">→</span>
                         </div>
-                      </button>
+                      </Link>
                     </div>
                     
                     <div className="space-y-4">

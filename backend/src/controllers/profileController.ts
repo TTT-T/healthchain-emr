@@ -40,6 +40,48 @@ const profileSetupSchema = z.object({
   chronic_diseases: z.string().optional()
 });
 
+// Validation schema สำหรับการอัปเดตโปรไฟล์แพทย์
+const doctorProfileSchema = z.object({
+  // Basic user fields
+  first_name: z.string().min(1, 'ชื่อต้องไม่ว่าง').max(100).optional(),
+  last_name: z.string().min(1, 'นามสกุลต้องไม่ว่าง').max(100).optional(),
+  email: z.string().email('รูปแบบอีเมลไม่ถูกต้อง').optional(),
+  phone: z.string().optional(),
+  
+  // Doctor specific fields
+  hospital: z.string().optional(),
+  department: z.string().optional(),
+  specialty: z.string().optional(),
+  medical_license: z.string().optional(),
+  experience_years: z.string().optional(),
+  education: z.string().optional(),
+  bio: z.string().optional(),
+  position: z.string().optional(),
+  professional_license: z.string().optional()
+});
+
+// Validation schema สำหรับการอัปเดตโปรไฟล์พยาบาล
+const nurseProfileSchema = z.object({
+  // Basic user fields
+  first_name: z.string().min(1, 'ชื่อต้องไม่ว่าง').max(100).optional(),
+  last_name: z.string().min(1, 'นามสกุลต้องไม่ว่าง').max(100).optional(),
+  email: z.string().email('รูปแบบอีเมลไม่ถูกต้อง').optional(),
+  phone: z.string().optional(),
+  
+  // Nurse specific fields
+  hospital: z.string().optional(),
+  department: z.string().optional(),
+  ward: z.string().optional(),
+  nursing_license: z.string().optional(),
+  experience_years: z.string().optional(),
+  education: z.string().optional(),
+  certifications: z.string().optional(),
+  shift: z.string().optional(),
+  bio: z.string().optional(),
+  position: z.string().optional(),
+  professional_license: z.string().optional()
+});
+
 /**
  * อัปเดตข้อมูลโปรไฟล์และสร้าง patient record
  * POST /api/profile/setup

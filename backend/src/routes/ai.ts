@@ -5,7 +5,8 @@ import {
   calculateRiskAssessment,
   getRiskAssessment,
   getRiskAssessmentHistory,
-  getModelPerformance
+  getModelPerformance,
+  getAIDashboardOverview
 } from '../controllers/aiRiskAssessmentController';
 
 const router = Router();
@@ -39,6 +40,13 @@ router.get('/model-performance',
   authenticate, 
   authorize(['admin', 'doctor']), 
   asyncHandler(getModelPerformance)
+);
+
+// AI Dashboard Routes
+router.get('/dashboard/risk-overview', 
+  authenticate, 
+  authorize(['admin', 'doctor', 'nurse']), 
+  asyncHandler(getAIDashboardOverview)
 );
 
 export default router;

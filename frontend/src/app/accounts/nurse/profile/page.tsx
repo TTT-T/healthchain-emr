@@ -1,25 +1,68 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiClient } from "@/lib/api";
 import MedicalHeader from "@/components/MedicalHeader";
 
 export default function NurseProfilePage() {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
-    firstName: "สมหญิง",
-    lastName: "ใจดี",
-    email: "nurse.somying@hospital.com",
-    phone: "087-654-3210",
-    hospital: "โรงพยาบาลศรีธัญญา",
-    department: "อายุรกรรม",
-    ward: "อายุรกรรมชาย",
-    nursingLicense: "พยาบาล 54321",
-    experience: "8",
-    education: "พยาบาลศาสตรบัณฑิต มหาวิทยาลัยมหิดล",
-    certifications: "การพยาบาลผู้ป่วยโรคหัวใจ, การพยาบาลผู้ป่วยวิกฤต",
-    shift: "กลางวัน",
-    bio: "พยาบาลที่มีประสบการณ์การดูแลผู้ป่วยใน รักและเอาใจใส่ผู้ป่วยทุกคน"
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    hospital: "",
+    department: "",
+    ward: "",
+    nursing_license: "",
+    experience_years: "",
+    education: "",
+    certifications: "",
+    shift: "",
+    bio: "",
+    position: "",
+    professional_license: ""
   });
 
   const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Load user data
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        setIsLoading(true);
+        if (user) {
+          setFormData({
+            first_name: user.firstName || "",
+            last_name: user.lastName || "",
+            email: user.email || "",
+            phone: user.phone || "",
+            hospital: user.hospital || "",
+            department: user.department || "",
+            ward: user.ward || "",
+            nursing_license: user.professional_license || "",
+            experience_years: user.experience || "",
+            education: user.education || "",
+            certifications: user.certifications || "",
+            shift: user.shift || "",
+            bio: user.bio || "",
+            position: user.position || "",
+            professional_license: user.professional_license || ""
+          });
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+        setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -32,12 +75,43 @@ export default function NurseProfilePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
+    setSuccess(null);
     
-    // TODO: API call to update profile
-    setTimeout(() => {
+    try {
+      // Basic validation
+      if (!formData.first_name || !formData.last_name || !formData.email) {
+        setError('กรุณากรอกข้อมูลที่จำเป็น (ชื่อ, นามสกุล, อีเมล)');
+        return;
+      }
+      
+      // Email validation
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(formData.email)) {
+        setError('รูปแบบอีเมลไม่ถูกต้อง');
+        return;
+      }
+      
+      // Phone validation (if provided)
+      if (formData.phone && !/^[0-9\-\s\+\(\)]+$/.test(formData.phone)) {
+        setError('รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง');
+        return;
+      }
+      
+      const response = await apiClient.updateNurseProfile(formData);
+      
+      if (response.data && !response.error) {
+        setSuccess('บันทึกข้อมูลสำเร็จ');
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(response.error?.message || 'เกิดข้อผิดพลาดในการบันทึก');
+      }
+    } catch (error: any) {
+      console.error('Error saving profile:', error);
+      setError('เกิดข้อผิดพลาดในการบันทึก');
+    } finally {
       setLoading(false);
-      alert("บันทึกข้อมูลสำเร็จ!");
-    }, 1000);
+    }
   };
 
   return (
@@ -53,15 +127,15 @@ export default function NurseProfilePage() {
                 Nu
               </div>
               <div className="text-center sm:text-left">
-                <h2 className="text-2xl md:text-3xl font-bold text-slate-800">พยาบาล{formData.firstName} {formData.lastName}</h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-slate-800">พยาบาล{formData.first_name} {formData.last_name}</h2>
                 <p className="text-pink-600 font-medium text-lg">หอผู้ป่วย{formData.ward}</p>
                 <p className="text-slate-600">{formData.hospital} • แผนก{formData.department}</p>
                 <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-2">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-pink-100 text-pink-700">
-                    ใบประกอบวิชาชีพ {formData.nursingLicense}
+                    ใบประกอบวิชาชีพ {formData.nursing_license}
                   </span>
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                    ประสบการณ์ {formData.experience} ปี
+                    ประสบการณ์ {formData.experience_years} ปี
                   </span>
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
                     กะ{formData.shift}
@@ -70,6 +144,38 @@ export default function NurseProfilePage() {
               </div>
             </div>
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-red-800">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Success Message */}
+          {success && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-green-800">{success}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Profile Form */}
           <div className="bg-white rounded-2xl shadow-lg border border-slate-200/50 overflow-hidden">

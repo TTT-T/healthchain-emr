@@ -9,7 +9,10 @@ import {
   getDataRequestById,
   updateDataRequest,
   approveDataRequest,
-  rejectDataRequest
+  rejectDataRequest,
+  searchPatientsForRequest,
+  generateDataRequestReport,
+  getExternalRequestersDashboardOverview
 } from '../controllers/externalRequestersController';
 
 const router = express.Router();
@@ -30,5 +33,16 @@ router.put('/requests/:id', authorize(['external_requester', 'admin']), asyncHan
  */
 router.post('/requests/:id/approve', authorize(['admin']), asyncHandler(approveDataRequest));
 router.post('/requests/:id/reject', authorize(['admin']), asyncHandler(rejectDataRequest));
+
+/**
+ * Search and Report Routes
+ */
+router.get('/search/patients', authorize(['external_user', 'external_admin', 'admin']), asyncHandler(searchPatientsForRequest));
+router.get('/reports/:requestId', authorize(['external_user', 'external_admin', 'admin']), asyncHandler(generateDataRequestReport));
+
+/**
+ * Dashboard Routes
+ */
+router.get('/dashboard/overview', authorize(['external_admin', 'admin']), asyncHandler(getExternalRequestersDashboardOverview));
 
 export default router;

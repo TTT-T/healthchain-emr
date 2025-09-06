@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { setupProfile, getProfile, updateProfile } from '../controllers/profileController';
+import { updateDoctorProfile } from '../controllers/doctorProfileController';
+import { updateNurseProfile } from '../controllers/nurseProfileController';
 
 const router = Router();
 
@@ -24,5 +26,19 @@ router.get('/', authenticate, getProfile);
  * @access  Private
  */
 router.put('/', authenticate, updateProfile);
+
+/**
+ * @route   PUT /api/profile/doctor
+ * @desc    Update doctor profile
+ * @access  Private (Doctor only)
+ */
+router.put('/doctor', authenticate, updateDoctorProfile);
+
+/**
+ * @route   PUT /api/profile/nurse
+ * @desc    Update nurse profile
+ * @access  Private (Nurse only)
+ */
+router.put('/nurse', authenticate, updateNurseProfile);
 
 export default router;

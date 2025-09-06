@@ -54,15 +54,15 @@ import {
 import {
   createLabOrder as createPatientLabOrder,
   getLabOrder,
-  updateLabOrder,
-  createLabResult,
-  getLabResults,
-  getLabOrdersByVisit
+  updateLabOrder as updatePatientLabOrder,
+  createLabResult as createPatientLabResult,
+  getLabResults as getPatientLabResults,
+  getLabOrdersByVisit as getPatientLabOrdersByVisit
 } from '../controllers/labController';
 import {
-  createPrescription,
+  createPrescription as createPatientPrescription,
   getPrescription,
-  updatePrescription,
+  updatePrescription as updatePatientPrescription,
   updatePrescriptionItem,
   getPrescriptionsByVisit
 } from '../controllers/pharmacyController';
@@ -73,9 +73,9 @@ import {
   deletePatientRecord
 } from '../controllers/medicalRecordsController';
 import {
-  getPatientLabResults,
+  getPatientLabResults as getPatientLabResultsFromController,
   getPatientLabResult,
-  createPatientLabResult,
+  createPatientLabResult as createPatientLabResultFromController,
   updatePatientLabResult
 } from '../controllers/labResultsController';
 import {

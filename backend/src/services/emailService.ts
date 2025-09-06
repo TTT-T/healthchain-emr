@@ -88,118 +88,1289 @@ class EmailService {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ยืนยันอีเมล - HealthChain</title>
+        <title>ยืนยันอีเมล - HealthChain EMR</title>
         <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
           body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
-            color: #333;
+            color: #2d3748;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+          }
+          .email-container {
             max-width: 600px;
             margin: 0 auto;
-            padding: 20px;
-            background-color: #f4f4f4;
-          }
-          .container {
-            background: white;
-            border-radius: 10px;
-            padding: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
           }
           .header {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            padding: 40px 30px;
             text-align: center;
-            border-bottom: 2px solid #e1e8ed;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
+            position: relative;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
           }
           .logo {
-            font-size: 28px;
-            font-weight: bold;
-            color: #3b82f6;
-            margin-bottom: 10px;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+          }
+          .logo-icon {
+            font-size: 40px;
+            margin-right: 10px;
+          }
+          .header-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+            position: relative;
+            z-index: 1;
           }
           .content {
+            padding: 40px 30px;
+          }
+          .greeting {
+            font-size: 18px;
+            color: #1a202c;
+            margin-bottom: 20px;
+          }
+          .message {
+            font-size: 16px;
+            color: #4a5568;
             margin-bottom: 30px;
+            line-height: 1.7;
+          }
+          .verification-section {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            margin: 30px 0;
           }
           .verification-button {
             display: inline-block;
-            background: linear-gradient(135deg, #3b82f6, #10b981);
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
-            padding: 15px 30px;
+            padding: 16px 32px;
             text-decoration: none;
-            border-radius: 8px;
-            font-weight: bold;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
             text-align: center;
             margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
           }
           .verification-button:hover {
-            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
           }
-          .footer {
-            border-top: 1px solid #e1e8ed;
-            padding-top: 20px;
+          .link-section {
+            margin: 25px 0;
+            padding: 20px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+          }
+          .link-label {
             font-size: 14px;
-            color: #666;
+            color: #64748b;
+            margin-bottom: 10px;
+            font-weight: 500;
+          }
+          .verification-link {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            word-break: break-all;
+            color: #1e293b;
+            border: 1px solid #e2e8f0;
+          }
+          .warning-box {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 1px solid #f59e0b;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 25px 0;
+            color: #92400e;
+          }
+          .warning-title {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+          }
+          .warning-icon {
+            margin-right: 8px;
+            font-size: 18px;
+          }
+          .warning-list {
+            margin: 0;
+            padding-left: 20px;
+          }
+          .warning-list li {
+            margin-bottom: 8px;
+            font-size: 14px;
+          }
+          .benefits-section {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+          }
+          .benefits-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #065f46;
+            margin-bottom: 15px;
             text-align: center;
           }
-          .warning {
-            background: #fef3cd;
-            border: 1px solid #fecaca;
-            border-radius: 6px;
-            padding: 15px;
+          .benefits-list {
+            list-style: none;
+            padding: 0;
+          }
+          .benefits-list li {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 15px;
+            color: #047857;
+          }
+          .benefit-icon {
+            margin-right: 12px;
+            font-size: 16px;
+          }
+          .footer {
+            background: #f8fafc;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+          }
+          .footer-text {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
+          }
+          .contact-info {
+            font-size: 14px;
+            color: #3b82f6;
+            font-weight: 500;
+            margin: 10px 0;
+          }
+          .copyright {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 15px;
+          }
+          .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
             margin: 20px 0;
-            color: #92400e;
+          }
+          @media (max-width: 600px) {
+            .email-container {
+              margin: 10px;
+              border-radius: 12px;
+            }
+            .header, .content, .footer {
+              padding: 25px 20px;
+            }
+            .verification-section {
+              padding: 20px;
+            }
+            .logo {
+              font-size: 28px;
+            }
+            .header-title {
+              font-size: 20px;
+            }
           }
         </style>
       </head>
       <body>
-        <div class="container">
+        <div class="email-container">
           <div class="header">
-            <div class="logo">🏥 HealthChain</div>
-            <h2 style="color: #1f2937; margin: 0;">ยืนยันอีเมลของคุณ</h2>
+            <div class="logo">
+              <span class="logo-icon">🏥</span>HealthChain EMR
+            </div>
+            <h1 class="header-title">ยืนยันอีเมลของคุณ</h1>
           </div>
           
           <div class="content">
-            <p style="font-size: 16px;">สวัสดี คุณ<strong>${firstName}</strong>,</p>
+            <div class="greeting">
+              สวัสดี คุณ<strong>${firstName}</strong> 👋
+            </div>
             
-            <p>ขอบคุณที่สมัครใช้งาน HealthChain EMR System</p>
+            <div class="message">
+              ขอบคุณที่สมัครใช้งาน <strong>HealthChain EMR System</strong> 
+              ระบบจัดการข้อมูลทางการแพทย์ที่ทันสมัยและปลอดภัย
+            </div>
             
-            <p>เพื่อความปลอดภัยและให้คุณสามารถใช้งานระบบได้อย่างเต็มรูปแบบ กรุณายืนยันอีเมลของคุณโดยคลิกปุ่มด้านล่าง:</p>
+            <div class="message">
+              เพื่อความปลอดภัยและให้คุณสามารถใช้งานระบบได้อย่างเต็มรูปแบบ 
+              กรุณายืนยันอีเมลของคุณโดยคลิกปุ่มด้านล่าง:
+            </div>
             
-            <div style="text-align: center;">
+            <div class="verification-section">
               <a href="${verificationUrl}" class="verification-button">
-                ✅ ยืนยันอีเมล
+                ✅ ยืนยันอีเมลของฉัน
               </a>
             </div>
             
-            <p>หรือคัดลอกลิงก์นี้ไปวางในเบราว์เซอร์:</p>
-            <p style="background: #f3f4f6; padding: 10px; border-radius: 4px; font-family: monospace; word-break: break-all;">
-              ${verificationUrl}
-            </p>
+            <div class="link-section">
+              <div class="link-label">หรือคัดลอกลิงก์นี้ไปวางในเบราว์เซอร์:</div>
+              <div class="verification-link">${verificationUrl}</div>
+            </div>
             
-            <div class="warning">
-              <strong>⚠️ ข้อสำคัญ:</strong>
-              <ul style="margin: 10px 0 0 20px;">
-                <li>ลิงก์นี้จะหมดอายุใน <strong>24 ชั่วโมง</strong></li>
+            <div class="warning-box">
+              <div class="warning-title">
+                <span class="warning-icon">⚠️</span>
+                ข้อสำคัญที่ควรทราบ
+              </div>
+              <ul class="warning-list">
+                <li>ลิงก์ยืนยันนี้จะหมดอายุใน <strong>24 ชั่วโมง</strong></li>
                 <li>หากคุณไม่ได้สมัครบัญชีนี้ กรุณาเพิกเฉยต่ออีเมลนี้</li>
-                <li>อย่าแชร์ลิงก์นี้กับผู้อื่น</li>
+                <li>อย่าแชร์ลิงก์นี้กับผู้อื่นเพื่อความปลอดภัย</li>
+                <li>หากลิงก์หมดอายุ สามารถขอส่งใหม่ได้ที่หน้าเข้าสู่ระบบ</li>
               </ul>
             </div>
             
-            <p style="margin-top: 30px;">หลังจากยืนยันอีเมลเรียบร้อย คุณจะสามารถ:</p>
-            <ul style="color: #10b981;">
-              <li>✅ เข้าสู่ระบบได้</li>
-              <li>✅ จัดการข้อมูลส่วนตัว</li>
-              <li>✅ เข้าถึงบริการการแพทย์</li>
-              <li>✅ ติดตามประวัติการรักษา</li>
-            </ul>
+            <div class="benefits-section">
+              <div class="benefits-title">🎉 หลังจากยืนยันอีเมลเรียบร้อย คุณจะสามารถ:</div>
+              <ul class="benefits-list">
+                <li><span class="benefit-icon">🔐</span>เข้าสู่ระบบได้อย่างปลอดภัย</li>
+                <li><span class="benefit-icon">👤</span>จัดการข้อมูลส่วนตัวและประวัติการรักษา</li>
+                <li><span class="benefit-icon">📅</span>จองนัดหมายกับแพทย์ออนไลน์</li>
+                <li><span class="benefit-icon">📊</span>ติดตามผลการตรวจและยาที่ได้รับ</li>
+                <li><span class="benefit-icon">💊</span>รับการแจ้งเตือนเกี่ยวกับการรักษา</li>
+                <li><span class="benefit-icon">📱</span>เข้าถึงข้อมูลได้ทุกที่ทุกเวลา</li>
+              </ul>
+            </div>
           </div>
           
+          <div class="divider"></div>
+          
           <div class="footer">
-            <p>อีเมลนี้ส่งมาจาก HealthChain EMR System</p>
-            <p>หากมีคำถาม กรุณาติดต่อ: support@healthchain.co.th</p>
-            <p style="font-size: 12px; color: #999;">
-              © 2025 HealthChain. All rights reserved.
-            </p>
+            <div class="footer-text">
+              อีเมลนี้ส่งมาจาก <strong>HealthChain EMR System</strong>
+            </div>
+            <div class="contact-info">
+              📧 หากมีคำถาม กรุณาติดต่อ: support@healthchain.co.th
+            </div>
+            <div class="contact-info">
+              📞 โทรศัพท์: 02-xxx-xxxx (จันทร์-ศุกร์ 8:00-17:00)
+            </div>
+            <div class="copyright">
+              © 2025 HealthChain EMR System. All rights reserved.
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  /**
+   * Generate password reset HTML template
+   */
+  generatePasswordResetTemplate(firstName: string, resetUrl: string): string {
+    return `
+      <!DOCTYPE html>
+      <html lang="th">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>รีเซ็ตรหัสผ่าน - HealthChain EMR</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #2d3748;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+          }
+          .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+          }
+          .logo {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+          }
+          .logo-icon {
+            font-size: 40px;
+            margin-right: 10px;
+          }
+          .header-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+            position: relative;
+            z-index: 1;
+          }
+          .content {
+            padding: 40px 30px;
+          }
+          .greeting {
+            font-size: 18px;
+            color: #1a202c;
+            margin-bottom: 20px;
+          }
+          .message {
+            font-size: 16px;
+            color: #4a5568;
+            margin-bottom: 30px;
+            line-height: 1.7;
+          }
+          .reset-section {
+            background: #fef2f2;
+            border: 2px solid #fecaca;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            margin: 30px 0;
+          }
+          .reset-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            color: white;
+            padding: 16px 32px;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+          }
+          .reset-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+          }
+          .link-section {
+            margin: 25px 0;
+            padding: 20px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            border-left: 4px solid #dc2626;
+          }
+          .link-label {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 10px;
+            font-weight: 500;
+          }
+          .reset-link {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            word-break: break-all;
+            color: #1e293b;
+            border: 1px solid #e2e8f0;
+          }
+          .warning-box {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 1px solid #f59e0b;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 25px 0;
+            color: #92400e;
+          }
+          .warning-title {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+          }
+          .warning-icon {
+            margin-right: 8px;
+            font-size: 18px;
+          }
+          .warning-list {
+            margin: 0;
+            padding-left: 20px;
+          }
+          .warning-list li {
+            margin-bottom: 8px;
+            font-size: 14px;
+          }
+          .security-tips {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+          }
+          .security-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #065f46;
+            margin-bottom: 15px;
+            text-align: center;
+          }
+          .security-list {
+            list-style: none;
+            padding: 0;
+          }
+          .security-list li {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 15px;
+            color: #047857;
+          }
+          .security-icon {
+            margin-right: 12px;
+            font-size: 16px;
+          }
+          .footer {
+            background: #f8fafc;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+          }
+          .footer-text {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
+          }
+          .contact-info {
+            font-size: 14px;
+            color: #dc2626;
+            font-weight: 500;
+            margin: 10px 0;
+          }
+          .copyright {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 15px;
+          }
+          .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+            margin: 20px 0;
+          }
+          @media (max-width: 600px) {
+            .email-container {
+              margin: 10px;
+              border-radius: 12px;
+            }
+            .header, .content, .footer {
+              padding: 25px 20px;
+            }
+            .reset-section {
+              padding: 20px;
+            }
+            .logo {
+              font-size: 28px;
+            }
+            .header-title {
+              font-size: 20px;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <div class="logo">
+              <span class="logo-icon">🔐</span>HealthChain EMR
+            </div>
+            <h1 class="header-title">รีเซ็ตรหัสผ่าน</h1>
+          </div>
+          
+          <div class="content">
+            <div class="greeting">
+              สวัสดี คุณ<strong>${firstName}</strong> 👋
+            </div>
+            
+            <div class="message">
+              เราได้รับคำขอให้รีเซ็ตรหัสผ่านสำหรับบัญชี <strong>HealthChain EMR System</strong> ของคุณ
+            </div>
+            
+            <div class="message">
+              หากคุณเป็นผู้ขอรีเซ็ตรหัสผ่าน กรุณาคลิกปุ่มด้านล่างเพื่อสร้างรหัสผ่านใหม่:
+            </div>
+            
+            <div class="reset-section">
+              <a href="${resetUrl}" class="reset-button">
+                🔑 รีเซ็ตรหัสผ่าน
+              </a>
+            </div>
+            
+            <div class="link-section">
+              <div class="link-label">หรือคัดลอกลิงก์นี้ไปวางในเบราว์เซอร์:</div>
+              <div class="reset-link">${resetUrl}</div>
+            </div>
+            
+            <div class="warning-box">
+              <div class="warning-title">
+                <span class="warning-icon">⚠️</span>
+                ข้อสำคัญที่ควรทราบ
+              </div>
+              <ul class="warning-list">
+                <li>ลิงก์รีเซ็ตรหัสผ่านนี้จะหมดอายุใน <strong>1 ชั่วโมง</strong></li>
+                <li>หากคุณไม่ได้ขอรีเซ็ตรหัสผ่าน กรุณาเพิกเฉยต่ออีเมลนี้</li>
+                <li>อย่าแชร์ลิงก์นี้กับผู้อื่นเพื่อความปลอดภัย</li>
+                <li>หากลิงก์หมดอายุ สามารถขอรีเซ็ตใหม่ได้ที่หน้าเข้าสู่ระบบ</li>
+              </ul>
+            </div>
+            
+            <div class="security-tips">
+              <div class="security-title">🛡️ เคล็ดลับความปลอดภัยสำหรับรหัสผ่าน</div>
+              <ul class="security-list">
+                <li><span class="security-icon">🔤</span>ใช้รหัสผ่านที่มีความยาวอย่างน้อย 8 ตัวอักษร</li>
+                <li><span class="security-icon">🔢</span>ผสมตัวอักษรใหญ่ ตัวอักษรเล็ก ตัวเลข และสัญลักษณ์</li>
+                <li><span class="security-icon">🚫</span>หลีกเลี่ยงการใช้ข้อมูลส่วนตัว เช่น ชื่อ วันเกิด</li>
+                <li><span class="security-icon">🔄</span>เปลี่ยนรหัสผ่านเป็นประจำทุก 3-6 เดือน</li>
+                <li><span class="security-icon">🔒</span>ไม่ใช้รหัสผ่านเดียวกันกับบัญชีอื่น</li>
+                <li><span class="security-icon">💾</span>ใช้ตัวจัดการรหัสผ่านเพื่อความปลอดภัย</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div class="divider"></div>
+          
+          <div class="footer">
+            <div class="footer-text">
+              อีเมลนี้ส่งมาจาก <strong>HealthChain EMR System</strong>
+            </div>
+            <div class="contact-info">
+              📧 หากมีคำถาม กรุณาติดต่อ: support@healthchain.co.th
+            </div>
+            <div class="contact-info">
+              📞 โทรศัพท์: 02-xxx-xxxx (จันทร์-ศุกร์ 8:00-17:00)
+            </div>
+            <div class="copyright">
+              © 2025 HealthChain EMR System. All rights reserved.
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  /**
+   * Generate welcome email HTML template
+   */
+  generateWelcomeTemplate(firstName: string, loginUrl: string): string {
+    return `
+      <!DOCTYPE html>
+      <html lang="th">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ยินดีต้อนรับ - HealthChain EMR</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #2d3748;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+          }
+          .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+          }
+          .logo {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+          }
+          .logo-icon {
+            font-size: 40px;
+            margin-right: 10px;
+          }
+          .header-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+            position: relative;
+            z-index: 1;
+          }
+          .content {
+            padding: 40px 30px;
+          }
+          .greeting {
+            font-size: 18px;
+            color: #1a202c;
+            margin-bottom: 20px;
+          }
+          .message {
+            font-size: 16px;
+            color: #4a5568;
+            margin-bottom: 30px;
+            line-height: 1.7;
+          }
+          .welcome-section {
+            background: #f0fdf4;
+            border: 2px solid #bbf7d0;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            margin: 30px 0;
+          }
+          .welcome-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 16px 32px;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+          }
+          .welcome-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+          }
+          .features-section {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+          }
+          .features-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 15px;
+            text-align: center;
+          }
+          .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+          }
+          .feature-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          }
+          .feature-icon {
+            font-size: 20px;
+            margin-right: 8px;
+          }
+          .feature-title {
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 5px;
+          }
+          .feature-desc {
+            font-size: 14px;
+            color: #64748b;
+          }
+          .next-steps {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+          }
+          .next-steps-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #92400e;
+            margin-bottom: 15px;
+            text-align: center;
+          }
+          .steps-list {
+            list-style: none;
+            padding: 0;
+          }
+          .steps-list li {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 15px;
+            color: #92400e;
+          }
+          .step-icon {
+            margin-right: 12px;
+            font-size: 16px;
+            background: #f59e0b;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+          }
+          .footer {
+            background: #f8fafc;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+          }
+          .footer-text {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
+          }
+          .contact-info {
+            font-size: 14px;
+            color: #10b981;
+            font-weight: 500;
+            margin: 10px 0;
+          }
+          .copyright {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 15px;
+          }
+          .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+            margin: 20px 0;
+          }
+          @media (max-width: 600px) {
+            .email-container {
+              margin: 10px;
+              border-radius: 12px;
+            }
+            .header, .content, .footer {
+              padding: 25px 20px;
+            }
+            .welcome-section {
+              padding: 20px;
+            }
+            .features-grid {
+              grid-template-columns: 1fr;
+            }
+            .logo {
+              font-size: 28px;
+            }
+            .header-title {
+              font-size: 20px;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <div class="logo">
+              <span class="logo-icon">🎉</span>HealthChain EMR
+            </div>
+            <h1 class="header-title">ยินดีต้อนรับสู่ HealthChain EMR!</h1>
+          </div>
+          
+          <div class="content">
+            <div class="greeting">
+              สวัสดี คุณ<strong>${firstName}</strong> 🎊
+            </div>
+            
+            <div class="message">
+              ยินดีต้อนรับสู่ <strong>HealthChain EMR System</strong>! 
+              ระบบจัดการข้อมูลทางการแพทย์ที่ทันสมัยและปลอดภัย
+            </div>
+            
+            <div class="message">
+              บัญชีของคุณได้รับการยืนยันเรียบร้อยแล้ว 
+              ตอนนี้คุณสามารถเริ่มใช้งานระบบได้ทันที
+            </div>
+            
+            <div class="welcome-section">
+              <a href="${loginUrl}" class="welcome-button">
+                🚀 เริ่มใช้งานระบบ
+              </a>
+            </div>
+            
+            <div class="features-section">
+              <div class="features-title">🌟 ฟีเจอร์หลักของ HealthChain EMR</div>
+              <div class="features-grid">
+                <div class="feature-item">
+                  <div class="feature-title">
+                    <span class="feature-icon">📋</span>จัดการข้อมูลผู้ป่วย
+                  </div>
+                  <div class="feature-desc">บันทึกและจัดการข้อมูลผู้ป่วยอย่างครบถ้วน</div>
+                </div>
+                <div class="feature-item">
+                  <div class="feature-title">
+                    <span class="feature-icon">📅</span>ระบบนัดหมาย
+                  </div>
+                  <div class="feature-desc">จองและจัดการนัดหมายออนไลน์</div>
+                </div>
+                <div class="feature-item">
+                  <div class="feature-title">
+                    <span class="feature-icon">💊</span>จัดการยาและใบสั่งยา
+                  </div>
+                  <div class="feature-desc">บันทึกและติดตามการจ่ายยา</div>
+                </div>
+                <div class="feature-item">
+                  <div class="feature-title">
+                    <span class="feature-icon">🔬</span>ผลการตรวจ
+                  </div>
+                  <div class="feature-desc">บันทึกและติดตามผลการตรวจทางห้องปฏิบัติการ</div>
+                </div>
+                <div class="feature-item">
+                  <div class="feature-title">
+                    <span class="feature-icon">📊</span>รายงานและสถิติ
+                  </div>
+                  <div class="feature-desc">ดูรายงานและสถิติการรักษา</div>
+                </div>
+                <div class="feature-item">
+                  <div class="feature-title">
+                    <span class="feature-icon">🔒</span>ความปลอดภัย
+                  </div>
+                  <div class="feature-desc">ระบบรักษาความปลอดภัยข้อมูลระดับสูง</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="next-steps">
+              <div class="next-steps-title">📝 ขั้นตอนต่อไป</div>
+              <ul class="steps-list">
+                <li><span class="step-icon">1</span>เข้าสู่ระบบด้วยอีเมลและรหัสผ่านของคุณ</li>
+                <li><span class="step-icon">2</span>อัปเดตข้อมูลส่วนตัวในโปรไฟล์</li>
+                <li><span class="step-icon">3</span>สำรวจฟีเจอร์ต่างๆ ของระบบ</li>
+                <li><span class="step-icon">4</span>เริ่มบันทึกข้อมูลผู้ป่วยหรือจองนัดหมาย</li>
+                <li><span class="step-icon">5</span>ติดตั้งแอปมือถือ (หากมี) เพื่อความสะดวก</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div class="divider"></div>
+          
+          <div class="footer">
+            <div class="footer-text">
+              อีเมลนี้ส่งมาจาก <strong>HealthChain EMR System</strong>
+            </div>
+            <div class="contact-info">
+              📧 หากมีคำถาม กรุณาติดต่อ: support@healthchain.co.th
+            </div>
+            <div class="contact-info">
+              📞 โทรศัพท์: 02-xxx-xxxx (จันทร์-ศุกร์ 8:00-17:00)
+            </div>
+            <div class="copyright">
+              © 2025 HealthChain EMR System. All rights reserved.
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  /**
+   * Generate appointment reminder HTML template
+   */
+  generateAppointmentReminderTemplate(
+    firstName: string, 
+    doctorName: string, 
+    appointmentDate: string, 
+    appointmentTime: string,
+    appointmentType: string,
+    location: string,
+    notes?: string
+  ): string {
+    return `
+      <!DOCTYPE html>
+      <html lang="th">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>แจ้งเตือนนัดหมาย - HealthChain EMR</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #2d3748;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+          }
+          .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+          }
+          .logo {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+          }
+          .logo-icon {
+            font-size: 40px;
+            margin-right: 10px;
+          }
+          .header-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+            position: relative;
+            z-index: 1;
+          }
+          .content {
+            padding: 40px 30px;
+          }
+          .greeting {
+            font-size: 18px;
+            color: #1a202c;
+            margin-bottom: 20px;
+          }
+          .message {
+            font-size: 16px;
+            color: #4a5568;
+            margin-bottom: 30px;
+            line-height: 1.7;
+          }
+          .appointment-card {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border: 2px solid #0ea5e9;
+            border-radius: 16px;
+            padding: 30px;
+            margin: 30px 0;
+            text-align: center;
+          }
+          .appointment-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #0c4a6e;
+            margin-bottom: 20px;
+          }
+          .appointment-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+          }
+          .detail-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #0ea5e9;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          }
+          .detail-icon {
+            font-size: 18px;
+            margin-right: 8px;
+          }
+          .detail-label {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .detail-value {
+            font-size: 16px;
+            color: #0c4a6e;
+            font-weight: 600;
+            margin-top: 4px;
+          }
+          .notes-section {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+          }
+          .notes-title {
+            font-weight: 600;
+            color: #92400e;
+            margin-bottom: 8px;
+          }
+          .notes-content {
+            color: #92400e;
+            font-size: 14px;
+          }
+          .reminder-tips {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+          }
+          .tips-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #065f46;
+            margin-bottom: 15px;
+            text-align: center;
+          }
+          .tips-list {
+            list-style: none;
+            padding: 0;
+          }
+          .tips-list li {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 15px;
+            color: #047857;
+          }
+          .tip-icon {
+            margin-right: 12px;
+            font-size: 16px;
+          }
+          .footer {
+            background: #f8fafc;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+          }
+          .footer-text {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
+          }
+          .contact-info {
+            font-size: 14px;
+            color: #3b82f6;
+            font-weight: 500;
+            margin: 10px 0;
+          }
+          .copyright {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 15px;
+          }
+          .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+            margin: 20px 0;
+          }
+          @media (max-width: 600px) {
+            .email-container {
+              margin: 10px;
+              border-radius: 12px;
+            }
+            .header, .content, .footer {
+              padding: 25px 20px;
+            }
+            .appointment-card {
+              padding: 20px;
+            }
+            .appointment-details {
+              grid-template-columns: 1fr;
+            }
+            .logo {
+              font-size: 28px;
+            }
+            .header-title {
+              font-size: 20px;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <div class="logo">
+              <span class="logo-icon">📅</span>HealthChain EMR
+            </div>
+            <h1 class="header-title">แจ้งเตือนนัดหมาย</h1>
+          </div>
+          
+          <div class="content">
+            <div class="greeting">
+              สวัสดี คุณ<strong>${firstName}</strong> 👋
+            </div>
+            
+            <div class="message">
+              นี่คือการแจ้งเตือนนัดหมายของคุณกับ <strong>HealthChain EMR System</strong>
+            </div>
+            
+            <div class="appointment-card">
+              <div class="appointment-title">📋 รายละเอียดนัดหมาย</div>
+              <div class="appointment-details">
+                <div class="detail-item">
+                  <div class="detail-label">
+                    <span class="detail-icon">👨‍⚕️</span>แพทย์
+                  </div>
+                  <div class="detail-value">${doctorName}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">
+                    <span class="detail-icon">📅</span>วันที่
+                  </div>
+                  <div class="detail-value">${appointmentDate}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">
+                    <span class="detail-icon">🕐</span>เวลา
+                  </div>
+                  <div class="detail-value">${appointmentTime}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">
+                    <span class="detail-icon">🏥</span>ประเภท
+                  </div>
+                  <div class="detail-value">${appointmentType}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">
+                    <span class="detail-icon">📍</span>สถานที่
+                  </div>
+                  <div class="detail-value">${location}</div>
+                </div>
+              </div>
+              ${notes ? `
+                <div class="notes-section">
+                  <div class="notes-title">📝 หมายเหตุ</div>
+                  <div class="notes-content">${notes}</div>
+                </div>
+              ` : ''}
+            </div>
+            
+            <div class="reminder-tips">
+              <div class="tips-title">💡 เคล็ดลับก่อนมาพบแพทย์</div>
+              <ul class="tips-list">
+                <li><span class="tip-icon">⏰</span>มาถึงก่อนเวลานัด 15-30 นาที</li>
+                <li><span class="tip-icon">📋</span>นำบัตรประชาชนและบัตรประกันสุขภาพ</li>
+                <li><span class="tip-icon">💊</span>นำยาที่ใช้อยู่มาด้วย (ถ้ามี)</li>
+                <li><span class="tip-icon">📝</span>เตรียมรายการอาการหรือคำถามที่ต้องการถาม</li>
+                <li><span class="tip-icon">📱</span>ปิดเสียงโทรศัพท์หรือเปิดโหมดสั่น</li>
+                <li><span class="tip-icon">😷</span>สวมหน้ากากอนามัย (หากจำเป็น)</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div class="divider"></div>
+          
+          <div class="footer">
+            <div class="footer-text">
+              อีเมลนี้ส่งมาจาก <strong>HealthChain EMR System</strong>
+            </div>
+            <div class="contact-info">
+              📧 หากต้องการยกเลิกหรือเลื่อนนัด กรุณาติดต่อ: support@healthchain.co.th
+            </div>
+            <div class="contact-info">
+              📞 โทรศัพท์: 02-xxx-xxxx (จันทร์-ศุกร์ 8:00-17:00)
+            </div>
+            <div class="copyright">
+              © 2025 HealthChain EMR System. All rights reserved.
+            </div>
           </div>
         </div>
       </body>
@@ -221,6 +1392,73 @@ class EmailService {
       to: email,
       subject: '🏥 HealthChain - ยืนยันอีเมลของคุณ',
       html: this.generateEmailVerificationTemplate(firstName, verificationUrl)
+    };
+
+    return await this.sendEmail(emailData);
+  }
+
+  /**
+   * Send password reset email
+   */
+  async sendPasswordReset(
+    email: string, 
+    firstName: string, 
+    resetToken: string
+  ): Promise<boolean> {
+    const resetUrl = `${config.app.frontendUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
+    
+    const emailData: EmailData = {
+      to: email,
+      subject: '🔐 HealthChain - รีเซ็ตรหัสผ่าน',
+      html: this.generatePasswordResetTemplate(firstName, resetUrl)
+    };
+
+    return await this.sendEmail(emailData);
+  }
+
+  /**
+   * Send welcome email
+   */
+  async sendWelcomeEmail(
+    email: string, 
+    firstName: string
+  ): Promise<boolean> {
+    const loginUrl = `${config.app.frontendUrl}/login`;
+    
+    const emailData: EmailData = {
+      to: email,
+      subject: '🎉 ยินดีต้อนรับสู่ HealthChain EMR!',
+      html: this.generateWelcomeTemplate(firstName, loginUrl)
+    };
+
+    return await this.sendEmail(emailData);
+  }
+
+  /**
+   * Send appointment reminder
+   */
+  async sendAppointmentReminder(
+    email: string,
+    firstName: string,
+    doctorName: string,
+    appointmentDate: string,
+    appointmentTime: string,
+    appointmentType: string,
+    location: string,
+    notes?: string
+  ): Promise<boolean> {
+    const emailData: EmailData = {
+      to: email,
+      subject: `📅 HealthChain - แจ้งเตือนนัดหมาย ${appointmentDate}`,
+      html: this.generateAppointmentReminderTemplate(
+        firstName, 
+        doctorName, 
+        appointmentDate, 
+        appointmentTime, 
+        appointmentType, 
+        location, 
+        notes
+      )
     };
 
     return await this.sendEmail(emailData);

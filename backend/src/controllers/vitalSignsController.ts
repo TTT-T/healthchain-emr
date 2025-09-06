@@ -147,6 +147,113 @@ export const recordVitalSigns = async (req: Request, res: Response) => {
  * Get vital signs for a visit
  * GET /api/medical/visits/{id}/vital-signs
  */
+export const createVitalSigns = async (req: Request, res: Response) => {
+  try {
+    const { patientId } = req.params;
+    const vitalSignsData = req.body;
+
+    const vitalSignsId = uuidv4();
+    const result = await databaseManager.query(`
+      INSERT INTO vital_signs (
+        id, patient_id, systolic_bp, diastolic_bp, heart_rate,
+        temperature, respiratory_rate, oxygen_saturation, weight, height,
+        bmi, pain_scale, notes, recorded_by, recorded_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      RETURNING *
+    `, [
+      vitalSignsId,
+      patientId,
+      vitalSignsData.systolic_bp,
+      vitalSignsData.diastolic_bp,
+      vitalSignsData.heart_rate,
+      vitalSignsData.temperature,
+      vitalSignsData.respiratory_rate,
+      vitalSignsData.oxygen_saturation,
+      vitalSignsData.weight,
+      vitalSignsData.height,
+      vitalSignsData.bmi,
+      vitalSignsData.pain_scale,
+      vitalSignsData.notes,
+      (req as any).user?.id,
+      new Date()
+    ]);
+
+    res.status(201).json({
+      success: true,
+      message: 'Vital signs recorded successfully',
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Error creating vital signs:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: null
+    });
+  }
+};
+
+export const getVitalSignsByVisit = async (req: Request, res: Response) => {
+  try {
+    const { visitId } = req.params;
+
+    const result = await databaseManager.query(`
+      SELECT * FROM vital_signs 
+      WHERE visit_id = $1 
+      ORDER BY recorded_at DESC
+    `, [visitId]);
+
+    res.status(200).json({
+      success: true,
+      message: 'Vital signs retrieved successfully',
+      data: result.rows
+    });
+
+  } catch (error) {
+    console.error('Error getting vital signs by visit:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: null
+    });
+  }
+};
+
+export const deleteVitalSigns = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const result = await databaseManager.query(`
+      DELETE FROM vital_signs 
+      WHERE id = $1 
+      RETURNING *
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vital signs not found',
+        data: null
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Vital signs deleted successfully',
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Error deleting vital signs:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: null
+    });
+  }
+};
+
 export const getVitalSigns = async (req: Request, res: Response) => {
   try {
     const { id: visitId } = req.params;

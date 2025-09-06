@@ -100,13 +100,13 @@ export const register = async (req: Request, res: Response) => {
         await DatabaseSchema.createEmailVerificationToken(newUser.id, verificationToken);
         
         // Send verification email
-        await emailService.sendEmailVerification(
+        const emailSent = await emailService.sendEmailVerification(
           validatedData.email,
           validatedData.firstName,
           verificationToken
         );
         
-        console.log('📧 Verification email sent to:', validatedData.email);
+        console.log('📧 Verification email sent to:', validatedData.email, 'Success:', emailSent);
       } catch (emailError) {
         console.error('❌ Failed to send verification email:', emailError);
         // Don't fail registration if email sending fails
@@ -151,7 +151,9 @@ export const register = async (req: Request, res: Response) => {
       res.status(201).json(
         successResponse('Registration successful. Please check your email to verify your account before logging in.', {
           ...authResponse,
-          requiresEmailVerification: true
+          requiresEmailVerification: true,
+          emailSent: true,
+          email: validatedData.email
         })
       );
     } else {
@@ -716,6 +718,169 @@ export const resendVerificationEmail = async (req: Request, res: Response) => {
     
   } catch (error) {
     console.error('Resend verification email error:', error);
+    
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
+  }
+};
+
+/**
+ * Forgot password - Send reset email
+ */
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json(
+        errorResponse('Email is required', 400)
+      );
+    }
+
+    console.log('🔍 Forgot password request for:', email);
+
+    // Find user by email
+    const user = await db.getUserByEmail(email);
+    
+    if (!user) {
+      // For security, don't reveal if email exists or not
+      return res.json(
+        successResponse('If the email exists, a password reset link has been sent.', {
+          emailSent: true
+        })
+      );
+    }
+
+    // Check if user is active
+    if (!user.is_active) {
+      return res.status(400).json(
+        errorResponse('Account is deactivated', 400)
+      );
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Save reset token to database
+    const tokenResult = await db.createPasswordResetToken(user.id, resetToken, expiresAt);
+    
+    if (!tokenResult.success) {
+      console.error('Failed to create reset token:', tokenResult.error);
+      return res.status(500).json(
+        errorResponse('Failed to create reset token', 500)
+      );
+    }
+
+    // Send reset email
+    const emailSent = await emailService.sendPasswordReset(
+      user.email,
+      user.first_name,
+      resetToken
+    );
+
+    if (emailSent) {
+      console.log('📧 Password reset email sent to:', user.email);
+      
+      res.json(
+        successResponse('Password reset link has been sent to your email.', {
+          emailSent: true,
+          email: user.email
+        })
+      );
+    } else {
+      console.error('❌ Failed to send password reset email to:', user.email);
+      
+      // In development mode, still return success
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📧 [DEV MODE] Email error ignored in development mode');
+        
+        res.json(
+          successResponse('Password reset link has been sent to your email.', {
+            emailSent: true,
+            email: user.email,
+            devMode: true
+          })
+        );
+      } else {
+        res.status(500).json(
+          errorResponse('Failed to send password reset email', 500)
+        );
+      }
+    }
+    
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
+  }
+};
+
+/**
+ * Reset password - Validate token and update password
+ */
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { token, new_password } = req.body;
+
+    if (!token || !new_password) {
+      return res.status(400).json(
+        errorResponse('Token and new password are required', 400)
+      );
+    }
+
+    // Validate password strength
+    if (new_password.length < 8) {
+      return res.status(400).json(
+        errorResponse('Password must be at least 8 characters long', 400)
+      );
+    }
+
+    console.log('🔍 Reset password request with token:', token.substring(0, 10) + '...');
+
+    // Validate reset token
+    const tokenValidation = await db.validatePasswordResetToken(token);
+    
+    if (!tokenValidation.success) {
+      return res.status(400).json(
+        errorResponse(tokenValidation.error || 'Invalid or expired token', 400)
+      );
+    }
+
+    const userId = tokenValidation.userId!;
+
+    // Hash new password
+    const hashedPassword = await hashPassword(new_password);
+
+    // Update user password
+    const updateResult = await db.updateUserPassword(userId, hashedPassword);
+    
+    if (!updateResult.success) {
+      console.error('Failed to update password:', updateResult.error);
+      return res.status(500).json(
+        errorResponse('Failed to update password', 500)
+      );
+    }
+
+    // Mark token as used
+    await db.markPasswordResetTokenAsUsed(token);
+
+    // Invalidate all user sessions (optional - for security)
+    await db.invalidateUserSessions(userId);
+
+    console.log('✅ Password reset successful for user:', userId);
+
+    res.json(
+      successResponse('Password has been reset successfully. Please login with your new password.', {
+        passwordReset: true
+      })
+    );
+    
+  } catch (error) {
+    console.error('Reset password error:', error);
     
     res.status(500).json(
       errorResponse('Internal server error', 500)

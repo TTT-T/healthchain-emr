@@ -408,6 +408,479 @@ export const getDataRequestById = async (req: Request, res: Response) => {
 };
 
 /**
+ * Search patients for data request
+ * GET /api/external-requesters/search/patients
+ */
+export const searchPatientsForRequest = async (req: Request, res: Response) => {
+  try {
+    const { 
+      query, 
+      age_min, 
+      age_max, 
+      gender, 
+      diagnosis,
+      date_range_start,
+      date_range_end,
+      limit = 50
+    } = req.query;
+
+    let whereClause = 'WHERE 1=1';
+    const queryParams: any[] = [];
+    let paramCount = 0;
+
+    // Search by name or HN
+    if (query) {
+      paramCount++;
+      whereClause += ` AND (p.first_name ILIKE $${paramCount} OR p.last_name ILIKE $${paramCount} OR p.hn ILIKE $${paramCount})`;
+      queryParams.push(`%${query}%`);
+    }
+
+    // Age range filter
+    if (age_min) {
+      paramCount++;
+      whereClause += ` AND p.age >= $${paramCount}`;
+      queryParams.push(parseInt(age_min as string));
+    }
+
+    if (age_max) {
+      paramCount++;
+      whereClause += ` AND p.age <= $${paramCount}`;
+      queryParams.push(parseInt(age_max as string));
+    }
+
+    // Gender filter
+    if (gender) {
+      paramCount++;
+      whereClause += ` AND p.gender = $${paramCount}`;
+      queryParams.push(gender);
+    }
+
+    // Diagnosis filter
+    if (diagnosis) {
+      paramCount++;
+      whereClause += ` AND EXISTS (
+        SELECT 1 FROM medical_records mr 
+        WHERE mr.patient_id = p.id 
+        AND mr.diagnosis ILIKE $${paramCount}
+      )`;
+      queryParams.push(`%${diagnosis}%`);
+    }
+
+    // Date range filter
+    if (date_range_start) {
+      paramCount++;
+      whereClause += ` AND p.created_at >= $${paramCount}`;
+      queryParams.push(date_range_start);
+    }
+
+    if (date_range_end) {
+      paramCount++;
+      whereClause += ` AND p.created_at <= $${paramCount}`;
+      queryParams.push(date_range_end);
+    }
+
+    const searchQuery = `
+      SELECT 
+        p.id,
+        p.hn,
+        p.first_name,
+        p.last_name,
+        p.thai_name,
+        p.age,
+        p.gender,
+        p.created_at,
+        COUNT(mr.id) as record_count
+      FROM patients p
+      LEFT JOIN medical_records mr ON p.id = mr.patient_id
+      ${whereClause}
+      GROUP BY p.id, p.hn, p.first_name, p.last_name, p.thai_name, p.age, p.gender, p.created_at
+      ORDER BY p.created_at DESC
+      LIMIT $${paramCount + 1}
+    `;
+
+    queryParams.push(parseInt(limit as string));
+    const result = await databaseManager.query(searchQuery, queryParams);
+
+    const patients = result.rows.map(patient => ({
+      id: patient.id,
+      hn: patient.hn,
+      name: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+      age: patient.age,
+      gender: patient.gender,
+      recordCount: parseInt(patient.record_count),
+      createdAt: patient.created_at
+    }));
+
+    res.status(200).json({
+      data: {
+        patients,
+        total: patients.length
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        searchParams: {
+          query,
+          age_min,
+          age_max,
+          gender,
+          diagnosis,
+          date_range_start,
+          date_range_end
+        }
+      },
+      error: null,
+      statusCode: 200
+    });
+
+  } catch (error) {
+    console.error('Error searching patients:', error);
+    res.status(500).json({
+      data: null,
+      meta: null,
+      error: { message: 'Internal server error' },
+      statusCode: 500
+    });
+  }
+};
+
+/**
+ * Generate data request report
+ * GET /api/external-requesters/reports/{requestId}
+ */
+export const generateDataRequestReport = async (req: Request, res: Response) => {
+  try {
+    const { requestId } = req.params;
+    const { format = 'json' } = req.query;
+
+    // Get data request details
+    const requestResult = await databaseManager.query(`
+      SELECT * FROM external_data_requests WHERE id = $1
+    `, [requestId]);
+
+    if (requestResult.rows.length === 0) {
+      return res.status(404).json({
+        data: null,
+        meta: null,
+        error: { message: 'Data request not found' },
+        statusCode: 404
+      });
+    }
+
+    const request = requestResult.rows[0];
+
+    // Get patient data based on request criteria
+    let patientQuery = `
+      SELECT 
+        p.id,
+        p.hn,
+        p.first_name,
+        p.last_name,
+        p.thai_name,
+        p.age,
+        p.gender,
+        p.phone,
+        p.email,
+        p.created_at
+      FROM patients p
+      WHERE 1=1
+    `;
+
+    const queryParams: any[] = [];
+    let paramCount = 0;
+
+    // Filter by patient IDs if specified
+    if (request.patient_ids) {
+      const patientIds = JSON.parse(request.patient_ids);
+      if (patientIds.length > 0) {
+        paramCount++;
+        patientQuery += ` AND p.id = ANY($${paramCount})`;
+        queryParams.push(patientIds);
+      }
+    }
+
+    // Filter by date range if specified
+    if (request.date_range_start) {
+      paramCount++;
+      patientQuery += ` AND p.created_at >= $${paramCount}`;
+      queryParams.push(request.date_range_start);
+    }
+
+    if (request.date_range_end) {
+      paramCount++;
+      patientQuery += ` AND p.created_at <= $${paramCount}`;
+      queryParams.push(request.date_range_end);
+    }
+
+    patientQuery += ` ORDER BY p.created_at DESC`;
+
+    const patientsResult = await databaseManager.query(patientQuery, queryParams);
+
+    // Get medical records for these patients
+    const patientIds = patientsResult.rows.map(p => p.id);
+    let medicalRecords: any[] = [];
+
+    if (patientIds.length > 0) {
+      const recordsResult = await databaseManager.query(`
+        SELECT 
+          mr.*,
+          p.hn,
+          p.first_name,
+          p.last_name,
+          p.thai_name
+        FROM medical_records mr
+        JOIN patients p ON mr.patient_id = p.id
+        WHERE mr.patient_id = ANY($1)
+        ORDER BY mr.created_at DESC
+      `, [patientIds]);
+
+      medicalRecords = recordsResult.rows;
+    }
+
+    // Generate report data
+    const reportData = {
+      request: {
+        id: request.id,
+        requester_name: request.requester_name,
+        requester_organization: request.requester_organization,
+        request_type: request.request_type,
+        purpose: request.purpose,
+        status: request.status,
+        created_at: request.created_at
+      },
+      summary: {
+        total_patients: patientsResult.rows.length,
+        total_records: medicalRecords.length,
+        date_range: {
+          start: request.date_range_start,
+          end: request.date_range_end
+        }
+      },
+      patients: patientsResult.rows.map(patient => ({
+        id: patient.id,
+        hn: patient.hn,
+        name: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+        age: patient.age,
+        gender: patient.gender,
+        phone: patient.phone,
+        email: patient.email,
+        created_at: patient.created_at
+      })),
+      medical_records: medicalRecords.map(record => ({
+        id: record.id,
+        patient_hn: record.hn,
+        patient_name: record.thai_name || `${record.first_name} ${record.last_name}`,
+        diagnosis: record.diagnosis,
+        treatment: record.treatment,
+        created_at: record.created_at
+      }))
+    };
+
+    if (format === 'csv') {
+      // Generate CSV format
+      const csvData = generateCSVReport(reportData);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="data_request_${requestId}.csv"`);
+      res.send(csvData);
+    } else {
+      // Return JSON format
+      res.status(200).json({
+        data: reportData,
+        meta: {
+          timestamp: new Date().toISOString(),
+          format: 'json',
+          generated_by: (req as any).user?.id
+        },
+        error: null,
+        statusCode: 200
+      });
+    }
+
+  } catch (error) {
+    console.error('Error generating data request report:', error);
+    res.status(500).json({
+      data: null,
+      meta: null,
+      error: { message: 'Internal server error' },
+      statusCode: 500
+    });
+  }
+};
+
+/**
+ * Get external requesters dashboard overview
+ * GET /api/external-requesters/dashboard/overview
+ */
+export const getExternalRequestersDashboardOverview = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+
+    // Get total requests count
+    const totalRequestsResult = await databaseManager.query(`
+      SELECT COUNT(*) as total
+      FROM external_data_requests
+    `);
+
+    // Get requests by status
+    const requestsByStatusResult = await databaseManager.query(`
+      SELECT 
+        status,
+        COUNT(*) as count
+      FROM external_data_requests
+      GROUP BY status
+      ORDER BY count DESC
+    `);
+
+    // Get requests by type
+    const requestsByTypeResult = await databaseManager.query(`
+      SELECT 
+        request_type,
+        COUNT(*) as count
+      FROM external_data_requests
+      GROUP BY request_type
+      ORDER BY count DESC
+    `);
+
+    // Get recent requests
+    const recentRequestsResult = await databaseManager.query(`
+      SELECT 
+        edr.*,
+        u.first_name as created_by_name,
+        u.last_name as created_by_last_name
+      FROM external_data_requests edr
+      LEFT JOIN users u ON edr.created_by = u.id
+      ORDER BY edr.created_at DESC
+      LIMIT 10
+    `);
+
+    // Get requests by organization
+    const requestsByOrganizationResult = await databaseManager.query(`
+      SELECT 
+        requester_organization,
+        COUNT(*) as count
+      FROM external_data_requests
+      GROUP BY requester_organization
+      ORDER BY count DESC
+      LIMIT 10
+    `);
+
+    const dashboardData = {
+      summary: {
+        totalRequests: parseInt(totalRequestsResult.rows[0].total),
+        requestsByStatus: requestsByStatusResult.rows.map(row => ({
+          status: row.status,
+          count: parseInt(row.count)
+        })),
+        requestsByType: requestsByTypeResult.rows.map(row => ({
+          type: row.request_type,
+          count: parseInt(row.count)
+        }))
+      },
+      recentRequests: recentRequestsResult.rows.map(request => ({
+        id: request.id,
+        requesterName: request.requester_name,
+        requesterOrganization: request.requester_organization,
+        requestType: request.request_type,
+        purpose: request.purpose,
+        status: request.status,
+        createdAt: request.created_at,
+        createdBy: request.created_by_name && request.created_by_last_name 
+          ? `${request.created_by_name} ${request.created_by_last_name}` 
+          : 'System'
+      })),
+      topOrganizations: requestsByOrganizationResult.rows.map(row => ({
+        organization: row.requester_organization,
+        count: parseInt(row.count)
+      }))
+    };
+
+    res.status(200).json({
+      data: dashboardData,
+      meta: {
+        timestamp: new Date().toISOString(),
+        generated_by: userId
+      },
+      error: null,
+      statusCode: 200
+    });
+
+  } catch (error) {
+    console.error('Error getting external requesters dashboard overview:', error);
+    res.status(500).json({
+      data: null,
+      meta: null,
+      error: { message: 'Internal server error' },
+      statusCode: 500
+    });
+  }
+};
+
+/**
+ * Generate CSV report helper function
+ */
+function generateCSVReport(reportData: any): string {
+  const headers = [
+    'Patient ID',
+    'HN',
+    'Name',
+    'Age',
+    'Gender',
+    'Phone',
+    'Email',
+    'Created At',
+    'Record ID',
+    'Diagnosis',
+    'Treatment',
+    'Record Created At'
+  ];
+
+  const rows: string[] = [headers.join(',')];
+
+  reportData.patients.forEach((patient: any) => {
+    const patientRecords = reportData.medical_records.filter((record: any) => 
+      record.patient_hn === patient.hn
+    );
+
+    if (patientRecords.length === 0) {
+      // Patient with no records
+      rows.push([
+        patient.id,
+        patient.hn,
+        `"${patient.name}"`,
+        patient.age,
+        patient.gender,
+        patient.phone || '',
+        patient.email || '',
+        patient.created_at,
+        '',
+        '',
+        '',
+        ''
+      ].join(','));
+    } else {
+      // Patient with records
+      patientRecords.forEach((record: any) => {
+        rows.push([
+          patient.id,
+          patient.hn,
+          `"${patient.name}"`,
+          patient.age,
+          patient.gender,
+          patient.phone || '',
+          patient.email || '',
+          patient.created_at,
+          record.id,
+          `"${record.diagnosis || ''}"`,
+          `"${record.treatment || ''}"`,
+          record.created_at
+        ].join(','));
+      });
+    }
+  });
+
+  return rows.join('\n');
+}
+
+/**
  * Update data request
  * PUT /api/external-requesters/requests/{id}
  */

@@ -67,7 +67,7 @@ const config: Config = {
     database: process.env.DB_NAME || 'emr_development',
     username: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'password',
-    ssl: process.env.NODE_ENV === 'production',
+    ssl: process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production',
     maxConnections: parseInt(process.env.DB_MAX_CONNECTIONS || '20', 10),
     connectionTimeout: parseInt(process.env.DB_CONNECTION_TIMEOUT || '10000', 10),
     idleTimeout: parseInt(process.env.DB_IDLE_TIMEOUT || '30000', 10),

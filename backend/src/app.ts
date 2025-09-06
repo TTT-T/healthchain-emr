@@ -16,6 +16,7 @@ import aiRoutes from './routes/ai';
 import consentRoutes from './routes/consent';
 import adminRoutes from './routes/admin';
 import profileRoutes from './routes/profile';
+import securityRoutes from './routes/security';
 import externalRequestersRoutes from './routes/external-requesters';
 import healthRoutes from './routes/health';
 
@@ -92,7 +93,7 @@ class Application {
     this.app.use(requestLogger);
 
     // Setup Swagger documentation
-    setupSwagger(this.app);
+    setupSwagger(this.app as any);
 
     // Trust proxy (for production behind reverse proxy)
     this.app.set('trust proxy', 1);
@@ -156,7 +157,8 @@ class Application {
     this.app.use('/api/ai', aiRoutes);               // 2. AI Risk Assessment
     this.app.use('/api/consent', consentRoutes);     // 3. Consent Engine
     this.app.use('/api/admin', adminRoutes);         // 1. Admin functions
-    this.app.use('/api/profile', profileRoutes);     // Profile management
+    this.app.use('/api/profile', profileRoutes);     // Profile Management
+    this.app.use('/api/security', securityRoutes);   // Security Settings     // Profile management
     this.app.use('/api/external-requesters', externalRequestersRoutes); // External Requesters
 
     // 404 handler

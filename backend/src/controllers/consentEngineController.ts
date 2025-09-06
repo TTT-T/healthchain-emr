@@ -525,36 +525,6 @@ export const logConsentAccess = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Calculate expiration date based on duration
- */
-function calculateExpirationDate(duration: string): Date {
-  const now = new Date();
-  
-  switch (duration.toLowerCase()) {
-    case '1 day':
-    case '1d':
-      return new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    case '1 week':
-    case '1w':
-      return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    case '1 month':
-    case '1m':
-      return new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-    case '3 months':
-    case '3m':
-      return new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
-    case '6 months':
-    case '6m':
-      return new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
-    case '1 year':
-    case '1y':
-      return new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
-    default:
-      // Default to 1 month
-      return new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-  }
-}
 
 /**
  * Execute smart contract rules
@@ -756,3 +726,138 @@ async function createAuditTrail(
     console.error('Error creating audit trail:', error);
   }
 }
+
+/**
+ * Calculate expiration date based on duration
+ */
+function calculateExpirationDate(duration: string): Date {
+  const now = new Date();
+  
+  switch (duration) {
+    case '1_day':
+      return new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    case '1_week':
+      return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    case '1_month':
+      return new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    case '3_months':
+      return new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+    case '6_months':
+      return new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
+    case '1_year':
+      return new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+    case '2_years':
+      return new Date(now.getTime() + 730 * 24 * 60 * 60 * 1000);
+    case '5_years':
+      return new Date(now.getTime() + 1825 * 24 * 60 * 60 * 1000);
+    case 'indefinite':
+      return new Date(now.getTime() + 10 * 365 * 24 * 60 * 60 * 1000); // 10 years as max
+    default:
+      return new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // Default to 1 month
+  }
+}
+
+/**
+ * Get consent dashboard overview
+ * GET /api/consent/dashboard/overview
+ */
+export const getConsentDashboardOverview = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+
+    // Get total contracts count
+    const totalContractsResult = await databaseManager.query(`
+      SELECT COUNT(*) as total
+      FROM consent_contracts
+    `);
+
+    // Get contracts by status
+    const contractsByStatusResult = await databaseManager.query(`
+      SELECT 
+        status,
+        COUNT(*) as count
+      FROM consent_contracts
+      GROUP BY status
+      ORDER BY count DESC
+    `);
+
+    // Get contracts by data type
+    const contractsByDataTypeResult = await databaseManager.query(`
+      SELECT 
+        data_types,
+        COUNT(*) as count
+      FROM consent_contracts
+      GROUP BY data_types
+      ORDER BY count DESC
+    `);
+
+    // Get recent contracts
+    const recentContractsResult = await databaseManager.query(`
+      SELECT 
+        cc.*,
+        p.first_name as patient_first_name,
+        p.last_name as patient_last_name,
+        u.first_name as requester_first_name,
+        u.last_name as requester_last_name
+      FROM consent_contracts cc
+      LEFT JOIN patients p ON cc.patient_id = p.id
+      LEFT JOIN users u ON cc.requester_id = u.id
+      ORDER BY cc.created_at DESC
+      LIMIT 10
+    `);
+
+    // Get audit trail summary
+    const auditTrailResult = await databaseManager.query(`
+      SELECT 
+        action,
+        COUNT(*) as count
+      FROM consent_audit_trail
+      WHERE timestamp >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY action
+      ORDER BY count DESC
+    `);
+
+    const dashboardData = {
+      summary: {
+        totalContracts: parseInt(totalContractsResult.rows[0].total),
+        contractsByStatus: contractsByStatusResult.rows.map(row => ({
+          status: row.status,
+          count: parseInt(row.count)
+        })),
+        contractsByDataType: contractsByDataTypeResult.rows.map(row => ({
+          dataType: row.data_types,
+          count: parseInt(row.count)
+        }))
+      },
+      recentContracts: recentContractsResult.rows.map(contract => ({
+        id: contract.id,
+        contractId: contract.contract_id,
+        patientName: `${contract.patient_first_name} ${contract.patient_last_name}`,
+        requesterName: `${contract.requester_first_name} ${contract.requester_last_name}`,
+        dataTypes: contract.data_types,
+        purpose: contract.purpose,
+        status: contract.status,
+        createdAt: contract.created_at,
+        expiresAt: contract.expires_at
+      })),
+      auditTrail: auditTrailResult.rows.map(row => ({
+        action: row.action,
+        count: parseInt(row.count)
+      }))
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'Consent dashboard overview retrieved successfully',
+      data: dashboardData
+    });
+
+  } catch (error) {
+    console.error('Error getting consent dashboard overview:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: null
+    });
+  }
+};

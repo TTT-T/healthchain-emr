@@ -6,6 +6,7 @@ import { apiClient } from '@/lib/api';
 import { User, APIError, UserRole } from '@/types/api';
 import SessionManager from '@/lib/sessionManager';
 import FormDataCleaner from '@/lib/formDataCleaner';
+import { showError, showSuccess, showWarning } from '@/lib/alerts';
 
 interface AuthContextType {
   // State
@@ -62,45 +63,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const initAuth = async () => {
       try {
         const token = apiClient.getAccessToken();
-        console.log('🔍 AuthContext init - Token available:', !!token);
-        console.log('🔍 AuthContext init - Current path:', typeof window !== 'undefined' ? window.location.pathname : 'SSR');
+        // Initialize authentication context
         
         if (token) {
           try {
             // Only try to get user profile if we're not on setup-profile page
             if (typeof window !== 'undefined' && !window.location.pathname.includes('/setup-profile')) {
-              console.log('🔄 Getting user profile...');
               await refreshUser();
-            } else {
-              console.log('⏭️ Skipping profile fetch on setup-profile page');
             }
           } catch (error) {
-            console.error('❌ Token validation failed during init:', error);
-            
             // Check if it's a network error vs auth error
             const apiError = error as any;
             if (apiError?.statusCode === 401 || apiError?.message?.includes('Authentication')) {
               // Auth error - clear everything
-              console.log('🔑 Authentication error - clearing tokens');
               apiClient.clearTokens();
               // FormDataCleaner.clearAllFormData(); // Disabled to prevent refresh
               setUser(null);
               setError(null);
             } else {
               // Network or other error - keep token but don't set user
-              console.log('🌐 Network error - keeping token but not setting user');
               setUser(null);
               setError('Unable to connect to server. Please check your connection.');
             }
           }
         } else {
-          console.log('❌ No token found during init');
           // Ensure everything is cleared if no token
           setUser(null);
           setError(null);
         }
       } catch (error) {
-        console.error('❌ AuthContext init error:', error);
         // Clear everything on init error
         apiClient.clearTokens();
         // FormDataCleaner.clearAllFormData(); // Disabled to prevent refresh
@@ -120,9 +111,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Listen for session cleared events
     const handleSessionCleared = () => {
-      console.log('🔄 Session cleared event received');
       setUser(null);
       setError('Session expired. Please login again.');
+      showWarning('เซสชันหมดอายุ', 'กรุณาเข้าสู่ระบบใหม่');
       if (!window.location.pathname.includes('/login')) {
         router.push('/login');
       }
@@ -149,55 +140,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsLoading(true);
       setError(null);
       
-      console.log('🔐 AuthContext: Starting login process...');
-      console.log('🔐 AuthContext: Login data:', { username, rememberMe });
-      console.log('🔐 AuthContext: API Client available:', !!apiClient);
+      // Starting login process
       
       // Store remember me preference BEFORE login API call
       if (rememberMe) {
         localStorage.setItem('rememberMe', 'true');
-        console.log('🔒 User chose to be remembered - set BEFORE login');
       } else {
         localStorage.removeItem('rememberMe');
-        console.log('🚫 User chose not to be remembered - cleared BEFORE login');
       }
       
-      console.log('🌐 AuthContext: Calling apiClient.login...');
       const response = await apiClient.login({ username, password });
-      console.log('📥 AuthContext: Login response received:', response);
       
       if (response.data) {
-        console.log('✅ AuthContext: Login successful, setting user:', response.data.user);
-        console.log('🔍 AuthContext: Token verification after login:');
-        console.log('  - Access token stored:', !!apiClient.getAccessToken());
-        console.log('  - Access token preview:', apiClient.getAccessToken()?.substring(0, 30) + '...' || 'none');
-        
         // Set user state
         setUser(response.data.user);
         setIsLoading(false);
         
-        // Return success - let the calling component handle redirect
-        console.log('✅ AuthContext: Login process completed successfully');
+        // Show success notification
+        showSuccess('เข้าสู่ระบบสำเร็จ', 'ยินดีต้อนรับสู่ระบบบันทึกสุขภาพอิเล็กทรอนิกส์');
         
       } else {
-        console.error('❌ AuthContext: Login failed:', response.error?.message);
         setIsLoading(false);
         throw new Error(response.error?.message || 'Login failed');
       }
     } catch (error) {
-      console.error('💥 AuthContext: Login error caught:', error);
-      console.error('💥 AuthContext: Error details:', {
-        name: (error as any)?.name,
-        message: (error as any)?.message,
-        stack: (error as any)?.stack,
-        response: (error as any)?.response
-      });
       setIsLoading(false);
       const apiError = error as APIError;
       
+      // Show error notification
+      showError('เข้าสู่ระบบไม่สำเร็จ', apiError.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
+      
       // Don't set error in context - let the component handle all errors
       // This prevents unnecessary re-renders and redirects
-      console.log('💥 AuthContext: Throwing error for component to handle:', apiError.message);
       throw error;
     }
   };
@@ -264,17 +238,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Clear all form data
       // FormDataCleaner.clearAllFormData(); // Disabled to prevent refresh
       
-      console.log('✅ Logout completed');
+      // Show success notification
+      showSuccess('ออกจากระบบสำเร็จ', 'ขอบคุณที่ใช้บริการ');
       
       // Redirect to login
       router.push('/login');
       
     } catch (error) {
-      console.error('Logout error:', error);
       // Even if logout API fails, clear local state
       apiClient.clearTokens();
       setUser(null);
       setError(null);
+      showSuccess('ออกจากระบบสำเร็จ', 'ขอบคุณที่ใช้บริการ');
       router.push('/login');
     } finally {
       setIsLoading(false);
@@ -294,10 +269,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // For now, just keep existing user data
       // TODO: Implement getCurrentUser API endpoint
-      console.log('Refresh user called - keeping existing user data');
       
     } catch (error) {
-      console.error('Refresh user error:', error);
       setUser(null);
     }
   };

@@ -8,7 +8,8 @@ import {
   getPatientConsentContracts,
   revokeConsentContract,
   getConsentAccessLogs,
-  logConsentAccess
+  logConsentAccess,
+  getConsentDashboardOverview
 } from '../controllers/consentEngineController';
 
 const router = Router();
@@ -93,5 +94,11 @@ router.get('/dashboard', authorize(['admin']), (req, res) => {
     data: dashboardData
   });
 });
+
+// Consent dashboard overview
+router.get('/dashboard/overview', 
+  authorize(['admin', 'consent_admin', 'compliance_officer']), 
+  asyncHandler(getConsentDashboardOverview)
+);
 
 export default router;

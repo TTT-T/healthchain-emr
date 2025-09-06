@@ -1,23 +1,64 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiClient } from "@/lib/api";
 import MedicalHeader from "@/components/MedicalHeader";
 
 export default function DoctorProfilePage() {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
-    firstName: "สมชาย",
-    lastName: "ใจดี",
-    email: "doctor.somchai@hospital.com",
-    phone: "089-123-4567",
-    hospital: "โรงพยาบาลศรีธัญญา",
-    department: "อายุรกรรม",
-    specialty: "โรคหัวใจและหลอดเลือด",
-    medicalLicense: "แพทย์ 12345",
-    experience: "15",
-    education: "แพทยศาสตรบัณฑิต จุฬาลงกรณ์มหาวิทยาลัย",
-    bio: "แพทย์ผู้เชี่ยวชาญด้านโรคหัวใจและหลอดเลือด มีประสบการณ์การรักษาผู้ป่วยมากว่า 15 ปี"
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    hospital: "",
+    department: "",
+    specialty: "",
+    medical_license: "",
+    experience_years: "",
+    education: "",
+    bio: "",
+    position: "",
+    professional_license: ""
   });
 
   const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Load user data
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        setIsLoading(true);
+        if (user) {
+          setFormData({
+            first_name: user.firstName || "",
+            last_name: user.lastName || "",
+            email: user.email || "",
+            phone: user.phone || "",
+            hospital: user.hospital || "",
+            department: user.department || "",
+            specialty: user.specialty || "",
+            medical_license: user.professional_license || "",
+            experience_years: user.experience || "",
+            education: user.education || "",
+            bio: user.bio || "",
+            position: user.position || "",
+            professional_license: user.professional_license || ""
+          });
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+        setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -30,12 +71,43 @@ export default function DoctorProfilePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
+    setSuccess(null);
     
-    // TODO: API call to update profile
-    setTimeout(() => {
+    try {
+      // Basic validation
+      if (!formData.first_name || !formData.last_name || !formData.email) {
+        setError('กรุณากรอกข้อมูลที่จำเป็น (ชื่อ, นามสกุล, อีเมล)');
+        return;
+      }
+      
+      // Email validation
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(formData.email)) {
+        setError('รูปแบบอีเมลไม่ถูกต้อง');
+        return;
+      }
+      
+      // Phone validation (if provided)
+      if (formData.phone && !/^[0-9\-\s\+\(\)]+$/.test(formData.phone)) {
+        setError('รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง');
+        return;
+      }
+      
+      const response = await apiClient.updateDoctorProfile(formData);
+      
+      if (response.data && !response.error) {
+        setSuccess('บันทึกข้อมูลสำเร็จ');
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(response.error?.message || 'เกิดข้อผิดพลาดในการบันทึก');
+      }
+    } catch (error: any) {
+      console.error('Error saving profile:', error);
+      setError('เกิดข้อผิดพลาดในการบันทึก');
+    } finally {
       setLoading(false);
-      alert("บันทึกข้อมูลสำเร็จ!");
-    }, 1000);
+    }
   };
 
   return (
@@ -51,20 +123,52 @@ export default function DoctorProfilePage() {
                 Dr
               </div>
               <div className="text-center sm:text-left">
-                <h2 className="text-2xl md:text-3xl font-bold text-slate-800">นายแพทย์{formData.firstName} {formData.lastName}</h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-slate-800">นายแพทย์{formData.first_name} {formData.last_name}</h2>
                 <p className="text-green-600 font-medium text-lg">{formData.specialty}</p>
                 <p className="text-slate-600">{formData.hospital} • แผนก{formData.department}</p>
                 <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-2">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                    ใบประกอบวิชาชีพ {formData.medicalLicense}
+                    ใบประกอบวิชาชีพ {formData.medical_license}
                   </span>
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                    ประสบการณ์ {formData.experience} ปี
+                    ประสบการณ์ {formData.experience_years} ปี
                   </span>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-red-800">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Success Message */}
+          {success && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-green-800">{success}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Profile Form */}
           <div className="bg-white rounded-2xl shadow-lg border border-slate-200/50 overflow-hidden">
@@ -84,8 +188,8 @@ export default function DoctorProfilePage() {
                     <label className="block text-sm font-semibold text-slate-700">ชื่อ</label>
                     <input
                       type="text"
-                      name="firstName"
-                      value={formData.firstName}
+                      name="first_name"
+                      value={formData.first_name}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-slate-50 focus:bg-white"
                       required
@@ -95,8 +199,8 @@ export default function DoctorProfilePage() {
                     <label className="block text-sm font-semibold text-slate-700">นามสกุล</label>
                     <input
                       type="text"
-                      name="lastName"
-                      value={formData.lastName}
+                      name="last_name"
+                      value={formData.last_name}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-slate-50 focus:bg-white"
                       required
@@ -183,8 +287,8 @@ export default function DoctorProfilePage() {
                     <label className="block text-sm font-semibold text-slate-700">ใบอนุญาตประกอบวิชาชีพ</label>
                     <input
                       type="text"
-                      name="medicalLicense"
-                      value={formData.medicalLicense}
+                      name="medical_license"
+                      value={formData.medical_license}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-slate-50 focus:bg-white"
                       required
@@ -194,8 +298,8 @@ export default function DoctorProfilePage() {
                     <label className="block text-sm font-semibold text-slate-700">ประสบการณ์ (ปี)</label>
                     <input
                       type="number"
-                      name="experience"
-                      value={formData.experience}
+                      name="experience_years"
+                      value={formData.experience_years}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-slate-50 focus:bg-white"
                       min="0"

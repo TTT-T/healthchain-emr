@@ -4,6 +4,7 @@ import { Sarabun } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
+import { AlertProvider } from "@/components/ui/alert-system";
 
 
 const geistSans = Geist({
@@ -38,7 +39,9 @@ export default function RootLayout({
       <body>
         <ReactQueryProvider>
           <AuthProvider>
-            {children}
+            <AlertProvider>
+              {children}
+            </AlertProvider>
           </AuthProvider>
         </ReactQueryProvider>
       </body>
