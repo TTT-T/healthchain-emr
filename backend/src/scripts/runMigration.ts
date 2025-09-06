@@ -1,8 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import DatabaseConnection from '../database/index';
-
-const db = DatabaseConnection.getInstance();
+import { databaseManager } from '../database/connection';
 
 async function runMigration() {
   try {
@@ -13,12 +11,12 @@ async function runMigration() {
     const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
     
     // Execute the migration
-    await db.query(migrationSQL);
+    await databaseManager.query(migrationSQL);
     
     console.log('✅ Migration completed successfully!');
     
     // Test the migration by checking if the new columns exist
-    const result = await db.query(`
+    const result = await databaseManager.query(`
       SELECT column_name 
       FROM information_schema.columns 
       WHERE table_name = 'patients' 

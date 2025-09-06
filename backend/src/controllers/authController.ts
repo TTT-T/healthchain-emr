@@ -20,7 +20,8 @@ import {
 } from '../types/index';
 import { emailService } from '../services/emailService';
 
-import { db, DatabaseSchema } from '../database/index';
+import { databaseManager } from '../database/connection';
+import { DatabaseSchema } from '../database/index';
 
 // Validation schemas
 const registerSchema = z.object({
@@ -63,7 +64,7 @@ export const register = async (req: Request, res: Response) => {
     const username = validatedData.username || validatedData.email.split('@')[0];
     
     // Check if user already exists
-    const existingUser = await db.getUserByUsernameOrEmail(
+    const existingUser = await databaseManager.getUserByUsernameOrEmail(
       username, 
       validatedData.email
     );
@@ -78,7 +79,7 @@ export const register = async (req: Request, res: Response) => {
     const hashedPassword = await hashPassword(validatedData.password);
     
     // Create user
-    const newUser = await db.createUser({
+    const newUser = await databaseManager.createUser({
       username: username,
       email: validatedData.email,
       password: hashedPassword,
@@ -117,7 +118,7 @@ export const register = async (req: Request, res: Response) => {
     const { accessToken, refreshToken } = generateTokens(newUser);
     
     // Create session
-    await db.createSession({
+    await databaseManager.createSession({
       userId: newUser.id,
       accessToken,
       refreshToken,
@@ -127,7 +128,7 @@ export const register = async (req: Request, res: Response) => {
     });
     
     // Log audit
-    await db.createAuditLog({
+    await databaseManager.createAuditLog({
       userId: newUser.id,
       action: 'USER_REGISTER',
       resource: 'USER',
@@ -197,7 +198,7 @@ export const login = async (req: Request, res: Response) => {
     console.log('🔍 Login attempt for:', usernameOrEmail);
     
     // Find user by username or email
-    const user = await db.getUserByUsernameOrEmail(
+    const user = await databaseManager.getUserByUsernameOrEmail(
       usernameOrEmail, 
       usernameOrEmail
     );
@@ -244,7 +245,7 @@ export const login = async (req: Request, res: Response) => {
     if (!isPasswordValid) {
       console.log('❌ Password validation failed for user:', user.email);
       // Log failed login attempt
-      await db.createAuditLog({
+      await databaseManager.createAuditLog({
         userId: user.id,
         action: 'LOGIN_FAILED',
         resource: 'USER',
@@ -262,16 +263,16 @@ export const login = async (req: Request, res: Response) => {
     console.log('✅ Password validation successful for user:', user.email);
     
     // Update last login
-    await db.updateUserLastLogin(user.id);
+    await databaseManager.updateUserLastLogin(user.id);
     
     // Generate tokens
     const { accessToken, refreshToken } = generateTokens(user);
     
     // Clear existing sessions for this user to avoid duplicates
-    await db.query('DELETE FROM user_sessions WHERE user_id = $1', [user.id]);
+    await databaseManager.query('DELETE FROM user_sessions WHERE user_id = $1', [user.id]);
     
     // Create session
-    await db.createSession({
+    await databaseManager.createSession({
       userId: user.id,
       accessToken,
       refreshToken,
@@ -281,7 +282,7 @@ export const login = async (req: Request, res: Response) => {
     });
     
     // Log successful login
-    await db.createAuditLog({
+    await databaseManager.createAuditLog({
       userId: user.id,
       action: 'LOGIN_SUCCESS',
       resource: 'USER',
@@ -357,7 +358,7 @@ export const refreshToken = async (req: Request, res: Response) => {
     const validatedData = refreshTokenSchema.parse(req.body);
     
     // Find session
-    const session = await db.getSessionByRefreshToken(validatedData.refreshToken);
+    const session = await databaseManager.getSessionByRefreshToken(validatedData.refreshToken);
     
     if (!session || session.expiresAt < new Date()) {
       return res.status(401).json(
@@ -368,7 +369,7 @@ export const refreshToken = async (req: Request, res: Response) => {
     console.log('🔍 Session found:', { id: session.id, userId: session.userId, userIdType: typeof session.userId });
     
     // Get user
-    const user = await db.getUserById(session.userId);
+    const user = await databaseManager.getUserById(session.userId);
     
     console.log('🔍 User lookup result:', { user: user ? 'found' : 'not found', userId: session.userId });
     
@@ -382,14 +383,14 @@ export const refreshToken = async (req: Request, res: Response) => {
     const { accessToken, refreshToken: newRefreshToken } = generateTokens(user);
     
     // Update session
-    await db.updateSession(session.id, {
+    await databaseManager.updateSession(session.id, {
       refreshToken: newRefreshToken,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       lastUsedAt: new Date()
     });
     
     // Log audit
-    await db.createAuditLog({
+    await databaseManager.createAuditLog({
       userId: user.id,
       action: 'TOKEN_REFRESH',
       resource: 'SESSION',
@@ -430,12 +431,12 @@ export const logout = async (req: Request, res: Response) => {
     
     if (refreshToken) {
       // Delete session
-      await db.deleteSessionByRefreshToken(refreshToken);
+      await databaseManager.deleteSessionByRefreshToken(refreshToken);
       
       // Log audit if user is available
       const user = (req as any).user;
       if (user) {
-        await db.createAuditLog({
+        await databaseManager.createAuditLog({
           userId: user.id,
           action: 'LOGOUT',
           resource: 'SESSION',
@@ -474,7 +475,7 @@ export const getProfile = async (req: Request, res: Response) => {
     }
     
     // Get fresh user data
-    const currentUser = await db.getUserById(user.id);
+    const currentUser = await databaseManager.getUserById(user.id);
     
     if (!currentUser) {
       return res.status(404).json(
@@ -523,7 +524,7 @@ export const updateProfile = async (req: Request, res: Response) => {
     
     // Check if email is being changed and already exists
     if (validatedData.email && validatedData.email !== user.email) {
-      const existingUser = await db.getUserByEmail(validatedData.email);
+      const existingUser = await databaseManager.getUserByEmail(validatedData.email);
       if (existingUser) {
         return res.status(409).json(
           errorResponse('Email already exists', 409)
@@ -532,10 +533,10 @@ export const updateProfile = async (req: Request, res: Response) => {
     }
     
     // Update user
-    const updatedUser = await db.updateUser(user.id, validatedData);
+    const updatedUser = await databaseManager.updateUser(user.id, validatedData);
     
     // Log audit
-    await db.createAuditLog({
+    await databaseManager.createAuditLog({
       userId: user.id,
       action: 'PROFILE_UPDATE',
       resource: 'USER',
@@ -590,7 +591,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
     }
 
     // Log audit
-    await db.createAuditLog({
+    await databaseManager.createAuditLog({
       userId: result.userId!,
       action: 'EMAIL_VERIFIED',
       resource: 'USER',
@@ -630,7 +631,7 @@ export const resendVerificationEmail = async (req: Request, res: Response) => {
     }
 
     // Find user
-    const user = await db.getUserByUsernameOrEmail(email, email);
+    const user = await databaseManager.getUserByUsernameOrEmail(email, email);
     
     if (!user) {
       return res.status(404).json(
@@ -741,7 +742,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
     console.log('🔍 Forgot password request for:', email);
 
     // Find user by email
-    const user = await db.getUserByEmail(email);
+    const user = await databaseManager.getUserByEmail(email);
     
     if (!user) {
       // For security, don't reveal if email exists or not
@@ -870,7 +871,7 @@ export const resetPassword = async (req: Request, res: Response) => {
 
     // Invalidate all user sessions (optional - for security)
     try {
-      await db.query('DELETE FROM user_sessions WHERE user_id = $1', [userId]);
+      await databaseManager.query('DELETE FROM user_sessions WHERE user_id = $1', [userId]);
     } catch (error) {
       console.warn('Failed to invalidate user sessions:', error);
     }
