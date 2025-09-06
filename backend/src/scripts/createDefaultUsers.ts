@@ -1,5 +1,5 @@
-import { hashPassword } from '../utils/index.js';
-import { db } from '../database/index.js';
+import { hashPassword } from '../utils/index';
+import { databaseManager } from '../database/connection';
 
 async function createDefaultUsers() {
   console.log('Creating default users...');
@@ -7,7 +7,7 @@ async function createDefaultUsers() {
   try {
     // Create admin user
     const adminPassword = await hashPassword('admin123');
-    await db.query(`
+    await databaseManager.query(`
       INSERT INTO users (
         username, email, password_hash, first_name, last_name, 
         role, is_active, email_verified
@@ -26,7 +26,7 @@ async function createDefaultUsers() {
 
     // Create doctor user
     const doctorPassword = await hashPassword('doctor123');
-    await db.query(`
+    await databaseManager.query(`
       INSERT INTO users (
         username, email, password_hash, first_name, last_name, 
         role, is_active, email_verified
@@ -45,7 +45,7 @@ async function createDefaultUsers() {
 
     // Create patient user
     const patientPassword = await hashPassword('patient123');
-    await db.query(`
+    await databaseManager.query(`
       INSERT INTO users (
         username, email, password_hash, first_name, last_name, 
         role, is_active, email_verified

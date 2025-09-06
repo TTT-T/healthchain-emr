@@ -6,8 +6,12 @@
   "scripts": {
     "start": "node dist/server.js",
     "start:prod": "NODE_ENV=production node dist/server.js",
+    "start:pm2": "pm2 start ecosystem.config.js",
+    "stop:pm2": "pm2 stop ecosystem.config.js",
+    "restart:pm2": "pm2 restart ecosystem.config.js",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
+    "build:prod": "NODE_ENV=production tsc",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

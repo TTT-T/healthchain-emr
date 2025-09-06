@@ -3,13 +3,10 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { showError, showSuccess, showWarning, showFeatureComingSoon } from "@/lib/alerts";
-// import { useAuth } from "@/contexts/AuthContext";
-// import FormDataCleaner from "@/lib/formDataCleaner";
 
 function LoginClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // const { login, isLoading, error, clearError, isAuthenticated, user } = useAuth();
   
   // Local state management (like admin/external login)
   const [isLoading, setIsLoading] = useState(false);
@@ -38,16 +35,6 @@ function LoginClient() {
       rememberMe: false
     });
     
-    // Temporarily disable FormDataCleaner to test if it's causing refresh
-    // FormDataCleaner.clearAllFormData();
-    // FormDataCleaner.clearFormData('loginForm');
-    
-    // Disable autofill for the login form (will be applied when form renders)
-    // setTimeout(() => {
-    //   FormDataCleaner.disableAutofill('loginForm');
-    //   // Don't reset form inputs to prevent interference
-    //   // FormDataCleaner.resetFormInputs('loginForm');
-    // }, 100);
     
   }, []);
 
