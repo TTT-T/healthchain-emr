@@ -29,41 +29,38 @@ interface PatientData {
   id: string;
   username: string;
   email: string;
-  first_name: string;
-  last_name: string;
-  thai_name?: string;
+  firstName: string;
+  lastName: string;
+  thaiName?: string;
+  thaiLastName?: string;
   phone?: string;
-  phone_number?: string;
-  national_id?: string;
-  birth_date?: string;
+  nationalId?: string;
+  birthDate?: string;
+  birthDay?: number;
+  birthMonth?: number;
+  birthYear?: number;
   gender?: string;
   address?: string;
-  current_address?: string;
-  blood_group?: string;
-  blood_type?: string;
-  weight?: string;
-  height?: string;
-  hospital_number?: string;
-  emergency_contact?: {
-    name: string;
-    phone: string;
-    relationship: string;
-  };
-  emergency_contact_name?: string;
-  emergency_contact_phone?: string;
-  emergency_contact_relation?: string;
-  medical_history?: string;
-  allergies?: string;
-  drug_allergies?: string;
-  food_allergies?: string;
-  environment_allergies?: string;
-  medications?: string;
-  chronic_diseases?: string;
+  bloodType?: string;
+  weight?: number;
+  height?: number;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelation?: string;
+  drugAllergies?: string;
+  foodAllergies?: string;
+  environmentAllergies?: string;
+  chronicDiseases?: string;
+  occupation?: string;
+  education?: string;
+  maritalStatus?: string;
   religion?: string;
   race?: string;
-  occupation?: string;
-  marital_status?: string;
-  education?: string;
+  insuranceType?: string;
+  insuranceNumber?: string;
+  insuranceExpiryDay?: number;
+  insuranceExpiryMonth?: number;
+  insuranceExpiryYear?: number;
 }
 
 const PatientDashboard = () => {
@@ -71,6 +68,27 @@ const PatientDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+
+  // Calculate profile completion percentage
+  const calculateProfileCompletion = () => {
+    if (!patient) return 0;
+    
+    const fields = [
+      'thaiName', 'thaiLastName', 'firstName', 'lastName', 'nationalId', 
+      'birthDay', 'birthMonth', 'birthYear', 'gender', 'bloodType', 'phone', 'address',
+      'emergencyContactName', 'emergencyContactPhone',
+      'drugAllergies', 'foodAllergies', 'environmentAllergies', 'chronicDiseases',
+      'weight', 'height', 'occupation', 'education', 'maritalStatus', 'religion', 'race',
+      'insuranceType', 'insuranceNumber', 'insuranceExpiryDay', 'insuranceExpiryMonth', 'insuranceExpiryYear'
+    ];
+    
+    const filledFields = fields.filter(field => {
+      const value = patient[field as keyof PatientData];
+      return value && value.toString().trim() !== '';
+    });
+    
+    return Math.round((filledFields.length / fields.length) * 100);
+  };
 
   useEffect(() => {
     const fetchPatientData = async () => {
@@ -104,7 +122,7 @@ const PatientDashboard = () => {
         // If we have user data, load patient data
         if (user?.id) {
           logger.debug('🔍 Patient Dashboard - Loading patient data for user:', user.id);
-          const response = await apiClient.getProfile();
+          const response = await apiClient.getCompleteProfile();
           if (response.statusCode === 200 && response.data) {
             setPatient(response.data as any);
           } else {
@@ -200,7 +218,7 @@ const PatientDashboard = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">ชื่อ-นามสกุล</p>
-                  <p className="font-medium text-gray-900">{patient.thai_name}</p>
+                  <p className="font-medium text-gray-900">{patient.thaiName || `${patient.firstName} ${patient.lastName}`}</p>
                 </div>
               </div>
 
@@ -220,7 +238,7 @@ const PatientDashboard = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">เบอร์โทรศัพท์</p>
-                  <p className="font-medium text-gray-900">{patient.phone || patient.phone_number || 'ไม่ระบุ'}</p>
+                  <p className="font-medium text-gray-900">{patient.phone || 'ไม่ระบุ'}</p>
                 </div>
               </div>
 
@@ -230,7 +248,7 @@ const PatientDashboard = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">ที่อยู่</p>
-                  <p className="font-medium text-gray-900">{patient.current_address || patient.address || 'ไม่ระบุ'}</p>
+                  <p className="font-medium text-gray-900">{patient.address || 'ไม่ระบุ'}</p>
                 </div>
               </div>
 
@@ -240,11 +258,7 @@ const PatientDashboard = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">หมู่เลือด</p>
-                  <p className="font-medium text-gray-900">
-                    {patient.blood_group && patient.blood_type 
-                      ? `${patient.blood_group}${patient.blood_type}` 
-                      : 'ไม่ระบุ'}
-                  </p>
+                  <p className="font-medium text-gray-900">{patient.bloodType || 'ไม่ระบุ'}</p>
                 </div>
               </div>
 
@@ -262,28 +276,59 @@ const PatientDashboard = () => {
         )}
 
         {/* Profile Setup Alert */}
-        {!user?.profileCompleted && (
-          <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                  <AlertCircle className="h-6 w-6 text-orange-600" />
+        {!user?.profileCompleted && (() => {
+          const completionPercentage = calculateProfileCompletion();
+          const isHighCompletion = completionPercentage >= 80;
+          
+          return (
+            <div className={`${isHighCompletion ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'} border rounded-xl p-6 shadow-sm`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 ${isHighCompletion ? 'bg-green-100' : 'bg-orange-100'} rounded-lg flex items-center justify-center`}>
+                    <AlertCircle className={`h-6 w-6 ${isHighCompletion ? 'text-green-600' : 'text-orange-600'}`} />
+                  </div>
+                  <div>
+                    <h3 className={`font-semibold ${isHighCompletion ? 'text-green-900' : 'text-orange-900'}`}>
+                      {isHighCompletion ? '🎉 โปรไฟล์เกือบสมบูรณ์!' : 'ตั้งค่าโปรไฟล์'}
+                    </h3>
+                    <p className={`text-sm ${isHighCompletion ? 'text-green-700' : 'text-orange-700'}`}>
+                      {isHighCompletion 
+                        ? `โปรไฟล์ของคุณสมบูรณ์ ${completionPercentage}% แล้ว! กรอกข้อมูลเพิ่มเติมเพื่อความสมบูรณ์`
+                        : `กรุณาตั้งค่าโปรไฟล์ให้ครบถ้วนเพื่อใช้ฟีเจอร์ต่างๆ (${completionPercentage}%)`
+                      }
+                    </p>
+                    {/* Progress Bar */}
+                    <div className="mt-2">
+                      <div className="flex justify-between text-xs text-gray-600 mb-1">
+                        <span>ความคืบหน้า</span>
+                        <span>{completionPercentage}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div 
+                          className={`h-1.5 rounded-full transition-all duration-300 ${
+                            completionPercentage >= 80 
+                              ? 'bg-green-500' 
+                              : completionPercentage >= 50 
+                              ? 'bg-yellow-500' 
+                              : 'bg-orange-500'
+                          }`}
+                          style={{ width: `${completionPercentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-orange-900">ตั้งค่าโปรไฟล์</h3>
-                  <p className="text-sm text-orange-700">กรุณาตั้งค่าโปรไฟล์ให้ครบถ้วนเพื่อใช้ฟีเจอร์ต่างๆ</p>
-                </div>
+                <Link href="/setup-profile">
+                  <button className={`flex items-center gap-2 px-4 py-2 ${isHighCompletion ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-600 hover:bg-orange-700'} text-white rounded-lg transition-colors`}>
+                    <Settings className="h-4 w-4" />
+                    ตั้งค่าโปรไฟล์
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </Link>
               </div>
-              <Link href="/setup-profile">
-                <button className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors">
-                  <Settings className="h-4 w-4" />
-                  ตั้งค่าโปรไฟล์
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              </Link>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

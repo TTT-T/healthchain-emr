@@ -46,8 +46,14 @@ export const ProfileFieldValidators = {
   chronicDiseases: z.string().max(1000).optional().nullable(),
   
   // Physical Info
-  weight: z.number().min(0).max(1000).optional().nullable(),
-  height: z.number().min(0).max(300).optional().nullable(),
+  weight: z.union([
+    z.number().min(0).max(1000),
+    z.string().transform((val) => val === '' || val === null ? null : parseFloat(val)).pipe(z.number().min(0).max(1000))
+  ]).optional().nullable(),
+  height: z.union([
+    z.number().min(0).max(300),
+    z.string().transform((val) => val === '' || val === null ? null : parseFloat(val)).pipe(z.number().min(0).max(300))
+  ]).optional().nullable(),
   
   // Additional Info
   occupation: z.string().max(100).optional().nullable(),
@@ -141,10 +147,14 @@ export const UpdateProfileSchema = z.object({
   email: ProfileFieldValidators.email.optional(),
   phone: ProfileFieldValidators.phone,
   thaiName: ProfileFieldValidators.thaiName,
+  thaiLastName: z.string().min(1).max(100).optional().nullable(),
   
   // Personal Information
   nationalId: ProfileFieldValidators.nationalId,
   birthDate: ProfileFieldValidators.birthDate,
+  birthDay: z.number().min(1).max(31).optional().nullable(),
+  birthMonth: z.number().min(1).max(12).optional().nullable(),
+  birthYear: z.number().min(2400).max(2700).optional().nullable(), // พ.ศ.
   gender: ProfileFieldValidators.gender,
   bloodType: ProfileFieldValidators.bloodType,
   
@@ -182,6 +192,9 @@ export const UpdateProfileSchema = z.object({
   insuranceType: ProfileFieldValidators.insuranceType,
   insuranceNumber: ProfileFieldValidators.insuranceNumber,
   insuranceExpiryDate: ProfileFieldValidators.insuranceExpiryDate,
+  insuranceExpiryDay: z.number().min(1).max(31).optional().nullable(),
+  insuranceExpiryMonth: z.number().min(1).max(12).optional().nullable(),
+  insuranceExpiryYear: z.number().min(2400).max(2700).optional().nullable(), // พ.ศ.
   
   // System fields
   profileImage: ProfileFieldValidators.profileImage,
@@ -198,17 +211,20 @@ export const ProfileTransformers = {
     email: data.email,
     phone: data.phone,
     thai_name: data.thaiName,
+    thai_last_name: data.thaiLastName,
     
     // Personal Info
     national_id: data.nationalId,
     birth_date: data.birthDate,
+    birth_day: data.birthDay,
+    birth_month: data.birthMonth,
+    birth_year: data.birthYear,
     gender: data.gender,
     blood_type: data.bloodType,
     
     // Address Info
     address: data.address,
     id_card_address: data.idCardAddress,
-    current_address: data.currentAddress,
     
     // Contact Info
     emergency_contact_name: data.emergencyContactName,
@@ -239,6 +255,9 @@ export const ProfileTransformers = {
     insurance_type: data.insuranceType,
     insurance_number: data.insuranceNumber,
     insurance_expiry_date: data.insuranceExpiryDate,
+    insurance_expiry_day: data.insuranceExpiryDay,
+    insurance_expiry_month: data.insuranceExpiryMonth,
+    insurance_expiry_year: data.insuranceExpiryYear,
     
     // System Info
     profile_image: data.profileImage,
@@ -255,18 +274,21 @@ export const ProfileTransformers = {
     lastName: data.last_name,
     phone: data.phone,
     thaiName: data.thai_name,
+    thaiLastName: data.thai_last_name,
     role: data.role,
     
     // Personal Info
     nationalId: data.national_id,
     birthDate: data.birth_date,
+    birthDay: data.birth_day,
+    birthMonth: data.birth_month,
+    birthYear: data.birth_year,
     gender: data.gender,
     bloodType: data.blood_type,
     
     // Address Info
     address: data.address,
     idCardAddress: data.id_card_address,
-    currentAddress: data.current_address,
     
     // Contact Info
     emergencyContactName: data.emergency_contact_name,
@@ -297,6 +319,9 @@ export const ProfileTransformers = {
     insuranceType: data.insurance_type,
     insuranceNumber: data.insurance_number,
     insuranceExpiryDate: data.insurance_expiry_date,
+    insuranceExpiryDay: data.insurance_expiry_day,
+    insuranceExpiryMonth: data.insurance_expiry_month,
+    insuranceExpiryYear: data.insurance_expiry_year,
     
     // System Info
     profileImage: data.profile_image,

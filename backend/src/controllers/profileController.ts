@@ -31,13 +31,13 @@ export const getCompleteProfile = async (req: Request, res: Response) => {
     const userQuery = `
       SELECT 
         id, username, email, first_name, last_name, phone, role,
-        thai_name, national_id, birth_date, gender, blood_type,
-        address, id_card_address, current_address,
+        thai_name, thai_last_name, national_id, birth_date, birth_day, birth_month, birth_year, gender, blood_type,
+        address, id_card_address,
         emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
         allergies, drug_allergies, food_allergies, environment_allergies,
         medical_history, current_medications, chronic_diseases,
         weight, height, occupation, education, marital_status, religion, race,
-        insurance_type, insurance_number, insurance_expiry_date,
+        insurance_type, insurance_number, insurance_expiry_date, insurance_expiry_day, insurance_expiry_month, insurance_expiry_year,
         profile_image, is_active, email_verified, profile_completed,
         created_at, updated_at, last_login, last_activity
       FROM users 
@@ -97,6 +97,9 @@ export const updateCompleteProfile = async (req: Request, res: Response) => {
       );
     }
 
+    console.log('🔍 updateCompleteProfile - Request body:', JSON.stringify(req.body, null, 2));
+    console.log('🔍 updateCompleteProfile - User ID:', user.id);
+
     // Validate input
     const validatedData = UpdateProfileSchema.parse(req.body);
     
@@ -116,6 +119,8 @@ export const updateCompleteProfile = async (req: Request, res: Response) => {
 
     // Transform data to database format
     const dbData = ProfileTransformers.toDatabase(validatedData);
+    console.log('🔍 updateCompleteProfile - Validated data:', JSON.stringify(validatedData, null, 2));
+    console.log('🔍 updateCompleteProfile - DB data:', JSON.stringify(dbData, null, 2));
     
     // Remove undefined fields
     const updateData: any = {};
@@ -124,6 +129,8 @@ export const updateCompleteProfile = async (req: Request, res: Response) => {
         updateData[key] = dbData[key as keyof typeof dbData];
       }
     });
+
+    console.log('🔍 updateCompleteProfile - Update data:', JSON.stringify(updateData, null, 2));
 
     // Build dynamic update query
     const setClause = Object.keys(updateData).map((key, index) => 
@@ -136,19 +143,23 @@ export const updateCompleteProfile = async (req: Request, res: Response) => {
       WHERE id = $1
       RETURNING 
         id, username, email, first_name, last_name, phone, role,
-        thai_name, national_id, birth_date, gender, blood_type,
-        address, id_card_address, current_address,
+        thai_name, thai_last_name, national_id, birth_date, birth_day, birth_month, birth_year, gender, blood_type,
+        address, id_card_address,
         emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
         allergies, drug_allergies, food_allergies, environment_allergies,
         medical_history, current_medications, chronic_diseases,
         weight, height, occupation, education, marital_status, religion, race,
-        insurance_type, insurance_number, insurance_expiry_date,
+        insurance_type, insurance_number, insurance_expiry_date, insurance_expiry_day, insurance_expiry_month, insurance_expiry_year,
         profile_image, is_active, email_verified, profile_completed,
         created_at, updated_at, last_login, last_activity
     `;
 
     const values = [user.id, ...Object.values(updateData)];
+    console.log('🔍 updateCompleteProfile - SQL Query:', updateQuery);
+    console.log('🔍 updateCompleteProfile - SQL Values:', values);
+    
     const result = await databaseManager.query(updateQuery, values);
+    console.log('🔍 updateCompleteProfile - Query result rows:', result.rows.length);
 
     // Transform response data
     const updatedUserData = ProfileTransformers.fromDatabase(result.rows[0]);

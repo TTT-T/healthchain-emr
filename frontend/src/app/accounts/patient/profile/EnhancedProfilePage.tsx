@@ -37,7 +37,7 @@ interface CompleteProfile {
   phone: string;
   
   // Names (4 fields)
-  thaiFirstName?: string;
+  thaiName?: string;
   thaiLastName?: string;
   englishFirstName?: string;
   englishLastName?: string;
@@ -45,6 +45,9 @@ interface CompleteProfile {
   // Personal Info
   nationalId?: string;
   birthDate?: string;
+  birthDay?: number;
+  birthMonth?: number;
+  birthYear?: number;
   gender?: 'male' | 'female' | 'other';
   bloodType?: 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
   
@@ -86,6 +89,9 @@ interface CompleteProfile {
   insuranceType?: string;
   insuranceNumber?: string;
   insuranceExpiryDate?: string;
+  insuranceExpiryDay?: number;
+  insuranceExpiryMonth?: number;
+  insuranceExpiryYear?: number;
   
   // System Info
   profileImage?: string;
@@ -188,7 +194,10 @@ const EnhancedProfilePage: React.FC = () => {
       setIsSaving(true);
       setError(null);
       
+      console.log('🔍 Enhanced Profile - Saving data:', JSON.stringify(editedData, null, 2));
       const response = await apiClient.updateCompleteProfile(editedData);
+      
+      console.log('🔍 Enhanced Profile - API response:', response);
       
       if (response.statusCode === 200 && response.data) {
         setProfile(response.data);
@@ -198,6 +207,7 @@ const EnhancedProfilePage: React.FC = () => {
         // Refresh completion status
         await fetchCompletionStatus();
       } else {
+        console.error('🔍 Enhanced Profile - Save failed:', response.error);
         setError(response.error?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
       }
     } catch (err) {
@@ -407,9 +417,9 @@ const EnhancedProfilePage: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   {profile?.firstName} {profile?.lastName}
                 </h3>
-                {(profile?.thaiFirstName || profile?.thaiLastName) && (
+                {(profile?.thaiName || profile?.thaiLastName) && (
                   <p className="text-gray-600 mb-2">
-                    {profile.thaiFirstName} {profile.thaiLastName}
+                    {profile.thaiName} {profile.thaiLastName}
                   </p>
                 )}
                 <p className="text-sm text-gray-500 mb-2">{profile?.email}</p>

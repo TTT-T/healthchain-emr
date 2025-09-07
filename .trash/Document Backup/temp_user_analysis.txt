@@ -1,0 +1,42 @@
+USER DATA ANALYSIS:
+===================
+
+Current User ID: c55259d7-6f83-4d5f-8155-69cd90233f40
+Email: teerapatsta@gmail.com
+Username: teerapatsta2
+
+FIELDS THAT HAVE DATA:
+- first_name: "TTTT"
+- last_name: "TTTT" 
+- phone: "0812345678"
+- birth_date: "2025-09-08"
+- gender: "male"
+- blood_type: "A+"
+- national_id: "1111111111111"
+- bmi: 22.93
+- weight: 65.50
+- height: 169.00
+- nationality: "Thai"
+
+FIELDS THAT ARE EMPTY/NULL:
+- thai_first_name
+- thai_last_name
+- english_first_name  
+- english_last_name
+- current_address
+- emergency_contact_name
+- emergency_contact_phone
+- emergency_contact_relation
+- medical_conditions
+- allergies
+- medications
+- insurance_provider
+- insurance_number
+- insurance_expiry_date
+- occupation
+- education
+- marital_status
+- religion
+- and many more...
+
+ISSUE: Profile form submission is not updating all fields properly.

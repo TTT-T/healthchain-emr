@@ -169,8 +169,8 @@ export const ProfileFormTabs: React.FC<ProfileFormTabsProps> = ({
               <h5 className="text-sm font-medium text-gray-700">ชื่อภาษาไทย</h5>
               <FormField
                 label="ชื่อ (ไทย)"
-                value={data.thaiFirstName}
-                onChange={(value) => onChange('thaiFirstName', value)}
+                value={data.thaiName}
+                onChange={(value) => onChange('thaiName', value)}
                 disabled={!isEditing}
                 placeholder="ชื่อ"
               />
@@ -233,14 +233,95 @@ export const ProfileFormTabs: React.FC<ProfileFormTabsProps> = ({
           onDelete={onDeleteField ? () => onDeleteField('national_id') : undefined}
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <FormField
-            label="วันเกิด"
-            value={data.birthDate}
-            onChange={(value) => onChange('birthDate', value)}
-            type="date"
-            disabled={!isEditing}
-          />
+        {/* Birth Date as separate fields */}
+        <div className="bg-slate-50 p-4 rounded-lg">
+          <h5 className="text-sm font-medium text-gray-700 mb-3">วันเกิด</h5>
+          
+          {/* Display formatted birth date */}
+          {data.birthDay && data.birthMonth && data.birthYear && 
+           !(data.birthDay === 1 && data.birthMonth === 1 && data.birthYear === 2533) && (
+            <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center gap-2 text-blue-800">
+                <Calendar size={16} />
+                <span className="font-medium">
+                  {(() => {
+                    const dayNum = data.birthDay;
+                    const monthNum = data.birthMonth;
+                    const yearNum = data.birthYear;
+                    
+                    const monthNames = [
+                      'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                      'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+                    ];
+                    
+                    // data.birthYear is already in Buddhist Era (พ.ศ.)
+                    return `${dayNum} ${monthNames[monthNum - 1]} ${yearNum}`;
+                  })()}
+                </span>
+                {(() => {
+                  // Convert Buddhist Era to Christian Era for age calculation
+                  const christianYear = data.birthYear - 543;
+                  const birthDate = new Date(christianYear, data.birthMonth - 1, data.birthDay);
+                  const today = new Date();
+                  const age = today.getFullYear() - birthDate.getFullYear();
+                  const monthDiff = today.getMonth() - birthDate.getMonth();
+                  const adjustedAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
+                  return (
+                    <span className="text-blue-600">
+                      (อายุ {adjustedAge} ปี)
+                    </span>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+          
+          <div className="grid grid-cols-3 gap-3">
+            <FormField
+              label="วัน"
+              value={data.birthDay}
+              onChange={(value) => onChange('birthDay', parseInt(value) || null)}
+              type="number"
+              disabled={!isEditing}
+              placeholder="15"
+              min="1"
+              max="31"
+            />
+            <FormField
+              label="เดือน"
+              value={data.birthMonth}
+              onChange={(value) => onChange('birthMonth', parseInt(value) || null)}
+              type="select"
+              disabled={!isEditing}
+              options={[
+                { value: 1, label: 'มกราคม' },
+                { value: 2, label: 'กุมภาพันธ์' },
+                { value: 3, label: 'มีนาคม' },
+                { value: 4, label: 'เมษายน' },
+                { value: 5, label: 'พฤษภาคม' },
+                { value: 6, label: 'มิถุนายน' },
+                { value: 7, label: 'กรกฎาคม' },
+                { value: 8, label: 'สิงหาคม' },
+                { value: 9, label: 'กันยายน' },
+                { value: 10, label: 'ตุลาคม' },
+                { value: 11, label: 'พฤศจิกายน' },
+                { value: 12, label: 'ธันวาคม' }
+              ]}
+            />
+            <FormField
+              label="ปี (พ.ศ.)"
+              value={data.birthYear || ''}
+              onChange={(value) => onChange('birthYear', parseInt(value) || null)}
+              type="number"
+              disabled={!isEditing}
+              placeholder="2543"
+              min="2400"
+              max="2700"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             label="เพศ"
             value={data.gender}
@@ -538,15 +619,79 @@ export const ProfileFormTabs: React.FC<ProfileFormTabsProps> = ({
               onDelete={onDeleteField ? () => onDeleteField('insurance_number') : undefined}
             />
             
-            <FormField
-              label="วันหมดอายุประกัน"
-              value={data.insuranceExpiryDate}
-              onChange={(value) => onChange('insuranceExpiryDate', value)}
-              type="date"
-              disabled={!isEditing}
-              deletable
-              onDelete={onDeleteField ? () => onDeleteField('insurance_expiry_date') : undefined}
-            />
+            {/* Insurance Expiry Date as separate fields */}
+            <div className="bg-slate-50 p-4 rounded-lg">
+              <h5 className="text-sm font-medium text-gray-700 mb-3">วันหมดอายุประกัน</h5>
+              
+              {/* Display formatted insurance expiry date */}
+              {data.insuranceExpiryDay && data.insuranceExpiryMonth && data.insuranceExpiryYear && 
+               !(data.insuranceExpiryDay === 1 && data.insuranceExpiryMonth === 1 && data.insuranceExpiryYear === 2533) && (
+                <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-2 text-green-800">
+                    <Calendar size={16} />
+                    <span className="font-medium">
+                      {(() => {
+                        const dayNum = data.insuranceExpiryDay;
+                        const monthNum = data.insuranceExpiryMonth;
+                        const yearNum = data.insuranceExpiryYear;
+                        
+                        const monthNames = [
+                          'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                          'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+                        ];
+                        
+                        // data.insuranceExpiryYear is already in Buddhist Era (พ.ศ.)
+                        return `${dayNum} ${monthNames[monthNum - 1]} ${yearNum}`;
+                      })()}
+                    </span>
+                  </div>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-3 gap-3">
+                <FormField
+                  label="วัน"
+                  value={data.insuranceExpiryDay}
+                  onChange={(value) => onChange('insuranceExpiryDay', parseInt(value) || null)}
+                  type="number"
+                  disabled={!isEditing}
+                  placeholder="15"
+                  min="1"
+                  max="31"
+                />
+                <FormField
+                  label="เดือน"
+                  value={data.insuranceExpiryMonth}
+                  onChange={(value) => onChange('insuranceExpiryMonth', parseInt(value) || null)}
+                  type="select"
+                  disabled={!isEditing}
+                  options={[
+                    { value: 1, label: 'มกราคม' },
+                    { value: 2, label: 'กุมภาพันธ์' },
+                    { value: 3, label: 'มีนาคม' },
+                    { value: 4, label: 'เมษายน' },
+                    { value: 5, label: 'พฤษภาคม' },
+                    { value: 6, label: 'มิถุนายน' },
+                    { value: 7, label: 'กรกฎาคม' },
+                    { value: 8, label: 'สิงหาคม' },
+                    { value: 9, label: 'กันยายน' },
+                    { value: 10, label: 'ตุลาคม' },
+                    { value: 11, label: 'พฤศจิกายน' },
+                    { value: 12, label: 'ธันวาคม' }
+                  ]}
+                />
+                <FormField
+                  label="ปี (พ.ศ.)"
+                  value={data.insuranceExpiryYear || ''}
+                  onChange={(value) => onChange('insuranceExpiryYear', parseInt(value) || null)}
+                  type="number"
+                  disabled={!isEditing}
+                  placeholder="2570"
+                  min="2400"
+                  max="2700"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
