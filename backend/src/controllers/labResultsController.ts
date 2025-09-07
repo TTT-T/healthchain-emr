@@ -15,28 +15,103 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
   try {
     const { id: patientId } = req.params;
     const { page = 1, limit = 10, testCategory, startDate, endDate, status } = req.query;
+    const user = (req as any).user;
 
-    // Validate patient exists
-    const patientExists = await databaseManager.query(
-      'SELECT id, first_name, last_name FROM patients WHERE id = $1',
-      [patientId]
-    );
-
-    if (patientExists.rows.length === 0) {
-      return res.status(404).json({
-        data: null,
-        meta: null,
-        error: { message: 'Patient not found' },
-        statusCode: 404
-      });
+    // Get patient ID based on user role
+    let actualPatientId: string;
+    let patient: any;
+    
+    // For patients, they can only access their own data
+    if (user.role === 'patient') {
+      // First try to get patient record using user_id (new schema)
+      let patientQuery = `
+        SELECT p.*, u.first_name, u.last_name, u.email
+        FROM patients p
+        JOIN users u ON p.user_id = u.id
+        WHERE u.id = $1
+      `;
+      let patientResult = await databaseManager.query(patientQuery, [user.id]);
+      
+      // If no patient found with user_id, try to find by email (fallback for old schema)
+      if (patientResult.rows.length === 0) {
+        patientQuery = `
+          SELECT p.*, u.first_name, u.last_name, u.email
+          FROM patients p
+          JOIN users u ON p.email = u.email
+          WHERE u.id = $1 AND u.role = 'patient'
+        `;
+        patientResult = await databaseManager.query(patientQuery, [user.id]);
+      }
+      
+      // If still no patient found, create one
+      if (patientResult.rows.length === 0) {
+        try {
+          // Generate hospital number
+          const hospitalNumber = `HN${new Date().getFullYear()}${String(Date.now()).slice(-6)}`;
+          
+          // Create patient record
+          const createPatientQuery = `
+            INSERT INTO patients (
+              user_id, hospital_number, first_name, last_name, 
+              email, created_by
+            ) VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+          `;
+          const createResult = await databaseManager.query(createPatientQuery, [
+            user.id,
+            hospitalNumber,
+            user.first_name,
+            user.last_name,
+            user.email,
+            user.id
+          ]);
+          
+          patient = createResult.rows[0];
+          console.log('👤 Created patient record for user:', user.id);
+        } catch (createError) {
+          console.error('❌ Failed to create patient record:', createError);
+          return res.status(404).json({
+            data: null,
+            meta: null,
+            error: { message: 'Patient record not found and could not be created' },
+            statusCode: 404
+          });
+        }
+      } else {
+        patient = patientResult.rows[0];
+      }
+      
+      actualPatientId = patient.id;
+    } else {
+      // For doctors/nurses/admins, they can access any patient
+      actualPatientId = patientId;
+      
+      // Verify patient exists
+      let patientQuery = `
+        SELECT p.*, u.first_name, u.last_name, u.email
+        FROM patients p
+        LEFT JOIN users u ON p.user_id = u.id
+        WHERE p.id = $1
+      `;
+      let patientResult = await databaseManager.query(patientQuery, [patientId]);
+      
+      if (patientResult.rows.length === 0) {
+        return res.status(404).json({
+          data: null,
+          meta: null,
+          error: { message: 'Patient not found' },
+          statusCode: 404
+        });
+      }
+      
+      patient = patientResult.rows[0];
     }
-
-    const patient = patientExists.rows[0];
+    
     const offset = (Number(page) - 1) * Number(limit);
 
     // Build query for lab results
     let whereClause = 'WHERE lo.patient_id = $1';
-    const queryParams: any[] = [patientId];
+    const queryParams: any[] = [actualPatientId];
 
     if (testCategory) {
       whereClause += ' AND lo.test_category = $2';
@@ -218,12 +293,12 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
  */
 export const getPatientLabResult = async (req: Request, res: Response) => {
   try {
-    const { id: patientId, resultId } = req.params;
+    const { id: actualPatientId, resultId } = req.params;
 
     // Validate patient exists
     const patientExists = await databaseManager.query(
       'SELECT id, first_name, last_name FROM patients WHERE id = $1',
-      [patientId]
+      [actualPatientId]
     );
 
     if (patientExists.rows.length === 0) {
@@ -274,7 +349,7 @@ export const getPatientLabResult = async (req: Request, res: Response) => {
       WHERE lr.id = $1 AND lo.patient_id = $2
     `;
 
-    const result = await databaseManager.query(labResultQuery, [resultId, patientId]);
+    const result = await databaseManager.query(labResultQuery, [resultId, actualPatientId]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -290,7 +365,7 @@ export const getPatientLabResult = async (req: Request, res: Response) => {
     res.json({
       data: {
         patient: {
-          id: patientId,
+          id: actualPatientId,
           name: `${patientExists.rows[0].first_name} ${patientExists.rows[0].last_name}`
         },
         lab_result: {
@@ -470,7 +545,7 @@ export const createPatientLabResult = async (req: Request, res: Response) => {
  */
 export const updatePatientLabResult = async (req: Request, res: Response) => {
   try {
-    const { id: patientId, resultId } = req.params;
+    const { id: actualPatientId, resultId } = req.params;
     const {
       result_value,
       result_numeric,
@@ -494,7 +569,7 @@ export const updatePatientLabResult = async (req: Request, res: Response) => {
       SELECT id FROM lab_results lr
       INNER JOIN lab_orders lo ON lr.lab_order_id = lo.id
       WHERE lr.id = $1 AND lo.patient_id = $2
-    `, [resultId, patientId]);
+    `, [resultId, actualPatientId]);
 
     if (resultExists.rows.length === 0) {
       return res.status(404).json({

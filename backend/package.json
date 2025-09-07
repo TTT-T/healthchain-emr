@@ -17,6 +17,8 @@
     "test:coverage": "jest --coverage",
     "test:e2e": "jest --testPathPattern=e2e",
     "test:contract": "jest --testPathPattern=contract",
+    "migrate": "node scripts/run-migrations.js",
+    "test:patient-flow": "node scripts/test-patient-flow.js",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "type-check": "tsc --noEmit",

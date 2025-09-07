@@ -451,6 +451,10 @@ export default function EMRDashboard() {
           <div className="bg-white rounded-lg shadow-sm p-4 md:p-6">
             <h2 className="text-base md:text-lg font-semibold text-gray-900 mb-4">เมนูหลัก</h2>
             <div className="space-y-2 md:space-y-3">
+              <Link href="/emr/user-search" className="flex items-center p-2 md:p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                <Users className="h-4 w-4 md:h-5 md:w-5 text-green-600 mr-2 md:mr-3 flex-shrink-0" />
+                <span className="text-gray-700 text-sm md:text-base">ค้นหาผู้ใช้เพื่อลงทะเบียน</span>
+              </Link>
               <Link href="/emr/register-patient" className="flex items-center p-2 md:p-3 rounded-lg hover:bg-gray-50 transition-colors">
                 <UserPlus className="h-4 w-4 md:h-5 md:w-5 text-blue-600 mr-2 md:mr-3 flex-shrink-0" />
                 <span className="text-gray-700 text-sm md:text-base">ลงทะเบียนผู้ป่วยใหม่</span>

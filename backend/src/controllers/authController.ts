@@ -39,15 +39,18 @@ const db = {
     const query = `
       INSERT INTO users (
         username, email, password_hash, first_name, last_name, 
-        phone, role, is_active, email_verified, profile_completed
+        phone, role, is_active, email_verified, profile_completed,
+        national_id, birth_date, gender, address, blood_type
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false, $10, $11, $12, $13, $14)
       RETURNING id, username, email, first_name, last_name, role, is_active, email_verified, profile_completed
     `;
     const result = await db.query(query, [
       userData.username, userData.email, userData.password,
       userData.firstName, userData.lastName, userData.phoneNumber,
-      userData.role, userData.isActive, userData.isEmailVerified
+      userData.role, userData.isActive, userData.isEmailVerified,
+      userData.nationalId, userData.birthDate, userData.gender, 
+      userData.address, userData.bloodType
     ]);
     return result.rows[0];
   },
@@ -131,6 +134,16 @@ const db = {
     const result = await db.query(query, [email]);
     return result.rows[0] || null;
   },
+  getUserByUsername: async (username: string) => {
+    const query = `
+      SELECT id, username, email, password_hash, first_name, last_name,
+             role, is_active, profile_completed, email_verified,
+             created_at, updated_at
+      FROM users WHERE username = $1
+    `;
+    const result = await db.query(query, [username]);
+    return result.rows[0] || null;
+  },
   updateUser: async (userId: string, updateData: any) => {
     const fields = Object.keys(updateData);
     const values = Object.values(updateData);
@@ -146,31 +159,18 @@ const db = {
   }
 };
 
-// Validation schemas
-const registerSchema = z.object({
-  username: z.string().min(3).max(50).optional(),
-  email: z.string().email(),
-  password: z.string().min(8).max(128),
-  firstName: z.string().min(1).max(100),
-  lastName: z.string().min(1).max(100),
-  phoneNumber: z.string().optional(),
-  role: z.enum([
-    'admin', 'doctor', 'nurse', 'pharmacist', 'lab_tech', 'staff',
-    'consent_admin', 'compliance_officer', 'data_protection_officer', 'legal_advisor',
-    'patient_guardian', 'legal_representative', 'medical_attorney',
-    'external_user', 'external_admin', 'patient'
-  ]).optional()
-});
+// Import standardized schemas
+import { 
+  CreateUserSchema, 
+  UpdateUserProfileSchema, 
+  LoginSchema as StandardLoginSchema,
+  TransformToDatabase,
+  TransformFromDatabase
+} from '../schemas/user';
 
-const loginSchema = z.object({
-  username: z.string().min(1).optional(), // Make username optional
-  email: z.string().email().optional(),    // Make email optional
-  password: z.string().min(1)
-}).refine(data => data.username || data.email, {
-  message: "Either username or email must be provided",
-  path: ["username"]
-});
-
+// Validation schemas using standardized definitions
+const registerSchema = CreateUserSchema;
+const loginSchema = StandardLoginSchema;
 const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1)
 });
@@ -183,39 +183,111 @@ export const register = async (req: Request, res: Response) => {
     // Validate input
     const validatedData = registerSchema.parse(req.body);
     
-    // Generate username from email if not provided
-    const username = validatedData.username || validatedData.email.split('@')[0];
-    
-    // Check if user already exists
-    const existingUser = await db.getUserByUsernameOrEmail(
-      username, 
-      validatedData.email
-    );
+    // Check if email already exists (only check email, not username)
+    const existingUser = await db.getUserByEmail(validatedData.email);
     
     if (existingUser) {
       return res.status(409).json(
-        errorResponse('User already exists with this username or email', 409)
+        errorResponse('Email already exists', 409, {
+          message: 'อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ'
+        })
       );
+    }
+
+    // Use provided username or generate from email if not provided
+    let username = validatedData.username;
+    
+    // If no username provided, generate from email
+    if (!username) {
+      username = validatedData.email.split('@')[0];
+    }
+    
+    // Check if username already exists and generate unique one if needed
+    let counter = 1;
+    const originalUsername = username;
+    
+    while (true) {
+      const existingUsername = await db.getUserByUsername(username);
+      if (!existingUsername) {
+        break; // Username is unique
+      }
+      username = `${originalUsername}${counter}`;
+      counter++;
     }
     
     // Hash password
     const hashedPassword = await hashPassword(validatedData.password);
     
     // Create user
-    const newUser = await db.createUser({
-      username: username,
-      email: validatedData.email,
-      password: hashedPassword,
-      firstName: validatedData.firstName,
-      lastName: validatedData.lastName,
-      phoneNumber: validatedData.phoneNumber,
-      role: validatedData.role || 'patient',
-      isActive: true,
-      isEmailVerified: false
-    });
+    let newUser;
+    try {
+      newUser = await db.createUser({
+        username: username,
+        email: validatedData.email,
+        password: hashedPassword,
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
+        phoneNumber: validatedData.phoneNumber,
+        role: validatedData.role || 'patient',
+        isActive: true,
+        isEmailVerified: false,
+        nationalId: validatedData.nationalId,
+        birthDate: validatedData.birthDate,
+        gender: validatedData.gender,
+        address: validatedData.address,
+        bloodType: validatedData.bloodType
+      });
+    } catch (error: any) {
+      // Handle database constraint errors
+      if (error.code === '23505') { // Unique constraint violation
+        if (error.constraint === 'users_username_key') {
+          return res.status(409).json(
+            errorResponse('Username already exists', 409, {
+              message: 'ชื่อผู้ใช้นี้ถูกใช้งานแล้ว กรุณาใช้ชื่อผู้ใช้อื่น'
+            })
+          );
+        } else if (error.constraint === 'users_email_key') {
+          return res.status(409).json(
+            errorResponse('Email already exists', 409, {
+              message: 'อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ'
+            })
+          );
+        }
+      }
+      throw error; // Re-throw if it's not a constraint error
+    }
     
-    // Send email verification for patients only
+    // Create patient record for patients
     if (newUser.role === 'patient') {
+      try {
+        // Generate hospital number
+        const hospitalNumber = `HN${new Date().getFullYear()}${String(Date.now()).slice(-6)}`;
+        
+        // Create patient record linked to user
+        await db.query(`
+          INSERT INTO patients (
+            user_id, hospital_number, first_name, last_name, 
+            date_of_birth, gender, email, phone, 
+            created_by
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `, [
+          newUser.id,
+          hospitalNumber,
+          validatedData.firstName,
+          validatedData.lastName,
+          validatedData.birthDate || null,
+          validatedData.gender || null,
+          validatedData.email,
+          validatedData.phoneNumber || null,
+          newUser.id
+        ]);
+        
+        console.log('👤 Patient record created for user:', newUser.id);
+      } catch (patientError) {
+        console.error('❌ Failed to create patient record:', patientError);
+        // Don't fail registration if patient creation fails
+      }
+      
       try {
         // Generate verification token
         const verificationToken = crypto.randomBytes(32).toString('hex');
@@ -305,6 +377,66 @@ export const register = async (req: Request, res: Response) => {
 /**
  * Login user
  */
+/**
+ * Resend email verification
+ */
+export const resendVerification = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json(
+        errorResponse('Email is required', 400)
+      );
+    }
+
+    // Find user by email
+    const user = await db.getUserByUsernameOrEmail('', email);
+    
+    if (!user) {
+      return res.status(404).json(
+        errorResponse('User not found with this email', 404)
+      );
+    }
+
+    if (user.email_verified) {
+      return res.status(400).json(
+        errorResponse('Email is already verified', 400)
+      );
+    }
+
+    // Generate new verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    
+    // Store token in database
+    await DatabaseSchema.createEmailVerificationToken(user.id, verificationToken);
+    
+    // Send verification email
+    const emailSent = await emailService.sendEmailVerification(
+      user.email,
+      user.first_name,
+      verificationToken
+    );
+    
+    if (emailSent) {
+      console.log('📧 Verification email resent successfully:', user.email);
+      res.status(200).json(
+        successResponse('Verification email sent successfully', { message: 'Verification email sent successfully' })
+      );
+    } else {
+      console.error('❌ Failed to resend verification email:', user.email);
+      res.status(500).json(
+        errorResponse('Failed to send verification email', 500)
+      );
+    }
+  } catch (error) {
+    console.error('❌ Resend verification error:', error);
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
+  }
+};
+
 export const login = async (req: Request, res: Response) => {
   try {
     // Validate input
@@ -349,16 +481,12 @@ export const login = async (req: Request, res: Response) => {
     console.log('🔍 User check - role:', user.role, 'email_verified:', user.email_verified);
     if (user.role === 'patient' && !user.email_verified) {
       console.log('❌ Patient email not verified');
-      return res.status(401).json({
-        success: false,
-        message: 'Please verify your email before logging in. Check your email for the verification link.',
-        data: null,
-        errors: null,
-        metadata: {
+      return res.status(401).json(
+        errorResponse('Please verify your email before logging in. Check your email for the verification link.', 401, null, {
           requiresEmailVerification: true,
           email: user.email
-        }
-      });
+        })
+      );
     }
     
     // Validate password
@@ -638,15 +766,8 @@ export const updateProfile = async (req: Request, res: Response) => {
       );
     }
     
-    // Validate input (partial update)
-    const updateSchema = z.object({
-      firstName: z.string().min(1).max(100).optional(),
-      lastName: z.string().min(1).max(100).optional(),
-      email: z.string().email().optional(),
-      phoneNumber: z.string().optional()
-    });
-    
-    const validatedData = updateSchema.parse(req.body);
+    // Validate input using standardized schema
+    const validatedData = UpdateUserProfileSchema.parse(req.body);
     
     // Check if email is being changed and already exists
     if (validatedData.email && validatedData.email !== user.email) {
@@ -658,8 +779,19 @@ export const updateProfile = async (req: Request, res: Response) => {
       }
     }
     
+    // Transform data using standardized transformer
+    const dbData = TransformToDatabase.userProfile(validatedData);
+    
+    // Remove undefined fields to avoid overwriting with null
+    const dbUpdateData: any = {};
+    Object.keys(dbData).forEach(key => {
+      if (dbData[key as keyof typeof dbData] !== undefined) {
+        dbUpdateData[key] = dbData[key as keyof typeof dbData];
+      }
+    });
+    
     // Update user
-    const updatedUser = await db.updateUser(user.id, validatedData);
+    const updatedUser = await db.updateUser(user.id, dbUpdateData);
     
     // Log audit
     await db.createAuditLog({
@@ -696,11 +828,55 @@ export const updateProfile = async (req: Request, res: Response) => {
 };
 
 /**
+ * Complete profile setup
+ */
+export const completeProfileSetup = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    
+    if (!user) {
+      return res.status(401).json(
+        errorResponse('User not authenticated', 401)
+      );
+    }
+    
+    // Update profile_completed to true
+    const updatedUser = await db.updateUser(user.id, { profile_completed: true });
+    
+    // Log audit
+    await db.createAuditLog({
+      userId: user.id,
+      action: 'PROFILE_SETUP_COMPLETED',
+      resource: 'USER',
+      resourceId: user.id,
+      details: { profile_completed: true },
+      ipAddress: req.ip || 'unknown',
+      userAgent: req.get('User-Agent') || 'unknown'
+    });
+    
+    // Remove password from response
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _, ...userWithoutPassword } = updatedUser;
+    
+    res.json(
+      successResponse('Profile setup completed successfully', userWithoutPassword)
+    );
+    
+  } catch (error) {
+    console.error('Complete profile setup error:', error);
+    
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
+  }
+};
+
+/**
  * Verify email with token
  */
 export const verifyEmail = async (req: Request, res: Response) => {
   try {
-    const { token } = req.body;
+    const { token, email } = req.body;
     
     if (!token || typeof token !== 'string') {
       return res.status(400).json(

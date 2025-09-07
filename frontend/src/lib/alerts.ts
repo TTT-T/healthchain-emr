@@ -41,7 +41,12 @@ export {
 
 // Additional convenience aliases
 export const showSuccess = (message: string, title?: string) => 
-  showConfirmation(title || 'สำเร็จ', message);
+  showAlert({
+    type: 'confirmation',
+    title: title || 'สำเร็จ',
+    message,
+    duration: 4000,
+  });
 export const showInfo = showInformation;
 
 // Common alert messages for consistency

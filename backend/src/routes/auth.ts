@@ -6,8 +6,9 @@ import {
   refreshToken, 
   getProfile, 
   updateProfile,
+  completeProfileSetup,
   verifyEmail,
-  resendVerificationEmail,
+  resendVerification,
   forgotPassword,
   resetPassword
 } from '../controllers/authController';
@@ -16,6 +17,13 @@ import {
   validatePasswordStrength, 
   getPasswordRequirements 
 } from '../controllers/changePasswordController';
+import {
+  getCompleteProfile,
+  updateCompleteProfile,
+  deleteProfileField,
+  uploadProfileImage,
+  getProfileCompletion
+} from '../controllers/profileController';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
@@ -236,7 +244,7 @@ router.post('/verify-email', verifyEmail);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/resend-verification', resendVerificationEmail);
+router.post('/resend-verification', resendVerification);
 
 /**
  * @swagger
@@ -318,7 +326,15 @@ router.use(authenticate); // Apply authentication middleware to all routes below
 router.post('/logout', logout);
 router.get('/profile', getProfile);
 router.put('/profile', updateProfile);
+router.post('/complete-profile-setup', completeProfileSetup);
 router.put('/change-password', changePassword);
+
+// Enhanced Profile Management Routes
+router.get('/profile/complete', getCompleteProfile);
+router.put('/profile/complete', updateCompleteProfile);
+router.delete('/profile/field/:fieldName', deleteProfileField);
+router.post('/profile/image', uploadProfileImage);
+router.get('/profile/completion', getProfileCompletion);
 
 // Password validation routes (public)
 router.post('/validate-password', validatePasswordStrength);

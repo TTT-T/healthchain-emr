@@ -43,7 +43,7 @@ export default function ReportsPage() {
         const response = await apiClient.getExternalRequestersDashboardOverview()
         
         if (response.statusCode === 200 && response.data) {
-          setReportData(response.data)
+          setReportData(response.data as ReportData)
         } else {
           setError('ไม่สามารถโหลดข้อมูลรายงานได้')
         }

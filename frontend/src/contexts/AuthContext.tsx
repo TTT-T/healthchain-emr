@@ -33,6 +33,11 @@ interface RegisterData {
   firstName: string;
   lastName: string;
   phoneNumber?: string;
+  nationalId?: string;
+  birthDate?: string;
+  gender?: string;
+  address?: string;
+  bloodType?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,25 +75,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
           try {
             // Only try to get user profile if we're not on setup-profile page
             if (typeof window !== 'undefined' && !window.location.pathname.includes('/setup-profile')) {
+              console.log('🔍 AuthContext - Refreshing user data on init');
               await refreshUser();
+            } else {
+              console.log('🔍 AuthContext - Skipping user refresh on setup-profile page');
+              // Don't set user to null on setup-profile page to prevent redirect loops
+              setUser(null);
             }
           } catch (error) {
             // Check if it's a network error vs auth error
             const apiError = error as { statusCode?: number; message?: string };
             if (apiError?.statusCode === 401 || apiError?.message?.includes('Authentication')) {
               // Auth error - clear everything
+              console.log('🔍 AuthContext - Auth error, clearing tokens');
               apiClient.clearTokens();
               // FormDataCleaner.clearAllFormData(); // Disabled to prevent refresh
               setUser(null);
               setError(null);
             } else {
               // Network or other error - keep token but don't set user
+              console.log('🔍 AuthContext - Network error, keeping token');
               setUser(null);
               setError('Unable to connect to server. Please check your connection.');
             }
           }
         } else {
           // Ensure everything is cleared if no token
+          console.log('🔍 AuthContext - No token, clearing user data');
           setUser(null);
           setError(null);
         }
@@ -120,15 +133,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     };
 
-    // Add session cleared listener
+    // Listen for user logged in events
+    const handleUserLoggedIn = (event: CustomEvent) => {
+      const { user } = event.detail;
+      setUser(user);
+      setError(null);
+    };
+
+    // Listen for refresh user data events
+    const handleRefreshUserData = async () => {
+      console.log('🔍 AuthContext - Refreshing user data');
+      try {
+        await refreshUser();
+      } catch (error) {
+        console.error('🔍 AuthContext - Failed to refresh user data:', error);
+      }
+    };
+
+    // Add event listeners
     if (typeof window !== 'undefined') {
       window.addEventListener('sessionCleared', handleSessionCleared);
+      window.addEventListener('userLoggedIn', handleUserLoggedIn as EventListener);
+      window.addEventListener('refreshUserData', handleRefreshUserData);
     }
 
     // Cleanup
     return () => {
       if (typeof window !== 'undefined') {
         window.removeEventListener('sessionCleared', handleSessionCleared);
+        window.removeEventListener('userLoggedIn', handleUserLoggedIn as EventListener);
+        window.removeEventListener('refreshUserData', handleRefreshUserData);
       }
     };
   }, [router]);
@@ -209,8 +243,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       let errorMessage = 'เกิดข้อผิดพลาดในการสมัครสมาชิก';
       
       // Handle specific error cases
-      if (apiError.message?.includes('already exists') || apiError.message?.includes('409')) {
-        errorMessage = 'อีเมลหรือชื่อผู้ใช้นี้ถูกใช้งานแล้ว กรุณาเข้าสู่ระบบหรือใช้ข้อมูลอื่น';
+      if (apiError.message?.includes('already exists') || apiError.message?.includes('409') || apiError.statusCode === 409) {
+        errorMessage = (apiError.details as any)?.message || 'อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ';
       } else if (apiError.message?.includes('validation')) {
         errorMessage = 'ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบข้อมูลและลองใหม่';
       } else if (apiError.message) {
@@ -267,22 +301,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const token = apiClient.getAccessToken();
       if (!token) {
+        console.log('🔍 AuthContext - No token for refresh, clearing user');
         setUser(null);
         return;
       }
       
+      console.log('🔍 AuthContext - Refreshing user data from API');
       // Get fresh user data from API
       const response = await apiClient.getProfile();
       if (response.statusCode === 200 && response.data) {
+        console.log('🔍 AuthContext - User data refreshed successfully');
         setUser(response.data);
         setError(null);
       } else {
+        console.log('🔍 AuthContext - Failed to load user profile');
         setUser(null);
         setError('Failed to load user profile');
       }
       
     } catch (error) {
       logger.error('Refresh user error:', error);
+      console.log('🔍 AuthContext - Error refreshing user:', error);
       setUser(null);
       setError('Failed to refresh user data');
     }

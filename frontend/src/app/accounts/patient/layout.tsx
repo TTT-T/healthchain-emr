@@ -65,6 +65,16 @@ export default function PatientLayout({ children }: { children: React.ReactNode 
       }
     }
 
+    // Allow access to setup-profile even if profile is completed
+    // This allows users to update their profile information
+    if (user && user.role === 'patient' && (user as any).profile_completed) {
+      const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+      if (currentPath === '/setup-profile') {
+        logger.debug("📝 User accessing setup-profile for updates");
+        return; // Allow access to setup-profile
+      }
+    }
+
     logger.debug("✅ Patient layout: Authentication check passed");
   }, [user, isLoading, isAuthenticated, router]);
 

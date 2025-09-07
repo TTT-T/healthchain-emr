@@ -1,7 +1,65 @@
 
+"use client";
+
 import Link from "next/link";
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function Home() {
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    // If user is authenticated, redirect to appropriate dashboard
+    if (!isLoading && isAuthenticated && user) {
+      console.log('🔍 Home - User is authenticated, redirecting to dashboard');
+      
+      // Determine redirect path based on user role
+      let redirectPath = '/';
+      
+      if (user.role === 'patient') {
+        redirectPath = '/accounts/patient/dashboard';
+      } else if (user.role === 'doctor' || user.role === 'nurse') {
+        redirectPath = '/emr/dashboard';
+      } else if (user.role === 'admin') {
+        redirectPath = '/admin/dashboard';
+      } else if (user.role === 'external_user' || user.role === 'external_admin') {
+        redirectPath = '/external-requesters/dashboard';
+      }
+      
+      console.log('🔍 Home - Redirecting to:', redirectPath);
+      window.location.href = redirectPath;
+    }
+  }, [isAuthenticated, isLoading, user, router]);
+
+  // Show loading while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-blue-400 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-white font-bold text-xl">H</span>
+          </div>
+          <p className="text-gray-600">กำลังโหลด...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is authenticated, don't render the landing page
+  if (isAuthenticated && user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-blue-400 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-white font-bold text-xl">H</span>
+          </div>
+          <p className="text-gray-600">กำลังเปลี่ยนเส้นทาง...</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Navigation */}

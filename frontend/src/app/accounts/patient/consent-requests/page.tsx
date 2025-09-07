@@ -1,511 +1,405 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
-import AppLayout from "@/components/AppLayout";
 import { logger } from '@/lib/logger';
 
 interface ConsentRequest {
   id: string;
-  requestId: string;
-  requesterName: string;
-  requesterType: 'hospital' | 'clinic' | 'insurance' | 'research' | 'government';
-  requesterLicense: string;
-  requestType: 'hospital_transfer' | 'insurance_claim' | 'research' | 'legal' | 'emergency';
-  purposeOfRequest: string;
-  requestedDataTypes: string[];
-  urgencyLevel: 'emergency' | 'urgent' | 'normal';
-  submittedAt: string;
-  expiresAt: string;
-  status: 'pending' | 'approved' | 'rejected' | 'expired';
-  supportingDocuments?: string[];
-  contactInfo: {
-    email: string;
-    phone: string;
-    address: string;
-  };
+  patient_id: string;
+  requester_name: string;
+  requester_organization: string;
+  purpose: string;
+  data_types_requested: string[];
+  request_status: string;
+  priority: string;
+  requested_date: string;
+  expiry_date: string;
+  response_deadline: string;
+  justification: string;
+  data_sensitivity: string;
+  retention_period: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export default function ConsentRequests() {
-  const [activeTab, setActiveTab] = useState("pending");
-  const [selectedRequest, setSelectedRequest] = useState<ConsentRequest | null>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [consentRequests, setConsentRequests] = useState<ConsentRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState("all");
+  const [consentRequests, setConsentRequests] = useState<ConsentRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchConsentRequests = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      if (user?.id) {
+        const response = await apiClient.getPatientConsentRequests(user.id);
+        if (response.statusCode === 200 && response.data) {
+          const requestsData = response.data;
+          if (Array.isArray(requestsData)) {
+            setConsentRequests(requestsData as any);
+          } else if (requestsData && typeof requestsData === 'object' && Array.isArray((requestsData as any).consentRequests)) {
+            setConsentRequests((requestsData as any).consentRequests as any);
+          } else {
+            setConsentRequests([]);
+            logger.warn('Consent requests data is not an array:', requestsData);
+          }
+        } else {
+          setError(response.error?.message || "ไม่สามารถดึงข้อมูลคำขอการเข้าถึงได้");
+        }
+      }
+    } catch (err) {
+      logger.error("Error fetching consent requests:", err);
+      setError("เกิดข้อผิดพลาดในการดึงข้อมูลคำขอการเข้าถึง");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.id]);
 
   useEffect(() => {
-    const fetchConsentRequests = async () => {
-      try {
-        if (user?.id) {
-          const response = await apiClient.getPatientConsentRequests(user.id);
-          if (response.statusCode === 200 && response.data) {
-            setConsentRequests(response.data as ConsentRequest[]);
-          } else {
-            setError(response.error?.message || "ไม่สามารถดึงข้อมูลคำขอ consent ได้");
-          }
-        }
-      } catch (err) {
-        logger.error('Error fetching consent requests:', err);
-        setError('เกิดข้อผิดพลาดในการโหลดข้อมูลคำขอ');
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (user?.id) {
+      fetchConsentRequests();
+    }
+  }, [user, fetchConsentRequests]);
 
-    fetchConsentRequests();
-  }, [user]);
-
-  const getRequesterTypeLabel = (type: string) => {
-    const types = {
-      hospital: "โรงพยาบาล",
-      clinic: "คลินิก", 
-      insurance: "บริษัทประกัน",
-      research: "สถาบันวิจัย",
-      government: "หน่วยงานราชการ"
-    };
-    return types[type as keyof typeof types] || type;
-  };
-
-  const getRequestTypeLabel = (type: string) => {
-    const types = {
-      hospital_transfer: "การรักษาต่อเนื่อง",
-      insurance_claim: "การเคลมประกัน", 
-      research: "การวิจัย",
-      legal: "กระบวนการทางกฎหมาย",
-      emergency: "เหตุฉุกเฉิน"
-    };
-    return types[type as keyof typeof types] || type;
-  };
-
-  const getDataTypeLabel = (type: string) => {
-    const types = {
-      medical_history: "ประวัติการรักษา",
-      lab_results: "ผลตรวจทางห้องปฏิบัติการ",
-      medications: "ข้อมูลการใช้ยา",
-      vital_signs: "สัญญาณชีพ",
-      diagnosis: "การวินิจฉัย",
-      treatment_summary: "สรุปการรักษา", 
-      billing_records: "บันทึกค่าใช้จ่าย",
-      demographic_data: "ข้อมูลประชากรศาสตร์",
-      diabetes_history: "ประวัติโรคเบาหวาน",
-      lab_results_hba1c: "ผลตรวจ HbA1c"
-    };
-    return types[type as keyof typeof types] || type;
-  };
-
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case "emergency": return "bg-red-100 text-red-800 border-red-200";
-      case "urgent": return "bg-orange-100 text-orange-800 border-orange-200";
-      case "normal": return "bg-blue-100 text-blue-800 border-blue-200";
-      default: return "bg-gray-100 text-gray-800 border-gray-200";
+  const approveRequest = async (requestId: string) => {
+    try {
+      // Update local state immediately
+      setConsentRequests(prev => 
+        prev.map(request => 
+          request.id === requestId 
+            ? { ...request, request_status: "approved" }
+            : request
+        )
+      );
+      
+      // TODO: Call API to approve request
+      // await apiClient.approveConsentRequest(requestId);
+    } catch (err) {
+      logger.error("Error approving consent request:", err);
     }
   };
 
-  const getUrgencyText = (urgency: string) => {
-    switch (urgency) {
-      case "emergency": return "ฉุกเฉิน";
-      case "urgent": return "เร่งด่วน";
-      case "normal": return "ปกติ";
-      default: return "ปกติ";
+  const rejectRequest = async (requestId: string) => {
+    try {
+      setConsentRequests(prev => 
+        prev.map(request => 
+          request.id === requestId 
+            ? { ...request, request_status: "rejected" }
+            : request
+        )
+      );
+      
+      // TODO: Call API to reject request
+      // await apiClient.rejectConsentRequest(requestId);
+    } catch (err) {
+      logger.error("Error rejecting consent request:", err);
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "pending": return "⏳";
+      case "approved": return "✅";
+      case "rejected": return "❌";
+      case "expired": return "⏰";
+      case "revoked": return "🚫";
+      default: return "📋";
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "pending": return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "approved": return "bg-green-100 text-green-800 border-green-200";
-      case "rejected": return "bg-red-100 text-red-800 border-red-200";
-      case "expired": return "bg-gray-100 text-gray-800 border-gray-200";
-      default: return "bg-gray-100 text-gray-800 border-gray-200";
+      case "pending": return "bg-yellow-50 text-yellow-700 border-yellow-200";
+      case "approved": return "bg-green-50 text-green-700 border-green-200";
+      case "rejected": return "bg-red-50 text-red-700 border-red-200";
+      case "expired": return "bg-gray-50 text-gray-700 border-gray-200";
+      case "revoked": return "bg-purple-50 text-purple-700 border-purple-200";
+      default: return "bg-blue-50 text-blue-700 border-blue-200";
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case "pending": return "รอพิจารณา";
+      case "pending": return "รอการตอบกลับ";
       case "approved": return "อนุมัติแล้ว";
-      case "rejected": return "ปฏิเสธ";
+      case "rejected": return "ปฏิเสธแล้ว";
       case "expired": return "หมดอายุ";
+      case "revoked": return "ยกเลิกแล้ว";
       default: return "ไม่ระบุ";
     }
   };
 
-  const handleApprove = async (requestId: string) => {
-    try {
-      if (!user?.id) {
-        setError("ไม่พบข้อมูลผู้ใช้");
-        return;
-      }
-
-      const response = await apiClient.respondToConsentRequest(user.id, requestId, {
-        decision: 'approved',
-        reason: 'ผู้ป่วยยินยอมให้เข้าถึงข้อมูล'
-      });
-
-      if (response.statusCode === 200) {
-        // Update local state
-        setConsentRequests(prev => 
-          prev.map(req => 
-            req.id === requestId 
-              ? { ...req, status: 'approved', responseDate: new Date().toISOString() }
-              : req
-          )
-        );
-        setShowDetailsModal(false);
-        setError(null);
-        alert("อนุมัติคำขอเรียบร้อยแล้ว");
-      } else {
-        setError(response.error?.message || "ไม่สามารถอนุมัติคำขอได้");
-      }
-    } catch (err) {
-      logger.error('Error approving consent request:', err);
-      setError("เกิดข้อผิดพลาดในการอนุมัติคำขอ");
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "high": return "border-red-200 bg-red-50";
+      case "medium": return "border-yellow-200 bg-yellow-50";
+      case "low": return "border-green-200 bg-green-50";
+      default: return "border-gray-200 bg-gray-50";
     }
   };
 
-  const handleReject = async (requestId: string) => {
-    const reason = prompt("กรุณาระบุเหตุผลในการปฏิเสธ:");
-    if (!reason) return;
-
-    try {
-      if (!user?.id) {
-        setError("ไม่พบข้อมูลผู้ใช้");
-        return;
-      }
-
-      const response = await apiClient.respondToConsentRequest(user.id, requestId, {
-        decision: 'rejected',
-        reason: reason
-      });
-
-      if (response.statusCode === 200) {
-        // Update local state
-        setConsentRequests(prev => 
-          prev.map(req => 
-            req.id === requestId 
-              ? { ...req, status: 'rejected', responseDate: new Date().toISOString(), rejectionReason: reason }
-              : req
-          )
-        );
-        setShowDetailsModal(false);
-        setError(null);
-        alert("ปฏิเสธคำขอเรียบร้อยแล้ว");
-      } else {
-        setError(response.error?.message || "ไม่สามารถปฏิเสธคำขอได้");
-      }
-    } catch (err) {
-      logger.error('Error rejecting consent request:', err);
-      setError("เกิดข้อผิดพลาดในการปฏิเสธคำขอ");
+  const getPriorityText = (priority: string) => {
+    switch (priority) {
+      case "high": return "สำคัญมาก";
+      case "medium": return "สำคัญปานกลาง";
+      case "low": return "สำคัญน้อย";
+      default: return "ปกติ";
     }
   };
 
-  const filteredRequests = consentRequests.filter(request => {
-    if (activeTab === "all") return true;
-    return request.status === activeTab;
-  });
+  const getSensitivityColor = (sensitivity: string) => {
+    switch (sensitivity) {
+      case "high": return "text-red-600";
+      case "medium": return "text-yellow-600";
+      case "low": return "text-green-600";
+      default: return "text-gray-600";
+    }
+  };
 
-  const pendingCount = consentRequests.filter(r => r.status === 'pending').length;
-  const approvedCount = consentRequests.filter(r => r.status === 'approved').length;
+  const filteredRequests = Array.isArray(consentRequests) 
+    ? consentRequests.filter(request => {
+        if (activeTab === "all") return true;
+        return request.request_status === activeTab;
+      })
+    : [];
 
-  if (loading) {
-    return (
-      <AppLayout title="คำขอการเข้าถึงข้อมูล" userType="patient">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-800">กำลังโหลดข้อมูล...</p>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
-
-  if (error) {
-    return (
-      <AppLayout title="คำขอการเข้าถึงข้อมูล" userType="patient">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="text-red-500 text-6xl mb-4">⚠️</div>
-            <p className="text-red-600 mb-4">{error}</p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
-            >
-              ลองใหม่อีกครั้ง
-            </button>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
+  const pendingCount = Array.isArray(consentRequests) 
+    ? consentRequests.filter(r => r.request_status === "pending").length 
+    : 0;
+  const approvedCount = Array.isArray(consentRequests) 
+    ? consentRequests.filter(r => r.request_status === "approved").length 
+    : 0;
 
   return (
-    <AppLayout title="คำขอการเข้าถึงข้อมูล" userType="patient">
-      <div className="bg-slate-50 min-h-screen p-3 sm:p-4 lg:p-6">
-        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+    <AppLayout title={"คำขอการเข้าถึงข้อมูล"} userType={"patient"}>
+      <div className="p-4 md:p-6 space-y-6">
+        {/* Header */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">คำขอการเข้าถึงข้อมูล</h1>
+              <p className="text-gray-600 mt-1">จัดการคำขอเข้าถึงข้อมูลสุขภาพของคุณ</p>
+            </div>
+            <div className="flex gap-2">
+              <button className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-gray-50 transition-colors">
+                ดูประวัติ
+              </button>
+              <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-5 5-5-5h5v-12"/>
+                </svg>
+                รีเฟรช
+              </button>
+            </div>
+          </div>
+        </div>
           
-          {/* Header */}
-          <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+            <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl sm:text-2xl font-semibold text-slate-800 mb-2">คำขอการเข้าถึงข้อมูล</h2>
-                <p className="text-slate-800">จัดการคำขอเข้าถึงข้อมูลสุขภาพของคุณจากหน่วยงานภายนอก</p>
+                <p className="text-sm text-gray-600 mb-1">ทั้งหมด</p>
+                <p className="text-2xl font-bold text-gray-900">{consentRequests.length}</p>
               </div>
-              
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                <span className="text-slate-800">{pendingCount} คำขอรอพิจารณา</span>
-              </div>
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-xl">📋</div>
             </div>
           </div>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-white rounded-lg sm:rounded-xl border border-slate-200 p-4 text-center">
-              <div className="text-2xl font-bold text-slate-800">{consentRequests.length}</div>
-              <div className="text-sm text-slate-800">คำขอทั้งหมด</div>
-            </div>
-            <div className="bg-white rounded-lg sm:rounded-xl border border-slate-200 p-4 text-center">
-              <div className="text-2xl font-bold text-orange-600">{pendingCount}</div>
-              <div className="text-sm text-slate-800">รอพิจารณา</div>
-            </div>
-            <div className="bg-white rounded-lg sm:rounded-xl border border-slate-200 p-4 text-center">
-              <div className="text-2xl font-bold text-green-600">{approvedCount}</div>
-              <div className="text-sm text-slate-800">อนุมัติแล้ว</div>
-            </div>
-            <div className="bg-white rounded-lg sm:rounded-xl border border-slate-200 p-4 text-center">
-              <div className="text-2xl font-bold text-blue-600">{consentRequests.filter(r => r.requesterType === 'hospital').length}</div>
-              <div className="text-sm text-slate-800">จากโรงพยาบาล</div>
+          
+          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">รอการตอบกลับ</p>
+                <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
+              </div>
+              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center text-xl">⏳</div>
             </div>
           </div>
-
-          {/* Filter Tabs */}
-          <div className="bg-white rounded-lg sm:rounded-xl border border-slate-200 shadow-sm">
-            <div className="p-4 border-b border-slate-200">
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { id: "all", label: "ทั้งหมด", icon: "📋" },
-                  { id: "pending", label: "รอพิจารณา", icon: "⏳", count: pendingCount },
-                  { id: "approved", label: "อนุมัติแล้ว", icon: "✅" },
-                  { id: "rejected", label: "ปฏิเสธ", icon: "❌" },
-                  { id: "expired", label: "หมดอายุ", icon: "⏰" }
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ease-out flex items-center gap-2 ${
-                      activeTab === tab.id
-                        ? "bg-blue-500 text-white shadow-md"
-                        : "text-slate-800 hover:text-slate-900 hover:bg-slate-100"
-                    }`}
-                  >
-                    <span>{tab.icon}</span>
-                    <span>{tab.label}</span>
-                    {tab.count && tab.count > 0 && (
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${
-                        activeTab === tab.id 
-                          ? "bg-white/20 text-white" 
-                          : "bg-slate-200 text-slate-800"
-                      }`}>
-                        {tab.count}
-                      </span>
-                    )}
-                  </button>
-                ))}
+          
+          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">อนุมัติแล้ว</p>
+                <p className="text-2xl font-bold text-green-600">{approvedCount}</p>
               </div>
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center text-xl">✅</div>
             </div>
+          </div>
+          
+          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">เดือนนี้</p>
+                <p className="text-2xl font-bold text-purple-600">{consentRequests.filter(r => {
+                  const requestDate = new Date(r.requested_date);
+                  const now = new Date();
+                  return requestDate.getMonth() === now.getMonth() && requestDate.getFullYear() === now.getFullYear();
+                }).length}</p>
+              </div>
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center text-xl">📅</div>
+            </div>
+          </div>
+        </div>
 
-            {/* Requests List */}
-            <div className="p-4">
-              {filteredRequests.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-6xl mb-4">📄</div>
-                  <h3 className="text-lg font-medium text-slate-800 mb-2">
-                    {activeTab === "all" ? "ไม่มีคำขอการเข้าถึงข้อมูล" : "ไม่มีคำขอในหมวดนี้"}
-                  </h3>
-                  <p className="text-slate-800">
-                    {activeTab === "all" 
-                      ? "ยังไม่มีองค์กรใดขอเข้าถึงข้อมูลของคุณ" 
-                      : "ยังไม่มีคำขอการเข้าถึงข้อมูลในสถานะนี้"}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredRequests.map((request) => (
-                    <div key={request.id} className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-all">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center text-xl flex-shrink-0">
-                            🏥
+        {/* Filter Tabs */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+          <div className="p-4 border-b border-slate-200">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: "all", label: "ทั้งหมด", icon: "📋", count: consentRequests.length },
+                { id: "pending", label: "รอการตอบกลับ", icon: "⏳", count: pendingCount },
+                { id: "approved", label: "อนุมัติแล้ว", icon: "✅", count: approvedCount },
+                { id: "rejected", label: "ปฏิเสธแล้ว", icon: "❌" },
+                { id: "expired", label: "หมดอายุ", icon: "⏰" },
+                { id: "revoked", label: "ยกเลิกแล้ว", icon: "🚫" }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                    activeTab === tab.id
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  <span>{tab.icon}</span>
+                  {tab.label}
+                  {tab.count !== undefined && tab.count > 0 && (
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      activeTab === tab.id 
+                        ? "bg-blue-500 text-white" 
+                        : "bg-gray-200 text-gray-700"
+                    }`}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Consent Requests List */}
+        {isLoading ? (
+          <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">กำลังโหลดข้อมูล...</p>
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 shadow-sm">
+            <div className="text-red-500 text-2xl">⚠️</div>
+            <span className="text-red-700">{error}</span>
+          </div>
+        ) : filteredRequests.length === 0 ? (
+          <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm text-center">
+            <div className="text-6xl mb-4">📭</div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">ไม่มีคำขอการเข้าถึงข้อมูล</h3>
+            <p className="text-gray-600">
+              {activeTab === "all" 
+                ? "ยังไม่มีคำขอการเข้าถึงข้อมูลในระบบ" 
+                : `ไม่มีคำขอที่มีสถานะ ${getStatusText(activeTab)}`
+              }
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredRequests.map((request) => (
+              <div 
+                key={request.id} 
+                className={`bg-white rounded-xl border shadow-sm hover:shadow-md transition-shadow ${getPriorityColor(request.priority)}`}
+              >
+                <div className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4 flex-1">
+                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-xl">
+                        {getStatusIcon(request.request_status)}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {request.requester_name}
+                          </h3>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(request.request_status)}`}>
+                            {getStatusText(request.request_status)}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            request.priority === "high" 
+                              ? "bg-red-100 text-red-700"
+                              : request.priority === "medium"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-green-100 text-green-700"
+                          }`}>
+                            {getPriorityText(request.priority)}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
+                          <div>
+                            <p><span className="font-medium text-gray-700">องค์กร:</span> <span className="text-gray-900">{request.requester_organization}</span></p>
+                            <p><span className="font-medium text-gray-700">วัตถุประสงค์:</span> <span className="text-gray-900">{request.purpose}</span></p>
+                            <p><span className="font-medium text-gray-700">ระดับความลับ:</span> <span className={`font-medium ${getSensitivityColor(request.data_sensitivity)}`}>{request.data_sensitivity}</span></p>
                           </div>
-                          <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-slate-800 mb-1">{request.requesterName}</h3>
-                            <p className="text-sm text-slate-800 mb-2">{getRequesterTypeLabel(request.requesterType)} • {request.requestId}</p>
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(request.status)}`}>
-                                {getStatusText(request.status)}
-                              </span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getUrgencyColor(request.urgencyLevel)}`}>
-                                {getUrgencyText(request.urgencyLevel)}
-                              </span>
-                            </div>
+                          <div>
+                            <p><span className="font-medium text-gray-700">วันที่ขอ:</span> <span className="text-gray-900">{new Date(request.requested_date).toLocaleDateString('th-TH')}</span></p>
+                            <p><span className="font-medium text-gray-700">กำหนดตอบกลับ:</span> <span className="text-gray-900">{new Date(request.response_deadline).toLocaleDateString('th-TH')}</span></p>
+                            <p><span className="font-medium text-gray-700">ระยะเวลาเก็บ:</span> <span className="text-gray-900">{request.retention_period}</span></p>
                           </div>
                         </div>
-                        <button 
-                          onClick={() => {
-                            setSelectedRequest(request);
-                            setShowDetailsModal(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                        >
-                          ดูรายละเอียด →
-                        </button>
-                      </div>
-                      
-                      <div className="mb-4">
-                        <p className="text-sm text-slate-800 mb-2">ประเภทคำขอ: <span className="font-medium">{getRequestTypeLabel(request.requestType)}</span></p>
-                        <p className="text-sm text-slate-700">{request.purposeOfRequest}</p>
-                      </div>
-                      
-                      <div className="mb-4">
-                        <p className="text-sm text-slate-800 mb-2">ข้อมูลที่ขอเข้าถึง:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {request.requestedDataTypes.map((dataType, index) => (
-                            <span key={index} className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-200">
-                              {getDataTypeLabel(dataType)}
-                            </span>
-                          ))}
+                        
+                        <div className="mb-4">
+                          <p className="text-sm font-medium text-gray-700 mb-2">ข้อมูลที่ขอเข้าถึง:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {request.data_types_requested.map((type, index) => (
+                              <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
+                                {type}
+                              </span>
+                            ))}
+                          </div>
                         </div>
+                        
+                        {request.justification && (
+                          <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                            <p className="text-sm">
+                              <span className="font-medium text-gray-700">เหตุผล:</span> <span className="text-gray-900">{request.justification}</span>
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      
-                      <div className="flex items-center justify-between text-sm text-slate-700">
-                        <span>ส่งคำขอ: {new Date(request.submittedAt).toLocaleDateString('th-TH')}</span>
-                        <span>หมดอายุ: {new Date(request.expiresAt).toLocaleDateString('th-TH')}</span>
-                      </div>
-                      
-                      {request.status === 'pending' && (
-                        <div className="mt-4 pt-4 border-t border-slate-200 flex gap-3">
-                          <button
-                            onClick={() => handleApprove(request.id)}
-                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    </div>
+                    
+                    <div className="flex flex-col gap-2 ml-4">
+                      {request.request_status === "pending" && (
+                        <>
+                          <button 
+                            onClick={() => approveRequest(request.id)}
+                            className="px-3 py-1 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                           >
                             อนุมัติ
                           </button>
-                          <button
-                            onClick={() => handleReject(request.id)}
-                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                          <button 
+                            onClick={() => rejectRequest(request.id)}
+                            className="px-3 py-1 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                           >
                             ปฏิเสธ
                           </button>
-                        </div>
+                        </>
                       )}
+                      <button className="px-3 py-1 text-sm border border-slate-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        รายละเอียด
+                      </button>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+            ))}
           </div>
-        </div>
+        )}
       </div>
-
-      {/* Details Modal */}
-      {showDetailsModal && selectedRequest && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-slate-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-slate-800">รายละเอียดคำขอ</h3>
-                <button
-                  onClick={() => setShowDetailsModal(false)}
-                  className="text-slate-600 hover:text-slate-800"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-            
-            <div className="p-6 space-y-6">
-              {/* Requester Info */}
-              <div>
-                <h4 className="font-medium text-slate-800 mb-3">ข้อมูลผู้ขอ</h4>
-                <div className="bg-slate-50 rounded-lg p-4 space-y-2">
-                  <p><span className="font-medium">ชื่อหน่วยงาน:</span> {selectedRequest.requesterName}</p>
-                  <p><span className="font-medium">ประเภท:</span> {getRequesterTypeLabel(selectedRequest.requesterType)}</p>
-                  <p><span className="font-medium">ใบอนุญาต:</span> {selectedRequest.requesterLicense}</p>
-                  <p><span className="font-medium">อีเมล:</span> {selectedRequest.contactInfo.email}</p>
-                  <p><span className="font-medium">โทรศัพท์:</span> {selectedRequest.contactInfo.phone}</p>
-                  <p><span className="font-medium">ที่อยู่:</span> {selectedRequest.contactInfo.address}</p>
-                </div>
-              </div>
-
-              {/* Request Details */}
-              <div>
-                <h4 className="font-medium text-slate-800 mb-3">รายละเอียดคำขอ</h4>
-                <div className="space-y-3">
-                  <p><span className="font-medium">รหัสคำขอ:</span> {selectedRequest.requestId}</p>
-                  <p><span className="font-medium">ประเภทคำขอ:</span> {getRequestTypeLabel(selectedRequest.requestType)}</p>
-                  <p><span className="font-medium">วัตถุประสงค์:</span></p>
-                  <div className="bg-slate-50 rounded-lg p-4">
-                    {selectedRequest.purposeOfRequest}
-                  </div>
-                </div>
-              </div>
-
-              {/* Data Types */}
-              <div>
-                <h4 className="font-medium text-slate-800 mb-3">ข้อมูลที่ขอเข้าถึง</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {selectedRequest.requestedDataTypes.map((dataType, index) => (
-                    <div key={index} className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <span className="text-sm text-blue-800">{getDataTypeLabel(dataType)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Supporting Documents */}
-              {selectedRequest.supportingDocuments && selectedRequest.supportingDocuments.length > 0 && (
-                <div>
-                  <h4 className="font-medium text-slate-800 mb-3">เอกสารประกอบ</h4>
-                  <div className="space-y-2">
-                    {selectedRequest.supportingDocuments.map((doc, index) => (
-                      <div key={index} className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
-                        <span className="text-blue-600">📎</span>
-                        <span className="text-sm">{doc}</span>
-                        <button className="text-blue-600 hover:text-blue-800 text-sm font-medium ml-auto">
-                          ดาวน์โหลด
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              {selectedRequest.status === 'pending' && (
-                <div className="flex gap-3 pt-4 border-t border-slate-200">
-                  <button
-                    onClick={() => handleApprove(selectedRequest.id)}
-                    className="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-medium transition-colors"
-                  >
-                    อนุมัติคำขอ
-                  </button>
-                  <button
-                    onClick={() => handleReject(selectedRequest.id)}
-                    className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-medium transition-colors"
-                  >
-                    ปฏิเสธคำขอ
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </AppLayout>
   );
 }

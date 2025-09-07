@@ -18,7 +18,12 @@ interface PatientData {
   // Patient specific info
   thai_name?: string;
   phone?: string;
-  emergency_contact?: string;
+  emergency_contact?: {
+    name: string;
+    phone: string;
+    relationship: string;
+  };
+  emergency_contact_name?: string;
   national_id?: string;
   birth_date?: string;
   address?: string;
@@ -47,7 +52,13 @@ interface PatientData {
   chronic_diseases?: string;
 }
 
+import EnhancedProfilePage from './EnhancedProfilePage';
+
 export default function Profile() {
+  return <EnhancedProfilePage />;
+}
+
+function OriginalProfile() {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,7 +77,7 @@ export default function Profile() {
     phone_number: '',
     thai_name: '',
     phone: '',
-    emergency_contact: '',
+    emergency_contact: undefined,
     national_id: '',
     birth_date: '',
     address: '',
@@ -171,7 +182,19 @@ export default function Profile() {
         return;
       }
       
-      const response = await apiClient.updateProfile(formData);
+      // Transform data to match backend schema (camelCase)
+      const transformedData = {
+        firstName: formData.first_name,
+        lastName: formData.last_name,
+        email: formData.email,
+        phoneNumber: formData.phone,
+        emergencyContactName: formData.emergency_contact_name,
+        emergencyContactPhone: formData.emergency_contact_phone,
+        emergencyContactRelation: formData.emergency_contact_relation,
+        profile_completed: true // Mark profile as completed when saving
+      };
+      
+      const response = await apiClient.updateProfile(transformedData);
       
       if (response.statusCode === 200) {
         setSuccess('บันทึกข้อมูลสำเร็จ');
@@ -830,12 +853,12 @@ export default function Profile() {
                         <input
                           type="text"
                           name="emergency_contact"
-                          value={formData.emergency_contact || ''}
+                          value={typeof formData.emergency_contact === 'string' ? formData.emergency_contact : formData.emergency_contact?.name || ''}
                           onChange={handleInputChange}
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       ) : (
-                        <p className="text-slate-800 py-2">{formData.emergency_contact || 'ไม่ระบุ'}</p>
+                        <p className="text-slate-800 py-2">{typeof formData.emergency_contact === 'string' ? formData.emergency_contact : formData.emergency_contact?.name || 'ไม่ระบุ'}</p>
                       )}
                     </div>
                     

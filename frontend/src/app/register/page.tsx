@@ -17,9 +17,13 @@ interface FormData {
   birthDay: string;
   birthMonth: string;
   birthYear: string;
+  gender: string;
+  username: string;
   email: string;
   confirmEmail: string;
   phone: string;
+  address: string;
+  bloodType: string;
   password: string;
   confirmPassword: string;
   acceptTerms: boolean;
@@ -40,9 +44,13 @@ export default function Register() {
     birthDay: '',
     birthMonth: '',
     birthYear: '',
+    gender: '',
+    username: '',
     email: '',
     confirmEmail: '',
     phone: '',
+    address: '',
+    bloodType: '',
     password: '',
     confirmPassword: '',
     acceptTerms: false,
@@ -68,7 +76,7 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     const checked = 'checked' in e.target ? e.target.checked : false;
     
@@ -133,9 +141,13 @@ export default function Register() {
     if (!formData.birthDay) newErrors.birthDay = 'กรุณาเลือกวันเกิด';
     if (!formData.birthMonth) newErrors.birthMonth = 'กรุณาเลือกเดือนเกิด';
     if (!formData.birthYear) newErrors.birthYear = 'กรุณาเลือกปีเกิด';
+    if (!formData.gender) newErrors.gender = 'กรุณาเลือกเพศ';
+    if (!formData.username) newErrors.username = 'กรุณากรอกชื่อผู้ใช้';
     if (!formData.email) newErrors.email = 'กรุณากรอกอีเมล';
     if (!formData.confirmEmail) newErrors.confirmEmail = 'กรุณายืนยันอีเมล';
     if (!formData.phone) newErrors.phone = 'กรุณากรอกเบอร์โทรศัพท์';
+    if (!formData.address) newErrors.address = 'กรุณากรอกที่อยู่';
+    if (!formData.bloodType) newErrors.bloodType = 'กรุณาเลือกหมู่เลือด';
     if (!formData.password) newErrors.password = 'กรุณากรอกรหัสผ่าน';
     if (!formData.confirmPassword) newErrors.confirmPassword = 'กรุณายืนยันรหัสผ่าน';
 
@@ -148,6 +160,12 @@ export default function Register() {
     // Email confirmation
     if (formData.email !== formData.confirmEmail) {
       newErrors.confirmEmail = 'อีเมลไม่ตรงกัน';
+    }
+
+    // Username validation
+    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+    if (formData.username && !usernameRegex.test(formData.username)) {
+      newErrors.username = 'ชื่อผู้ใช้ต้องเป็นตัวอักษรภาษาอังกฤษ ตัวเลข และ _ เท่านั้น (3-20 ตัวอักษร)';
     }
 
     // Phone validation
@@ -221,33 +239,36 @@ export default function Register() {
     if (!validateForm()) return;
     
     try {
-      // Create username from email prefix
-      const username = formData.email.split('@')[0];
-      
       const result = await registerUser({
-        username,
+        username: formData.username,
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
         phoneNumber: formData.phone,
+        nationalId: formData.nationalId,
+        birthDate: `${formData.birthYear}-${formData.birthMonth.padStart(2, '0')}-${formData.birthDay.padStart(2, '0')}`,
+        gender: formData.gender,
+        address: formData.address,
+        bloodType: formData.bloodType,
       }) as { requiresEmailVerification?: boolean } | void;
       
-      // Check if email verification is required
+      // Always redirect to verification required page for patients
       if (result && 'requiresEmailVerification' in result && result.requiresEmailVerification) {
-        router.push('/login?message=registration_success');
+        router.push(`/register/success?email=${encodeURIComponent(formData.email)}&verification=true`);
       } else {
-        // For non-patient users, redirect as usual
-        // AuthContext will handle redirect to setup profile
+        // For non-patient users, also show verification message
+        router.push(`/register/success?email=${encodeURIComponent(formData.email)}&verification=true`);
       }
     } catch (error: any) {
       logger.error('Registration error:', error);
       
       // Handle specific error cases
-      if (error.message?.includes('already exists') || error.message?.includes('409')) {
+      if (error.message?.includes('already exists') || error.message?.includes('409') || error.statusCode === 409) {
+        const thaiMessage = error.details?.message || 'อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ';
         setErrors({ 
           email: 'อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่น',
-          submit: 'ข้อมูลซ้ำในระบบ กรุณาตรวจสอบอีเมลหรือเข้าสู่ระบบ'
+          submit: thaiMessage
         });
       } else if (error.message?.includes('validation')) {
         setErrors({ submit: 'ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบข้อมูลและลองใหม่' });
@@ -304,9 +325,13 @@ export default function Register() {
                     birthDay: '15',
                     birthMonth: '06',
                     birthYear: '1990',
+                    gender: 'male',
+                    username: `testuser${timestamp}`,
                     email: `test${timestamp}@example.com`,
                     confirmEmail: `test${timestamp}@example.com`,
                     phone: '0812345678',
+                    address: '123 ถนนทดสอบ แขวงทดสอบ เขตทดสอบ กรุงเทพฯ 10110',
+                    bloodType: 'O',
                     password: 'SecurePass123!',
                     confirmPassword: 'SecurePass123!',
                     acceptTerms: true,
@@ -484,6 +509,96 @@ export default function Register() {
                   }`}
                 />
                 {errors.nationalId && <p className="text-red-500 text-sm mt-1">{errors.nationalId}</p>}
+              </div>
+
+              {/* Username */}
+              <div>
+                <label htmlFor="username" className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                  <User size={16} />
+                  ชื่อผู้ใช้ *
+                </label>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  value={formData.username}
+                  onChange={handleInputChange}
+                  placeholder="username123"
+                  maxLength={20}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                    errors.username ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
+                />
+                {errors.username && <p className="text-red-500 text-sm mt-1">{errors.username}</p>}
+                <p className="text-gray-500 text-xs mt-1">ใช้ตัวอักษรภาษาอังกฤษ ตัวเลข และ _ เท่านั้น (3-20 ตัวอักษร)</p>
+              </div>
+
+              {/* Gender */}
+              <div>
+                <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-2">
+                  เพศ *
+                </label>
+                <select
+                  id="gender"
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 ${
+                    errors.gender ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
+                >
+                  <option value="">เลือกเพศ</option>
+                  <option value="male">ชาย</option>
+                  <option value="female">หญิง</option>
+                  <option value="other">อื่นๆ</option>
+                </select>
+                {errors.gender && <p className="text-red-500 text-sm mt-1">{errors.gender}</p>}
+              </div>
+
+              {/* Blood Type */}
+              <div>
+                <label htmlFor="bloodType" className="block text-sm font-medium text-gray-700 mb-2">
+                  หมู่เลือด *
+                </label>
+                <select
+                  id="bloodType"
+                  name="bloodType"
+                  value={formData.bloodType}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 ${
+                    errors.bloodType ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
+                >
+                  <option value="">เลือกหมู่เลือด</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
+                {errors.bloodType && <p className="text-red-500 text-sm mt-1">{errors.bloodType}</p>}
+              </div>
+
+              {/* Address */}
+              <div>
+                <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+                  ที่อยู่ *
+                </label>
+                <textarea
+                  id="address"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  placeholder="กรอกที่อยู่ที่สามารถติดต่อได้"
+                  rows={3}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                    errors.address ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
+                />
+                {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
               </div>
 
               {/* Birth Date */}

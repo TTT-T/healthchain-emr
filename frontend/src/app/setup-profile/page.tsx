@@ -1,1046 +1,942 @@
 "use client";
-import Link from "next/link";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft } from 'lucide-react';
+
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { User, Phone, MapPin, Heart, AlertTriangle, Save, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/api';
-import { logger } from '@/lib/logger';
+
+interface ProfileData {
+  // Names (4 fields)
+  thaiFirstName: string;
+  thaiLastName: string;
+  englishFirstName: string;
+  englishLastName: string;
+  
+  // Personal Info
+  nationalId: string;
+  birthDate: string;
+  gender: string;
+  bloodType: string;
+  phone: string;
+  
+  // Address Info
+  address: string;
+  idCardAddress: string;
+  currentAddress: string;
+  
+  // Contact Info
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  emergencyContactRelation: string;
+  
+  // Medical Info
+  allergies: string;
+  drugAllergies: string;
+  foodAllergies: string;
+  environmentAllergies: string;
+  medicalHistory: string;
+  currentMedications: string;
+  chronicDiseases: string;
+  
+  // Physical Info
+  weight: string;
+  height: string;
+  
+  // Additional Info
+  occupation: string;
+  education: string;
+  maritalStatus: string;
+  religion: string;
+  race: string;
+  
+  // Insurance Info
+  insuranceType: string;
+  insuranceNumber: string;
+  insuranceExpiryDate: string;
+}
+
+// Helper function to get dashboard URL based on user role
+const getDashboardUrl = (user: any) => {
+  if (!user) return '/login';
+  
+  if (user.role === 'patient') {
+    return '/accounts/patient/dashboard';
+  } else if (user.role === 'doctor' || user.role === 'nurse') {
+    return '/emr/dashboard';
+  } else if (user.role === 'admin') {
+    return '/admin/dashboard';
+  } else if (user.role === 'external_requester') {
+    return '/external-requesters/dashboard';
+  } else {
+    return '/emr/dashboard'; // Default fallback
+  }
+};
 
 export default function SetupProfile() {
   const router = useRouter();
-  const { user, refreshUser, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   
-  // Check if user is authenticated
-  useEffect(() => {
-    const token = apiClient.getAccessToken();
-    logger.debug('🔍 Profile setup auth check - Token:', !!token);
+  const [formData, setFormData] = useState<ProfileData>({
+    // Names (4 fields)
+    thaiFirstName: '',
+    thaiLastName: '',
+    englishFirstName: '',
+    englishLastName: '',
     
-    // Allow some time for auth context to initialize
-    if (!isLoading) {
-      if (!user && !token) {
-        logger.debug('❌ No user or token, redirecting to login');
-        router.push('/login');
-        return;
-      }
-      
-      if (user && user.role !== 'patient') {
-        logger.debug('❌ User is not a patient, redirecting');
-        router.push('/');
-        return;
-      }
-      
-      if (user && user.profileCompleted) {
-        logger.debug('✅ Profile already completed, redirecting to dashboard');
-        router.push('/accounts/patient');
-        return;
-      }
-    }
-  }, [user, router, isLoading]);
-  
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showCustomReligion, setShowCustomReligion] = useState(false);
-  const [showCustomRace, setShowCustomRace] = useState(false);
-  const [showCustomEmergencyRelation, setShowCustomEmergencyRelation] = useState(false);
-  const [formData, setFormData] = useState({
-    // Step 1: Basic Info
-    religion: "",
-    customReligion: "",
-    race: "",
-    customRace: "",
+    // Personal Info
+    nationalId: '',
+    birthDate: '',
+    gender: '',
+    bloodType: '',
+    phone: '',
     
-    // Step 2: Address Info - ที่อยู่ตามบัตรประชาชน
-    idCardHouseNo: "",
-    idCardMoo: "",
-    idCardSoi: "",
-    idCardRoad: "",
-    idCardSubDistrict: "",
-    idCardDistrict: "",
-    idCardProvince: "",
-    idCardPostalCode: "",
+    // Address Info
+    address: '',
+    idCardAddress: '',
+    currentAddress: '',
     
-    // ที่อยู่ปัจจุบัน
-    currentHouseNo: "",
-    currentMoo: "",
-    currentSoi: "",
-    currentRoad: "",
-    currentSubDistrict: "",
-    currentDistrict: "",
-    currentProvince: "",
-    currentPostalCode: "",
-    sameAsIdCard: false,
+    // Contact Info
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    emergencyContactRelation: '',
     
-    // Step 3: Emergency Contact & Medical Info
-    emergencyContactName: "",
-    emergencyContactPhone: "",
-    emergencyContactRelation: "",
-    customEmergencyRelation: "",
-    drugAllergies: "",
-    foodAllergies: "",
-    environmentAllergies: "",
-    bloodGroup: "",
-    bloodType: "",
-    chronicDiseases: "",
-    currentMedications: "",
+    // Medical Info
+    allergies: '',
+    drugAllergies: '',
+    foodAllergies: '',
+    environmentAllergies: '',
+    medicalHistory: '',
+    currentMedications: '',
+    chronicDiseases: '',
     
-    // Step 4: Security Settings
-    twoFactorAuth: false,
-    emailNotifications: true,
-    smsNotifications: true
+    // Physical Info
+    weight: '',
+    height: '',
+    
+    // Additional Info
+    occupation: '',
+    education: '',
+    maritalStatus: '',
+    religion: '',
+    race: '',
+    
+    // Insurance Info
+    insuranceType: '',
+    insuranceNumber: '',
+    insuranceExpiryDate: ''
   });
 
-  const totalSteps = 4;
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
+  // Load existing profile data
+  useEffect(() => {
+    const loadExistingProfile = async () => {
+      try {
+        setIsLoadingProfile(true);
+        const response = await apiClient.getCompleteProfile();
+        
+        if (response.statusCode === 200 && response.data) {
+          const profile = response.data;
+          
+          // Map existing data to form fields
+          setFormData({
+            // Names (4 fields)
+            thaiFirstName: profile.thaiFirstName || '',
+            thaiLastName: profile.thaiLastName || '',
+            englishFirstName: profile.englishFirstName || profile.firstName || '',
+            englishLastName: profile.englishLastName || profile.lastName || '',
+            
+            // Personal Info
+            nationalId: profile.nationalId || '',
+            birthDate: profile.birthDate || '',
+            gender: profile.gender || '',
+            bloodType: profile.bloodType || '',
+            phone: profile.phone || '',
+            
+            // Address Info
+            address: profile.address || '',
+            idCardAddress: profile.idCardAddress || '',
+            currentAddress: profile.currentAddress || '',
+            
+            // Contact Info
+            emergencyContactName: profile.emergencyContactName || '',
+            emergencyContactPhone: profile.emergencyContactPhone || '',
+            emergencyContactRelation: profile.emergencyContactRelation || '',
+            
+            // Medical Info
+            allergies: profile.allergies || '',
+            drugAllergies: profile.drugAllergies || '',
+            foodAllergies: profile.foodAllergies || '',
+            environmentAllergies: profile.environmentAllergies || '',
+            medicalHistory: profile.medicalHistory || '',
+            currentMedications: profile.currentMedications || '',
+            chronicDiseases: profile.chronicDiseases || '',
+            
+            // Physical Info
+            weight: profile.weight ? profile.weight.toString() : '',
+            height: profile.height ? profile.height.toString() : '',
+            
+            // Additional Info
+            occupation: profile.occupation || '',
+            education: profile.education || '',
+            maritalStatus: profile.maritalStatus || '',
+            religion: profile.religion || '',
+            race: profile.race || '',
+            
+            // Insurance Info
+            insuranceType: profile.insuranceType || '',
+            insuranceNumber: profile.insuranceNumber || '',
+            insuranceExpiryDate: profile.insuranceExpiryDate || ''
+          });
+        }
+      } catch (error) {
+        console.error('Error loading profile data:', error);
+        // Don't show error for empty profile, it's expected for new users
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    if (user) {
+      loadExistingProfile();
+    } else {
+      setIsLoadingProfile(false);
+    }
+  }, [user]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    // Names validation (at least Thai or English)
+    if (!formData.thaiFirstName && !formData.englishFirstName) {
+      newErrors.thaiFirstName = 'กรุณากรอกชื่อ (ไทยหรืออังกฤษ)';
+    }
+    if (!formData.thaiLastName && !formData.englishLastName) {
+      newErrors.thaiLastName = 'กรุณากรอกนามสกุล (ไทยหรืออังกฤษ)';
+    }
+
+    // Phone validation
+    const phoneRegex = /^[0-9]{10}$/;
+    if (formData.phone && !phoneRegex.test(formData.phone.replace(/[-\s]/g, ''))) {
+      newErrors.phone = 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก';
+    }
+
+    if (formData.emergencyContactPhone && !phoneRegex.test(formData.emergencyContactPhone.replace(/[-\s]/g, ''))) {
+      newErrors.emergencyContactPhone = 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก';
+    }
+
+    // National ID validation
+    if (formData.nationalId && formData.nationalId.length !== 13) {
+      newErrors.nationalId = 'เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    // Handle custom religion
-    if (name === 'religion') {
-      if (value === 'other') {
-        setShowCustomReligion(true);
-        setFormData(prev => ({ ...prev, [name]: '', customReligion: '' }));
-      } else if (!showCustomReligion) {
-        setShowCustomReligion(false);
-        setFormData(prev => ({ ...prev, [name]: value }));
-      } else {
-        setFormData(prev => ({ ...prev, [name]: value }));
-      }
+    if (!validateForm()) return;
+    
+    // Check if user has completed profile already
+    if (user?.profileCompleted) {
+      console.log('🔍 Setup Profile - User already completed profile, redirecting to dashboard');
+      const redirectPath = getDashboardUrl(user);
+      window.location.href = redirectPath;
+      return;
     }
-    // Handle custom race
-    else if (name === 'race') {
-      if (value === 'other') {
-        setShowCustomRace(true);
-        setFormData(prev => ({ ...prev, [name]: '', customRace: '' }));
-      } else if (!showCustomRace) {
-        setShowCustomRace(false);
-        setFormData(prev => ({ ...prev, [name]: value }));
-      } else {
-        setFormData(prev => ({ ...prev, [name]: value }));
-      }
-    }
-    // Handle custom emergency relation
-    else if (name === 'emergencyContactRelation') {
-      if (value === 'other') {
-        setShowCustomEmergencyRelation(true);
-        setFormData(prev => ({ ...prev, [name]: '', customEmergencyRelation: '' }));
-      } else if (!showCustomEmergencyRelation) {
-        setShowCustomEmergencyRelation(false);
-        setFormData(prev => ({ ...prev, [name]: value }));
-      } else {
-        setFormData(prev => ({ ...prev, [name]: value }));
-      }
-    }
-    // Validation สำหรับรหัสไปรษณีย์
-    else if (name === 'idCardPostalCode' || name === 'currentPostalCode') {
-      // อนุญาตเฉพาะตัวเลข และจำกัดที่ 5 หลัก
-      if (!/^\d*$/.test(value) || value.length > 5) {
-        return;
-      }
-      setFormData(prev => ({
-        ...prev,
-        [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
-      }));
-    }
-    else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
-      }));
-    }
-  };
-
-  const handleNextStep = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(prev => prev + 1);
-    }
-  };
-
-  const handlePrevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(prev => prev - 1);
-    }
-  };
-
-  const handleFinish = async () => {
-    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     
     try {
-      setIsSubmitting(true);
+      console.log('🔍 Setup Profile - Submitting:', formData);
+      console.log('🔍 Setup Profile - User:', user);
       
-      // เตรียมข้อมูลสำหรับส่งไป API
-      const submitData = {
-        thai_name: formData.religion ? `${formData.religion} ${formData.race}` : undefined,
-        phone: formData.emergencyContactPhone,
-        emergency_contact: formData.emergencyContactName,
-        national_id: formData.idCardHouseNo, // ใช้ house number เป็น placeholder
-        birth_date: undefined, // ยังไม่มีในฟอร์ม
-        address: formatFullAddress(formData, 'current'),
-        medical_history: formData.chronicDiseases,
-        allergies: `ยา: ${formData.drugAllergies}, อาหาร: ${formData.foodAllergies}, สิ่งแวดล้อม: ${formData.environmentAllergies}`,
-        medications: formData.currentMedications
-      };
-
-      logger.debug("Profile data to submit:", submitData);
-      
-      // Detailed token debugging
+      // Check token before proceeding
       const token = apiClient.getAccessToken();
-      logger.debug("🔍 Access token check:");
-      logger.debug("  - Token available:", !!token);
-      logger.debug("  - Token length:", token?.length || 0);
-      logger.debug("  - Token preview:", token ? token.substring(0, 30) + '...' : 'null');
-      logger.debug("  - All cookies:", document.cookie);
-
-      // Send to API
-      const response = await apiClient.setupProfile(submitData);
+      console.log('🔍 Setup Profile - Token exists:', !!token);
       
-      logger.debug("Raw API response:", response);
-      
-      if (response.statusCode === 200) {
-        logger.debug("Profile setup successful:", response.data);
-        
-        // Refresh user data to get updated profile_completed status
-        await refreshUser();
-        
-        // Navigate to patient dashboard
-        router.push('/accounts/patient');
-      } else {
-        logger.error("Profile setup failed - response not successful:", response);
-        throw new Error(response.error?.message || 'Profile setup failed');
+      // If no token, redirect to login
+      if (!token) {
+        console.log('🔍 Setup Profile - No token, redirecting to login');
+        window.location.href = '/login';
+        return;
       }
       
-    } catch (error) {
-      logger.error("Profile setup failed:", error);
+      // Ensure token is also set in cookie for middleware
+      if (token) {
+        document.cookie = `access_token=${token}; path=/; max-age=${60 * 60}; SameSite=Lax`;
+        console.log('🔍 Setup Profile - Token set in cookie');
+      }
       
-      // Better error handling
-      let errorMessage = "เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง";
+      // Save profile data and mark as completed
+      console.log('🔍 Setup Profile - Saving profile data...');
       
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null) {
-        const errorObj = error as any;
-        if (errorObj.message) {
-          errorMessage = errorObj.message;
-        } else if (errorObj.response?.data?.message) {
-          errorMessage = errorObj.response.data.message;
+      try {
+        // Check if there's any data to save
+        const hasDataToSave = Object.values(formData).some(value => value && value.trim() !== '');
+        
+        if (hasDataToSave) {
+          console.log('🔍 Setup Profile - Updating profile data...');
+          
+          // Transform all form data to backend format
+          const profileData = {
+            // Names (4 fields)
+            thaiFirstName: formData.thaiFirstName,
+            thaiLastName: formData.thaiLastName,
+            englishFirstName: formData.englishFirstName,
+            englishLastName: formData.englishLastName,
+            
+            // Personal Info
+            nationalId: formData.nationalId,
+            birthDate: formData.birthDate,
+            gender: formData.gender,
+            bloodType: formData.bloodType,
+            phone: formData.phone,
+            
+            // Address Info
+            address: formData.address,
+            idCardAddress: formData.idCardAddress,
+            currentAddress: formData.currentAddress,
+            
+            // Contact Info
+            emergencyContactName: formData.emergencyContactName,
+            emergencyContactPhone: formData.emergencyContactPhone,
+            emergencyContactRelation: formData.emergencyContactRelation,
+            
+            // Medical Info
+            allergies: formData.allergies,
+            drugAllergies: formData.drugAllergies,
+            foodAllergies: formData.foodAllergies,
+            environmentAllergies: formData.environmentAllergies,
+            medicalHistory: formData.medicalHistory,
+            currentMedications: formData.currentMedications,
+            chronicDiseases: formData.chronicDiseases,
+            
+            // Physical Info
+            weight: formData.weight ? parseFloat(formData.weight) : null,
+            height: formData.height ? parseFloat(formData.height) : null,
+            
+            // Additional Info
+            occupation: formData.occupation,
+            education: formData.education,
+            maritalStatus: formData.maritalStatus,
+            religion: formData.religion,
+            race: formData.race,
+            
+            // Insurance Info
+            insuranceType: formData.insuranceType,
+            insuranceNumber: formData.insuranceNumber,
+            insuranceExpiryDate: formData.insuranceExpiryDate,
+            
+            // Mark profile as completed
+            profileCompleted: true
+          };
+          
+          const profileResponse = await apiClient.updateCompleteProfile(profileData as any);
+          
+          if (profileResponse.statusCode !== 200) {
+            throw new Error(profileResponse.error?.message || 'Failed to update profile data');
+          }
+          
+          console.log('🔍 Setup Profile - Profile data updated successfully');
+        } else {
+          // If no data to save, just mark profile as completed
+          console.log('🔍 Setup Profile - Marking profile as completed...');
+          const response = await apiClient.completeProfileSetup();
+          
+          if (response.data && !response.error) {
+            console.log('🔍 Setup Profile - Profile marked as completed successfully');
+          } else {
+            throw new Error(response.error?.message || 'Failed to complete profile setup');
+          }
         }
+        
+        // Update user data in context
+        window.dispatchEvent(new CustomEvent('refreshUserData'));
+      } catch (error) {
+        console.error('🔍 Setup Profile - Error saving profile:', error);
+        throw error; // Re-throw to be caught by outer try-catch
       }
       
-      alert(`เกิดข้อผิดพลาด: ${errorMessage}`);
+      // Show success message
+      console.log('🔍 Setup Profile - Profile saved successfully');
+      setIsSuccess(true);
+      setErrors({});
+      
+      // Wait a moment to show success message, then redirect
+      setTimeout(() => {
+        const redirectPath = getDashboardUrl(user);
+        console.log('🔍 Setup Profile - Redirecting to:', redirectPath);
+        window.location.href = redirectPath;
+      }, 2000); // Wait 2 seconds before redirect
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      setErrors({ submit: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const getProgressPercentage = () => {
-    return Math.round(((currentStep + 1) / (totalSteps + 1)) * 100);
-  };
+  if (isLoading || isLoadingProfile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">กำลังโหลดข้อมูลโปรไฟล์...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">ข้อมูลพื้นฐานเพิ่มเติม</h2>
-              <p className="text-gray-600">ศาสนาและเชื้อชาติ</p>
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <button 
+            onClick={() => {
+              const redirectPath = user ? getDashboardUrl(user) : '/accounts/patient/dashboard';
+              window.location.href = redirectPath;
+            }}
+            className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4"
+          >
+            <ArrowLeft size={20} className="mr-2" />
+            {user && user.profileCompleted ? 'กลับไปแดชบอร์ด' : 'กลับไปหน้าหลัก'}
+          </button>
+          
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <User size={24} className="text-blue-600" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {user && user.profileCompleted ? 'อัปเดตโปรไฟล์' : 'ตั้งค่าโปรไฟล์เพิ่มเติม'}
+                </h1>
+                <p className="text-gray-600">
+                  {user && user.profileCompleted 
+                    ? 'อัปเดตข้อมูลโปรไฟล์ของคุณ' 
+                    : 'กรอกข้อมูลเพิ่มเติมเพื่อความสมบูรณ์ของโปรไฟล์'
+                  }
+                </p>
+                {user && (
+                  <p className="text-sm text-blue-600 mt-1">
+                    สวัสดี {user.firstName} {user.lastName} ({user.role})
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Names Section */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <User size={20} className="text-blue-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900">ข้อมูลชื่อ-นามสกุล</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">ศาสนา</label>
-                {showCustomReligion ? (
-                  <div className="space-y-2">
-                    <input
-                      type="text"
-                      name="customReligion"
-                      value={formData.customReligion}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                      placeholder="ระบุศาสนา เช่น ยิว, บาไฮ"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowCustomReligion(false);
-                        setFormData(prev => ({ ...prev, religion: '', customReligion: '' }));
-                      }}
-                      className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:text-blue-700 hover:border-blue-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                    >
-                      <ArrowLeft size={14} />
-                      กลับไปเลือกจากรายการ
-                    </button>
-                  </div>
-                ) : (
-                  <select
-                    name="religion"
-                    value={formData.religion}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                  >
-                    <option value="">เลือกศาสนา</option>
-                    <option value="พุทธ">พุทธ</option>
-                    <option value="อิสลาม">อิสลาม</option>
-                    <option value="คริสต์">คริสต์</option>
-                    <option value="ฮินดู">ฮินดู</option>
-                    <option value="ซิกข์">ซิกข์</option>
-                    <option value="other">อื่น ๆ (กรอกเอง)</option>
-                    <option value="ไม่ระบุ">ไม่ระบุ</option>
-                  </select>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">เชื้อชาติ</label>
-                {showCustomRace ? (
-                  <div className="space-y-2">
-                    <input
-                      type="text"
-                      name="customRace"
-                      value={formData.customRace}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                      placeholder="ระบุเชื้อชาติ เช่น ญี่ปุ่น, เกาหลี"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowCustomRace(false);
-                        setFormData(prev => ({ ...prev, race: '', customRace: '' }));
-                      }}
-                      className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:text-blue-700 hover:border-blue-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                    >
-                      <ArrowLeft size={14} />
-                      กลับไปเลือกจากรายการ
-                    </button>
-                  </div>
-                ) : (
-                  <select
-                    name="race"
-                    value={formData.race}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                  >
-                    <option value="">เลือกเชื้อชาติ</option>
-                    <option value="ไทย">ไทย</option>
-                    <option value="จีน">จีน</option>
-                    <option value="มลายู">มลายู</option>
-                    <option value="อินเดีย">อินเดีย</option>
-                    <option value="ลาว">ลาว</option>
-                    <option value="เขมร">เขมร</option>
-                    <option value="พม่า">พม่า</option>
-                    <option value="มอญ">มอญ</option>
-                    <option value="other">อื่น ๆ (กรอกเอง)</option>
-                  </select>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 2:
-        return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">ข้อมูลที่อยู่</h2>
-              <p className="text-gray-600">ที่อยู่ตามบัตรประชาชนและที่อยู่ปัจจุบัน</p>
-            </div>
-
-            {/* ที่อยู่ตามบัตรประชาชน */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">ที่อยู่ตามบัตรประชาชน</h3>
-              
+              {/* Thai Names */}
               <div className="space-y-4">
-                {/* บ้านเลขที่ และ หมู่ */}
-                <div className="grid grid-cols-2 gap-4">
+                <h3 className="text-lg font-medium text-gray-900">ชื่อภาษาไทย</h3>
+                <div className="grid grid-cols-1 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">บ้านเลขที่</label>
+                    <label htmlFor="thaiFirstName" className="block text-sm font-medium text-gray-700 mb-2">
+                      ชื่อ (ไทย)
+                    </label>
                     <input
+                      id="thaiFirstName"
+                      name="thaiFirstName"
                       type="text"
-                      name="idCardHouseNo"
-                      value={formData.idCardHouseNo}
+                      value={formData.thaiFirstName}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                      placeholder="เช่น 123/45"
+                      placeholder="ชื่อ"
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                        errors.thaiFirstName ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
                     />
+                    {errors.thaiFirstName && <p className="text-red-500 text-sm mt-1">{errors.thaiFirstName}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">หมู่ที่</label>
+                    <label htmlFor="thaiLastName" className="block text-sm font-medium text-gray-700 mb-2">
+                      นามสกุล (ไทย)
+                    </label>
                     <input
+                      id="thaiLastName"
+                      name="thaiLastName"
                       type="text"
-                      name="idCardMoo"
-                      value={formData.idCardMoo}
+                      value={formData.thaiLastName}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                      placeholder="เช่น 5"
+                      placeholder="นามสกุล"
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                        errors.thaiLastName ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
                     />
-                  </div>
-                </div>
-
-                {/* ซอย และ ถนน */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">ซอย</label>
-                    <input
-                      type="text"
-                      name="idCardSoi"
-                      value={formData.idCardSoi}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                      placeholder="เช่น ลาดพร้าว 5"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">ถนน</label>
-                    <input
-                      type="text"
-                      name="idCardRoad"
-                      value={formData.idCardRoad}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                      placeholder="เช่น ลาดพร้าว"
-                    />
-                  </div>
-                </div>
-
-                {/* ตำบล และ อำเภอ */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">ตำบล/แขวง</label>
-                    <input
-                      type="text"
-                      name="idCardSubDistrict"
-                      value={formData.idCardSubDistrict}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                      placeholder="เช่น ลาดพร้าว"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">อำเภอ/เขต</label>
-                    <input
-                      type="text"
-                      name="idCardDistrict"
-                      value={formData.idCardDistrict}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                      placeholder="เช่น จตุจักร"
-                    />
-                  </div>
-                </div>
-
-                {/* จังหวัด และ รหัสไปรษณีย์ */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">จังหวัด</label>
-                    <input
-                      type="text"
-                      name="idCardProvince"
-                      value={formData.idCardProvince}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                      placeholder="เช่น กรุงเทพมหานคร"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">รหัสไปรษณีย์</label>
-                    <input
-                      type="text"
-                      name="idCardPostalCode"
-                      value={formData.idCardPostalCode}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                      placeholder="เช่น 10900"
-                      maxLength={5}
-                    />
+                    {errors.thaiLastName && <p className="text-red-500 text-sm mt-1">{errors.thaiLastName}</p>}
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* ปุ่มคัดลอกที่อยู่ */}
-            <div className="flex items-center space-x-3 bg-amber-50 p-4 rounded-lg">
-              <input
-                type="checkbox"
-                name="sameAsIdCard"
-                checked={formData.sameAsIdCard}
-                onChange={(e) => {
-                  handleInputChange(e);
-                  if (e.target.checked) {
-                    setFormData(prev => ({
-                      ...prev,
-                      currentHouseNo: prev.idCardHouseNo,
-                      currentMoo: prev.idCardMoo,
-                      currentSoi: prev.idCardSoi,
-                      currentRoad: prev.idCardRoad,
-                      currentSubDistrict: prev.idCardSubDistrict,
-                      currentDistrict: prev.idCardDistrict,
-                      currentProvince: prev.idCardProvince,
-                      currentPostalCode: prev.idCardPostalCode
-                    }));
-                  } else {
-                    // ล้างข้อมูลที่อยู่ปัจจุบันเมื่อยกเลิก
-                    setFormData(prev => ({
-                      ...prev,
-                      currentHouseNo: "",
-                      currentMoo: "",
-                      currentSoi: "",
-                      currentRoad: "",
-                      currentSubDistrict: "",
-                      currentDistrict: "",
-                      currentProvince: "",
-                      currentPostalCode: ""
-                    }));
-                  }
-                }}
-                className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
-              />
-              <label className="text-sm text-gray-700 font-medium">
-                ที่อยู่ปัจจุบันเหมือนกับที่อยู่ตามบัตรประชาชน
-              </label>
-            </div>
-
-            {/* ที่อยู่ปัจจุบัน */}
-            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">ที่อยู่ปัจจุบัน</h3>
-              
+              {/* English Names */}
               <div className="space-y-4">
-                {/* บ้านเลขที่ และ หมู่ */}
-                <div className="grid grid-cols-2 gap-4">
+                <h3 className="text-lg font-medium text-gray-900">ชื่อภาษาอังกฤษ</h3>
+                <div className="grid grid-cols-1 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">บ้านเลขที่</label>
+                    <label htmlFor="englishFirstName" className="block text-sm font-medium text-gray-700 mb-2">
+                      ชื่อ (อังกฤษ)
+                    </label>
                     <input
+                      id="englishFirstName"
+                      name="englishFirstName"
                       type="text"
-                      name="currentHouseNo"
-                      value={formData.currentHouseNo}
+                      value={formData.englishFirstName}
                       onChange={handleInputChange}
-                      disabled={formData.sameAsIdCard}
-                      className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800 ${
-                        formData.sameAsIdCard ? 'bg-gray-100' : ''
+                      placeholder="First Name"
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                        errors.englishFirstName ? 'border-red-500 bg-red-50' : 'border-gray-300'
                       }`}
-                      placeholder="เช่น 123/45"
                     />
+                    {errors.englishFirstName && <p className="text-red-500 text-sm mt-1">{errors.englishFirstName}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">หมู่ที่</label>
+                    <label htmlFor="englishLastName" className="block text-sm font-medium text-gray-700 mb-2">
+                      นามสกุล (อังกฤษ)
+                    </label>
                     <input
+                      id="englishLastName"
+                      name="englishLastName"
                       type="text"
-                      name="currentMoo"
-                      value={formData.currentMoo}
+                      value={formData.englishLastName}
                       onChange={handleInputChange}
-                      disabled={formData.sameAsIdCard}
-                      className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800 ${
-                        formData.sameAsIdCard ? 'bg-gray-100' : ''
+                      placeholder="Last Name"
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                        errors.englishLastName ? 'border-red-500 bg-red-50' : 'border-gray-300'
                       }`}
-                      placeholder="เช่น 5"
                     />
-                  </div>
-                </div>
-
-                {/* ซอย และ ถนน */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">ซอย</label>
-                    <input
-                      type="text"
-                      name="currentSoi"
-                      value={formData.currentSoi}
-                      onChange={handleInputChange}
-                      disabled={formData.sameAsIdCard}
-                      className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800 ${
-                        formData.sameAsIdCard ? 'bg-gray-100' : ''
-                      }`}
-                      placeholder="เช่น ลาดพร้าว 5"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">ถนน</label>
-                    <input
-                      type="text"
-                      name="currentRoad"
-                      value={formData.currentRoad}
-                      onChange={handleInputChange}
-                      disabled={formData.sameAsIdCard}
-                      className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800 ${
-                        formData.sameAsIdCard ? 'bg-gray-100' : ''
-                      }`}
-                      placeholder="เช่น ลาดพร้าว"
-                    />
-                  </div>
-                </div>
-
-                {/* ตำบล และ อำเภอ */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">ตำบล/แขวง</label>
-                    <input
-                      type="text"
-                      name="currentSubDistrict"
-                      value={formData.currentSubDistrict}
-                      onChange={handleInputChange}
-                      disabled={formData.sameAsIdCard}
-                      className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800 ${
-                        formData.sameAsIdCard ? 'bg-gray-100' : ''
-                      }`}
-                      placeholder="เช่น ลาดพร้าว"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">อำเภอ/เขต</label>
-                    <input
-                      type="text"
-                      name="currentDistrict"
-                      value={formData.currentDistrict}
-                      onChange={handleInputChange}
-                      disabled={formData.sameAsIdCard}
-                      className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800 ${
-                        formData.sameAsIdCard ? 'bg-gray-100' : ''
-                      }`}
-                      placeholder="เช่น จตุจักร"
-                    />
-                  </div>
-                </div>
-
-                {/* จังหวัด และ รหัสไปรษณีย์ */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">จังหวัด</label>
-                    <input
-                      type="text"
-                      name="currentProvince"
-                      value={formData.currentProvince}
-                      onChange={handleInputChange}
-                      disabled={formData.sameAsIdCard}
-                      className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800 ${
-                        formData.sameAsIdCard ? 'bg-gray-100' : ''
-                      }`}
-                      placeholder="เช่น กรุงเทพมหานคร"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">รหัสไปรษณีย์</label>
-                    <input
-                      type="text"
-                      name="currentPostalCode"
-                      value={formData.currentPostalCode}
-                      onChange={handleInputChange}
-                      disabled={formData.sameAsIdCard}
-                      className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800 ${
-                        formData.sameAsIdCard ? 'bg-gray-100' : ''
-                      }`}
-                      placeholder="เช่น 10900"
-                      maxLength={5}
-                    />
+                    {errors.englishLastName && <p className="text-red-500 text-sm mt-1">{errors.englishLastName}</p>}
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        );
 
-      case 3:
-        return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">ข้อมูลติดต่อฉุกเฉินและสุขภาพ</h2>
-              <p className="text-gray-600">ข้อมูลสำคัญสำหรับการรักษา</p>
+          {/* Personal Information */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <User size={20} className="text-green-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900">ข้อมูลส่วนตัว</h2>
             </div>
 
-            {/* Emergency Contact */}
-            <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <svg className="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                </svg>
-                ข้อมูลติดต่อฉุกเฉิน
-              </h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ชื่อ-นามสกุล ผู้ติดต่อฉุกเฉิน</label>
-                  <input
-                    type="text"
-                    name="emergencyContactName"
-                    value={formData.emergencyContactName}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                    placeholder="ชื่อ-นามสกุล ผู้ติดต่อฉุกเฉิน"
-                  />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="nationalId" className="block text-sm font-medium text-gray-700 mb-2">
+                  เลขบัตรประชาชน
+                </label>
+                <input
+                  id="nationalId"
+                  name="nationalId"
+                  type="text"
+                  value={formData.nationalId}
+                  onChange={handleInputChange}
+                  placeholder="1234567890123"
+                  maxLength={13}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                    errors.nationalId ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
+                />
+                {errors.nationalId && <p className="text-red-500 text-sm mt-1">{errors.nationalId}</p>}
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">เบอร์โทรศัพท์</label>
-                    <input
-                      type="tel"
-                      name="emergencyContactPhone"
-                      value={formData.emergencyContactPhone}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                      placeholder="08X-XXX-XXXX"
-                    />
-                  </div>
+              <div>
+                <label htmlFor="birthDate" className="block text-sm font-medium text-gray-700 mb-2">
+                  วันเกิด
+                </label>
+                <input
+                  id="birthDate"
+                  name="birthDate"
+                  type="date"
+                  value={formData.birthDate}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 ${
+                    errors.birthDate ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
+                />
+                {errors.birthDate && <p className="text-red-500 text-sm mt-1">{errors.birthDate}</p>}
+              </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">ความสัมพันธ์</label>
-                    {showCustomEmergencyRelation ? (
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          name="customEmergencyRelation"
-                          value={formData.customEmergencyRelation}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                          placeholder="ระบุความสัมพันธ์ เช่น เจ้านาย, เพื่อนร่วมงาน"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowCustomEmergencyRelation(false);
-                            setFormData(prev => ({ ...prev, emergencyContactRelation: '', customEmergencyRelation: '' }));
-                          }}
-                          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:text-blue-700 hover:border-blue-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                        >
-                          <ArrowLeft size={14} />
-                          กลับไปเลือกจากรายการ
-                        </button>
-                      </div>
-                    ) : (
-                      <select
-                        name="emergencyContactRelation"
-                        value={formData.emergencyContactRelation}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                      >
-                        <option value="">เลือกความสัมพันธ์</option>
-                        <option value="บิดา">บิดา</option>
-                        <option value="มารดา">มารดา</option>
-                        <option value="สามี">สามี</option>
-                        <option value="ภรรยา">ภรรยา</option>
-                        <option value="บุตร">บุตร</option>
-                        <option value="บุตรี">บุตรี</option>
-                        <option value="พี่ชาย">พี่ชาย</option>
-                        <option value="พี่สาว">พี่สาว</option>
-                        <option value="น้องชาย">น้องชาย</option>
-                        <option value="น้องสาว">น้องสาว</option>
-                        <option value="ญาติ">ญาติ</option>
-                        <option value="เพื่อน">เพื่อน</option>
-                        <option value="other">อื่น ๆ (กรอกเอง)</option>
-                      </select>
-                    )}
-                  </div>
-                </div>
+              <div>
+                <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-2">
+                  เพศ
+                </label>
+                <select
+                  id="gender"
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 ${
+                    errors.gender ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
+                >
+                  <option value="">เลือกเพศ</option>
+                  <option value="male">ชาย</option>
+                  <option value="female">หญิง</option>
+                  <option value="other">อื่นๆ</option>
+                </select>
+                {errors.gender && <p className="text-red-500 text-sm mt-1">{errors.gender}</p>}
+              </div>
+
+              <div>
+                <label htmlFor="bloodType" className="block text-sm font-medium text-gray-700 mb-2">
+                  หมู่เลือด
+                </label>
+                <select
+                  id="bloodType"
+                  name="bloodType"
+                  value={formData.bloodType}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 ${
+                    errors.bloodType ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
+                >
+                  <option value="">เลือกหมู่เลือด</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
+                {errors.bloodType && <p className="text-red-500 text-sm mt-1">{errors.bloodType}</p>}
+              </div>
+
+              <div>
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                  เบอร์โทรศัพท์
+                </label>
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  placeholder="0812345678"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                    errors.phone ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
+                />
+                {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
               </div>
             </div>
+          </div>
 
-            {/* Medical Information */}
-            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-                </svg>
-                ข้อมูลทางการแพทย์
-              </h3>
+          {/* Emergency Contact */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <AlertTriangle size={20} className="text-red-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900">ข้อมูลผู้ติดต่อฉุกเฉิน</h2>
+            </div>
 
-              <div className="space-y-4">
-                {/* Blood Group and Type */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">กรุ๊ปเลือด</label>
-                    <select
-                      name="bloodGroup"
-                      value={formData.bloodGroup}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                    >
-                      <option value="">เลือกกรุ๊ปเลือด</option>
-                      <option value="A">A</option>
-                      <option value="B">B</option>
-                      <option value="O">O</option>
-                      <option value="AB">AB</option>
-                    </select>
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="emergencyContactName" className="block text-sm font-medium text-gray-700 mb-2">
+                  ชื่อ-นามสกุล
+                </label>
+                <input
+                  id="emergencyContactName"
+                  name="emergencyContactName"
+                  type="text"
+                  value={formData.emergencyContactName}
+                  onChange={handleInputChange}
+                  placeholder="ชื่อ-นามสกุล"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                    errors.emergencyContactName ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
+                />
+                {errors.emergencyContactName && <p className="text-red-500 text-sm mt-1">{errors.emergencyContactName}</p>}
+              </div>
+
+              <div>
+                <label htmlFor="emergencyContactPhone" className="block text-sm font-medium text-gray-700 mb-2">
+                  เบอร์โทรศัพท์
+                </label>
+                <input
+                  id="emergencyContactPhone"
+                  name="emergencyContactPhone"
+                  type="tel"
+                  value={formData.emergencyContactPhone}
+                  onChange={handleInputChange}
+                  placeholder="0812345678"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                    errors.emergencyContactPhone ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
+                />
+                {errors.emergencyContactPhone && <p className="text-red-500 text-sm mt-1">{errors.emergencyContactPhone}</p>}
+              </div>
+
+              <div>
+                <label htmlFor="emergencyContactRelation" className="block text-sm font-medium text-gray-700 mb-2">
+                  ความสัมพันธ์
+                </label>
+                <select
+                  id="emergencyContactRelation"
+                  name="emergencyContactRelation"
+                  value={formData.emergencyContactRelation}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 ${
+                    errors.emergencyContactRelation ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
+                >
+                  <option value="">เลือกความสัมพันธ์</option>
+                  <option value="parent">บิดา/มารดา</option>
+                  <option value="spouse">คู่สมรส</option>
+                  <option value="child">บุตร</option>
+                  <option value="sibling">พี่น้อง</option>
+                  <option value="relative">ญาติ</option>
+                  <option value="friend">เพื่อน</option>
+                  <option value="other">อื่นๆ</option>
+                </select>
+                {errors.emergencyContactRelation && <p className="text-red-500 text-sm mt-1">{errors.emergencyContactRelation}</p>}
+              </div>
+            </div>
+          </div>
+
+          {/* Medical Information */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Heart size={20} className="text-green-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900">ข้อมูลทางการแพทย์</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="allergies" className="block text-sm font-medium text-gray-700 mb-2">
+                  การแพ้ยา/อาหาร/สิ่งแวดล้อม
+                </label>
+                <textarea
+                  id="allergies"
+                  name="allergies"
+                  value={formData.allergies}
+                  onChange={handleInputChange}
+                  placeholder="ระบุการแพ้ต่างๆ เช่น แพ้ยาแอสไพริน, แพ้อาหารทะเล"
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="medicalHistory" className="block text-sm font-medium text-gray-700 mb-2">
+                  ประวัติการเจ็บป่วย
+                </label>
+                <textarea
+                  id="medicalHistory"
+                  name="medicalHistory"
+                  value={formData.medicalHistory}
+                  onChange={handleInputChange}
+                  placeholder="ระบุประวัติการเจ็บป่วย เช่น เบาหวาน, ความดันโลหิตสูง"
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="currentMedications" className="block text-sm font-medium text-gray-700 mb-2">
+                  ยาที่ใช้ประจำ
+                </label>
+                <textarea
+                  id="currentMedications"
+                  name="currentMedications"
+                  value={formData.currentMedications}
+                  onChange={handleInputChange}
+                  placeholder="ระบุยาที่ใช้ประจำ เช่น เมตฟอร์มิน 500mg วันละ 2 ครั้ง"
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Insurance Information */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <MapPin size={20} className="text-purple-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900">ข้อมูลประกัน</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="insuranceType" className="block text-sm font-medium text-gray-700 mb-2">
+                  ประเภทประกัน
+                </label>
+                <select
+                  id="insuranceType"
+                  name="insuranceType"
+                  value={formData.insuranceType}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900"
+                >
+                  <option value="">เลือกประเภทประกัน</option>
+                  <option value="social_security">ประกันสังคม</option>
+                  <option value="civil_servant">ข้าราชการ</option>
+                  <option value="gold_card">บัตรทอง</option>
+                  <option value="private">ประกันเอกชน</option>
+                  <option value="none">ไม่มีประกัน</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="insuranceNumber" className="block text-sm font-medium text-gray-700 mb-2">
+                  เลขที่ประกัน
+                </label>
+                <input
+                  id="insuranceNumber"
+                  name="insuranceNumber"
+                  type="text"
+                  value={formData.insuranceNumber}
+                  onChange={handleInputChange}
+                  placeholder="เลขที่ประกัน"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="insuranceExpiryDate" className="block text-sm font-medium text-gray-700 mb-2">
+                  วันหมดอายุ
+                </label>
+                <input
+                  id="insuranceExpiryDate"
+                  name="insuranceExpiryDate"
+                  type="date"
+                  value={formData.insuranceExpiryDate}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Success Message */}
+          {isSuccess && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                  <div className="w-2 h-2 bg-white rounded-full"></div>
+                </div>
+                <p className="text-green-800">บันทึกข้อมูลสำเร็จ! กำลังนำคุณไปยังหน้าหลัก...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {errors.submit && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={20} className="text-red-600" />
+                <p className="text-red-800">{errors.submit}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Submit Button */}
+          <div className="flex justify-end gap-4">
+            <button
+              type="button"
+              onClick={async () => {
+                // Check if user has completed profile already
+                if (user?.profileCompleted) {
+                  console.log('🔍 Setup Profile - User already completed profile, redirecting to dashboard');
+                  const redirectPath = getDashboardUrl(user);
+                  window.location.href = redirectPath;
+                  return;
+                }
+                
+                try {
+                  setIsSubmitting(true);
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Rh</label>
-                    <select
-                      name="bloodType"
-                      value={formData.bloodType}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                    >
-                      <option value="">เลือก Rh</option>
-                      <option value="+">บวก (+)</option>
-                      <option value="-">ลบ (-)</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Chronic Diseases */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">โรคประจำตัว</label>
-                  <textarea
-                    name="chronicDiseases"
-                    value={formData.chronicDiseases}
-                    onChange={handleInputChange}
-                    rows={2}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                    placeholder="ระบุโรคประจำตัว เช่น เบาหวาน, ความดันโลหิตสูง, โรคหัวใจ หรือใส่ 'ไม่มี' หากไม่มีโรคประจำตัว"
-                  />
-                </div>
-
-                {/* Current Medications */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ยาที่ใช้ประจำ</label>
-                  <textarea
-                    name="currentMedications"
-                    value={formData.currentMedications}
-                    onChange={handleInputChange}
-                    rows={2}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                    placeholder="ระบุยาที่ใช้ประจำ เช่น ยาลดความดัน, ยาเบาหวาน หรือใส่ 'ไม่มี' หากไม่ได้ใช้ยาประจำ"
-                  />
-                </div>
-
-                {/* Drug Allergies */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ประวัติการแพ้ยา</label>
-                  <textarea
-                    name="drugAllergies"
-                    value={formData.drugAllergies}
-                    onChange={handleInputChange}
-                    rows={2}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                    placeholder="ระบุยาที่แพ้ เช่น ยาปฏิชีวนะ, ยาแก้ปวด, ยาชา หรือใส่ 'ไม่มี' หากไม่แพ้ยาใดๆ"
-                  />
-                </div>
-
-                {/* Food Allergies */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ประวัติการแพ้อาหาร</label>
-                  <textarea
-                    name="foodAllergies"
-                    value={formData.foodAllergies}
-                    onChange={handleInputChange}
-                    rows={2}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                    placeholder="ระบุอาหารที่แพ้ เช่น กุ้ง, ปู, ไข่, นม, ถั่วลิสง หรือใส่ 'ไม่มี' หากไม่แพ้อาหารใดๆ"
-                  />
-                </div>
-
-                {/* Environment Allergies */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ประวัติการแพ้สิ่งแวดล้อม</label>
-                  <textarea
-                    name="environmentAllergies"
-                    value={formData.environmentAllergies}
-                    onChange={handleInputChange}
-                    rows={2}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                    placeholder="ระบุสิ่งแวดล้อมที่แพ้ เช่น ฝุ่น, เกสรดอกไม้, ขนสัตว์, สารเคมี หรือใส่ 'ไม่มี' หากไม่แพ้สิ่งใดๆ"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 4:
-        return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">การตั้งค่าความปลอดภัย</h2>
-              <p className="text-gray-600">ปกป้องข้อมูลและบัญชีของคุณ</p>
-            </div>
-
-            <div className="space-y-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <div className="flex items-start space-x-3">
-                  <input
-                    type="checkbox"
-                    name="twoFactorAuth"
-                    checked={formData.twoFactorAuth}
-                    onChange={handleInputChange}
-                    className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <div>
-                    <label className="text-sm font-medium text-gray-800">เปิดใช้งานการยืนยันสองขั้นตอน</label>
-                    <p className="text-sm text-gray-600 mt-1">
-                      เพิ่มความปลอดภัยด้วยรหัส OTP ผ่าน SMS หรือแอป Authenticator
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                <div className="flex items-start space-x-3">
-                  <input
-                    type="checkbox"
-                    name="emailNotifications"
-                    checked={formData.emailNotifications}
-                    onChange={handleInputChange}
-                    className="mt-1 w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                  />
-                  <div>
-                    <label className="text-sm font-medium text-gray-800">การแจ้งเตือนทางอีเมล</label>
-                    <p className="text-sm text-gray-600 mt-1">
-                      รับการแจ้งเตือนสำคัญ เช่น การนัดหมาย, ผลตรวจ, อัปเดตระบบ
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
-                <div className="flex items-start space-x-3">
-                  <input
-                    type="checkbox"
-                    name="smsNotifications"
-                    checked={formData.smsNotifications}
-                    onChange={handleInputChange}
-                    className="mt-1 w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
-                  />
-                  <div>
-                    <label className="text-sm font-medium text-gray-800">การแจ้งเตือนทาง SMS</label>
-                    <p className="text-sm text-gray-600 mt-1">
-                      รับ SMS สำหรับการแจ้งเตือนเร่งด่วน เช่น ผลตรวจผิดปกติ, การนัดหมายฉุกเฉิน
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Summary */}
-              <div className="bg-gradient-to-br from-blue-50 to-green-50 border border-blue-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">สรุปข้อมูลที่กรอก</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">ข้อมูลพื้นฐาน:</span>
-                    <span className="text-green-600 font-medium">✓ ครบถ้วน</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">ข้อมูลที่อยู่:</span>
-                    <span className="text-green-600 font-medium">✓ ครบถ้วน</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">ข้อมูลติดต่อฉุกเฉิน:</span>
-                    <span className="text-green-600 font-medium">✓ ครบถ้วน</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">ข้อมูลสุขภาพ:</span>
-                    <span className="text-green-600 font-medium">✓ ครบถ้วน</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">การตั้งค่าความปลอดภัย:</span>
-                    <span className="text-green-600 font-medium">✓ ตั้งค่าแล้ว</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  const formatFullAddress = (addressData: Record<string, string | boolean>, prefix: string) => {
-    const parts = [
-      addressData[`${prefix}HouseNo`],
-      addressData[`${prefix}Moo`] ? `หมู่ ${addressData[`${prefix}Moo`]}` : '',
-      addressData[`${prefix}Soi`] ? `ซ. ${addressData[`${prefix}Soi`]}` : '',
-      addressData[`${prefix}Road`] ? `ถ. ${addressData[`${prefix}Road`]}` : '',
-      addressData[`${prefix}SubDistrict`] ? `ต. ${addressData[`${prefix}SubDistrict`]}` : '',
-      addressData[`${prefix}District`] ? `อ. ${addressData[`${prefix}District`]}` : '',
-      addressData[`${prefix}Province`] ? `จ. ${addressData[`${prefix}Province`]}` : '',
-      addressData[`${prefix}PostalCode`]
-    ].filter(part => part && typeof part === 'string' && part.trim() !== '');
-    
-    return parts.join(' ');
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 py-8 px-4">
-      <div className="max-w-2xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center space-x-2 mb-6">
-            <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold">H</span>
-            </div>
-            <span className="text-xl font-bold text-gray-800">HealthChain</span>
-          </Link>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-sm font-medium text-gray-600">ขั้นตอนที่ {currentStep} จาก {totalSteps}</span>
-            <span className="text-sm font-medium text-blue-600">{getProgressPercentage()}% เสร็จสิ้น</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div 
-              className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-300 ease-out"
-              style={{width: `${getProgressPercentage()}%`}}
-            ></div>
-          </div>
-        </div>
-
-        {/* Step Content */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
-          {renderStepContent()}
-        </div>
-
-        {/* Navigation Buttons */}
-        <div className="flex justify-between">
-          <button
-            onClick={handlePrevStep}
-            disabled={currentStep === 1}
-            className={`px-6 py-3 rounded-lg font-medium transition-all duration-150 ease-out ${
-              currentStep === 1
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            ย้อนกลับ
-          </button>
-
-          {currentStep < totalSteps ? (
-            <button
-              onClick={handleNextStep}
-              className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-all duration-150 ease-out"
-            >
-              ถัดไป
-            </button>
-          ) : (
-            <button
-              onClick={handleFinish}
+                  // Call API to complete profile setup
+                  console.log('🔍 Setup Profile - Skipping setup, marking profile as completed...');
+                  const response = await apiClient.completeProfileSetup();
+                  
+                  if (response.data && !response.error) {
+                    console.log('🔍 Setup Profile - Profile marked as completed successfully');
+                    
+                    // Update user data in context
+                    window.dispatchEvent(new CustomEvent('refreshUserData'));
+                    
+                    // Redirect to appropriate dashboard
+                    const redirectPath = getDashboardUrl(user);
+                    window.location.href = redirectPath;
+                  } else {
+                    throw new Error(response.error?.message || 'Failed to complete profile setup');
+                  }
+                } catch (error) {
+                  console.error('🔍 Setup Profile - Error skipping setup:', error);
+                  setErrors({ submit: 'เกิดข้อผิดพลาดในการข้ามขั้นตอน กรุณาลองใหม่อีกครั้ง' });
+                } finally {
+                  setIsSubmitting(false);
+                }
+              }}
               disabled={isSubmitting}
-              className="px-6 py-3 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-all duration-150 ease-out flex items-center space-x-2"
+              className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isSubmitting ? 'กำลังดำเนินการ...' : (user && user.profileCompleted ? 'ยกเลิก' : 'ข้ามขั้นตอนนี้')}
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             >
               {isSubmitting ? (
                 <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  กำลังบันทึกข้อมูล...
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  กำลังบันทึก...
                 </>
               ) : (
-                'เสร็จสิ้น - เริ่มใช้งาน'
+                <>
+                  <Save size={20} />
+                  {user && user.profileCompleted ? 'อัปเดตข้อมูล' : 'บันทึกข้อมูล'}
+                </>
               )}
             </button>
-          )}
-        </div>
-
-        {/* Skip Option */}
-        <div className="text-center mt-6">
-          <button
-            onClick={() => router.push('/accounts/patient/dashboard')}
-            className="text-gray-500 hover:text-gray-700 text-sm underline"
-          >
-            ข้ามและใช้งานก่อน (สามารถกรอกภายหลังได้)
-          </button>
-        </div>
+          </div>
+        </form>
       </div>
     </div>
   );

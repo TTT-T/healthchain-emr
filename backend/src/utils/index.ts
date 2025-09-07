@@ -501,7 +501,7 @@ export const successResponse = <T>(message: string, data?: T, metadata?: any): a
   };
 };
 
-export const errorResponse = (message: string, statusCode?: number, errors?: any): any => {
+export const errorResponse = (message: string, statusCode?: number, errors?: any, metadata?: any): any => {
   return {
     data: null,
     meta: null,
@@ -510,6 +510,7 @@ export const errorResponse = (message: string, statusCode?: number, errors?: any
       message,
       details: errors
     },
+    metadata: metadata,
     statusCode: statusCode || 500
   };
 };

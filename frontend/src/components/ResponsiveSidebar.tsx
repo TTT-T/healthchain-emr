@@ -12,7 +12,55 @@ interface SidebarProps {
 
 export default function ResponsiveSidebar({ userType = "patient", isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+
+  // Get user display name
+  const getDisplayName = () => {
+    if (!user) return "ผู้ใช้";
+    
+    // Try Thai names first, then English names, then fallback
+    if (user.thaiFirstName || user.thaiLastName) {
+      return `${user.thaiFirstName || ''} ${user.thaiLastName || ''}`.trim();
+    }
+    if (user.firstName || user.lastName) {
+      return `${user.firstName || ''} ${user.lastName || ''}`.trim();
+    }
+    if (user.username) {
+      return user.username;
+    }
+    return user.email?.split('@')[0] || "ผู้ใช้";
+  };
+
+  // Get user role display
+  const getRoleDisplay = () => {
+    if (!user?.role) return "ผู้ใช้";
+    
+    const roleMap: Record<string, string> = {
+      'patient': 'ผู้ป่วย',
+      'doctor': 'แพทย์',
+      'nurse': 'พยาบาล',
+      'admin': 'ผู้ดูแลระบบ',
+      'external_requester': 'ผู้ขอข้อมูลภายนอก'
+    };
+    
+    return roleMap[user.role] || user.role;
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user) return "U";
+    
+    if (user.thaiFirstName && user.thaiLastName) {
+      return user.thaiFirstName.charAt(0) + user.thaiLastName.charAt(0);
+    }
+    if (user.firstName && user.lastName) {
+      return user.firstName.charAt(0) + user.lastName.charAt(0);
+    }
+    if (user.username) {
+      return user.username.charAt(0).toUpperCase();
+    }
+    return user.email?.charAt(0).toUpperCase() || "U";
+  };
 
   // Handle logout
   const handleLogout = async () => {
@@ -97,14 +145,21 @@ export default function ResponsiveSidebar({ userType = "patient", isOpen = false
           {/* User Section */}
           <div className="px-3 xl:px-4 py-3 border-t border-slate-200">
             <div className="flex items-center space-x-3 px-3 py-2 bg-slate-50 rounded-lg">
-              <div className="w-8 h-8 xl:w-10 xl:h-10 bg-slate-300 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-slate-600 font-medium text-xs xl:text-sm">คน</span>
+              <div className="w-8 h-8 xl:w-10 xl:h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-bold text-xs xl:text-sm">{getUserInitials()}</span>
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-sm xl:text-base font-medium text-slate-700 block truncate">คุณสมชาย</span>
-                <p className="text-xs xl:text-sm text-slate-500 truncate">
-                  {userType === 'patient' ? 'ผู้ป่วย' : userType === 'doctor' ? 'แพทย์' : 'ผู้ดูแลระบบ'}
+                <span className="text-sm xl:text-base font-medium text-slate-700 block truncate" title={getDisplayName()}>
+                  {getDisplayName()}
+                </span>
+                <p className="text-xs xl:text-sm text-slate-500 truncate" title={getRoleDisplay()}>
+                  {getRoleDisplay()}
                 </p>
+                {user?.id && (
+                  <p className="text-xs text-slate-400 truncate" title={`ID: ${user.id}`}>
+                    ID: {user.id.slice(0, 8)}...
+                  </p>
+                )}
               </div>
             </div>
             <div className="mt-3">
@@ -172,14 +227,21 @@ export default function ResponsiveSidebar({ userType = "patient", isOpen = false
           {/* Mobile User Section */}
           <div className="px-4 py-4 border-t border-slate-200">
             <div className="flex items-center space-x-3 px-4 py-3 bg-slate-50 rounded-lg">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-slate-300 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-slate-600 font-medium text-sm sm:text-base">คน</span>
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-bold text-sm sm:text-base">{getUserInitials()}</span>
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-base sm:text-lg font-medium text-slate-700 block truncate">คุณสมชาย</span>
-                <p className="text-sm text-slate-500 truncate">
-                  {userType === 'patient' ? 'ผู้ป่วย' : userType === 'doctor' ? 'แพทย์' : 'ผู้ดูแลระบบ'}
+                <span className="text-base sm:text-lg font-medium text-slate-700 block truncate" title={getDisplayName()}>
+                  {getDisplayName()}
+                </span>
+                <p className="text-sm text-slate-500 truncate" title={getRoleDisplay()}>
+                  {getRoleDisplay()}
                 </p>
+                {user?.id && (
+                  <p className="text-xs text-slate-400 truncate" title={`ID: ${user.id}`}>
+                    ID: {user.id.slice(0, 8)}...
+                  </p>
+                )}
               </div>
             </div>
             <div className="mt-3">

@@ -24,10 +24,20 @@ class EmailService {
         },
         tls: {
           rejectUnauthorized: false // For development/testing
-        }
+        },
+        connectionTimeout: 60000, // 60 seconds
+        greetingTimeout: 30000, // 30 seconds
+        socketTimeout: 60000, // 60 seconds
+        pool: true,
+        maxConnections: 5,
+        maxMessages: 100,
+        rateDelta: 20000, // 20 seconds
+        rateLimit: 5 // max 5 emails per rateDelta
       });
       
       console.log('📧 Email service initialized with SMTP:', config.smtp.host);
+      console.log('📧 SMTP User:', config.smtp.user);
+      console.log('📧 SMTP Port:', config.smtp.port);
     } else {
       console.log('📧 Email service initialized in development mode (no SMTP configured)');
     }
@@ -47,9 +57,9 @@ class EmailService {
         return true; // Return true in development mode
       }
 
-      // In development mode, just log the email instead of sending
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📧 [DEV MODE] Email would be sent:');
+      // In development mode, still send email if SMTP is configured
+      if (process.env.NODE_ENV === 'development' && (!config.smtp.user || !config.smtp.password)) {
+        console.log('📧 [DEV MODE] Email would be sent (no SMTP configured):');
         console.log('  To:', emailData.to);
         console.log('  Subject:', emailData.subject);
         console.log('  Content:', emailData.html);
@@ -64,9 +74,41 @@ class EmailService {
       });
 
       console.log('📧 Email sent successfully:', info.messageId);
+      console.log('📧 Email response:', info.response);
       return true;
-    } catch (error) {
-      console.error('❌ Email sending failed:', error);
+    } catch (error: any) {
+      console.error('❌ Email sending failed:', error.message);
+      console.error('❌ Error code:', error.code);
+      console.error('❌ Error response:', error.response);
+      
+      // Handle specific Gmail errors
+      if (error.code === 'EAUTH') {
+        console.error('❌ Authentication failed. Please check your Gmail App Password.');
+      } else if (error.code === 'ECONNECTION') {
+        console.error('❌ Connection failed. Please check your internet connection.');
+      } else if (error.code === 'ETIMEDOUT') {
+        console.error('❌ Connection timeout. Please try again later.');
+      }
+      
+      return false;
+    }
+  }
+
+  /**
+   * Test SMTP connection
+   */
+  async testConnection(): Promise<boolean> {
+    try {
+      if (!this.transporter) {
+        console.log('📧 No SMTP transporter configured');
+        return false;
+      }
+
+      await this.transporter.verify();
+      console.log('📧 SMTP connection test successful');
+      return true;
+    } catch (error: any) {
+      console.error('❌ SMTP connection test failed:', error.message);
       return false;
     }
   }
@@ -1459,6 +1501,43 @@ class EmailService {
         location, 
         notes
       )
+    };
+
+    return await this.sendEmail(emailData);
+  }
+
+  /**
+   * Send test email
+   */
+  async sendTestEmail(to: string): Promise<boolean> {
+    const emailData: EmailData = {
+      to: to,
+      subject: '🧪 HealthChain EMR - Test Email',
+      html: `
+        <!DOCTYPE html>
+        <html lang="th">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Test Email</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 20px; text-align: center; border-radius: 8px;">
+            <h1>🧪 Test Email</h1>
+            <p>HealthChain EMR System</p>
+          </div>
+          <div style="padding: 20px; background: #f8fafc; border-radius: 8px; margin-top: 20px;">
+            <h2>✅ Email Service Working!</h2>
+            <p>This is a test email to verify that the email service is working correctly.</p>
+            <p><strong>Timestamp:</strong> ${new Date().toLocaleString('th-TH')}</p>
+            <p><strong>Recipient:</strong> ${to}</p>
+          </div>
+          <div style="text-align: center; margin-top: 20px; color: #64748b; font-size: 14px;">
+            <p>© 2025 HealthChain EMR System</p>
+          </div>
+        </body>
+        </html>
+      `
     };
 
     return await this.sendEmail(emailData);

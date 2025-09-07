@@ -48,7 +48,9 @@ export function middleware(request: NextRequest) {
   // Check for general user routes
   if (pathname.startsWith('/emr') || pathname.startsWith('/accounts')) {
     const userToken = request.cookies.get('access_token')?.value
+    console.log('🔍 Middleware - Checking token for path:', pathname, 'Token exists:', !!userToken)
     if (!userToken) {
+      console.log('🔍 Middleware - No token, redirecting to login')
       return NextResponse.redirect(new URL('/login', request.url))
     }
   }

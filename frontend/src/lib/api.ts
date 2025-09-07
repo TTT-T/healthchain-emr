@@ -559,7 +559,7 @@ class APIClient {
    * Resend verification email
    */
   async resendVerificationEmail(email: string): Promise<APIResponse<{ message: string }>> {
-    return this.request({
+    return this.request<{ message: string }>({
       method: 'POST',
       url: '/auth/resend-verification',
       data: { email }
@@ -680,6 +680,69 @@ class APIClient {
       method: 'PUT',
       url: '/auth/profile',
       data
+    });
+  }
+
+  /**
+   * Complete profile setup
+   */
+  async completeProfileSetup(): Promise<APIResponse<User>> {
+    return this.request<User>({
+      method: 'POST',
+      url: '/auth/complete-profile-setup',
+      data: {}
+    });
+  }
+
+  /**
+   * Get complete profile
+   */
+  async getCompleteProfile(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/auth/profile/complete'
+    });
+  }
+
+  /**
+   * Update complete profile
+   */
+  async updateCompleteProfile(data: any): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'PUT',
+      url: '/auth/profile/complete',
+      data
+    });
+  }
+
+  /**
+   * Delete profile field
+   */
+  async deleteProfileField(fieldName: string): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'DELETE',
+      url: `/auth/profile/field/${fieldName}`
+    });
+  }
+
+  /**
+   * Upload profile image
+   */
+  async uploadProfileImage(imageUrl: string): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'POST',
+      url: '/auth/profile/image',
+      data: { imageUrl }
+    });
+  }
+
+  /**
+   * Get profile completion status
+   */
+  async getProfileCompletion(): Promise<APIResponse<any>> {
+    return this.request<any>({
+      method: 'GET',
+      url: '/auth/profile/completion'
     });
   }
 

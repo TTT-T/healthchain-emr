@@ -63,7 +63,7 @@ export default function ExternalRequestersHomePage() {
             id: (profileData as any).id,
             email: profileData.primaryContactEmail,
             organizationName: profileData.organizationName,
-            organizationType: profileData.organizationType,
+            organizationType: (profileData as any).organizationType,
             status: profileData.status,
             dataAccessLevel: profileData.dataAccessLevel,
             lastLogin: profileData.lastLogin || new Date().toISOString(),

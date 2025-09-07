@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Sarabun } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
 import { AlertProvider } from "@/components/ui/alert-system";
 
@@ -39,9 +40,11 @@ export default function RootLayout({
       <body>
         <ReactQueryProvider>
           <AuthProvider>
-            <AlertProvider>
-              {children}
-            </AlertProvider>
+            <NotificationProvider>
+              <AlertProvider>
+                {children}
+              </AlertProvider>
+            </NotificationProvider>
           </AuthProvider>
         </ReactQueryProvider>
       </body>

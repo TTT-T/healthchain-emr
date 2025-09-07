@@ -15,10 +15,11 @@ import patientRoutes from './routes/patients';
 import aiRoutes from './routes/ai';
 import consentRoutes from './routes/consent';
 import adminRoutes from './routes/admin';
-import profileRoutes from './routes/profile';
+// Profile routes are now included in auth routes
 import securityRoutes from './routes/security';
 import externalRequestersRoutes from './routes/external-requesters';
 import healthRoutes from './routes/health';
+import emailTestRoutes from './routes/email-test';
 
 // Middleware
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
@@ -157,9 +158,10 @@ class Application {
     this.app.use('/api/ai', aiRoutes);               // 2. AI Risk Assessment
     this.app.use('/api/consent', consentRoutes);     // 3. Consent Engine
     this.app.use('/api/admin', adminRoutes);         // 1. Admin functions
-    this.app.use('/api/profile', profileRoutes);     // Profile Management
+    // Profile routes are now included in /api/auth
     this.app.use('/api/security', securityRoutes);   // Security Settings     // Profile management
     this.app.use('/api/external-requesters', externalRequestersRoutes); // External Requesters
+    this.app.use('/api/email-test', emailTestRoutes); // Email Testing
 
     // 404 handler
     this.app.use('*', (req: Request, res: Response) => {

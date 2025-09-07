@@ -25,6 +25,12 @@ export interface User {
   firstName: string;
   lastName: string;
   thaiName?: string;
+  
+  // Names (4 fields for Thai and English)
+  thaiFirstName?: string;
+  thaiLastName?: string;
+  englishFirstName?: string;
+  englishLastName?: string;
   employeeId?: string;
   professionalLicense?: string;
   position?: string;
@@ -116,6 +122,7 @@ export interface RefreshTokenRequest {
 export interface UserData {
   id: string;
   organizationName: string;
+  organizationType?: string;
   lastLogin: string;
   createdAt: string;
   email?: string;
@@ -337,8 +344,11 @@ export interface MedicalPatient {
   dateOfBirth: string;
   gender: 'male' | 'female' | 'other';
   phone?: string;
+  phone_number?: string; // Legacy field
   email?: string;
   address?: string;
+  currentAddress?: string;
+  current_address?: string; // Legacy field
   district?: string;
   province?: string;
   postalCode?: string;
@@ -347,12 +357,53 @@ export interface MedicalPatient {
   updatedAt: string;
   createdBy?: string;
   updatedBy?: string;
+  
+  // Emergency Contact
+  emergencyContact?: {
+    name: string;
+    phone: string;
+    relationship: string;
+  };
+  emergency_contact_name?: string; // Legacy field
+  emergency_contact_phone?: string; // Legacy field
+  emergency_contact_relation?: string; // Legacy field
+  
+  // Medical Information
+  bloodGroup?: string;
+  blood_group?: string; // Legacy field
+  bloodType?: string;
+  blood_type?: string; // Legacy field
+  weight?: number;
+  height?: number;
+  
+  // Allergies
+  drugAllergies?: string;
+  drug_allergies?: string; // Legacy field
+  foodAllergies?: string;
+  food_allergies?: string; // Legacy field
+  environmentAllergies?: string;
+  environment_allergies?: string; // Legacy field
+  allergies?: string[]; // Legacy field
+  
+  // Medical History
+  chronicDiseases?: string;
+  chronic_diseases?: string; // Legacy field
+  medicalHistory?: string;
+  medical_history?: string; // Legacy field
+  currentMedications?: string;
+  current_medications?: string; // Legacy field
+  
+  // Personal Information
+  religion?: string;
+  race?: string;
+  occupation?: string;
+  maritalStatus?: string;
+  marital_status?: string; // Legacy field
+  education?: string;
+  
   // Additional missing properties
   englishName?: string;
   english_name?: string;
-  bloodType?: string;
-  blood_type?: string;
-  allergies?: string[];
   chronicConditions?: string[];
   chronic_conditions?: string[];
 }
