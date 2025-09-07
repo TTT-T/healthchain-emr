@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 interface AdminLoginRequest {
   email: string;
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest) {
     return response;
 
   } catch (error) {
-    console.error('Admin login error:', error);
+    logger.error('Admin login error:', error);
     return NextResponse.json({
       success: false,
       message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์'

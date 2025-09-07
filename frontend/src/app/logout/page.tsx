@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 
 export default function LogoutPage() {
   const { logout, isLoading } = useAuth();
@@ -11,7 +12,7 @@ export default function LogoutPage() {
       try {
         await logout();
       } catch (error) {
-        console.error('Logout error:', error);
+        logger.error('Logout error:', error);
         // Even if logout fails, redirect to home
         window.location.href = '/';
       }

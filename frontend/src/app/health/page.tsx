@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, RefreshCw, Activity, Database, Cpu, Shield, Settings, Info } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { formatAPIError } from '@/lib/errorHandler';
+import { logger } from '@/lib/logger';
 
 interface HealthStatus {
   status: 'healthy' | 'unhealthy' | 'checking';
@@ -36,7 +37,7 @@ export default function HealthCheck() {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Backend health response:', data); // Debug log
+        logger.debug('Backend health response:', data); // Debug log
         
         // Handle new standardized response format
         const healthData = data.data || data;

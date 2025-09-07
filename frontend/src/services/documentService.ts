@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { 
   MedicalDocument, 
   CreateDocumentRequest, 
@@ -18,7 +19,7 @@ export class DocumentService {
       const response = await apiClient.createDocument(data);
       return response;
     } catch (error) {
-      console.error('Error creating document:', error);
+      logger.error('Error creating document:', error);
       throw error;
     }
   }
@@ -31,7 +32,7 @@ export class DocumentService {
       const response = await apiClient.getDocument(id);
       return response;
     } catch (error) {
-      console.error('Error getting document:', error);
+      logger.error('Error getting document:', error);
       throw error;
     }
   }
@@ -44,7 +45,7 @@ export class DocumentService {
       const response = await apiClient.getPatientDocuments(patientId);
       return response;
     } catch (error) {
-      console.error('Error getting patient documents:', error);
+      logger.error('Error getting patient documents:', error);
       throw error;
     }
   }
@@ -52,12 +53,12 @@ export class DocumentService {
   /**
    * อัปเดตเอกสาร
    */
-  static async updateDocument(id: string, data: any): Promise<APIResponse<MedicalDocument>> {
+  static async updateDocument(id: string, data: Partial<MedicalDocument>): Promise<APIResponse<MedicalDocument>> {
     try {
       const response = await apiClient.updateDocument(id, data);
       return response;
     } catch (error) {
-      console.error('Error updating document:', error);
+      logger.error('Error updating document:', error);
       throw error;
     }
   }
@@ -70,7 +71,7 @@ export class DocumentService {
       const response = await apiClient.deleteDocument(id);
       return response;
     } catch (error) {
-      console.error('Error deleting document:', error);
+      logger.error('Error deleting document:', error);
       throw error;
     }
   }
@@ -83,7 +84,7 @@ export class DocumentService {
       const response = await apiClient.downloadDocument(id);
       return response;
     } catch (error) {
-      console.error('Error downloading document:', error);
+      logger.error('Error downloading document:', error);
       throw error;
     }
   }
@@ -91,7 +92,7 @@ export class DocumentService {
   /**
    * อัปโหลดเอกสาร
    */
-  static async uploadDocument(file: File, metadata: any): Promise<APIResponse<MedicalDocument>> {
+  static async uploadDocument(file: File, metadata: unknown): Promise<APIResponse<MedicalDocument>> {
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -100,7 +101,7 @@ export class DocumentService {
       const response = await apiClient.uploadDocument(formData);
       return response;
     } catch (error) {
-      console.error('Error uploading document:', error);
+      logger.error('Error uploading document:', error);
       throw error;
     }
   }

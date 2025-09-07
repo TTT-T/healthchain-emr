@@ -1,15 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { 
   Shield, 
-  Search, 
-  Filter, 
-  MoreHorizontal, 
-  Eye, 
-  Check, 
-  X, 
   Clock,
   AlertTriangle,
   CheckCircle,
@@ -17,12 +11,8 @@ import {
   RefreshCw,
   Download,
   FileText,
-  Users,
   Activity,
-  TrendingUp,
   Bell,
-  Settings,
-  Calendar,
   Zap
 } from 'lucide-react';
 
@@ -209,10 +199,10 @@ const mockComplianceAlerts: ComplianceAlert[] = [
 ];
 
 export default function ConsentDashboardPage() {
-  const [stats, setStats] = useState<ConsentStats>(mockStats);
-  const [recentRequests, setRecentRequests] = useState<ConsentRequest[]>(mockRecentRequests);
-  const [activeContracts, setActiveContracts] = useState<ConsentContract[]>(mockActiveContracts);
-  const [complianceAlerts, setComplianceAlerts] = useState<ComplianceAlert[]>(mockComplianceAlerts);
+  const [stats] = useState<ConsentStats>(mockStats);
+  const [recentRequests] = useState<ConsentRequest[]>(mockRecentRequests);
+  const [activeContracts] = useState<ConsentContract[]>(mockActiveContracts);
+  const [complianceAlerts] = useState<ComplianceAlert[]>(mockComplianceAlerts);
   const [loading, setLoading] = useState(false);
 
   const getStatusColor = (status: string) => {
@@ -266,7 +256,7 @@ export default function ConsentDashboardPage() {
     }
   };
 
-  const getAlertColor = (type: string, severity: string) => {
+  const getAlertColor = (type: string) => {
     if (type === 'violation') return 'text-red-600 bg-red-50 border-red-200';
     if (type === 'warning') return 'text-orange-600 bg-orange-50 border-orange-200';
     return 'text-blue-600 bg-blue-50 border-blue-200';
@@ -476,7 +466,7 @@ export default function ConsentDashboardPage() {
                     <div className="font-medium text-gray-900 text-sm">{alert.title}</div>
                     <div className="text-xs text-gray-600 mt-1">{alert.description}</div>
                     <div className="flex items-center gap-2 mt-2">
-                      <span className={`text-xs px-2 py-1 rounded-full border ${getAlertColor(alert.type, alert.severity)}`}>
+                      <span className={`text-xs px-2 py-1 rounded-full border ${getAlertColor(alert.type)}`}>
                         {alert.severity === 'high' && 'สูง'}
                         {alert.severity === 'medium' && 'กลาง'}
                         {alert.severity === 'low' && 'ต่ำ'}

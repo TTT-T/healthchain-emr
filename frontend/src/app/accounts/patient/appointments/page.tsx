@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { apiClient } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import AppLayout from '@/components/AppLayout';
+import { logger } from '@/lib/logger';
 import { 
   Calendar, 
   MapPin, 
@@ -47,15 +48,15 @@ const PatientAppointments = () => {
         setLoading(true);
         if (user?.id) {
           const response = await apiClient.getPatientAppointments(user.id);
-          if (response.success && response.data) {
-            setAppointments(response.data);
+          if (response.statusCode === 200 && response.data) {
+            setAppointments(response.data as any);
           } else {
             setError(response.error?.message || "ไม่สามารถดึงข้อมูลนัดหมายได้");
           }
         }
         
       } catch (err) {
-        console.error('Error fetching appointments:', err);
+        logger.error('Error fetching appointments:', err);
         setError('เกิดข้อผิดพลาดในการโหลดข้อมูลนัดหมาย');
       } finally {
         setLoading(false);

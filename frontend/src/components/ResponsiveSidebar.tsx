@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { logger } from '@/lib/logger';
 
 interface SidebarProps {
   userType?: "patient" | "doctor" | "admin";
@@ -19,7 +20,7 @@ export default function ResponsiveSidebar({ userType = "patient", isOpen = false
       await logout();
       if (onClose) onClose();
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     }
   };
 

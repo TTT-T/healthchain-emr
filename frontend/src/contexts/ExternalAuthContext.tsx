@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { logger } from '@/lib/logger';
 
 interface ExternalUser {
   id: string;
@@ -51,7 +52,7 @@ export function ExternalAuthProvider({ children }: ExternalAuthProviderProps) {
 
       const result = await response.json();
 
-      if (result.success) {
+      if (result.statusCode === 200) {
         setUser(result.user);
       } else {
         throw new Error(result.message || 'Login failed');
@@ -70,7 +71,7 @@ export function ExternalAuthProvider({ children }: ExternalAuthProviderProps) {
         method: 'POST',
       });
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     } finally {
       setUser(null);
     }
@@ -99,7 +100,7 @@ export function ExternalAuthProvider({ children }: ExternalAuthProviderProps) {
           });
         }
       } catch (error) {
-        console.error('Session check error:', error);
+        logger.error('Session check error:', error);
       }
     };
 

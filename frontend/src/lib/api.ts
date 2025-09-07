@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import Cookies from 'js-cookie';
-import { showError, showWarning } from '@/lib/alerts';
+import { logger } from '@/lib/logger';
+// import { showError, showWarning } from '@/lib/alerts';
 
 // Types
 import { 
@@ -45,8 +46,8 @@ class APIClient {
   private axiosInstance: AxiosInstance;
   private isRefreshing = false;
   private failedQueue: Array<{
-    resolve: (value?: any) => void;
-    reject: (error?: any) => void;
+    resolve: (value?: unknown) => void;
+    reject: (error?: unknown) => void;
   }> = [];
 
   constructor() {
@@ -154,7 +155,7 @@ class APIClient {
   /**
    * Process queued requests after token refresh
    */
-  private processQueue(error: any, token: string | null): void {
+  private processQueue(error: unknown, token: string | null): void {
     this.failedQueue.forEach(({ resolve, reject }) => {
       if (error) {
         reject(error);
@@ -179,7 +180,7 @@ class APIClient {
   private handleError(error: AxiosError): APIError {
     if (error.response) {
       // Server responded with error status
-      const responseData = error.response.data as any;
+      const responseData = error.response.data as { message?: string; code?: string; details?: unknown; errors?: unknown };
       return {
         message: responseData?.message || error.message,
         code: responseData?.code || error.code,
@@ -211,48 +212,48 @@ class APIClient {
     
     // Check remember me preference to determine storage type
     const isRemembered = localStorage.getItem('rememberMe') === 'true';
-    console.log('🔍 getAccessToken - rememberMe preference:', isRemembered);
+    logger.debug('🔍 getAccessToken - rememberMe preference:', isRemembered);
     let token = null;
     
     if (isRemembered) {
       // If user chose to be remembered, check localStorage first, then cookie
       try {
         token = localStorage.getItem(TOKEN_KEY);
-        console.log('🔒 Checking localStorage for token:', !!token);
+        logger.debug('🔒 Checking localStorage for token:', !!token);
         if (!token) {
           token = Cookies.get(TOKEN_KEY);
-          console.log('🍪 Checking cookie for token:', !!token);
+          logger.debug('🍪 Checking cookie for token:', !!token);
         }
-        console.log('🔒 Token retrieved from persistent storage (remembered):', !!token);
+        logger.debug('🔒 Token retrieved from persistent storage (remembered):', !!token);
       } catch (error) {
-        console.error('❌ Persistent storage retrieval failed:', error);
+        logger.error('❌ Persistent storage retrieval failed:', error);
       }
     } else {
       // If user didn't choose to be remembered, check sessionStorage first
       try {
         token = sessionStorage.getItem(TOKEN_KEY);
-        console.log('🔓 Checking sessionStorage for token:', !!token);
+        logger.debug('🔓 Checking sessionStorage for token:', !!token);
         if (!token) {
           // Fallback to cookie or localStorage (migration case)
           token = Cookies.get(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
-          console.log('🍪 Checking cookie/localStorage fallback for token:', !!token);
+          logger.debug('🍪 Checking cookie/localStorage fallback for token:', !!token);
         }
-        console.log('🔓 Token retrieved from session storage (not remembered):', !!token);
+        logger.debug('🔓 Token retrieved from session storage (not remembered):', !!token);
       } catch (error) {
-        console.error('❌ Session storage retrieval failed:', error);
+        logger.error('❌ Session storage retrieval failed:', error);
       }
     }
     
     // Debug: Log all storage types
-    console.log('🔍 Debug - Storage check:');
-    console.log('  - localStorage token:', !!localStorage.getItem(TOKEN_KEY));
-    console.log('  - sessionStorage token:', !!sessionStorage.getItem(TOKEN_KEY));
-    console.log('  - cookie token:', !!Cookies.get(TOKEN_KEY));
-    console.log('  - rememberMe:', localStorage.getItem('rememberMe'));
+    logger.debug('🔍 Debug - Storage check:');
+    logger.debug('  - localStorage token:', !!localStorage.getItem(TOKEN_KEY));
+    logger.debug('  - sessionStorage token:', !!sessionStorage.getItem(TOKEN_KEY));
+    logger.debug('  - cookie token:', !!Cookies.get(TOKEN_KEY));
+    logger.debug('  - rememberMe:', localStorage.getItem('rememberMe'));
     
     // Validate token format (basic check)
     if (token && !token.startsWith('eyJ')) {
-      console.warn('⚠️ Invalid token format detected, clearing...');
+      logger.warn('⚠️ Invalid token format detected, clearing...');
       this.clearTokens();
       return null;
     }
@@ -262,26 +263,26 @@ class APIClient {
 
   public setAccessToken(token: string): void {
     if (typeof window === 'undefined') return;
-    console.log('🔑 Setting access token:', token.substring(0, 30) + '...');
+    logger.debug('🔑 Setting access token:', token.substring(0, 30) + '...');
     
     // Check remember me preference to determine storage type
     const isRemembered = localStorage.getItem('rememberMe') === 'true';
-    console.log('🔍 rememberMe preference:', isRemembered);
+    logger.debug('🔍 rememberMe preference:', isRemembered);
     
     if (isRemembered) {
       // If user chose to be remembered, store in localStorage and cookie
-      console.log('🔒 Storing token in persistent storage (remembered)');
+      logger.debug('🔒 Storing token in persistent storage (remembered)');
       
       // Store in localStorage
       try {
         localStorage.setItem(TOKEN_KEY, token);
-        console.log('💾 Token stored in localStorage');
+        logger.debug('💾 Token stored in localStorage');
         
         // Verify storage
         const verifyToken = localStorage.getItem(TOKEN_KEY);
-        console.log('✅ localStorage verification:', !!verifyToken);
+        logger.debug('✅ localStorage verification:', !!verifyToken);
       } catch (error) {
-        console.error('❌ LocalStorage storage failed:', error);
+        logger.error('❌ LocalStorage storage failed:', error);
       }
       
       // Also store in cookie as backup
@@ -293,29 +294,29 @@ class APIClient {
           secure: false
         };
         Cookies.set(TOKEN_KEY, token, cookieOptions);
-        console.log('🍪 Token stored in cookie (backup)');
+        logger.debug('🍪 Token stored in cookie (backup)');
       } catch (error) {
-        console.error('❌ Cookie storage failed:', error);
+        logger.error('❌ Cookie storage failed:', error);
       }
     } else {
       // If user didn't choose to be remembered, store in sessionStorage only
-      console.log('🔓 Storing token in session storage (not remembered)');
+      logger.debug('🔓 Storing token in session storage (not remembered)');
       
       try {
         sessionStorage.setItem(TOKEN_KEY, token);
-        console.log('💾 Token stored in sessionStorage');
+        logger.debug('💾 Token stored in sessionStorage');
         
         // Verify storage
         const verifyToken = sessionStorage.getItem(TOKEN_KEY);
-        console.log('✅ sessionStorage verification:', !!verifyToken);
+        logger.debug('✅ sessionStorage verification:', !!verifyToken);
       } catch (error) {
-        console.error('❌ SessionStorage storage failed:', error);
+        logger.error('❌ SessionStorage storage failed:', error);
         // Fallback to cookie with session expiry
         try {
           Cookies.set(TOKEN_KEY, token, { path: '/' }); // No expires = session cookie
-          console.log('🍪 Token stored in session cookie (fallback)');
+          logger.debug('🍪 Token stored in session cookie (fallback)');
         } catch (cookieError) {
-          console.error('❌ Cookie fallback failed:', cookieError);
+          logger.error('❌ Cookie fallback failed:', cookieError);
         }
       }
     }
@@ -336,7 +337,7 @@ class APIClient {
           token = Cookies.get(REFRESH_TOKEN_KEY);
         }
       } catch (error) {
-        console.error('❌ Persistent refresh token retrieval failed:', error);
+        logger.error('❌ Persistent refresh token retrieval failed:', error);
       }
     } else {
       // If user didn't choose to be remembered, check sessionStorage first
@@ -346,7 +347,7 @@ class APIClient {
           token = Cookies.get(REFRESH_TOKEN_KEY);
         }
       } catch (error) {
-        console.error('❌ Session refresh token retrieval failed:', error);
+        logger.error('❌ Session refresh token retrieval failed:', error);
       }
     }
     
@@ -363,9 +364,9 @@ class APIClient {
       // If user chose to be remembered, store in localStorage and cookie
       try {
         localStorage.setItem(REFRESH_TOKEN_KEY, token);
-        console.log('💾 Refresh token stored in localStorage');
+        logger.debug('💾 Refresh token stored in localStorage');
       } catch (error) {
-        console.error('❌ LocalStorage refresh token storage failed:', error);
+        logger.error('❌ LocalStorage refresh token storage failed:', error);
       }
       
       // Also store in cookie as backup
@@ -377,23 +378,23 @@ class APIClient {
           secure: false
         };
         Cookies.set(REFRESH_TOKEN_KEY, token, cookieOptions);
-        console.log('🍪 Refresh token stored in cookie (backup)');
+        logger.debug('🍪 Refresh token stored in cookie (backup)');
       } catch (error) {
-        console.error('❌ Cookie refresh token storage failed:', error);
+        logger.error('❌ Cookie refresh token storage failed:', error);
       }
     } else {
       // If user didn't choose to be remembered, store in sessionStorage only
       try {
         sessionStorage.setItem(REFRESH_TOKEN_KEY, token);
-        console.log('💾 Refresh token stored in sessionStorage');
+        logger.debug('💾 Refresh token stored in sessionStorage');
       } catch (error) {
-        console.error('❌ SessionStorage refresh token storage failed:', error);
+        logger.error('❌ SessionStorage refresh token storage failed:', error);
         // Fallback to cookie with session expiry
         try {
           Cookies.set(REFRESH_TOKEN_KEY, token, { path: '/' }); // No expires = session cookie
-          console.log('🍪 Refresh token stored in session cookie (fallback)');
+          logger.debug('🍪 Refresh token stored in session cookie (fallback)');
         } catch (cookieError) {
-          console.error('❌ Cookie refresh token fallback failed:', cookieError);
+          logger.error('❌ Cookie refresh token fallback failed:', cookieError);
         }
       }
     }
@@ -402,7 +403,7 @@ class APIClient {
   public clearTokens(): void {
     if (typeof window === 'undefined') return;
     
-    console.log('🧹 Clearing all tokens and session data...');
+    logger.debug('🧹 Clearing all tokens and session data...');
     
     // Clear cookies with all possible configurations
     Cookies.remove(TOKEN_KEY);
@@ -414,37 +415,37 @@ class APIClient {
     try {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(REFRESH_TOKEN_KEY);
-      console.log('💾 Tokens cleared from localStorage');
+      logger.debug('💾 Tokens cleared from localStorage');
     } catch (error) {
-      console.error('❌ LocalStorage cleanup failed:', error);
+      logger.error('❌ LocalStorage cleanup failed:', error);
     }
     
     // Clear sessionStorage as well
     try {
       sessionStorage.removeItem(TOKEN_KEY);
       sessionStorage.removeItem(REFRESH_TOKEN_KEY);
-      console.log('💾 Tokens cleared from sessionStorage');
+      logger.debug('💾 Tokens cleared from sessionStorage');
     } catch (error) {
-      console.error('❌ SessionStorage cleanup failed:', error);
+      logger.error('❌ SessionStorage cleanup failed:', error);
     }
     
     // Clear any other auth-related data
     try {
       localStorage.removeItem('user');
       sessionStorage.removeItem('user');
-      console.log('🧹 User data cleared from storage');
+      logger.debug('🧹 User data cleared from storage');
     } catch (error) {
-      console.error('❌ User data cleanup failed:', error);
+      logger.error('❌ User data cleanup failed:', error);
     }
     
-    console.log('✅ All tokens and session data cleared');
+    logger.debug('✅ All tokens and session data cleared');
   }
 
   public setAuthTokens(accessToken: string, refreshToken: string): void {
-    console.log('🔑 Setting auth tokens...');
+    logger.debug('🔑 Setting auth tokens...');
     this.setAccessToken(accessToken);
     this.setRefreshToken(refreshToken);
-    console.log('🔑 Auth tokens set complete');
+    logger.debug('🔑 Auth tokens set complete');
   }
 
   /**
@@ -452,7 +453,7 @@ class APIClient {
    */
   private async request<T>(config: AxiosRequestConfig): Promise<APIResponse<T>> {
     try {
-      console.log('🌐 Making API request:', {
+      logger.debug('🌐 Making API request:', {
         method: config.method,
         url: config.url,
         baseURL: this.axiosInstance.defaults.baseURL,
@@ -460,7 +461,7 @@ class APIClient {
       });
       
       const response: AxiosResponse<APIResponse<T>> = await this.axiosInstance(config);
-      console.log('✅ API response received:', response.status, response.data);
+      logger.debug('✅ API response received:', response.status, response.data);
       
       // Transform backend response to frontend format
       const transformedResponse: APIResponse<T> = {
@@ -472,9 +473,31 @@ class APIClient {
       
       return transformedResponse;
     } catch (error) {
-      console.error('💥 API request failed:', error);
+      logger.error('💥 API request failed:', error);
       throw error; // Will be handled by interceptor
     }
+  }
+
+  /**
+   * Generic POST method
+   */
+  public async post<T>(url: string, data?: unknown): Promise<APIResponse<T>> {
+    return this.request<T>({
+      method: 'POST',
+      url,
+      data
+    });
+  }
+
+  /**
+   * Generic GET method
+   */
+  public async get<T>(url: string, params?: unknown): Promise<APIResponse<T>> {
+    return this.request<T>({
+      method: 'GET',
+      url,
+      params
+    });
   }
 
   // =============================================================================
@@ -503,7 +526,7 @@ class APIClient {
    * Register user
    */
   async register(data: RegisterRequest): Promise<APIResponse<AuthResponse>> {
-    console.log('🆕 Attempting registration with:', { ...data, password: '[HIDDEN]' });
+    logger.debug('🆕 Attempting registration with:', { ...data, password: '[HIDDEN]' });
     
     const response = await this.request<AuthResponse>({
       method: 'POST',
@@ -511,7 +534,7 @@ class APIClient {
       data
     });
     
-    console.log('📥 Registration response:', response);
+    logger.debug('📥 Registration response:', response);
     
     // Store tokens if registration successful
     if (response.data && !response.error) {
@@ -580,16 +603,71 @@ class APIClient {
    * Get current user profile
    */
   async getProfile(): Promise<APIResponse<User>> {
-    console.log('📱 getProfile called');
+    logger.debug('📱 getProfile called');
     try {
       const response = await this.request<User>({
         method: 'GET',
         url: '/auth/profile'
       });
-      console.log('✅ getProfile success:', response);
+      logger.debug('✅ getProfile success:', response);
       return response;
     } catch (error) {
-      console.error('❌ getProfile error:', error);
+      logger.error('❌ getProfile error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get doctor profile
+   */
+  async getDoctorProfile(): Promise<APIResponse<User>> {
+    logger.debug('👨‍⚕️ getDoctorProfile called');
+    try {
+      const response = await this.request<User>({
+        method: 'GET',
+        url: '/auth/profile/doctor'
+      });
+      logger.debug('✅ getDoctorProfile success:', response);
+      return response;
+    } catch (error) {
+      logger.error('❌ getDoctorProfile error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get nurse profile
+   */
+  async getNurseProfile(): Promise<APIResponse<User>> {
+    logger.debug('👩‍⚕️ getNurseProfile called');
+    try {
+      const response = await this.request<User>({
+        method: 'GET',
+        url: '/auth/profile/nurse'
+      });
+      logger.debug('✅ getNurseProfile success:', response);
+      return response;
+    } catch (error) {
+      logger.error('❌ getNurseProfile error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Validate password strength
+   */
+  async validatePasswordStrength(password: string): Promise<APIResponse<{ isValid: boolean; score: number; feedback: string[] }>> {
+    logger.debug('🔒 validatePasswordStrength called');
+    try {
+      const response = await this.request<{ isValid: boolean; score: number; feedback: string[] }>({
+        method: 'POST',
+        url: '/auth/validate-password',
+        data: { password }
+      });
+      logger.debug('✅ validatePasswordStrength success:', response);
+      return response;
+    } catch (error) {
+      logger.error('❌ validatePasswordStrength error:', error);
       throw error;
     }
   }
@@ -664,8 +742,8 @@ class APIClient {
     currentPassword: string;
     newPassword: string;
     confirmPassword: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
+  }): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
       method: 'PUT',
       url: '/auth/change-password',
       data
@@ -675,8 +753,8 @@ class APIClient {
   /**
    * Get user security settings
    */
-  async getSecuritySettings(): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async getSecuritySettings(): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
       method: 'GET',
       url: '/security/settings'
     });
@@ -695,8 +773,8 @@ class APIClient {
     passwordChangeInterval?: number;
     deviceTrust?: boolean;
     locationTracking?: boolean;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
+  }): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
       method: 'PUT',
       url: '/security/settings',
       data
@@ -706,8 +784,8 @@ class APIClient {
   /**
    * Get user login sessions
    */
-  async getUserSessions(): Promise<APIResponse<any[]>> {
-    return this.request<any[]>({
+  async getUserSessions(): Promise<APIResponse<unknown[]>> {
+    return this.request<unknown[]>({
       method: 'GET',
       url: '/security/sessions'
     });
@@ -716,8 +794,8 @@ class APIClient {
   /**
    * Terminate user session
    */
-  async terminateSession(sessionId: string): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async terminateSession(sessionId: string): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
       method: 'DELETE',
       url: `/security/sessions/${sessionId}`
     });
@@ -751,6 +829,264 @@ class APIClient {
     return this.request<MedicalPatient>({
       method: 'GET',
       url: '/patients/profile'
+    });
+  }
+
+  // =============================================================================
+  // EXTERNAL REQUESTERS API
+  // =============================================================================
+
+  /**
+   * External requester login
+   */
+  async externalLogin(data: LoginRequest): Promise<APIResponse<AuthResponse>> {
+    const response = await this.request<AuthResponse>({
+      method: 'POST',
+      url: '/external-requesters/login',
+      data
+    });
+    
+    if (response.data && !response.error) {
+      this.setAuthTokens(response.data.accessToken, response.data.refreshToken);
+    }
+    
+    return response;
+  }
+
+  /**
+   * External requester register
+   */
+  async externalRegister(data: RegisterRequest): Promise<APIResponse<AuthResponse>> {
+    return this.request<AuthResponse>({
+      method: 'POST',
+      url: '/external-requesters/register',
+      data
+    });
+  }
+
+  /**
+   * Login external requester (alias for compatibility)
+   */
+  async loginExternalRequester(data: LoginRequest): Promise<APIResponse<AuthResponse>> {
+    return this.externalLogin(data);
+  }
+
+  /**
+   * Register external requester (alias for compatibility)
+   */
+  async registerExternalRequester(data: unknown): Promise<APIResponse<AuthResponse>> {
+    return this.request<AuthResponse>({
+      method: 'POST',
+      url: '/external-requesters/register',
+      data
+    });
+  }
+
+  /**
+   * External requester logout
+   */
+  async externalLogout(): Promise<APIResponse<null>> {
+    const refreshToken = this.getRefreshToken();
+    
+    try {
+      const response = await this.request<null>({
+        method: 'POST',
+        url: '/external-requesters/logout',
+        data: { refreshToken }
+      });
+      
+      this.clearTokens();
+      return response;
+    } catch (error) {
+      this.clearTokens();
+      throw error;
+    }
+  }
+
+  /**
+   * Get external requester dashboard
+   */
+  async getExternalRequestersDashboardOverview(): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'GET',
+      url: '/external-requesters/dashboard'
+    });
+  }
+
+  /**
+   * Get all data requests for external requester
+   */
+  async getAllDataRequests(): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'GET',
+      url: '/external-requesters/requests'
+    });
+  }
+
+  /**
+   * Create new data request
+   */
+  async createDataRequest(data: unknown): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'POST',
+      url: '/external-requesters/requests',
+      data
+    });
+  }
+
+  /**
+   * Get data request by ID
+   */
+  async getDataRequestById(requestId: string): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'GET',
+      url: `/external-requesters/requests/${requestId}`
+    });
+  }
+
+  /**
+   * Generate data request report
+   */
+  async generateDataRequestReport(requestId: string): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'POST',
+      url: `/external-requesters/requests/${requestId}/report`
+    });
+  }
+
+  /**
+   * Get external requester profile
+   */
+  async getExternalRequesterProfile(): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'GET',
+      url: '/external-requesters/profile'
+    });
+  }
+
+  /**
+   * Update external requester profile
+   */
+  async updateExternalRequesterProfile(data: unknown): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'PUT',
+      url: '/external-requesters/profile',
+      data
+    });
+  }
+
+  /**
+   * Get external requester notifications
+   */
+  async getExternalRequesterNotifications(params?: { page?: number; limit?: number }): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'GET',
+      url: '/external-requesters/notifications',
+      params
+    });
+  }
+
+  /**
+   * Mark notification as read
+   */
+  async markNotificationAsRead(notificationId: string): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'PUT',
+      url: `/external-requesters/notifications/${notificationId}/read`
+    });
+  }
+
+  /**
+   * Search patients for external requesters
+   */
+  async searchPatients(query: unknown): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'GET',
+      url: '/external-requesters/search',
+      params: { query }
+    });
+  }
+
+  /**
+   * Search patients for request (alias for compatibility)
+   */
+  async searchPatientsForRequest(params: unknown): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'GET',
+      url: '/external-requesters/search',
+      params
+    });
+  }
+
+  /**
+   * Get external requester settings
+   */
+  async getExternalRequesterSettings(): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'GET',
+      url: '/external-requesters/settings'
+    });
+  }
+
+  /**
+   * Update external requester settings
+   */
+  async updateExternalRequesterSettings(data: unknown): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'PUT',
+      url: '/external-requesters/settings',
+      data
+    });
+  }
+
+  /**
+   * Get password requirements
+   */
+  async getPasswordRequirements(): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'GET',
+      url: '/auth/password-requirements'
+    });
+  }
+
+  /**
+   * Get patient consent requests
+   */
+  async getPatientConsentRequests(userId: string): Promise<APIResponse<unknown[]>> {
+    return this.request<unknown[]>({
+      method: 'GET',
+      url: `/patients/${userId}/consent-requests`
+    });
+  }
+
+  /**
+   * Respond to consent request
+   */
+  async respondToConsentRequest(userId: string, requestId: string, data: { decision: string; reason?: string }): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'POST',
+      url: `/patients/${userId}/consent-requests/${requestId}/respond`,
+      data
+    });
+  }
+
+  /**
+   * Get patient lab results
+   */
+  async getPatientLabResults(userId: string): Promise<APIResponse<unknown[]>> {
+    return this.request<unknown[]>({
+      method: 'GET',
+      url: `/patients/${userId}/lab-results`
+    });
+  }
+
+  /**
+   * Terminate all sessions
+   */
+  async terminateAllSessions(): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'POST',
+      url: '/auth/terminate-all-sessions'
     });
   }
 
@@ -808,6 +1144,102 @@ class APIClient {
     return this.request<MedicalRecord[]>({
       method: 'GET',
       url: `/medical/patients/${patientId}/records`
+    });
+  }
+
+  // =============================================================================
+  // PATIENT PORTAL API
+  // =============================================================================
+
+  /**
+   * Get patient AI insights
+   */
+  async getPatientAIInsights(patientId: string): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'GET',
+      url: `/patients/${patientId}/ai-insights`
+    });
+  }
+
+  /**
+   * Get patient notifications
+   */
+  async getPatientNotifications(patientId: string): Promise<APIResponse<unknown[]>> {
+    return this.request<unknown[]>({
+      method: 'GET',
+      url: `/patients/${patientId}/notifications`
+    });
+  }
+
+  /**
+   * Get patient medications
+   */
+  async getPatientMedications(patientId: string): Promise<APIResponse<unknown[]>> {
+    return this.request<unknown[]>({
+      method: 'GET',
+      url: `/patients/${patientId}/medications`
+    });
+  }
+
+  /**
+   * Get patient appointments
+   */
+  async getPatientAppointments(patientId: string): Promise<APIResponse<Appointment[]>> {
+    return this.request<Appointment[]>({
+      method: 'GET',
+      url: `/patients/${patientId}/appointments`
+    });
+  }
+
+  /**
+   * Create new appointment
+   */
+  async createAppointment(data: CreateAppointmentRequest): Promise<APIResponse<Appointment>> {
+    return this.request<Appointment>({
+      method: 'POST',
+      url: '/appointments',
+      data
+    });
+  }
+
+  /**
+   * Get available time slots
+   */
+  async getAvailableTimeSlots(doctorId: string, date: string, typeId: string): Promise<APIResponse<unknown[]>> {
+    return this.request<unknown[]>({
+      method: 'GET',
+      url: `/appointments/available-slots/${doctorId}/${date}/${typeId}`
+    });
+  }
+
+  /**
+   * Get appointment by ID
+   */
+  async getAppointment(id: string): Promise<APIResponse<Appointment>> {
+    return this.request<Appointment>({
+      method: 'GET',
+      url: `/appointments/${id}`
+    });
+  }
+
+  /**
+   * Update appointment
+   */
+  async updateAppointment(id: string, data: Partial<Appointment>): Promise<APIResponse<Appointment>> {
+    return this.request<Appointment>({
+      method: 'PUT',
+      url: `/appointments/${id}`,
+      data
+    });
+  }
+
+  /**
+   * Cancel appointment
+   */
+  async cancelAppointment(id: string): Promise<APIResponse<void>> {
+    return this.request<void>({
+      method: 'DELETE',
+      url: `/appointments/${id}`
     });
   }
 
@@ -981,8 +1413,8 @@ class APIClient {
   /**
    * Create lab result
    */
-  async createLabResult(labOrderId: string, data: any): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async createLabResult(labOrderId: string, data: Record<string, unknown>): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
       method: 'POST',
       url: '/medical/lab-results',
       data: { labOrderId, ...data }
@@ -992,8 +1424,8 @@ class APIClient {
   /**
    * Get lab results
    */
-  async getLabResults(labOrderId: string): Promise<APIResponse<any[]>> {
-    return this.request<any[]>({
+  async getLabResults(labOrderId: string): Promise<APIResponse<unknown[]>> {
+    return this.request<unknown[]>({
       method: 'GET',
       url: `/medical/lab-orders/${labOrderId}/results`
     });
@@ -1038,8 +1470,8 @@ class APIClient {
   /**
    * Update prescription item
    */
-  async updatePrescriptionItem(id: string, data: any): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async updatePrescriptionItem(id: string, data: unknown): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
       method: 'PUT',
       url: `/medical/prescription-items/${id}`,
       data
@@ -1066,238 +1498,10 @@ class APIClient {
     });
   }
 
-  /**
-   * Complete prescription dispensing
-   */
-  async completePrescription(prescriptionId: string, data: {
-    pharmacistName: string;
-    pharmacistNotes?: string;
-    dispensedDate: string;
-    dispensedBy: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'POST',
-      url: `/medical/prescriptions/${prescriptionId}/complete`,
-      data
-    });
-  }
-
-  /**
-   * Create medical record
-   */
-  async createMedicalRecord(patientId: string, data: Omit<MedicalRecord, 'id' | 'patientId' | 'created_at' | 'updated_at'>): Promise<APIResponse<MedicalRecord>> {
-    return this.request<MedicalRecord>({
-      method: 'POST',
-      url: `/medical/patients/${patientId}/records`,
-      data
-    });
-  }
-
   // =============================================================================
-  // AI RISK ASSESSMENT API
+  // DOCUMENT MANAGEMENT API
   // =============================================================================
 
-  /**
-   * Diabetes risk assessment
-   */
-  async assessDiabetesRisk(data: RiskAssessmentRequest): Promise<APIResponse<RiskAssessmentResponse>> {
-    return this.request<RiskAssessmentResponse>({
-      method: 'POST',
-      url: '/ai/risk-assessment/diabetes',
-      data
-    });
-  }
-
-  /**
-   * Hypertension risk assessment
-   */
-  async assessHypertensionRisk(data: RiskAssessmentRequest): Promise<APIResponse<RiskAssessmentResponse>> {
-    return this.request<RiskAssessmentResponse>({
-      method: 'POST',
-      url: '/ai/risk-assessment/hypertension',
-      data
-    });
-  }
-
-  /**
-   * Heart disease risk assessment
-   */
-  async assessHeartDiseaseRisk(data: RiskAssessmentRequest): Promise<APIResponse<RiskAssessmentResponse>> {
-    return this.request<RiskAssessmentResponse>({
-      method: 'POST',
-      url: '/ai/risk-assessment/heart-disease',
-      data
-    });
-  }
-
-  /**
-   * Get risk assessment history
-   */
-  async getRiskHistory(patientId: string): Promise<APIResponse<RiskAssessmentResponse[]>> {
-    return this.request<RiskAssessmentResponse[]>({
-      method: 'GET',
-      url: `/ai/risk-assessment/history/${patientId}`
-    });
-  }
-
-  /**
-   * Get risk dashboard overview
-   */
-  async getRiskDashboard(): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/ai/dashboard/risk-overview'
-    });
-  }
-
-  // =============================================================================
-  // CONSENT ENGINE API
-  // =============================================================================
-
-  /**
-   * Create consent contract
-   */
-  async createConsentContract(data: ConsentContractRequest): Promise<APIResponse<ConsentContract>> {
-    return this.request<ConsentContract>({
-      method: 'POST',
-      url: '/consent/contracts',
-      data
-    });
-  }
-
-  /**
-   * Get consent requests
-   */
-  async getConsentRequests(params?: { status?: string; patientId?: string }): Promise<APIResponse<any[]>> {
-    return this.request<any[]>({
-      method: 'GET',
-      url: '/consent/requests',
-      params
-    });
-  }
-
-  /**
-   * Get consent contracts
-   */
-  async getConsentContracts(params?: { status?: string; patientId?: string }): Promise<APIResponse<ConsentContract[]>> {
-    return this.request<ConsentContract[]>({
-      method: 'GET',
-      url: '/consent/contracts',
-      params
-    });
-  }
-
-  /**
-   * Update consent contract status
-   */
-  async updateConsentStatus(contractId: string, status: string, reason?: string): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PATCH',
-      url: `/consent/contracts/${contractId}/status`,
-      data: { status, reason }
-    });
-  }
-
-  /**
-   * Execute smart contract
-   */
-  async executeSmartContract(contractId: string, action: string): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'POST',
-      url: `/consent/contracts/${contractId}/execute`,
-      data: { action }
-    });
-  }
-
-  /**
-   * Get contract audit logs
-   */
-  async getContractAudit(contractId: string): Promise<APIResponse<any[]>> {
-    return this.request<any[]>({
-      method: 'GET',
-      url: `/consent/contracts/${contractId}/audit`
-    });
-  }
-
-  /**
-   * Get consent dashboard
-   */
-  async getConsentDashboard(): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/consent/dashboard'
-    });
-  }
-
-  // =============================================================================
-  // ADMIN API
-  // =============================================================================
-
-  /**
-   * Get all users (admin only)
-   */
-  async getUsers(params?: { page?: number; limit?: number; role?: string }): Promise<APIResponse<User[]>> {
-    return this.request<User[]>({
-      method: 'GET',
-      url: '/admin/users',
-      params
-    });
-  }
-
-  /**
-   * Create user (admin only)
-   */
-  async createUser(data: Omit<User, 'id' | 'created_at' | 'updated_at'>): Promise<APIResponse<User>> {
-    return this.request<User>({
-      method: 'POST',
-      url: '/admin/users',
-      data
-    });
-  }
-
-  /**
-   * Update user (admin only)
-   */
-  async updateUser(id: string, data: Partial<User>): Promise<APIResponse<User>> {
-    return this.request<User>({
-      method: 'PUT',
-      url: `/admin/users/${id}`,
-      data
-    });
-  }
-
-  /**
-   * Delete user (admin only)
-   */
-  async deleteUser(id: string): Promise<APIResponse<null>> {
-    return this.request<null>({
-      method: 'DELETE',
-      url: `/admin/users/${id}`
-    });
-  }
-
-  /**
-   * Get system health
-   */
-  async getSystemHealth(): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/admin/system/health'
-    });
-  }
-
-  /**
-   * Get audit logs
-   */
-  async getAuditLogs(params?: { page?: number; limit?: number; userId?: string; action?: string }): Promise<APIResponse<any[]>> {
-    return this.request<any[]>({
-      method: 'GET',
-      url: '/admin/audit-logs',
-      params
-    });
-  }
-
-  // Document Management Methods
   /**
    * Create document
    */
@@ -1375,327 +1579,117 @@ class APIClient {
   }
 
   // =============================================================================
-  // PATIENT PORTAL API
+  // AI & RISK ASSESSMENT API
   // =============================================================================
 
   /**
-   * Get patient medical records
+   * Diabetes risk assessment
    */
-  async getPatientRecords(patientId: string): Promise<APIResponse<any[]>> {
-    return this.request<any[]>({
-      method: 'GET',
-      url: `/patients/${patientId}/records`
-    });
-  }
-
-  /**
-   * Create patient medical record
-   */
-  async createPatientRecord(patientId: string, data: any): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async assessDiabetesRisk(data: RiskAssessmentRequest): Promise<APIResponse<RiskAssessmentResponse>> {
+    return this.request<RiskAssessmentResponse>({
       method: 'POST',
-      url: `/patients/${patientId}/records`,
+      url: '/ai/risk-assessment/diabetes',
       data
     });
   }
 
   /**
-   * Update patient medical record
+   * Hypertension risk assessment
    */
-  async updatePatientRecord(patientId: string, recordId: string, data: any): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: `/patients/${patientId}/records/${recordId}`,
-      data
-    });
-  }
-
-  /**
-   * Delete patient medical record
-   */
-  async deletePatientRecord(patientId: string, recordId: string): Promise<APIResponse<void>> {
-    return this.request<void>({
-      method: 'DELETE',
-      url: `/patients/${patientId}/records/${recordId}`
-    });
-  }
-
-  /**
-   * Get patient lab results
-   */
-  async getPatientLabResults(patientId: string): Promise<APIResponse<any[]>> {
-    return this.request<any[]>({
-      method: 'GET',
-      url: `/patients/${patientId}/lab-results`
-    });
-  }
-
-  /**
-   * Get specific lab result
-   */
-  async getPatientLabResult(patientId: string, resultId: string): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: `/patients/${patientId}/lab-results/${resultId}`
-    });
-  }
-
-  /**
-   * Create patient lab result
-   */
-  async createPatientLabResult(patientId: string, data: any): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async assessHypertensionRisk(data: RiskAssessmentRequest): Promise<APIResponse<RiskAssessmentResponse>> {
+    return this.request<RiskAssessmentResponse>({
       method: 'POST',
-      url: `/patients/${patientId}/lab-results`,
+      url: '/ai/risk-assessment/hypertension',
       data
     });
   }
 
   /**
-   * Update patient lab result
+   * Heart disease risk assessment
    */
-  async updatePatientLabResult(patientId: string, resultId: string, data: any): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: `/patients/${patientId}/lab-results/${resultId}`,
+  async assessHeartDiseaseRisk(data: RiskAssessmentRequest): Promise<APIResponse<RiskAssessmentResponse>> {
+    return this.request<RiskAssessmentResponse>({
+      method: 'POST',
+      url: '/ai/risk-assessment/heart-disease',
       data
     });
   }
 
   /**
-   * Get patient medications
+   * Get risk assessment history
    */
-  async getPatientMedications(patientId: string): Promise<APIResponse<any[]>> {
-    return this.request<any[]>({
+  async getRiskHistory(patientId: string): Promise<APIResponse<RiskAssessmentResponse[]>> {
+    return this.request<RiskAssessmentResponse[]>({
       method: 'GET',
-      url: `/patients/${patientId}/medications`
+      url: `/ai/risk-assessment/history/${patientId}`
     });
   }
 
   /**
-   * Add patient medication
+   * Get risk dashboard overview
    */
-  async addPatientMedication(patientId: string, data: any): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'POST',
-      url: `/patients/${patientId}/medications`,
-      data
-    });
-  }
-
-  /**
-   * Update patient medication
-   */
-  async updatePatientMedication(patientId: string, medId: string, data: any): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: `/patients/${patientId}/medications/${medId}`,
-      data
-    });
-  }
-
-  /**
-   * Get patient documents
-   */
-  async getPatientDocuments(patientId: string): Promise<APIResponse<any[]>> {
-    return this.request<any[]>({
+  async getRiskDashboard(): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
       method: 'GET',
-      url: `/patients/${patientId}/documents`
-    });
-  }
-
-  /**
-   * Upload patient document
-   */
-  async uploadPatientDocument(patientId: string, formData: FormData): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'POST',
-      url: `/patients/${patientId}/documents`,
-      data: formData,
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-  }
-
-  /**
-   * Delete patient document
-   */
-  async deletePatientDocument(patientId: string, docId: string): Promise<APIResponse<void>> {
-    return this.request<void>({
-      method: 'DELETE',
-      url: `/patients/${patientId}/documents/${docId}`
-    });
-  }
-
-  /**
-   * Download patient document
-   */
-  async downloadPatientDocument(patientId: string, docId: string): Promise<Blob> {
-    const response = await this.axiosInstance.get(`/patients/${patientId}/documents/${docId}/download`, {
-      responseType: 'blob'
-    });
-    return response.data;
-  }
-
-  /**
-   * Get patient notifications
-   */
-  async getPatientNotifications(patientId: string): Promise<APIResponse<any[]>> {
-    return this.request<any[]>({
-      method: 'GET',
-      url: `/patients/${patientId}/notifications`
-    });
-  }
-
-  /**
-   * Create patient notification
-   */
-  async createPatientNotification(patientId: string, data: any): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'POST',
-      url: `/patients/${patientId}/notifications`,
-      data
-    });
-  }
-
-  /**
-   * Mark notification as read
-   */
-  async markNotificationAsRead(patientId: string, notifId: string): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: `/patients/${patientId}/notifications/${notifId}/read`
-    });
-  }
-
-  /**
-   * Delete patient notification
-   */
-  async deletePatientNotification(patientId: string, notifId: string): Promise<APIResponse<void>> {
-    return this.request<void>({
-      method: 'DELETE',
-      url: `/patients/${patientId}/notifications/${notifId}`
-    });
-  }
-
-  /**
-   * Get patient AI insights
-   */
-  async getPatientAIInsights(patientId: string): Promise<APIResponse<any[]>> {
-    return this.request<any[]>({
-      method: 'GET',
-      url: `/patients/${patientId}/ai-insights`
-    });
-  }
-
-  /**
-   * Calculate patient AI insights
-   */
-  async calculatePatientAIInsights(patientId: string, data: any): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'POST',
-      url: `/patients/${patientId}/ai-insights/calculate`,
-      data
-    });
-  }
-
-  /**
-   * Get patient consent requests
-   */
-  async getPatientConsentRequests(patientId: string): Promise<APIResponse<any[]>> {
-    return this.request<any[]>({
-      method: 'GET',
-      url: `/patients/${patientId}/consent-requests`
-    });
-  }
-
-  /**
-   * Create consent request
-   */
-  async createConsentRequest(patientId: string, data: any): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'POST',
-      url: `/patients/${patientId}/consent-requests`,
-      data
-    });
-  }
-
-  /**
-   * Update consent request
-   */
-  async updateConsentRequest(patientId: string, requestId: string, data: any): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: `/patients/${patientId}/consent-requests/${requestId}`,
-      data
-    });
-  }
-
-  /**
-   * Respond to consent request
-   */
-  async respondToConsentRequest(patientId: string, requestId: string, data: any): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'POST',
-      url: `/patients/${patientId}/consent-requests/${requestId}/respond`,
-      data
+      url: '/ai/dashboard/risk-overview'
     });
   }
 
   // =============================================================================
-  // APPOINTMENT API
+  // CONSENT ENGINE API
   // =============================================================================
 
   /**
-   * Get patient appointments
+   * Create consent contract
    */
-  async getPatientAppointments(patientId: string): Promise<APIResponse<Appointment[]>> {
-    return this.request<Appointment[]>({
-      method: 'GET',
-      url: `/patients/${patientId}/appointments`
-    });
-  }
-
-  /**
-   * Get appointment by ID
-   */
-  async getAppointment(id: string): Promise<APIResponse<Appointment>> {
-    return this.request<Appointment>({
-      method: 'GET',
-      url: `/appointments/${id}`
-    });
-  }
-
-  /**
-   * Create new appointment
-   */
-  async createAppointment(data: CreateAppointmentRequest): Promise<APIResponse<Appointment>> {
-    return this.request<Appointment>({
+  async createConsentContract(data: ConsentContractRequest): Promise<APIResponse<ConsentContract>> {
+    return this.request<ConsentContract>({
       method: 'POST',
-      url: '/appointments',
+      url: '/consent/contracts',
       data
     });
   }
 
   /**
-   * Update appointment
+   * Get consent contracts
    */
-  async updateAppointment(id: string, data: Partial<Appointment>): Promise<APIResponse<Appointment>> {
-    return this.request<Appointment>({
-      method: 'PUT',
-      url: `/appointments/${id}`,
-      data
+  async getConsentContracts(params?: { status?: string; patientId?: string }): Promise<APIResponse<ConsentContract[]>> {
+    return this.request<ConsentContract[]>({
+      method: 'GET',
+      url: '/consent/contracts',
+      params
     });
   }
 
   /**
-   * Cancel appointment
+   * Update consent contract status
    */
-  async cancelAppointment(id: string): Promise<APIResponse<void>> {
-    return this.request<void>({
-      method: 'DELETE',
-      url: `/appointments/${id}`
+  async updateConsentStatus(contractId: string, status: string, reason?: string): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'PATCH',
+      url: `/consent/contracts/${contractId}/status`,
+      data: { status, reason }
+    });
+  }
+
+  /**
+   * Get consent dashboard
+   */
+  async getConsentDashboard(): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
+      method: 'GET',
+      url: '/consent/dashboard'
+    });
+  }
+
+  /**
+   * Create medical record
+   */
+  async createMedicalRecord(patientId: string, data: Omit<MedicalRecord, 'id' | 'patientId' | 'created_at' | 'updated_at'>): Promise<APIResponse<MedicalRecord>> {
+    return this.request<MedicalRecord>({
+      method: 'POST',
+      url: `/medical/patients/${patientId}/records`,
+      data
     });
   }
 
@@ -1704,18 +1698,48 @@ class APIClient {
   // =============================================================================
 
   /**
-   * Get all users (Admin only)
+   * Get admin login
    */
-  async getUsers(params?: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    role?: string;
-    status?: string;
-    sortBy?: string;
-    sortOrder?: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async adminLogin(data: LoginRequest): Promise<APIResponse<AuthResponse>> {
+    const response = await this.request<AuthResponse>({
+      method: 'POST',
+      url: '/admin/login',
+      data
+    });
+    
+    if (response.data && !response.error) {
+      this.setAuthTokens(response.data.accessToken, response.data.refreshToken);
+    }
+    
+    return response;
+  }
+
+  /**
+   * Admin logout
+   */
+  async adminLogout(): Promise<APIResponse<null>> {
+    const refreshToken = this.getRefreshToken();
+    
+    try {
+      const response = await this.request<null>({
+        method: 'POST',
+        url: '/admin/logout',
+        data: { refreshToken }
+      });
+      
+      this.clearTokens();
+      return response;
+    } catch (error) {
+      this.clearTokens();
+      throw error;
+    }
+  }
+
+  /**
+   * Get all users (admin only)
+   */
+  async getUsers(params?: { page?: number; limit?: number; role?: string }): Promise<APIResponse<User[]>> {
+    return this.request<User[]>({
       method: 'GET',
       url: '/admin/users',
       params
@@ -1723,20 +1747,10 @@ class APIClient {
   }
 
   /**
-   * Get user by ID (Admin only)
+   * Create user (admin only)
    */
-  async getUserById(id: string): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: `/admin/users/${id}`
-    });
-  }
-
-  /**
-   * Create user (Admin only)
-   */
-  async createUser(data: any): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async createUser(data: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<APIResponse<User>> {
+    return this.request<User>({
       method: 'POST',
       url: '/admin/users',
       data
@@ -1744,10 +1758,10 @@ class APIClient {
   }
 
   /**
-   * Update user (Admin only)
+   * Update user (admin only)
    */
-  async updateUser(id: string, data: any): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async updateUser(id: string, data: Partial<User>): Promise<APIResponse<User>> {
+    return this.request<User>({
       method: 'PUT',
       url: `/admin/users/${id}`,
       data
@@ -1755,50 +1769,30 @@ class APIClient {
   }
 
   /**
-   * Delete user (Admin only)
+   * Delete user (admin only)
    */
-  async deleteUser(id: string): Promise<APIResponse<void>> {
-    return this.request<void>({
+  async deleteUser(id: string): Promise<APIResponse<null>> {
+    return this.request<null>({
       method: 'DELETE',
       url: `/admin/users/${id}`
     });
   }
 
   /**
-   * Get system health (Admin only)
+   * Get system health
    */
-  async getSystemHealth(): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async getSystemHealth(): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
       method: 'GET',
       url: '/admin/system/health'
     });
   }
 
   /**
-   * Get system statistics (Admin only)
+   * Get audit logs
    */
-  async getSystemStats(): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/admin/system/stats'
-    });
-  }
-
-  /**
-   * Get audit logs (Admin only)
-   */
-  async getAuditLogs(params?: {
-    page?: number;
-    limit?: number;
-    user_id?: string;
-    action?: string;
-    resource_type?: string;
-    start_date?: string;
-    end_date?: string;
-    sortBy?: string;
-    sortOrder?: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async getAuditLogs(params?: { page?: number; limit?: number; userId?: string; action?: string }): Promise<APIResponse<unknown[]>> {
+    return this.request<unknown[]>({
       method: 'GET',
       url: '/admin/audit-logs',
       params
@@ -1806,40 +1800,20 @@ class APIClient {
   }
 
   /**
-   * Get audit log statistics (Admin only)
+   * Get database status
    */
-  async getAuditLogStats(): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/admin/audit-logs/stats'
-    });
-  }
-
-  /**
-   * Get database status (Admin only)
-   */
-  async getDatabaseStatus(): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async getDatabaseStatus(): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
       method: 'GET',
       url: '/admin/database/status'
     });
   }
 
   /**
-   * Get database backups (Admin only)
+   * Create database backup
    */
-  async getDatabaseBackups(): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/admin/database/backups'
-    });
-  }
-
-  /**
-   * Create database backup (Admin only)
-   */
-  async createDatabaseBackup(data: { type?: string; description?: string }): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async createDatabaseBackup(data: { type: string; description?: string }): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
       method: 'POST',
       url: '/admin/database/backup',
       data
@@ -1847,10 +1821,10 @@ class APIClient {
   }
 
   /**
-   * Optimize database (Admin only)
+   * Optimize database
    */
-  async optimizeDatabase(data: { type?: string }): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async optimizeDatabase(data: { tables?: string[] }): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
       method: 'POST',
       url: '/admin/database/optimize',
       data
@@ -1858,527 +1832,44 @@ class APIClient {
   }
 
   /**
-   * Get database performance metrics (Admin only)
+   * Get external requesters (admin)
    */
-  async getDatabasePerformance(): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async getExternalRequesters(): Promise<APIResponse<unknown[]>> {
+    return this.request<unknown[]>({
       method: 'GET',
-      url: '/admin/database/performance'
+      url: '/admin/external-requesters'
     });
   }
 
   /**
-   * Get all external requesters (Admin only)
+   * Update external requester status
    */
-  async getExternalRequesters(params?: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    organizationType?: string;
-    status?: string;
-    sortBy?: string;
-    sortOrder?: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/admin/external-requesters',
-      params
-    });
-  }
-
-  /**
-   * Get external requester by ID (Admin only)
-   */
-  async getExternalRequesterById(id: string): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: `/admin/external-requesters/${id}`
-    });
-  }
-
-  /**
-   * Update external requester status (Admin only)
-   */
-  async updateExternalRequesterStatus(id: string, data: {
-    status: string;
-    reason?: string;
-    verifiedBy?: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async updateExternalRequesterStatus(requesterId: string, data: { status: string }): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
       method: 'PUT',
-      url: `/admin/external-requesters/${id}/status`,
+      url: `/admin/external-requesters/${requesterId}/status`,
       data
     });
   }
 
   /**
-   * Get external requesters statistics (Admin only)
+   * Get consent requests
    */
-  async getExternalRequestersStats(): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async getConsentRequests(): Promise<APIResponse<unknown[]>> {
+    return this.request<unknown[]>({
       method: 'GET',
-      url: '/admin/external-requesters/stats'
+      url: '/consent/requests'
     });
   }
 
   /**
-   * Get system settings (Admin only)
+   * Complete prescription
    */
-  async getSystemSettings(): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/admin/settings'
-    });
-  }
-
-  /**
-   * Update system settings (Admin only)
-   */
-  async updateSystemSettings(settings: any): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: '/admin/settings',
-      data: { settings }
-    });
-  }
-
-  /**
-   * Reset system settings (Admin only)
-   */
-  async resetSystemSettings(category?: string): Promise<APIResponse<any>> {
-    return this.request<any>({
+  async completePrescription(prescriptionId: string, data: { dispensedBy: string; notes?: string }): Promise<APIResponse<unknown>> {
+    return this.request<unknown>({
       method: 'POST',
-      url: '/admin/settings/reset',
-      data: { category }
-    });
-  }
-
-  /**
-   * Get settings history (Admin only)
-   */
-  async getSettingsHistory(params?: {
-    page?: number;
-    limit?: number;
-    settingKey?: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/admin/settings/history',
-      params
-    });
-  }
-
-  /**
-   * Get all notifications (Admin only)
-   */
-  async getAllNotifications(params?: {
-    page?: number;
-    limit?: number;
-    type?: string;
-    status?: string;
-    userId?: string;
-    startDate?: string;
-    endDate?: string;
-    sortBy?: string;
-    sortOrder?: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/admin/notifications',
-      params
-    });
-  }
-
-  /**
-   * Create system notification (Admin only)
-   */
-  async createSystemNotification(data: {
-    userIds?: string[];
-    type?: string;
-    title: string;
-    message: string;
-    data?: any;
-    priority?: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'POST',
-      url: '/admin/notifications',
+      url: `/prescriptions/${prescriptionId}/complete`,
       data
-    });
-  }
-
-  /**
-   * Mark notifications as read (Admin only)
-   */
-  async markNotificationsAsRead(data: {
-    notificationIds: string[];
-    userId?: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: '/admin/notifications/mark-read',
-      data
-    });
-  }
-
-  /**
-   * Archive notifications (Admin only)
-   */
-  async archiveNotifications(data: {
-    notificationIds: string[];
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: '/admin/notifications/archive',
-      data
-    });
-  }
-
-  /**
-   * Delete notifications (Admin only)
-   */
-  async deleteNotifications(data: {
-    notificationIds: string[];
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'DELETE',
-      url: '/admin/notifications',
-      data
-    });
-  }
-
-  /**
-   * Get notification templates (Admin only)
-   */
-  async getNotificationTemplates(): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/admin/notifications/templates'
-    });
-  }
-
-  /**
-   * Get all data requests (Admin only)
-   */
-  async getAllDataRequests(params?: {
-    page?: number;
-    limit?: number;
-    status?: string;
-    requesterId?: string;
-    requestType?: string;
-    startDate?: string;
-    endDate?: string;
-    sortBy?: string;
-    sortOrder?: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/admin/request-history',
-      params
-    });
-  }
-
-  /**
-   * Get data request by ID (Admin only)
-   */
-  async getDataRequestById(id: string): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: `/admin/request-history/${id}`
-    });
-  }
-
-  /**
-   * Approve data request (Admin only)
-   */
-  async approveDataRequest(id: string, data: {
-    approvalNotes?: string;
-    dataAccessLevel?: string;
-    expirationDate?: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: `/admin/request-history/${id}/approve`,
-      data
-    });
-  }
-
-  /**
-   * Reject data request (Admin only)
-   */
-  async rejectDataRequest(id: string, data: {
-    rejectionReason: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: `/admin/request-history/${id}/reject`,
-      data
-    });
-  }
-
-  /**
-   * Get request statistics (Admin only)
-   */
-  async getRequestStatistics(params?: {
-    period?: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/admin/request-history/statistics',
-      params
-    });
-  }
-
-  // =============================================================================
-  // DOCTOR PROFILE API
-  // =============================================================================
-
-  /**
-   * Get doctor profile
-   */
-  async getDoctorProfile(): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/profile/doctor'
-    });
-  }
-
-  /**
-   * Update doctor profile
-   */
-  async updateDoctorProfile(data: any): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: '/profile/doctor',
-      data
-    });
-  }
-
-  // =============================================================================
-  // NURSE PROFILE API
-  // =============================================================================
-
-  /**
-   * Get nurse profile
-   */
-  async getNurseProfile(): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/profile/nurse'
-    });
-  }
-
-  /**
-   * Update nurse profile
-   */
-  async updateNurseProfile(data: any): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: '/profile/nurse',
-      data
-    });
-  }
-
-  // =============================================================================
-  // CHANGE PASSWORD API
-  // =============================================================================
-
-  /**
-   * Change user password
-   */
-  async changePassword(data: {
-    currentPassword: string;
-    newPassword: string;
-    confirmPassword: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: '/auth/change-password',
-      data
-    });
-  }
-
-  /**
-   * Validate password strength
-   */
-  async validatePasswordStrength(password: string): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'POST',
-      url: '/auth/validate-password',
-      data: { password }
-    });
-  }
-
-  /**
-   * Get password requirements
-   */
-  async getPasswordRequirements(): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/auth/password-requirements'
-    });
-  }
-
-  // =============================================================================
-  // SECURITY SETTINGS API
-  // =============================================================================
-
-  /**
-   * Get security settings
-   */
-  async getSecuritySettings(): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/security/settings'
-    });
-  }
-
-  /**
-   * Update security settings
-   */
-  async updateSecuritySettings(data: {
-    emailNotifications?: boolean;
-    smsNotifications?: boolean;
-    loginNotifications?: boolean;
-    securityAlerts?: boolean;
-    dataSharing?: boolean;
-    privacyLevel?: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: '/security/settings',
-      data
-    });
-  }
-
-  /**
-   * Terminate all sessions
-   */
-  async terminateAllSessions(): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'POST',
-      url: '/security/sessions/terminate-all'
-    });
-  }
-
-  // =============================================================================
-  // EXTERNAL REQUESTERS PROFILE API
-  // =============================================================================
-
-  /**
-   * Get external requester profile
-   */
-  async getExternalRequesterProfile(): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/external-requesters/profile'
-    });
-  }
-
-  /**
-   * Update external requester profile
-   */
-  async updateExternalRequesterProfile(data: {
-    organizationName: string;
-    organizationType: string;
-    registrationNumber?: string;
-    licenseNumber?: string;
-    taxId?: string;
-    primaryContactName: string;
-    primaryContactEmail: string;
-    primaryContactPhone?: string;
-    address?: any;
-    allowedRequestTypes?: string[];
-    dataAccessLevel?: string;
-    maxConcurrentRequests?: number;
-    complianceCertifications?: string[];
-    dataProtectionCertification?: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: '/external-requesters/profile',
-      data
-    });
-  }
-
-  /**
-   * Get external requester settings
-   */
-  async getExternalRequesterSettings(): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/external-requesters/settings'
-    });
-  }
-
-  /**
-   * Update external requester settings
-   */
-  async updateExternalRequesterSettings(data: {
-    notificationPreferences?: any;
-    privacySettings?: any;
-    dataAccessLevel?: string;
-    maxConcurrentRequests?: number;
-    allowedRequestTypes?: string[];
-    complianceCertifications?: string[];
-    dataProtectionCertification?: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: '/external-requesters/settings',
-      data
-    });
-  }
-
-  // =============================================================================
-  // EXTERNAL REQUESTERS NOTIFICATIONS API
-  // =============================================================================
-
-  /**
-   * Get external requester notifications
-   */
-  async getExternalRequesterNotifications(params?: {
-    page?: number;
-    limit?: number;
-    type?: string;
-    isRead?: boolean;
-    startDate?: string;
-    endDate?: string;
-  }): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/external-requesters/notifications',
-      params
-    });
-  }
-
-  /**
-   * Mark notification as read
-   */
-  async markNotificationAsRead(notificationId: string): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: `/external-requesters/notifications/${notificationId}/read`
-    });
-  }
-
-  /**
-   * Mark all notifications as read
-   */
-  async markAllNotificationsAsRead(): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'PUT',
-      url: '/external-requesters/notifications/mark-all-read'
-    });
-  }
-
-  /**
-   * Get notification statistics
-   */
-  async getNotificationStats(): Promise<APIResponse<any>> {
-    return this.request<any>({
-      method: 'GET',
-      url: '/external-requesters/notifications/stats'
     });
   }
 }

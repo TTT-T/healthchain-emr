@@ -1,10 +1,11 @@
 "use client";
-import { useState, useEffect } from "react";
-import { ClipboardList, Search, User, Clock, CheckCircle, AlertCircle, UserPlus } from 'lucide-react';
+import { useState } from "react";
+import { ClipboardList, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
 import { VisitService } from '@/services/visitService';
 import { MedicalPatient } from '@/types/api';
+import { logger } from '@/lib/logger';
 
 interface Patient {
   hn: string;
@@ -39,7 +40,7 @@ interface CheckInData {
 }
 
 export default function CheckIn() {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<"hn" | "nationalId">("hn");
   const [isSearching, setIsSearching] = useState(false);
@@ -133,10 +134,10 @@ export default function CheckIn() {
       const searchBy = searchType === "nationalId" ? "name" : "hn";
       const response = await PatientService.searchPatients(searchQuery, searchBy);
       
-      if (response.success && response.data && response.data.length > 0) {
+      if (response.statusCode === 200 && response.data && response.data.length > 0) {
         // Find exact match
         const exactMatch = response.data.find(p => 
-          searchType === "hn" ? p.hn === searchQuery : p.national_id === searchQuery
+          searchType === "hn" ? (p as any).hn === searchQuery : (p as any).national_id === searchQuery
         );
         
         if (exactMatch) {
@@ -144,7 +145,7 @@ export default function CheckIn() {
           setCheckInData(prev => ({
             ...prev,
             patientHn: exactMatch.hn,
-            patientNationalId: exactMatch.national_id
+            patientNationalId: exactMatch.national_id || ''
           }));
           setSuccess("พบข้อมูลผู้ป่วยแล้ว");
         } else {
@@ -155,7 +156,7 @@ export default function CheckIn() {
       }
       
     } catch (error) {
-      console.error("Error searching patient:", error);
+      logger.error("Error searching patient:", error);
       setError("เกิดข้อผิดพลาดในการค้นหา กรุณาลองอีกครั้ง");
     } finally {
       setIsSearching(false);
@@ -200,7 +201,7 @@ export default function CheckIn() {
       
       const response = await VisitService.createVisit(visitData);
       
-      if (response.success) {
+      if (response.statusCode === 200) {
         // Generate queue number (this would come from the API in real implementation)
         const queueNumber = `Q${String(Math.floor(Math.random() * 999) + 1).padStart(3, '0')}`;
         const selectedDoc = doctors.find(d => d.id === checkInData.assignedDoctor);
@@ -224,7 +225,7 @@ export default function CheckIn() {
       }
       
     } catch (error) {
-      console.error("Error creating visit:", error);
+      logger.error("Error creating visit:", error);
       setError("เกิดข้อผิดพลาดในการเช็คอิน กรุณาลองอีกครั้ง");
     } finally {
       setIsSubmitting(false);
@@ -248,9 +249,9 @@ export default function CheckIn() {
     return doctors.filter(doc => doc.isAvailable);
   };
 
-  const getTreatmentTypeConfig = (type: string) => {
-    return treatmentTypes.find(t => t.value === type) || treatmentTypes[0];
-  };
+  // const getTreatmentTypeConfig = (type: string) => {
+  //   return treatmentTypes.find(t => t.value === type) || treatmentTypes[0];
+  // };
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
@@ -386,7 +387,7 @@ export default function CheckIn() {
                 </div>
                 <div>
                   <span className="text-slate-600">อายุ:</span>
-                  <span className="ml-2 font-medium text-slate-800">{calculateAge(selectedPatient.birth_date)} ปี</span>
+                  <span className="ml-2 font-medium text-slate-800">{selectedPatient.birth_date ? calculateAge(selectedPatient.birth_date) : 'ไม่ระบุ'} ปี</span>
                 </div>
                 <div>
                   <span className="text-slate-600">เพศ:</span>

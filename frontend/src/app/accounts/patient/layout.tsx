@@ -3,34 +3,35 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { logger } from '@/lib/logger';
 
 export default function PatientLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    console.log('🏥 Patient Layout: Auth state check');
-    console.log('  - isLoading:', isLoading);
-    console.log('  - isAuthenticated:', isAuthenticated);
-    console.log('  - user:', user);
-    console.log('  - current path:', typeof window !== 'undefined' ? window.location.pathname : 'SSR');
+    logger.debug('🏥 Patient Layout: Auth state check');
+    logger.debug('  - isLoading:', isLoading);
+    logger.debug('  - isAuthenticated:', isAuthenticated);
+    logger.debug('  - user:', user);
+    logger.debug('  - current path:', typeof window !== 'undefined' ? window.location.pathname : 'SSR');
     
     // Skip checks while still loading
     if (isLoading) {
-      console.log('⏳ Still loading, waiting...');
+      logger.debug('⏳ Still loading, waiting...');
       return;
     }
     
     // Redirect to login if not authenticated
     if (!isAuthenticated) {
-      console.log("🔒 Patient layout: Not authenticated, redirecting to login");
+      logger.debug("🔒 Patient layout: Not authenticated, redirecting to login");
       router.push("/login");
       return;
     }
 
     // Check if user role is correct for this layout
     if (user && user.role !== 'patient') {
-      console.log("🚫 Patient layout: User role mismatch, redirecting to appropriate dashboard");
+      logger.debug("🚫 Patient layout: User role mismatch, redirecting to appropriate dashboard");
       // Redirect to appropriate dashboard based on role
       switch (user.role) {
         case 'admin':
@@ -54,17 +55,17 @@ export default function PatientLayout({ children }: { children: React.ReactNode 
     }
 
     // Only redirect to profile setup if specifically needed
-    if (user && user.role === 'patient' && !user.profile_completed) {
+    if (user && user.role === 'patient' && !(user as any).profile_completed) {
       const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
       // Only redirect to setup-profile if not already there
       if (currentPath !== '/setup-profile') {
-        console.log("📝 Patient profile not completed, redirecting to setup-profile");
+        logger.debug("📝 Patient profile not completed, redirecting to setup-profile");
         router.push('/setup-profile');
         return;
       }
     }
 
-    console.log("✅ Patient layout: Authentication check passed");
+    logger.debug("✅ Patient layout: Authentication check passed");
   }, [user, isLoading, isAuthenticated, router]);
 
   if (isLoading) {

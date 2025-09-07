@@ -1,6 +1,6 @@
 // API Types - ตรงตาม Backend
 
-export interface APIResponse<T = any> {
+export interface APIResponse<T = unknown> {
   data: T | null;
   meta: {
     pagination?: {
@@ -13,7 +13,7 @@ export interface APIResponse<T = any> {
   error: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   } | null;
   statusCode: number;
 }
@@ -45,6 +45,7 @@ export interface User {
   updatedAt: Date;
   createdBy?: string;
   profileCompleted: boolean;
+  accessToken?: string; // For WebSocket authentication
 }
 
 export type UserRole = 
@@ -83,6 +84,7 @@ export interface PaginationInfo {
 // Authentication Types
 export interface LoginRequest {
   username: string;
+  email?: string; // For external requesters
   password: string;
 }
 
@@ -98,14 +100,132 @@ export interface RegisterRequest {
 
 export interface AuthResponse {
   user: Omit<User, 'password'>;
-  token: string;
+  accessToken: string;
   refreshToken: string;
   requiresProfileSetup?: boolean;
   redirectTo?: string;
+  id?: string; // For external requester registration
+  requestId?: string; // For external requester registration
 }
 
 export interface RefreshTokenRequest {
   refreshToken: string;
+}
+
+// External Requesters Types
+export interface UserData {
+  id: string;
+  organizationName: string;
+  lastLogin: string;
+  createdAt: string;
+  email?: string;
+  status?: string;
+  dataAccessLevel?: string;
+}
+
+export interface ExternalRequesterProfile {
+  organizationName: string;
+  organizationType: string;
+  registrationNumber: string;
+  licenseNumber: string;
+  taxId: string;
+  primaryContactName: string;
+  primaryContactEmail: string;
+  primaryContactPhone: string;
+  address: {
+    streetAddress: string;
+    subDistrict: string;
+    district: string;
+    province: string;
+    postalCode: string;
+    country: string;
+  };
+  allowedRequestTypes: string[];
+  dataAccessLevel: string;
+  maxConcurrentRequests: number;
+  complianceCertifications: string[];
+  dataProtectionCertification: string;
+  status: string;
+  isVerified: boolean;
+  description?: string;
+  website?: string;
+  contactPerson?: string;
+  position?: string;
+  email?: string;
+  phone?: string;
+  // Additional properties for dashboard data
+  lastLogin?: string;
+  createdAt?: string;
+}
+
+export interface DashboardData {
+  totalRequests: number;
+  pendingRequests: number;
+  approvedRequests: number;
+  rejectedRequests: number;
+  monthlyUsage: number;
+  maxMonthlyUsage: number;
+  activeConnections: number;
+  dataTransferred: number;
+  recentRequests?: RequestItem[];
+}
+
+export interface RequestItem {
+  id: string;
+  type: string;
+  status: string;
+  date: string;
+  patientName?: string;
+  description?: string;
+  // Extended fields for request processing
+  requestType?: string;
+  patientId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  purpose?: string;
+}
+
+export interface ReportData {
+  totalRequests: number;
+  approvedRequests: number;
+  rejectedRequests: number;
+  pendingRequests: number;
+  monthlyData: MonthlyData[];
+  requestTypes: RequestTypeData[];
+}
+
+export interface MonthlyData {
+  month: string;
+  requests: number;
+  approved: number;
+  rejected: number;
+}
+
+export interface RequestTypeData {
+  type: string;
+  count: number;
+  percentage: number;
+}
+
+// Data Request Interfaces
+export interface DataRequest {
+  requesterName?: string;
+  organizationName?: string;
+  requesterEmail?: string;
+  requesterPhone?: string;
+  requestType?: string;
+  dataTypes?: string[];
+  purpose?: string;
+  validUntil?: string;
+  legalBasis?: string;
+}
+
+export interface TimeSlot {
+  id: string;
+  startTime: string;
+  endTime: string;
+  available: boolean;
+  doctorId: string;
 }
 
 // Medical Records Types
@@ -142,7 +262,7 @@ export interface MedicalRecord {
 // AI Risk Assessment Types
 export interface RiskAssessmentRequest {
   patientId: string;
-  factors?: Record<string, any>;
+  factors?: Record<string, unknown>;
 }
 
 export interface RiskAssessmentResponse {
@@ -151,7 +271,7 @@ export interface RiskAssessmentResponse {
   probability: number;
   factors: Array<{
     factor: string;
-    value: any;
+    value: unknown;
     risk: 'low' | 'moderate' | 'high';
   }>;
   recommendations: string[];
@@ -205,20 +325,36 @@ export interface ConsentContractRequest {
 export interface MedicalPatient {
   id: string;
   hospitalNumber: string;
+  hn: string; // Add missing hn property
   firstName: string;
   lastName: string;
-  gender: 'male' | 'female' | 'other';
+  thaiName?: string; // Add missing thai_name property
+  thai_name?: string; // Legacy field for backwards compatibility
+  nationalId?: string; // Add missing national_id property
+  national_id?: string; // Legacy field for backwards compatibility
+  birthDate: string; // Also add birth_date alias
+  birth_date?: string; // Legacy field for backwards compatibility
   dateOfBirth: string;
+  gender: 'male' | 'female' | 'other';
   phone?: string;
   email?: string;
   address?: string;
   district?: string;
   province?: string;
   postalCode?: string;
+  postal_code?: string; // Legacy field
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
   updatedBy?: string;
+  // Additional missing properties
+  englishName?: string;
+  english_name?: string;
+  bloodType?: string;
+  blood_type?: string;
+  allergies?: string[];
+  chronicConditions?: string[];
+  chronic_conditions?: string[];
 }
 
 export interface CreatePatientRequest {
@@ -227,12 +363,29 @@ export interface CreatePatientRequest {
   lastName: string;
   gender: 'male' | 'female' | 'other';
   dateOfBirth: string;
+  birthDate?: string; // Add missing birthDate alias
   phone?: string;
   email?: string;
   address?: string;
   district?: string;
   province?: string;
   postalCode?: string;
+  // Extended fields for Thai EMR system
+  thaiName?: string;
+  englishName?: string; // Add missing field
+  nationalId?: string;
+  nationality?: string;
+  religion?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelation?: string;
+  bloodType?: string;
+  allergies?: string[];
+  medicalHistory?: string;
+  currentMedications?: string;
+  insuranceType?: string;
+  insuranceNumber?: string;
+  insuranceExpiryDate?: string;
 }
 
 // Visit Types
@@ -473,5 +626,5 @@ export interface APIError {
   message: string;
   code?: string;
   statusCode: number;
-  details?: any;
+  details?: unknown;
 }

@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { logger } from '@/lib/logger'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
@@ -94,9 +95,9 @@ export default function MyRequestsPage() {
         setLoading(true)
         const response = await apiClient.getAllDataRequests()
         
-        if (response.success && response.data) {
-          const requestsData = response.data.requests || response.data
-          setRequests(requestsData.map((req: any) => ({
+        if (response.statusCode === 200 && response.data) {
+          const requestsData = (response.data as any).requests || response.data
+          setRequests(requestsData.map((req: Record<string, unknown>) => ({
             id: req.id,
             requestId: req.id,
             patientName: req.patientName || 'ไม่ระบุ',
@@ -115,7 +116,7 @@ export default function MyRequestsPage() {
           })))
         }
       } catch (error) {
-        console.error('Error loading requests data:', error)
+        logger.error('Error loading requests data:', error)
         setError('เกิดข้อผิดพลาดในการโหลดข้อมูลคำขอ')
       } finally {
         setLoading(false)
@@ -152,11 +153,11 @@ export default function MyRequestsPage() {
       // Get data request details first
       const response = await apiClient.getDataRequestById(requestId)
       
-      if (response.success && response.data) {
+      if (response.statusCode === 200 && response.data) {
         const requestData = response.data
         
         // Check if request is approved
-        if (requestData.status !== 'approved') {
+        if ((requestData as any).status !== 'approved') {
           setDownloadError('คำขอนี้ยังไม่ได้รับการอนุมัติ ไม่สามารถดาวน์โหลดข้อมูลได้')
           return
         }
@@ -164,7 +165,7 @@ export default function MyRequestsPage() {
         // Generate report for download
         const reportResponse = await apiClient.generateDataRequestReport(requestId)
         
-        if (reportResponse.success && reportResponse.data) {
+        if (reportResponse.statusCode === 200 && reportResponse.data) {
           // Create download link
           const blob = new Blob([JSON.stringify(reportResponse.data, null, 2)], { 
             type: 'application/json' 
@@ -187,7 +188,7 @@ export default function MyRequestsPage() {
         setDownloadError('ไม่พบข้อมูลคำขอ: ' + (response.error?.message || 'ไม่ทราบสาเหตุ'))
       }
     } catch (error) {
-      console.error('Error downloading data:', error)
+      logger.error('Error downloading data:', error)
       setDownloadError('เกิดข้อผิดพลาดในการดาวน์โหลดข้อมูล')
     }
   }
@@ -198,17 +199,17 @@ export default function MyRequestsPage() {
       
       const response = await apiClient.getDataRequestById(requestId)
       
-      if (response.success && response.data) {
+      if (response.statusCode === 200 && response.data) {
         const requestData = response.data
         
         // Show detailed information in a modal or redirect to details page
         const details = `
 รายละเอียดคำขอ: ${requestId}
-สถานะ: ${requestData.status}
-ประเภทคำขอ: ${requestData.requestType}
-วัตถุประสงค์: ${requestData.purpose}
-วันที่ส่ง: ${new Date(requestData.createdAt).toLocaleDateString('th-TH')}
-วันที่อัปเดต: ${new Date(requestData.updatedAt).toLocaleDateString('th-TH')}
+ สถานะ: ${(requestData as any).status}
+ ประเภทคำขอ: ${(requestData as any).requestType}
+ วัตถุประสงค์: ${(requestData as any).purpose}
+ วันที่ส่ง: ${(requestData as any).createdAt ? new Date((requestData as any).createdAt).toLocaleDateString('th-TH') : 'ไม่ระบุ'}
+ วันที่อัปเดต: ${(requestData as any).updatedAt ? new Date((requestData as any).updatedAt).toLocaleDateString('th-TH') : 'ไม่ระบุ'}
         `
         
         // For now, we'll use alert but in a real app, this should be a modal
@@ -217,7 +218,7 @@ export default function MyRequestsPage() {
         setDetailsError('ไม่พบข้อมูลคำขอ: ' + (response.error?.message || 'ไม่ทราบสาเหตุ'))
       }
     } catch (error) {
-      console.error('Error viewing details:', error)
+      logger.error('Error viewing details:', error)
       setDetailsError('เกิดข้อผิดพลาดในการดูรายละเอียด')
     }
   }

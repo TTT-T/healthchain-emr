@@ -14,7 +14,6 @@ import {
   X,
   Shield,
   LogOut,
-  User,
   Building2,
   FileCheck,
   UserCheck,

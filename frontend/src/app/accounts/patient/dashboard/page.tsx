@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 import { 
   Calendar, 
   Pill, 
@@ -60,14 +61,14 @@ const PatientDashboard = () => {
       try {
         if (user?.id) {
           const response = await apiClient.getProfile();
-          if (response.success && response.data) {
-            setPatient(response.data);
+          if (response.statusCode === 200 && response.data) {
+            setPatient(response.data as any);
           } else {
             setError('ไม่สามารถโหลดข้อมูลผู้ป่วยได้');
           }
         }
       } catch (err) {
-        console.error('Error fetching patient data:', err);
+        logger.error('Error fetching patient data:', err);
         setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
       } finally {
         setLoading(false);
@@ -127,7 +128,7 @@ const PatientDashboard = () => {
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                ยินดีต้อนรับ, {patient?.thai_name || user?.first_name || 'ผู้ป่วย'}
+                ยินดีต้อนรับ, {patient?.thai_name || (user as any)?.first_name || 'ผู้ป่วย'}
               </h1>
               <p className="text-gray-800 mt-1">
                 ภาพรวมข้อมูลสุขภาพและการรักษาของคุณ

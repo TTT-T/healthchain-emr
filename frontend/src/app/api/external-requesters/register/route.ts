@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 // Interface สำหรับข้อมูลการลงทะเบียน external requester
 interface ExternalRequesterRegistrationData {
@@ -181,7 +182,7 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString()
     };
 
-    console.log('Registration data to be saved:', registrationData);
+    logger.debug('Registration data to be saved:', registrationData);
 
     // จำลองการส่งอีเมลแจ้งเตือน
     // await sendNotificationEmail({
@@ -216,7 +217,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(response, { status: 201 });
 
   } catch (error) {
-    console.error('Registration error:', error);
+    logger.error('Registration error:', error);
     
     return NextResponse.json({
       success: false,
@@ -271,7 +272,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Status check error:', error);
+    logger.error('Status check error:', error);
     
     return NextResponse.json({
       success: false,

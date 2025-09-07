@@ -2,19 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { apiClient } from '@/lib/api';
+import { apiClient } from '@/lib/api'
+import { DashboardData } from '@/types/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Building2, FileText, Clock, CheckCircle, AlertCircle, TrendingUp, Loader2 } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
-interface DashboardData {
-  totalRequests: number;
-  pendingRequests: number;
-  approvedRequests: number;
-  rejectedRequests: number;
-  monthlyUsage: number;
-  maxMonthlyUsage: number;
-  recentRequests: any[];
-}
 
 export default function ExternalRequesterDashboard() {
   const { user } = useAuth();
@@ -28,13 +21,13 @@ export default function ExternalRequesterDashboard() {
         setLoading(true);
         const response = await apiClient.getExternalRequestersDashboardOverview();
         
-        if (response.success && response.data) {
-          setDashboardData(response.data);
+        if (response.statusCode === 200 && response.data) {
+          setDashboardData(response.data as DashboardData);
         } else {
           setError('ไม่สามารถโหลดข้อมูลได้');
         }
       } catch (error) {
-        console.error('Error loading dashboard data:', error);
+        logger.error('Error loading dashboard data:', error);
         setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
       } finally {
         setLoading(false);
@@ -222,7 +215,7 @@ export default function ExternalRequesterDashboard() {
                       {request.status === 'approved' ? 'อนุมัติแล้ว' :
                        request.status === 'pending' ? 'รอดำเนินการ' :
                        request.status === 'rejected' ? 'ปฏิเสธ' : request.status} - 
-                      ส่งเมื่อ {new Date(request.createdAt).toLocaleDateString('th-TH')}
+                      ส่งเมื่อ {request.createdAt ? new Date(request.createdAt).toLocaleDateString('th-TH') : 'ไม่ระบุ'}
                     </div>
                   </div>
                   <span className={`px-2 py-1 text-xs rounded-full ${

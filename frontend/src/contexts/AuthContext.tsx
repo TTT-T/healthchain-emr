@@ -4,9 +4,10 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import { User, APIError, UserRole } from '@/types/api';
-import SessionManager from '@/lib/sessionManager';
-import FormDataCleaner from '@/lib/formDataCleaner';
+// import SessionManager from '@/lib/sessionManager';
+// import FormDataCleaner from '@/lib/formDataCleaner';
 import { showError, showSuccess, showWarning } from '@/lib/alerts';
+import { logger } from '@/lib/logger';
 
 interface AuthContextType {
   // State
@@ -16,7 +17,7 @@ interface AuthContextType {
   
   // Actions
   login: (username: string, password: string, rememberMe?: boolean) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  register: (data: RegisterData) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   
@@ -73,7 +74,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
           } catch (error) {
             // Check if it's a network error vs auth error
-            const apiError = error as any;
+            const apiError = error as { statusCode?: number; message?: string };
             if (apiError?.statusCode === 401 || apiError?.message?.includes('Authentication')) {
               // Auth error - clear everything
               apiClient.clearTokens();
@@ -130,7 +131,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         window.removeEventListener('sessionCleared', handleSessionCleared);
       }
     };
-  }, []);
+  }, [router]);
 
   /**
    * Login user
@@ -179,7 +180,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   /**
    * Register new user
    */
-  const register = async (data: RegisterData): Promise<any> => {
+  const register = async (data: RegisterData): Promise<{ success: boolean; message?: string }> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -196,7 +197,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(null);
         
         // Return response data for caller to handle
-        return response.data;
+        return {
+          success: true,
+          message: 'สมัครสมาชิกสำเร็จ'
+        };
       } else {
         throw new Error(response.error?.message || 'Registration failed');
       }
@@ -269,7 +273,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // Get fresh user data from API
       const response = await apiClient.getProfile();
-      if (response.success && response.data) {
+      if (response.statusCode === 200 && response.data) {
         setUser(response.data);
         setError(null);
       } else {
@@ -278,7 +282,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
       
     } catch (error) {
-      console.error('Refresh user error:', error);
+      logger.error('Refresh user error:', error);
       setUser(null);
       setError('Failed to refresh user data');
     }

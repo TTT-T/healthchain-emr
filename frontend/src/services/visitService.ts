@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { 
   MedicalVisit, 
   CreateVisitRequest, 
@@ -18,7 +19,7 @@ export class VisitService {
       const response = await apiClient.createVisit(data);
       return response;
     } catch (error) {
-      console.error('Error creating visit:', error);
+      logger.error('Error creating visit:', error);
       throw error;
     }
   }
@@ -31,7 +32,7 @@ export class VisitService {
       const response = await apiClient.getVisit(id);
       return response;
     } catch (error) {
-      console.error('Error getting visit:', error);
+      logger.error('Error getting visit:', error);
       throw error;
     }
   }
@@ -44,7 +45,7 @@ export class VisitService {
       const response = await apiClient.updateVisit(id, data);
       return response;
     } catch (error) {
-      console.error('Error updating visit:', error);
+      logger.error('Error updating visit:', error);
       throw error;
     }
   }
@@ -57,7 +58,7 @@ export class VisitService {
       const response = await apiClient.completeVisit(id);
       return response;
     } catch (error) {
-      console.error('Error completing visit:', error);
+      logger.error('Error completing visit:', error);
       throw error;
     }
   }
@@ -70,7 +71,7 @@ export class VisitService {
       const response = await apiClient.getPatientVisits(patientId);
       return response;
     } catch (error) {
-      console.error('Error getting patient visits:', error);
+      logger.error('Error getting patient visits:', error);
       throw error;
     }
   }
@@ -91,7 +92,7 @@ export class VisitService {
       const response = await apiClient.searchVisits(params);
       return response;
     } catch (error) {
-      console.error('Error searching visits:', error);
+      logger.error('Error searching visits:', error);
       throw error;
     }
   }

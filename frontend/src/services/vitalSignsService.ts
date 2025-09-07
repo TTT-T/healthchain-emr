@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { 
   MedicalVitalSigns, 
   CreateVitalSignsRequest, 
@@ -18,7 +19,7 @@ export class VitalSignsService {
       const response = await apiClient.createVitalSigns(data);
       return response;
     } catch (error) {
-      console.error('Error creating vital signs:', error);
+      logger.error('Error creating vital signs:', error);
       throw error;
     }
   }
@@ -31,7 +32,7 @@ export class VitalSignsService {
       const response = await apiClient.getVitalSignsByVisit(visitId);
       return response;
     } catch (error) {
-      console.error('Error getting vital signs:', error);
+      logger.error('Error getting vital signs:', error);
       throw error;
     }
   }
@@ -44,7 +45,7 @@ export class VitalSignsService {
       const response = await apiClient.updateVitalSigns(id, data);
       return response;
     } catch (error) {
-      console.error('Error updating vital signs:', error);
+      logger.error('Error updating vital signs:', error);
       throw error;
     }
   }
@@ -57,7 +58,7 @@ export class VitalSignsService {
       const response = await apiClient.deleteVitalSigns(id);
       return response;
     } catch (error) {
-      console.error('Error deleting vital signs:', error);
+      logger.error('Error deleting vital signs:', error);
       throw error;
     }
   }

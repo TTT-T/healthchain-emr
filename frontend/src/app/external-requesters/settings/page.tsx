@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { logger } from '@/lib/logger'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
@@ -69,8 +70,8 @@ export default function SettingsPage() {
         setIsLoading(true)
         const response = await apiClient.getExternalRequesterSettings()
         
-        if (response.success && response.data) {
-          const data = response.data
+        if (response.statusCode === 200 && response.data) {
+          const data = response.data as any
           setSettings({
             dataAccessLevel: data.dataAccessLevel || 'basic',
             maxConcurrentRequests: data.maxConcurrentRequests || 10,
@@ -100,7 +101,7 @@ export default function SettingsPage() {
           }
         }
       } catch (error) {
-        console.error("Error loading settings data:", error)
+        logger.error("Error loading settings data:", error)
         setError("เกิดข้อผิดพลาดในการโหลดการตั้งค่า")
       } finally {
         setIsLoading(false)
@@ -131,7 +132,7 @@ export default function SettingsPage() {
         confirmPassword
       })
 
-      if (response.success) {
+      if (response.statusCode === 200) {
         setSuccess('เปลี่ยนรหัสผ่านสำเร็จ')
         setCurrentPassword('')
         setNewPassword('')
@@ -141,7 +142,7 @@ export default function SettingsPage() {
         setError(response.error?.message || 'เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน')
       }
     } catch (error: any) {
-      console.error('Error changing password:', error)
+      logger.error('Error changing password:', error)
       setError('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน')
     } finally {
       setLoading(false)
@@ -166,14 +167,14 @@ export default function SettingsPage() {
 
       const response = await apiClient.updateExternalRequesterSettings(updateData)
       
-      if (response.success) {
+      if (response.statusCode === 200) {
         setSuccess('บันทึกการตั้งค่าสำเร็จ')
         setTimeout(() => setSuccess(null), 3000)
       } else {
         setError(response.error?.message || 'เกิดข้อผิดพลาดในการบันทึก')
       }
     } catch (error: any) {
-      console.error('Error saving settings:', error)
+      logger.error('Error saving settings:', error)
       setError('เกิดข้อผิดพลาดในการบันทึก')
     } finally {
       setLoading(false)

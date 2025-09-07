@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Shield, Key, RefreshCw, Trash2, Eye, EyeOff, Copy, Plus, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface Token {
   id: string;
@@ -157,7 +158,7 @@ export default function TokenMonitorPage() {
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text);
-        console.log('Token copied to clipboard');
+        logger.debug('Token copied to clipboard');
       } else {
         // Fallback for non-secure contexts
         const textArea = document.createElement("textarea");
@@ -170,10 +171,10 @@ export default function TokenMonitorPage() {
         textArea.select();
         document.execCommand('copy');
         textArea.remove();
-        console.log('Token copied to clipboard (fallback method)');
+        logger.debug('Token copied to clipboard (fallback method)');
       }
     } catch (error) {
-      console.error('Failed to copy to clipboard:', error);
+      logger.error('Failed to copy to clipboard:', error);
       // Show user-friendly message
       alert('ไม่สามารถคัดลอกได้ กรุณาคัดลอกด้วยตนเอง');
     }

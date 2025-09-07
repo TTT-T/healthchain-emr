@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api'
+import { ExternalRequesterProfile } from '@/types/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { logger } from '@/lib/logger'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
@@ -63,7 +65,7 @@ export default function ProfilePage() {
         setIsLoading(true)
         const response = await apiClient.getExternalRequesterProfile()
         
-        if (response.success && response.data) {
+        if (response.statusCode === 200 && response.data) {
           const data = response.data
           setProfileData({
             organizationName: data.organizationName || '',
@@ -92,7 +94,7 @@ export default function ProfilePage() {
           })
         }
       } catch (error) {
-        console.error("Error loading profile data:", error)
+        logger.error("Error loading profile data:", error)
         setError("เกิดข้อผิดพลาดในการโหลดข้อมูลโปรไฟล์")
       } finally {
         setIsLoading(false)
@@ -128,7 +130,7 @@ export default function ProfilePage() {
 
       const response = await apiClient.updateExternalRequesterProfile(updateData)
       
-      if (response.success && response.data) {
+      if (response.statusCode === 200 && response.data) {
         setSuccess('บันทึกข้อมูลโปรไฟล์สำเร็จ')
         setIsEditing(false)
         setTimeout(() => setSuccess(null), 3000)
@@ -136,7 +138,7 @@ export default function ProfilePage() {
         setError(response.error?.message || 'เกิดข้อผิดพลาดในการบันทึก')
       }
     } catch (error: any) {
-      console.error('Error saving profile:', error)
+      logger.error('Error saving profile:', error)
       setError('เกิดข้อผิดพลาดในการบันทึก')
     } finally {
       setLoading(false)

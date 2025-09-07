@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { logger } from '@/lib/logger'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -72,7 +73,7 @@ export default function AdminLogin() {
 
       const result = await response.json()
 
-      if (result.success) {
+      if (result.statusCode === 200) {
         setLoginResult({
           success: true,
           message: 'เข้าสู่ระบบสำเร็จ! กำลังนำไปยังหน้าหลัก...'
@@ -96,7 +97,7 @@ export default function AdminLogin() {
       }
 
     } catch (error) {
-      console.error('Login error:', error)
+      logger.error('Login error:', error)
       setLoginResult({
         success: false,
         message: 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง'

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
 import AppLayout from "@/components/AppLayout";
+import { logger } from '@/lib/logger';
 
 interface ConsentRequest {
   id: string;
@@ -39,14 +40,14 @@ export default function ConsentRequests() {
       try {
         if (user?.id) {
           const response = await apiClient.getPatientConsentRequests(user.id);
-          if (response.success && response.data) {
-            setConsentRequests(response.data);
+          if (response.statusCode === 200 && response.data) {
+            setConsentRequests(response.data as ConsentRequest[]);
           } else {
             setError(response.error?.message || "ไม่สามารถดึงข้อมูลคำขอ consent ได้");
           }
         }
       } catch (err) {
-        console.error('Error fetching consent requests:', err);
+        logger.error('Error fetching consent requests:', err);
         setError('เกิดข้อผิดพลาดในการโหลดข้อมูลคำขอ');
       } finally {
         setLoading(false);
@@ -140,12 +141,11 @@ export default function ConsentRequests() {
       }
 
       const response = await apiClient.respondToConsentRequest(user.id, requestId, {
-        status: 'approved',
-        responseDate: new Date().toISOString(),
-        notes: 'ผู้ป่วยยินยอมให้เข้าถึงข้อมูล'
+        decision: 'approved',
+        reason: 'ผู้ป่วยยินยอมให้เข้าถึงข้อมูล'
       });
 
-      if (response.success) {
+      if (response.statusCode === 200) {
         // Update local state
         setConsentRequests(prev => 
           prev.map(req => 
@@ -161,7 +161,7 @@ export default function ConsentRequests() {
         setError(response.error?.message || "ไม่สามารถอนุมัติคำขอได้");
       }
     } catch (err) {
-      console.error('Error approving consent request:', err);
+      logger.error('Error approving consent request:', err);
       setError("เกิดข้อผิดพลาดในการอนุมัติคำขอ");
     }
   };
@@ -177,12 +177,11 @@ export default function ConsentRequests() {
       }
 
       const response = await apiClient.respondToConsentRequest(user.id, requestId, {
-        status: 'rejected',
-        responseDate: new Date().toISOString(),
-        notes: reason
+        decision: 'rejected',
+        reason: reason
       });
 
-      if (response.success) {
+      if (response.statusCode === 200) {
         // Update local state
         setConsentRequests(prev => 
           prev.map(req => 
@@ -198,7 +197,7 @@ export default function ConsentRequests() {
         setError(response.error?.message || "ไม่สามารถปฏิเสธคำขอได้");
       }
     } catch (err) {
-      console.error('Error rejecting consent request:', err);
+      logger.error('Error rejecting consent request:', err);
       setError("เกิดข้อผิดพลาดในการปฏิเสธคำขอ");
     }
   };

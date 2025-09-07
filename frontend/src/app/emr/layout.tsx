@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import EMRSidebar from '../../components/EMRSidebar';
 import EMRHeader from '../../components/EMRHeader';
-import { Menu } from 'lucide-react';
+// import { Menu } from 'lucide-react';
 
 interface EMRLayoutProps {
   children: React.ReactNode;

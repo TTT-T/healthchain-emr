@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { showError, showSuccess, showWarning, showFeatureComingSoon } from "@/lib/alerts";
+import { logger } from '@/lib/logger';
 
 function LoginClient() {
   const router = useRouter();
@@ -122,7 +123,7 @@ function LoginClient() {
 
       const result = await response.json();
 
-      if (result.success && result.data) {
+      if (result.statusCode === 200 && result.data) {
         // Login successful
         
         // Store tokens
@@ -164,7 +165,7 @@ function LoginClient() {
           // Show specific error message for email verification
           setErrors({ 
             submit: 'กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ ตรวจสอบอีเมลของคุณและคลิกลิงก์ยืนยัน',
-            emailVerification: true
+            emailVerification: 'required'
           });
           
           // Redirect to verification page after a short delay
@@ -230,7 +231,7 @@ function LoginClient() {
       }
     } catch (error) {
       setResendMessage('Network error. Please try again.');
-      console.error('Resend verification error:', error);
+      logger.error('Resend verification error:', error);
     } finally {
       setIsResendingEmail(false);
     }
@@ -490,7 +491,7 @@ function LoginClient() {
                         </div>
                         
                         <p className="text-xs text-red-600">
-                          💡 หากไม่ได้รับอีเมล กรุณาตรวจสอบ Spam folder หรือใช้ปุ่ม "ขอยืนยันอีเมลอีกครั้ง"
+                          💡 หากไม่ได้รับอีเมล กรุณาตรวจสอบ Spam folder หรือใช้ปุ่ม &quot;ขอยืนยันอีเมลอีกครั้ง&quot;
                         </p>
                       </div>
                     )}

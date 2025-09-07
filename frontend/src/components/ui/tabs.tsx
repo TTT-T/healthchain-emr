@@ -17,7 +17,7 @@ const Tabs = React.forwardRef<
     {React.Children.map(children, (child) => {
       if (React.isValidElement(child)) {
         return React.cloneElement(child, { 
-          // @ts-ignore
+          // @ts-expect-error - tabsValue and onTabsValueChange are custom props for tabs components
           tabsValue: value, 
           onTabsValueChange: onValueChange 
         })

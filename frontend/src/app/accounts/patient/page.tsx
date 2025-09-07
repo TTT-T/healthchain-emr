@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { logger } from '@/lib/logger';
 
 export default function PatientPage() {
   const { user, isLoading, isAuthenticated } = useAuth();
@@ -11,13 +12,13 @@ export default function PatientPage() {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      console.log("🔒 Patient page: Not authenticated, redirecting to login");
+      logger.debug("🔒 Patient page: Not authenticated, redirecting to login");
       router.push("/login");
       return;
     }
 
     if (user && isAuthenticated) {
-      console.log("✅ Patient page: Authenticated, redirecting to dashboard");
+      logger.debug("✅ Patient page: Authenticated, redirecting to dashboard");
       router.push("/accounts/patient/dashboard");
       return;
     }
@@ -43,7 +44,7 @@ export default function PatientPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                สวัสดีคุณ {user.first_name} {user.last_name}
+                สวัสดีคุณ {(user as any).first_name} {(user as any).last_name}
               </h1>
               <p className="text-gray-800 mt-1">
                 ยินดีต้อนรับสู่ระบบผู้ป่วย - HealthChain

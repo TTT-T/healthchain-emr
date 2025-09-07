@@ -1,12 +1,13 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
 import { LabService } from '@/services/labService';
 import { VisitService } from '@/services/visitService';
-import { MedicalLabOrder, CreateLabOrderRequest } from '@/types/api';
-import { Search, FileText, Plus, Trash2, CheckCircle, AlertCircle, Clock, User } from 'lucide-react';
+import { CreateLabOrderRequest } from '@/types/api';
+import { Search, FileText, Plus, Trash2, CheckCircle, AlertCircle, User } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface Patient {
   hn: string;
@@ -58,7 +59,7 @@ export default function LabResultPage() {
     setSuccess(null);
     
     try {
-      console.log(`🔍 Searching for patient by ${searchType}:`, searchQuery);
+      logger.debug(`🔍 Searching for patient by ${searchType}:`, searchQuery);
       
       // ค้นหาผู้ป่วยจาก API
       const response = await PatientService.searchPatients(searchQuery, searchType);
@@ -80,14 +81,14 @@ export default function LabResultPage() {
 
         setSelectedPatient(mappedPatient);
         setSuccess('พบข้อมูลผู้ป่วยแล้ว');
-        console.log('✅ Patient found:', mappedPatient);
+        logger.debug('✅ Patient found:', mappedPatient);
       } else {
         setSelectedPatient(null);
         setError("ไม่พบข้อมูลผู้ป่วยในระบบ กรุณาตรวจสอบข้อมูล");
       }
       
     } catch (error: any) {
-      console.error('❌ Error searching patient:', error);
+      logger.error('❌ Error searching patient:', error);
       setError(error.message || "เกิดข้อผิดพลาดในการค้นหา กรุณาลองอีกครั้ง");
       setSelectedPatient(null);
     } finally {
@@ -107,7 +108,7 @@ export default function LabResultPage() {
       testCategory: newTest.testCategory!,
       priority: newTest.priority!,
       status: 'pending',
-      orderedBy: user?.thai_name || 'แพทย์',
+      orderedBy: user?.thaiName || 'แพทย์',
       orderedDate: new Date().toISOString().slice(0, 16),
       notes: newTest.notes
     };
@@ -144,7 +145,7 @@ export default function LabResultPage() {
       // สร้าง visit
       const visitResponse = await VisitService.createVisit(visitData);
       
-      if (!visitResponse.success || !visitResponse.data) {
+      if (visitResponse.statusCode !== 200 || !visitResponse.data) {
         throw new Error('ไม่สามารถสร้าง visit ได้');
       }
       
@@ -164,8 +165,8 @@ export default function LabResultPage() {
 
         const labResponse = await LabService.createLabOrder(labOrderData);
         
-        if (!labResponse.success) {
-          console.error(`Failed to create lab order for ${test.testName}:`, labResponse.errors);
+        if (labResponse.statusCode !== 200) {
+          logger.error(`Failed to create lab order for ${test.testName}:`, labResponse.error);
         }
       }
 
@@ -180,7 +181,7 @@ export default function LabResultPage() {
       }, 3000);
       
     } catch (error: any) {
-      console.error("Error creating lab orders:", error);
+      logger.error("Error creating lab orders:", error);
       setError(error.message || "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง");
     } finally {
       setIsSubmitting(false);

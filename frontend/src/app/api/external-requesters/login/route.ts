@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 interface LoginRequest {
   email: string;
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest) {
     return response;
 
   } catch (error) {
-    console.error('External requester login error:', error);
+    logger.error('External requester login error:', error);
     
     return NextResponse.json({
       success: false,

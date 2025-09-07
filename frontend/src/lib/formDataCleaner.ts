@@ -2,6 +2,7 @@
  * Form Data Cleaner
  * จัดการการล้างข้อมูลฟอร์มและ cache
  */
+import { logger } from '@/lib/logger';
 
 class FormDataCleaner {
   private static readonly FORM_DATA_KEYS = [
@@ -45,9 +46,9 @@ class FormDataCleaner {
         sessionStorage.removeItem(key);
       });
 
-      console.log('✅ All form data cleared');
+      logger.debug('✅ All form data cleared');
     } catch (error) {
-      console.error('❌ Error clearing form data:', error);
+      logger.error('❌ Error clearing form data:', error);
     }
   }
 
@@ -61,16 +62,16 @@ class FormDataCleaner {
       localStorage.removeItem(formKey);
       sessionStorage.removeItem(formKey);
       
-      console.log(`✅ Form data cleared: ${formKey}`);
+      logger.debug(`✅ Form data cleared: ${formKey}`);
     } catch (error) {
-      console.error(`❌ Error clearing form data for ${formKey}:`, error);
+      logger.error(`❌ Error clearing form data for ${formKey}:`, error);
     }
   }
 
   /**
    * Save form data
    */
-  public static saveFormData(formKey: string, data: any): void {
+  public static saveFormData(formKey: string, data: unknown): void {
     try {
       if (typeof window === 'undefined') return;
 
@@ -81,14 +82,14 @@ class FormDataCleaner {
 
       sessionStorage.setItem(formKey, JSON.stringify(formData));
     } catch (error) {
-      console.error(`❌ Error saving form data for ${formKey}:`, error);
+      logger.error(`❌ Error saving form data for ${formKey}:`, error);
     }
   }
 
   /**
    * Load form data
    */
-  public static loadFormData(formKey: string): any | null {
+  public static loadFormData(formKey: string): unknown | null {
     try {
       if (typeof window === 'undefined') return null;
 
@@ -106,7 +107,7 @@ class FormDataCleaner {
 
       return formData.data;
     } catch (error) {
-      console.error(`❌ Error loading form data for ${formKey}:`, error);
+      logger.error(`❌ Error loading form data for ${formKey}:`, error);
       return null;
     }
   }
@@ -123,9 +124,9 @@ class FormDataCleaner {
         sessionStorage.removeItem(key);
       });
 
-      console.log('✅ All cache data cleared');
+      logger.debug('✅ All cache data cleared');
     } catch (error) {
-      console.error('❌ Error clearing cache data:', error);
+      logger.error('❌ Error clearing cache data:', error);
     }
   }
 
@@ -147,7 +148,7 @@ class FormDataCleaner {
             if (data.timestamp && Date.now() - data.timestamp > oneHour) {
               localStorage.removeItem(key);
               sessionStorage.removeItem(key);
-              console.log(`🗑️ Expired cache cleared: ${key}`);
+              logger.debug(`🗑️ Expired cache cleared: ${key}`);
             }
           } catch (error) {
             // If parsing fails, remove the item
@@ -157,7 +158,7 @@ class FormDataCleaner {
         }
       });
     } catch (error) {
-      console.error('❌ Error clearing expired cache:', error);
+      logger.error('❌ Error clearing expired cache:', error);
     }
   }
 
@@ -170,7 +171,7 @@ class FormDataCleaner {
 
       // Add autocomplete="off" to all form inputs
       const inputs = document.querySelectorAll('input, textarea, select');
-      inputs.forEach((input: any) => {
+      inputs.forEach((input: Element) => {
         input.setAttribute('autocomplete', 'off');
         input.setAttribute('autocorrect', 'off');
         input.setAttribute('autocapitalize', 'off');
@@ -179,13 +180,13 @@ class FormDataCleaner {
 
       // Add autocomplete="off" to all forms
       const forms = document.querySelectorAll('form');
-      forms.forEach((form: any) => {
+      forms.forEach((form: Element) => {
         form.setAttribute('autocomplete', 'off');
       });
 
-      console.log(`✅ Autofill disabled for ${formKey || 'all form elements'}`);
+      logger.debug(`✅ Autofill disabled for ${formKey || 'all form elements'}`);
     } catch (error) {
-      console.error('❌ Error disabling autofill:', error);
+      logger.error('❌ Error disabling autofill:', error);
     }
   }
 
@@ -198,17 +199,18 @@ class FormDataCleaner {
 
       // Clear all form inputs
       const inputs = document.querySelectorAll('input, textarea, select');
-      inputs.forEach((input: any) => {
-        if (input.type === 'checkbox' || input.type === 'radio') {
-          input.checked = false;
+      inputs.forEach((input: Element) => {
+        const inputElement = input as HTMLInputElement;
+        if (inputElement.type === 'checkbox' || inputElement.type === 'radio') {
+          inputElement.checked = false;
         } else {
-          input.value = '';
+          inputElement.value = '';
         }
       });
 
-      console.log(`✅ Form inputs reset for ${formKey || 'all forms'}`);
+      logger.debug(`✅ Form inputs reset for ${formKey || 'all forms'}`);
     } catch (error) {
-      console.error('❌ Error resetting form inputs:', error);
+      logger.error('❌ Error resetting form inputs:', error);
     }
   }
 
@@ -244,7 +246,7 @@ class FormDataCleaner {
         }
       };
     } catch (error) {
-      console.error('❌ Error getting storage info:', error);
+      logger.error('❌ Error getting storage info:', error);
       return {
         localStorage: { used: 0, available: 0 },
         sessionStorage: { used: 0, available: 0 }

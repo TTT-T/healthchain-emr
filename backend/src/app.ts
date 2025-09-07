@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import config from './config/index';
 import { databaseInitializer } from './database/init';
 import { setupSwagger } from './config/swagger';

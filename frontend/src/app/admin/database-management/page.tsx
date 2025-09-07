@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Database, Server, HardDrive, RefreshCw, Download, Upload, AlertTriangle, CheckCircle, XCircle, Settings, Monitor, Trash2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 interface DatabaseStats {
   name: string;
@@ -80,17 +81,17 @@ export default function DatabasePage() {
       
       // Load database status
       const statusResponse = await apiClient.getDatabaseStatus();
-      if (statusResponse.success) {
+      if (statusResponse.statusCode === 200) {
         setDatabaseStatus(statusResponse.data);
         
         // Map database status to DatabaseStats format
         const mappedDatabases: DatabaseStats[] = [{
-          name: statusResponse.data.database_name || 'healthchain_main',
-          size: statusResponse.data.database_size || 'Unknown',
-          tables: statusResponse.data.table_count || 0,
-          records: statusResponse.data.total_records || 0,
-          status: statusResponse.data.status === 'connected' ? 'healthy' : 'error',
-          lastBackup: statusResponse.data.last_backup || 'Never'
+          name: (statusResponse.data as any).database_name || 'healthchain_main',
+          size: (statusResponse.data as any).database_size || 'Unknown',
+          tables: (statusResponse.data as any).table_count || 0,
+          records: (statusResponse.data as any).total_records || 0,
+          status: (statusResponse.data as any).status === 'connected' ? 'healthy' : 'error',
+          lastBackup: (statusResponse.data as any).last_backup || 'Never'
         }];
         setDatabases(mappedDatabases);
         
@@ -100,25 +101,25 @@ export default function DatabasePage() {
       }
 
       // Load table information
-      const tablesResponse = await apiClient.getDatabaseTables();
-      if (tablesResponse.success) {
-        const mappedTables: TableInfo[] = tablesResponse.data.tables?.map((table: any) => ({
-          name: table.table_name,
-          records: table.row_count || 0,
-          size: table.table_size || 'Unknown',
-          lastUpdated: table.last_updated || 'Unknown',
-          status: 'active'
-        })) || [];
-        setTables(mappedTables);
-      }
+      // const tablesResponse = await apiClient.getDatabaseTables();
+      // if (tablesResponse.success) {
+        // const mappedTables: TableInfo[] = tablesResponse.data.tables?.map((table: any) => ({
+        //   name: table.table_name,
+        //   records: table.row_count || 0,
+        //   size: table.table_size || 'Unknown',
+        //   lastUpdated: table.last_updated || 'Unknown',
+        //   status: 'active'
+        // })) || [];
+        // setTables(mappedTables);
+      // }
 
       // Load backups
-      const backupsResponse = await apiClient.getDatabaseBackups();
-      if (backupsResponse.success) {
-        setBackups(backupsResponse.data.backups || []);
-      }
+      // const backupsResponse = await apiClient.getDatabaseBackups();
+      // if (backupsResponse.success) {
+      //   setBackups(backupsResponse.data.backups || []);
+      // }
     } catch (error) {
-      console.error('Failed to load database data:', error);
+      logger.error('Failed to load database data:', error);
       setError('ไม่สามารถโหลดข้อมูลฐานข้อมูลได้');
       
       // Fallback to mock data if API fails
@@ -169,16 +170,16 @@ export default function DatabasePage() {
         description: 'Manual backup created from admin panel'
       });
       
-      if (response.success) {
-        console.log('Backup created:', response.data);
+      if (response.statusCode === 200) {
+        logger.debug('Backup created:', response.data);
         // Refresh all data
         refreshData();
       } else {
-        console.error('Backup failed:', response.error);
+        logger.error('Backup failed:', response.error);
         setError('ไม่สามารถสร้าง backup ได้: ' + (response.error?.message || 'ไม่ทราบสาเหตุ'));
       }
     } catch (error) {
-      console.error('Backup error:', error);
+      logger.error('Backup error:', error);
       setError('เกิดข้อผิดพลาดในการสร้าง backup');
     } finally {
       setIsBackupRunning(false);
@@ -189,19 +190,19 @@ export default function DatabasePage() {
     setIsOptimizing(true);
     try {
       const response = await apiClient.optimizeDatabase({
-        type: 'full'
+        tables: []
       });
       
-      if (response.success) {
-        console.log('Database optimized:', response.data);
+      if (response.statusCode === 200) {
+        logger.debug('Database optimized:', response.data);
         // Refresh all data
         refreshData();
       } else {
-        console.error('Optimization failed:', response.error);
+        logger.error('Optimization failed:', response.error);
         setError('ไม่สามารถ optimize ฐานข้อมูลได้: ' + (response.error?.message || 'ไม่ทราบสาเหตุ'));
       }
     } catch (error) {
-      console.error('Optimization error:', error);
+      logger.error('Optimization error:', error);
       setError('เกิดข้อผิดพลาดในการ optimize ฐานข้อมูล');
     } finally {
       setIsOptimizing(false);

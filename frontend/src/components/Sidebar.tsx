@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { logger } from '@/lib/logger';
 
 interface SidebarProps {
   userType?: "patient" | "doctor" | "admin";
@@ -31,7 +32,7 @@ export default function Sidebar({ userType = "patient", isOpen: isOpenProp = fal
     try {
       await logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     }
   };
 

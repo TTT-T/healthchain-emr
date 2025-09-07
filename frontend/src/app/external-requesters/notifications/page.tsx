@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { logger } from '@/lib/logger'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
@@ -59,6 +60,8 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [filterType, setFilterType] = useState<string>('all')
+  const [showOnlyUnread, setShowOnlyUnread] = useState(false)
 
   // Load notifications data
   useEffect(() => {
@@ -70,8 +73,8 @@ export default function NotificationsPage() {
           limit: 50
         })
         
-        if (response.success && response.data) {
-          const notificationsData = response.data.notifications || []
+        if (response.statusCode === 200 && response.data) {
+          const notificationsData = (response.data as any).notifications || []
           setNotifications(notificationsData.map((notif: any) => ({
             id: notif.id,
             title: notif.title,
@@ -86,7 +89,7 @@ export default function NotificationsPage() {
           setError('ไม่สามารถโหลดการแจ้งเตือนได้')
         }
       } catch (error) {
-        console.error('Error loading notifications:', error)
+        logger.error('Error loading notifications:', error)
         setError('เกิดข้อผิดพลาดในการโหลดการแจ้งเตือน')
       } finally {
         setLoading(false)
@@ -126,9 +129,6 @@ export default function NotificationsPage() {
       </div>
     )
   }
-
-  const [filterType, setFilterType] = useState<string>('all')
-  const [showOnlyUnread, setShowOnlyUnread] = useState(false)
 
   const filteredNotifications = notifications.filter(notification => {
     const matchesType = filterType === 'all' || notification.type === filterType

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { apiClient } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 export default function VerifyEmailTokenPage() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function VerifyEmailTokenPage() {
           setError(response.error?.message || 'เกิดข้อผิดพลาดในการยืนยันอีเมล');
         }
       } catch (error: any) {
-        console.error('Email verification error:', error);
+        logger.error('Email verification error:', error);
         setError('เกิดข้อผิดพลาดในการยืนยันอีเมล กรุณาลองใหม่อีกครั้ง');
       } finally {
         setIsVerifying(false);

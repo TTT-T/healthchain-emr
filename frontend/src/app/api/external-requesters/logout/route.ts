@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error('External requester logout error:', error);
+    logger.error('External requester logout error:', error);
     return NextResponse.json({
       success: false,
       message: 'เกิดข้อผิดพลาดในการออกจากระบบ'

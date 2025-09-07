@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Users, UserPlus, Activity, Calendar, Pill, FileText, 
   TrendingUp, TrendingDown, Clock, AlertTriangle, CheckCircle,
-  Heart, Thermometer, Scale, Eye, ArrowRight, RefreshCw,
-  BarChart3, PieChart, LineChart, Filter, Download, Bell
+  Eye, ArrowRight, RefreshCw, Bell, Heart
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 interface DashboardStats {
   todayPatients: number;
@@ -70,20 +70,14 @@ export default function EMRDashboard() {
   const [selectedTimeRange, setSelectedTimeRange] = useState('today');
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadDashboardData();
-    }
-  }, [selectedTimeRange, isAuthenticated]);
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     if (!isAuthenticated) return;
     
     setIsLoading(true);
     setError(null);
     
     try {
-      console.log('📊 Loading dashboard data...');
+      logger.debug('📊 Loading dashboard data...');
 
       // Fetch real data from API
       const promises = [
@@ -92,10 +86,10 @@ export default function EMRDashboard() {
         // Add more API calls as needed
       ];
 
-      const [patientsResponse, healthResponse] = await Promise.all(promises);
+      const [patientsResponse] = await Promise.all(promises);
 
       // Calculate stats from real data
-      const patientsData = patientsResponse.data || [];
+      const patientsData = (patientsResponse.data as any[]) || [];
       const todayPatientsCount = patientsData.length;
       
       // Set calculated stats
@@ -126,9 +120,9 @@ export default function EMRDashboard() {
       const activities: RecentActivity[] = patientsData.slice(0, 3).map((patient: any, index: number) => ({
         id: patient.id,
         type: ['registration', 'visit', 'lab', 'prescription'][index % 4] as any,
-        description: `${['ลงทะเบียนผู้ป่วยใหม่', 'เข้ารับการรักษา', 'ส่งตรวจแลบ', 'สั่งจ่ายยา'][index % 4]}: ${patient.thai_name || patient.name || 'ไม่ระบุชื่อ'}`,
+        description: `${['ลงทะเบียนผู้ป่วยใหม่', 'เข้ารับการรักษา', 'ส่งตรวจแลบ', 'สั่งจ่ายยา'][index % 4]}: ${patient.thaiName || patient.name || 'ไม่ระบุชื่อ'}`,
         timestamp: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-        user: user?.thai_name || user?.first_name || 'เจ้าหน้าที่',
+        user: user?.thaiName || user?.firstName || 'เจ้าหน้าที่',
         status: ['success', 'warning', 'error'][index % 3] as any
       }));
       setRecentActivities(activities);
@@ -162,9 +156,9 @@ export default function EMRDashboard() {
       ];
       setAlerts(alertsData);
 
-      console.log('✅ Dashboard data loaded successfully');
+      logger.debug('✅ Dashboard data loaded successfully');
     } catch (err: any) {
-      console.error('❌ Error loading dashboard data:', err);
+      logger.error('❌ Error loading dashboard data:', err);
       setError(err.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูลแดชบอร์ด');
       
       // Fallback to basic stats
@@ -181,7 +175,13 @@ export default function EMRDashboard() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isAuthenticated, user?.firstName, user?.thaiName]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadDashboardData();
+    }
+  }, [selectedTimeRange, isAuthenticated, loadDashboardData]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

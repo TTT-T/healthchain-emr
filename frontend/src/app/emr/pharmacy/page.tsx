@@ -3,9 +3,11 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
+import { apiClient } from '@/lib/api';
 import { PharmacyService } from '@/services/pharmacyService';
 import { VisitService } from '@/services/visitService';
 import { MedicalPrescription } from '@/types/api';
+import { logger } from '@/lib/logger';
 
 interface Patient {
   hn: string;
@@ -51,7 +53,7 @@ export default function Pharmacy() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [pharmacistName, setPharmacistName] = useState(user?.thai_name || "เภสัชกรสมใจ รักษาดี");
+  const [pharmacistName, setPharmacistName] = useState(user?.thaiName || "เภสัชกรสมใจ รักษาดี");
   const [pharmacistNotes, setPharmacistNotes] = useState("");
   const [editingDrug, setEditingDrug] = useState<string | null>(null);
 
@@ -66,10 +68,10 @@ export default function Pharmacy() {
     setSuccess(null);
     
     try {
-      console.log(`🔍 Searching for prescription by ${searchType}:`, searchQuery);
+      logger.debug(`🔍 Searching for prescription by ${searchType}:`, searchQuery);
       
       // ค้นหาผู้ป่วยจาก API
-      const response = await PatientService.searchPatients(searchQuery, searchType);
+      const response = await PatientService.searchPatients(searchQuery, searchType === 'prescription' ? 'name' : searchType);
       
       if (response.data && response.data.length > 0) {
         const patient = response.data[0];
@@ -89,7 +91,7 @@ export default function Pharmacy() {
         // Search for prescriptions for this patient
         try {
           const prescriptionResponse = await apiClient.getPrescriptionsByPatient(patient.hn);
-          if (prescriptionResponse.success && prescriptionResponse.data && prescriptionResponse.data.length > 0) {
+          if (prescriptionResponse.statusCode === 200 && prescriptionResponse.data && prescriptionResponse.data.length > 0) {
             // Get the most recent prescription
             const latestPrescription = prescriptionResponse.data[0];
             
@@ -97,10 +99,10 @@ export default function Pharmacy() {
             const mappedPrescription: PrescriptionData = {
               prescriptionId: latestPrescription.prescription_number || latestPrescription.id,
               patient: mappedPatient,
-              prescribedBy: latestPrescription.prescribed_by || "นพ.สมชาย วงศ์แพทย์",
-              prescribedDate: latestPrescription.prescription_date || new Date().toISOString().slice(0, 16),
-              diagnosis: latestPrescription.diagnosis_for_prescription || "Upper Respiratory Tract Infection (J06.9)",
-              drugs: latestPrescription.items?.map((item: any, index: number) => ({
+              prescribedBy: (latestPrescription as any).prescribed_by || "นพ.สมชาย วงศ์แพทย์",
+              prescribedDate: (latestPrescription as any).prescription_date || new Date().toISOString().slice(0, 16),
+              diagnosis: (latestPrescription as any).diagnosis_for_prescription || "Upper Respiratory Tract Infection (J06.9)",
+              drugs: (latestPrescription as any).items?.map((item: any, index: number) => ({
                 id: item.id || String(index + 1),
                 name: item.medication_name || item.name,
                 dose: item.strength || item.dose,
@@ -117,7 +119,7 @@ export default function Pharmacy() {
                   status: "pending"
                 }
               ],
-              status: latestPrescription.status || "pending"
+              status: (latestPrescription.status === "cancelled" || latestPrescription.status === "dispensed" ? "pending" : latestPrescription.status) || "pending"
             };
             
             setSelectedPrescription(mappedPrescription);
@@ -127,7 +129,7 @@ export default function Pharmacy() {
             setError("ไม่พบใบสั่งยาสำหรับผู้ป่วยรายนี้");
           }
         } catch (prescriptionError) {
-          console.error('Error fetching prescriptions:', prescriptionError);
+          logger.error('Error fetching prescriptions:', prescriptionError);
           setSelectedPrescription(null);
           setError("ไม่สามารถดึงข้อมูลใบสั่งยาได้");
         }
@@ -136,7 +138,7 @@ export default function Pharmacy() {
         setError("ไม่พบข้อมูลผู้ป่วยในระบบ กรุณาตรวจสอบข้อมูล");
       }
     } catch (error) {
-      console.error("❌ Error searching prescription:", error);
+      logger.error("❌ Error searching prescription:", error);
       setError("เกิดข้อผิดพลาดในการค้นหา กรุณาลองอีกครั้ง");
       setSelectedPrescription(null);
     } finally {
@@ -205,7 +207,7 @@ export default function Pharmacy() {
     setSuccess(null);
     
     try {
-      console.log("📋 Completing prescription:", {
+      logger.debug("📋 Completing prescription:", {
         prescription: selectedPrescription,
         pharmacistName,
         pharmacistNotes,
@@ -214,13 +216,11 @@ export default function Pharmacy() {
       
       // Call API to complete prescription
       const response = await apiClient.completePrescription(selectedPrescription.prescriptionId, {
-        pharmacistName,
-        pharmacistNotes,
-        dispensedDate: new Date().toISOString(),
-        dispensedBy: user?.id || 'pharmacist'
+        dispensedBy: pharmacistName,
+        notes: pharmacistNotes
       });
       
-      if (response.success) {
+      if (response.statusCode === 200) {
         setSuccess("จ่ายยาเสร็จสมบูรณ์! ใบสั่งยาได้รับการประมวลผลแล้ว");
         
         // Reset form
@@ -232,7 +232,7 @@ export default function Pharmacy() {
       }
       
     } catch (error) {
-      console.error("❌ Error completing prescription:", error);
+      logger.error("❌ Error completing prescription:", error);
       setError("เกิดข้อผิดพลาด กรุณาลองอีกครั้ง");
     } finally {
       setIsProcessing(false);
@@ -718,8 +718,8 @@ export default function Pharmacy() {
               <ul className="space-y-1 text-purple-700">
                 <li>• คลิกที่ชื่อยา/จำนวน/วิธีใช้ เพื่อแก้ไขข้อมูล</li>
                 <li>• ตรวจสอบความถูกต้องของใบสั่งยาก่อนจ่าย</li>
-                <li>• กดปุ่ม "จ่าย" เพื่อเปลี่ยนสถานะยาแต่ละรายการ</li>
-                <li>• กดปุ่ม "เสร็จสิ้นการจ่ายยา" เมื่อจ่ายยาครบแล้ว</li>
+                <li>• กดปุ่ม &quot;จ่าย&quot; เพื่อเปลี่ยนสถานะยาแต่ละรายการ</li>
+                <li>• กดปุ่ม &quot;เสร็จสิ้นการจ่ายยา&quot; เมื่อจ่ายยาครบแล้ว</li>
               </ul>
             </div>
           </div>

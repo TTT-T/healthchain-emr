@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { logger } from '@/lib/logger';
 
 interface AdminUser {
   id: string;
@@ -50,7 +51,7 @@ export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
 
       const result = await response.json();
 
-      if (result.success) {
+      if (result.statusCode === 200) {
         setUser(result.user);
       } else {
         throw new Error(result.message || 'Login failed');
@@ -69,7 +70,7 @@ export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
         method: 'POST',
       });
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     } finally {
       setUser(null);
     }
@@ -97,7 +98,7 @@ export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
           });
         }
       } catch (error) {
-        console.error('Session check error:', error);
+        logger.error('Session check error:', error);
       }
     };
 

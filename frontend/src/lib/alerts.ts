@@ -40,7 +40,8 @@ export {
 };
 
 // Additional convenience aliases
-export const showSuccess = showConfirmation;
+export const showSuccess = (message: string, title?: string) => 
+  showConfirmation(title || 'สำเร็จ', message);
 export const showInfo = showInformation;
 
 // Common alert messages for consistency

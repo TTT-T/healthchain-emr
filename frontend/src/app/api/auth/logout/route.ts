@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({ refreshToken })
         });
       } catch (backendError) {
-        console.error('Backend logout error:', backendError);
+        logger.error('Backend logout error:', backendError);
         // Continue with frontend logout even if backend fails
       }
     }
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error('Logout error:', error);
+    logger.error('Logout error:', error);
     return NextResponse.json({
       success: false,
       message: 'เกิดข้อผิดพลาดในการออกจากระบบ'

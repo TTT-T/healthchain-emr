@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
 import AppLayout from "@/components/AppLayout";
 import Link from "next/link";
+import { logger } from '@/lib/logger';
 
 interface PatientData {
   // Basic user info
@@ -99,16 +100,16 @@ export default function Profile() {
         setIsLoading(true);
         const response = await apiClient.getProfile();
         
-        if (response.success && response.data) {
+        if (response.statusCode === 200 && response.data) {
           const userData = response.data;
           setFormData(prev => ({
             ...prev,
             ...userData
           }));
-          setOriginalData(userData); // Store original data for cancel functionality
+          setOriginalData(userData as any); // Store original data for cancel functionality
         }
       } catch (error) {
-        console.error('Error loading user data:', error);
+        logger.error('Error loading user data:', error);
         setError('ไม่สามารถโหลดข้อมูลได้');
       } finally {
         setIsLoading(false);
@@ -172,16 +173,16 @@ export default function Profile() {
       
       const response = await apiClient.updateProfile(formData);
       
-      if (response.success) {
+      if (response.statusCode === 200) {
         setSuccess('บันทึกข้อมูลสำเร็จ');
         setIsEditing(false);
         setOriginalData(formData); // Update original data after successful save
         setTimeout(() => setSuccess(null), 3000);
       } else {
-        setError(response.message || 'เกิดข้อผิดพลาดในการบันทึก');
+        setError((response as any).message || 'เกิดข้อผิดพลาดในการบันทึก');
       }
     } catch (error) {
-      console.error('Error saving profile:', error);
+      logger.error('Error saving profile:', error);
       setError('เกิดข้อผิดพลาดในการบันทึก');
     } finally {
       setIsSaving(false);
@@ -732,7 +733,7 @@ export default function Profile() {
                             placeholder="ระบุรายการยาที่แพ้ (ถ้าไม่มีให้ใส่ 'ไม่มี')"
                           />
                           <p className="text-xs text-slate-500">
-                            กรุณาระบุชื่อยาที่แพ้อย่างชัดเจน เช่น Penicillin, Aspirin หรือใส่ "ไม่มี" หากไม่แพ้
+                            กรุณาระบุชื่อยาที่แพ้อย่างชัดเจน เช่น Penicillin, Aspirin หรือใส่ &quot;ไม่มี&quot; หากไม่แพ้
                           </p>
                         </div>
                       ) : (

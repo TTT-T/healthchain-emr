@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 interface AuthLoginRequest {
   username?: string;
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
     return response;
 
   } catch (error) {
-    console.error('Auth login error:', error);
+    logger.error('Auth login error:', error);
     return NextResponse.json({
       success: false,
       message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์'

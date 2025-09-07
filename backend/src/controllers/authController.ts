@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+// bcrypt and jwt are handled by utils functions
 import { z } from 'zod';
 import crypto from 'crypto';
 import { 
@@ -11,12 +10,7 @@ import {
   errorResponse
 } from '../utils/index';
 import { 
-  User, 
-  AuthRegisterRequest, 
-  AuthLoginRequest, 
-  AuthResponse,
-  RefreshTokenRequest,
-  APIResponse
+  AuthResponse
 } from '../types/index';
 import { emailService } from '../services/emailService';
 
@@ -268,6 +262,7 @@ export const register = async (req: Request, res: Response) => {
     });
     
     // Remove password from response
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = newUser;
     
     const authResponse: AuthResponse = {
@@ -422,7 +417,8 @@ export const login = async (req: Request, res: Response) => {
     });
     
     // Remove password from response and transform field names
-    const { password_hash, ...userWithoutPassword } = user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password_hash: _, ...userWithoutPassword } = user;
     
     // Transform user object to match expected format
     const transformedUser = {
@@ -613,6 +609,7 @@ export const getProfile = async (req: Request, res: Response) => {
     }
     
     // Remove password from response
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = currentUser;
     
     res.json(
@@ -676,6 +673,7 @@ export const updateProfile = async (req: Request, res: Response) => {
     });
     
     // Remove password from response
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = updatedUser;
     
     res.json(

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
 import MedicalHeader from "@/components/MedicalHeader";
+import { logger } from '@/lib/logger';
 
 export default function NurseProfilePage() {
   const { user } = useAuth();
@@ -25,7 +26,6 @@ export default function NurseProfilePage() {
   });
 
   const [loading, setLoading] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -33,11 +33,11 @@ export default function NurseProfilePage() {
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        setIsLoading(true);
+        setLoading(true);
         const response = await apiClient.getNurseProfile();
         
-        if (response.success && response.data) {
-          const profile = response.data;
+        if (response.statusCode === 200 && !response.error && response.data) {
+          const profile = response.data as any;
           setFormData({
             first_name: profile.user?.firstName || "",
             last_name: profile.user?.lastName || "",
@@ -62,24 +62,24 @@ export default function NurseProfilePage() {
             last_name: user.lastName || "",
             email: user.email || "",
             phone: user.phone || "",
-            hospital: user.hospital || "",
-            department: user.department || "",
-            ward: user.ward || "",
-            nursing_license: user.professional_license || "",
-            experience_years: user.experience || "",
-            education: user.education || "",
-            certifications: user.certifications || "",
-            shift: user.shift || "",
-            bio: user.bio || "",
+            hospital: (user as any).hospital || "",
+            department: (user as any).department || "",
+            ward: (user as any).ward || "",
+            nursing_license: user.professionalLicense || "",
+            experience_years: (user as any).experience || "",
+            education: (user as any).education || "",
+            certifications: (user as any).certifications || "",
+            shift: (user as any).shift || "",
+            bio: (user as any).bio || "",
             position: user.position || "",
-            professional_license: user.professional_license || ""
+            professional_license: user.professionalLicense || ""
           });
         }
       } catch (error) {
-        console.error('Error loading user data:', error);
+        logger.error('Error loading user data:', error);
         setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
@@ -138,14 +138,14 @@ export default function NurseProfilePage() {
 
       const response = await apiClient.updateNurseProfile(updateData);
       
-      if (response.success && response.data) {
+      if (response.statusCode === 200 && !response.error && response.data) {
         setSuccess('บันทึกข้อมูลสำเร็จ');
         setTimeout(() => setSuccess(null), 3000);
       } else {
         setError(response.error?.message || 'เกิดข้อผิดพลาดในการบันทึก');
       }
     } catch (error: any) {
-      console.error('Error saving profile:', error);
+      logger.error('Error saving profile:', error);
       setError('เกิดข้อผิดพลาดในการบันทึก');
     } finally {
       setLoading(false);
@@ -234,7 +234,7 @@ export default function NurseProfilePage() {
                     <input
                       type="text"
                       name="firstName"
-                      value={formData.firstName}
+                      value={formData.first_name}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 bg-slate-50 focus:bg-white"
                       required
@@ -245,7 +245,7 @@ export default function NurseProfilePage() {
                     <input
                       type="text"
                       name="lastName"
-                      value={formData.lastName}
+                      value={formData.last_name}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 bg-slate-50 focus:bg-white"
                       required
@@ -335,7 +335,7 @@ export default function NurseProfilePage() {
                     <input
                       type="text"
                       name="nursingLicense"
-                      value={formData.nursingLicense}
+                      value={formData.nursing_license}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 bg-slate-50 focus:bg-white"
                       required
@@ -346,7 +346,7 @@ export default function NurseProfilePage() {
                     <input
                       type="number"
                       name="experience"
-                      value={formData.experience}
+                      value={formData.experience_years}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 bg-slate-50 focus:bg-white"
                       min="0"

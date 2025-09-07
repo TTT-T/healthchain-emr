@@ -5,11 +5,7 @@ import {
   MedicalPatient, 
   MedicalRecord, 
   RiskAssessmentRequest, 
-  RiskAssessmentResponse,
-  ConsentContract,
-  ConsentContractRequest,
-  LoginRequest,
-  RegisterRequest 
+  ConsentContractRequest 
 } from '@/types/api';
 
 // Query Keys

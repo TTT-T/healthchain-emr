@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 // Define protected routes for each user type
-const protectedRoutes = {
-  admin: ['/admin'],
-  external: ['/external-requesters'],
-  user: ['/emr', '/accounts']
-}
+// const protectedRoutes = {
+//   admin: ['/admin'],
+//   external: ['/external-requesters'],
+//   user: ['/emr', '/accounts']
+// }
 
 // Define public routes that don't require authentication
 const publicRoutes = [

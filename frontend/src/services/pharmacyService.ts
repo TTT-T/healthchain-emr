@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { 
   MedicalPrescription, 
   CreatePrescriptionRequest, 
@@ -18,7 +19,7 @@ export class PharmacyService {
       const response = await apiClient.createPrescription(data);
       return response;
     } catch (error) {
-      console.error('Error creating prescription:', error);
+      logger.error('Error creating prescription:', error);
       throw error;
     }
   }
@@ -31,7 +32,7 @@ export class PharmacyService {
       const response = await apiClient.getPrescription(id);
       return response;
     } catch (error) {
-      console.error('Error getting prescription:', error);
+      logger.error('Error getting prescription:', error);
       throw error;
     }
   }
@@ -44,7 +45,7 @@ export class PharmacyService {
       const response = await apiClient.updatePrescription(id, data);
       return response;
     } catch (error) {
-      console.error('Error updating prescription:', error);
+      logger.error('Error updating prescription:', error);
       throw error;
     }
   }
@@ -52,12 +53,12 @@ export class PharmacyService {
   /**
    * อัปเดตรายการยา
    */
-  static async updatePrescriptionItem(id: string, data: any): Promise<APIResponse<any>> {
+  static async updatePrescriptionItem(id: string, data: unknown): Promise<APIResponse<any>> {
     try {
       const response = await apiClient.updatePrescriptionItem(id, data);
       return response;
     } catch (error) {
-      console.error('Error updating prescription item:', error);
+      logger.error('Error updating prescription item:', error);
       throw error;
     }
   }
@@ -70,7 +71,7 @@ export class PharmacyService {
       const response = await apiClient.getPrescriptionsByVisit(visitId);
       return response;
     } catch (error) {
-      console.error('Error getting prescriptions by visit:', error);
+      logger.error('Error getting prescriptions by visit:', error);
       throw error;
     }
   }
@@ -207,7 +208,7 @@ export class PharmacyService {
   /**
    * คำนวณราคาโดยประมาณ
    */
-  static calculateEstimatedCost(medications: any[]): number {
+  static calculateEstimatedCost(medications: unknown[]): number {
     // ราคาประมาณการต่อเม็ด/หน่วย (บาท)
     const estimatedPrices: { [key: string]: number } = {
       'paracetamol': 0.5,
@@ -229,7 +230,7 @@ export class PharmacyService {
       'theophylline': 1.5
     };
 
-    return medications.reduce((total, med) => {
+    return medications.reduce((total: number, med: any) => {
       const genericName = med.medicationName?.toLowerCase() || '';
       const matchedPrice = Object.entries(estimatedPrices).find(([key]) => 
         genericName.includes(key)

@@ -1,6 +1,6 @@
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
 
 // Bundle Analysis Configuration
 const ANALYSIS_CONFIG = {
@@ -162,13 +162,13 @@ function analyzePublicAssets(publicDir) {
   });
 }
 
-function getGzipSize(filePath) {
+async function getGzipSize(filePath) {
   try {
     const content = fs.readFileSync(filePath);
-    const zlib = require('zlib');
+    const zlib = await import('zlib');
     const gzipped = zlib.gzipSync(content);
     return gzipped.length;
-  } catch (error) {
+  } catch {
     return 0;
   }
 }
@@ -281,7 +281,7 @@ function generateBundleReport() {
 
   // Show recommendations
   console.log('💡 RECOMMENDATIONS:');
-  bundleResults.recommendations.forEach((rec, index) => {
+  bundleResults.recommendations.forEach((rec) => {
     const icon = rec.type === 'error' ? '❌' : rec.type === 'warning' ? '⚠️' : '💡';
     console.log(`${icon} ${rec.message}`);
     if (rec.files.length > 0) {

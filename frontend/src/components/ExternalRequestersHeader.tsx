@@ -3,6 +3,7 @@
 import React from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { Menu, Bell, Search, User, Settings, LogOut, Building2 } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface ExternalRequestersHeaderProps {
   title: string;
@@ -18,7 +19,7 @@ export default function ExternalRequestersHeader({ title, subtitle, onToggleSide
     try {
       await logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     }
   };
 

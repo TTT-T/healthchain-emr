@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { logger } from '@/lib/logger';
 
 interface MedicalSidebarProps {
   userType: "doctor" | "nurse";
@@ -69,7 +70,7 @@ export default function MedicalSidebar({ userType, isOpen, onClose }: MedicalSid
         onClose();
       }
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     }
   };
 

@@ -1,9 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
-import { CheckCircle, AlertCircle, FileText, Calendar, User, Download, Eye, Upload, Search, Filter, RefreshCw } from "lucide-react";
+import { AlertCircle, FileText, User, Download, Upload, RefreshCw, Eye } from "lucide-react";
+import { logger } from '@/lib/logger';
 
 interface MedicalDocument {
   id: string;
@@ -28,41 +29,41 @@ interface MedicalDocument {
 export default function MedicalDocuments() {
   const { user } = useAuth();
   const [documents, setDocuments] = useState<MedicalDocument[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedCategory] = useState("all");
+  const [selectedStatus] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm] = useState("");
   const [selectedDocument, setSelectedDocument] = useState<MedicalDocument | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchDocuments();
-    }
-  }, [user]);
-
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
       
       if (user?.id) {
         const response = await apiClient.getPatientDocuments(user.id);
-        if (response.success && response.data) {
+        if (response.statusCode === 200 && response.data) {
           setDocuments(response.data);
         } else {
           setError(response.error?.message || "ไม่สามารถดึงข้อมูลเอกสารได้");
         }
       }
     } catch (err) {
-      console.error("Error fetching documents:", err);
+      logger.error("Error fetching documents:", err);
       setError("เกิดข้อผิดพลาดในการดึงข้อมูลเอกสาร");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchDocuments();
+    }
+  }, [user, fetchDocuments]);
 
   const filteredDocuments = documents.filter(document => {
     const matchesSearch = document.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -127,7 +128,7 @@ export default function MedicalDocuments() {
   };
 
   const handleDownload = (document: MedicalDocument) => {
-    console.log('Downloading document:', document.id);
+    logger.debug('Downloading document:', document.id);
     alert(`กำลังดาวน์โหลด: ${document.title}`);
   };
 

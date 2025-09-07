@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
-import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
+// import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * WebSocket Service for Frontend
@@ -11,7 +12,7 @@ interface NotificationData {
   type: 'system' | 'user' | 'admin';
   title: string;
   message: string;
-  data?: any;
+  data?: unknown;
   priority: 'low' | 'medium' | 'high';
   timestamp: string;
 }
@@ -22,19 +23,19 @@ interface SystemUpdate {
   title: string;
   message: string;
   priority: 'low' | 'medium' | 'high';
-  data?: any;
+  data?: unknown;
   timestamp: string;
 }
 
 interface DashboardUpdate {
-  data: any;
+  data: unknown;
   timestamp: string;
 }
 
 interface PatientUpdate {
   type: 'visit' | 'lab_result' | 'prescription' | 'appointment';
   patientId: string;
-  data: any;
+  data: unknown;
   timestamp: string;
 }
 
@@ -50,7 +51,7 @@ class WebSocketService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
-  private eventListeners: Map<string, Function[]> = new Map();
+  private eventListeners: Map<string, ((...args: unknown[]) => void)[]> = new Map();
 
   constructor() {
     this.setupEventListeners();
@@ -61,7 +62,7 @@ class WebSocketService {
    */
   public connect(token: string): void {
     if (this.socket && this.socket.connected) {
-      console.log('🔌 WebSocket already connected');
+      logger.debug('🔌 WebSocket already connected');
       return;
     }
 
@@ -87,7 +88,7 @@ class WebSocketService {
       this.socket.disconnect();
       this.socket = null;
       this.isConnected = false;
-      console.log('🔌 WebSocket disconnected');
+      logger.debug('🔌 WebSocket disconnected');
     }
   }
 
@@ -98,14 +99,14 @@ class WebSocketService {
     if (!this.socket) return;
 
     this.socket.on('connect', () => {
-      console.log('🔌 WebSocket connected');
+      logger.debug('🔌 WebSocket connected');
       this.isConnected = true;
       this.reconnectAttempts = 0;
       this.emit('connected');
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('🔌 WebSocket disconnected:', reason);
+      logger.debug('🔌 WebSocket disconnected:', reason);
       this.isConnected = false;
       this.emit('disconnected', reason);
       
@@ -116,27 +117,27 @@ class WebSocketService {
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('🔌 WebSocket connection error:', error);
+      logger.error('🔌 WebSocket connection error:', error);
       this.emit('connection_error', error);
     });
 
     this.socket.on('notification', (notification: NotificationData) => {
-      console.log('📢 Received notification:', notification);
+      logger.debug('📢 Received notification:', notification);
       this.emit('notification', notification);
     });
 
     this.socket.on('system_update', (update: SystemUpdate) => {
-      console.log('🔄 Received system update:', update);
+      logger.debug('🔄 Received system update:', update);
       this.emit('system_update', update);
     });
 
     this.socket.on('dashboard_update', (update: DashboardUpdate) => {
-      console.log('📊 Received dashboard update:', update);
+      logger.debug('📊 Received dashboard update:', update);
       this.emit('dashboard_update', update);
     });
 
     this.socket.on('patient_update', (update: PatientUpdate) => {
-      console.log('🏥 Received patient update:', update);
+      logger.debug('🏥 Received patient update:', update);
       this.emit('patient_update', update);
     });
 
@@ -145,7 +146,7 @@ class WebSocketService {
     });
 
     this.socket.on('connected', (data) => {
-      console.log('✅ WebSocket connection confirmed:', data);
+      logger.debug('✅ WebSocket connection confirmed:', data);
       this.emit('connection_confirmed', data);
     });
   }
@@ -155,7 +156,7 @@ class WebSocketService {
    */
   private attemptReconnect(): void {
     this.reconnectAttempts++;
-    console.log(`🔄 Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+    logger.debug(`🔄 Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
     
     setTimeout(() => {
       if (this.socket && !this.socket.connected) {
@@ -225,7 +226,7 @@ class WebSocketService {
   /**
    * Add event listener
    */
-  public on(event: string, callback: Function): void {
+  public on(event: string, callback: (...args: unknown[]) => void): void {
     if (this.eventListeners.has(event)) {
       this.eventListeners.get(event)!.push(callback);
     } else {
@@ -236,7 +237,7 @@ class WebSocketService {
   /**
    * Remove event listener
    */
-  public off(event: string, callback: Function): void {
+  public off(event: string, callback: (...args: unknown[]) => void): void {
     if (this.eventListeners.has(event)) {
       const listeners = this.eventListeners.get(event)!;
       const index = listeners.indexOf(callback);
@@ -249,13 +250,13 @@ class WebSocketService {
   /**
    * Emit event to listeners
    */
-  private emit(event: string, data?: any): void {
+  private emit(event: string, data?: unknown): void {
     if (this.eventListeners.has(event)) {
       this.eventListeners.get(event)!.forEach(callback => {
         try {
           callback(data);
         } catch (error) {
-          console.error(`Error in event listener for ${event}:`, error);
+          logger.error(`Error in event listener for ${event}:`, error);
         }
       });
     }

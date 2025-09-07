@@ -3,6 +3,7 @@
 import React from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { Menu, Bell, Search, User, Settings, LogOut, Heart } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface EMRHeaderProps {
   title: string;
@@ -18,7 +19,7 @@ export default function EMRHeader({ title, subtitle, onToggleSidebar }: EMRHeade
     try {
       await logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     }
   };
 

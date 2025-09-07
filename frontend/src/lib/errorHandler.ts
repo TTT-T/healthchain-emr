@@ -1,5 +1,6 @@
 import { APIError } from '@/types/api';
-import { showError, showWarning, showInfo } from '@/lib/alerts';
+import { showError, showWarning } from '@/lib/alerts';
+import { logger } from '@/lib/logger';
 
 /**
  * Format API error messages for display to users
@@ -121,7 +122,7 @@ export function getValidationErrors(error: APIError | Error | unknown): Record<s
       if (Array.isArray(apiError.details)) {
         // Handle array of validation errors
         const fieldErrors: Record<string, string> = {};
-        apiError.details.forEach((detail: any) => {
+        apiError.details.forEach((detail: { field?: string; message?: string }) => {
           if (detail.field && detail.message) {
             fieldErrors[detail.field] = detail.message;
           }
@@ -131,7 +132,7 @@ export function getValidationErrors(error: APIError | Error | unknown): Record<s
         // Handle object with field keys
         const fieldErrors: Record<string, string> = {};
         Object.keys(apiError.details).forEach(key => {
-          const value = apiError.details[key];
+          const value = (apiError.details as any)[key];
           if (typeof value === 'string') {
             fieldErrors[key] = value;
           } else if (Array.isArray(value) && value.length > 0) {
@@ -192,7 +193,7 @@ export function handleAPIError(error: APIError | Error | unknown, options?: {
   
   // Log error in development
   if (process.env.NODE_ENV === 'development') {
-    console.error('API Error:', getErrorDetails(error));
+    logger.error('API Error:', getErrorDetails(error));
   }
   
   // Show toast notification if requested
@@ -236,7 +237,7 @@ export function handleErrorWithAlert(error: APIError | Error | unknown, options?
   
   // Log error in development
   if (process.env.NODE_ENV === 'development') {
-    console.error('Error with Alert:', getErrorDetails(error));
+    logger.error('Error with Alert:', getErrorDetails(error));
   }
   
   // Show appropriate alert based on error type

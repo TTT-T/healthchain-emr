@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { logger } from '@/lib/logger'
 import { Badge } from '@/components/ui/badge'
 import { 
   BarChart3, 
@@ -41,13 +42,13 @@ export default function ReportsPage() {
         setLoading(true)
         const response = await apiClient.getExternalRequestersDashboardOverview()
         
-        if (response.success && response.data) {
+        if (response.statusCode === 200 && response.data) {
           setReportData(response.data)
         } else {
           setError('ไม่สามารถโหลดข้อมูลรายงานได้')
         }
       } catch (error) {
-        console.error('Error loading report data:', error)
+        logger.error('Error loading report data:', error)
         setError('เกิดข้อผิดพลาดในการโหลดข้อมูลรายงาน')
       } finally {
         setLoading(false)

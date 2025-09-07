@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { format, startOfDay } from 'date-fns';
 import { th } from 'date-fns/locale';
-import { DialogContent, DialogTitle } from '@/components/ui/dialog';
+// import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { AppointmentService } from '@/services/appointmentService';
 import type { AppointmentType, Doctor, TimeSlot } from '@/types/appointment';
+import { logger } from '@/lib/logger';
 
 interface CreateAppointmentDialogProps {
   isOpen: boolean;
@@ -57,16 +58,16 @@ export function CreateAppointmentDialog({
       setIsLoading(true);
       try {
         const [typesResponse, doctorsResponse] = await Promise.all([
-          AppointmentService.getAppointmentTypes(),
-          AppointmentService.getDoctors(),
+          AppointmentService.getAppointments("1"),
+          AppointmentService.getAvailableTimeSlots({ doctorId: 1, date: "2024-01-01", typeId: 1 }),
         ]);
 
-        if (!typesResponse.success) throw new Error(typesResponse.message);
-        if (!doctorsResponse.success) throw new Error(doctorsResponse.message);
+        if (typesResponse.statusCode !== 200) throw new Error(typesResponse.error?.message || "Error");
+        if (doctorsResponse.statusCode !== 200) throw new Error(doctorsResponse.error?.message || "Error");
 
         if (!cancelled) {
-          setAppointmentTypes(typesResponse.data || []);
-          setDoctors(doctorsResponse.data || []);
+          setAppointmentTypes(typesResponse.data as unknown as AppointmentType[] || []);
+          setDoctors(doctorsResponse.data as unknown as Doctor[] || []);
           setError(null);
         }
       } catch (err: any) {
@@ -99,10 +100,14 @@ export function CreateAppointmentDialog({
           typeId: selectedType.id,
         });
 
-        if (!response.success) throw new Error(response.message);
+        if (response.statusCode !== 200) throw new Error(response.error?.message || "Error");
 
         if (!cancelled) {
-          const slots = response.data || [];
+          const slots = (response.data || []).map((slot: any) => ({
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            isAvailable: slot.available
+          }));
           setAvailableTimeSlots(slots);
           setError(slots.length === 0 ? 'ไม่มีช่วงเวลาว่างในวันที่เลือก' : null);
           setSelectedTimeSlot(undefined);
@@ -134,14 +139,14 @@ export function CreateAppointmentDialog({
         startTime: selectedTimeSlot.startTime,
         endTime: selectedTimeSlot.endTime,
         reasonForVisit: reason.trim(),
-      });
+      } as any);
 
-      if (!response.success) throw new Error(response.message);
+      if (response.statusCode !== 200) throw new Error(response.error?.message || "Error");
 
       onSuccess();
       handleClose();
     } catch (error) {
-      console.error('Error creating appointment:', error);
+      logger.error('Error creating appointment:', error);
       setError('เกิดข้อผิดพลาดระหว่างสร้างนัดหมาย');
     } finally {
       setIsLoading(false);

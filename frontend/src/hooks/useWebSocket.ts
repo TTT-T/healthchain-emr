@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { webSocketService } from '@/services/websocketService';
+import { logger } from '@/lib/logger';
 
 /**
  * WebSocket Hook
@@ -12,7 +13,7 @@ interface NotificationData {
   type: 'system' | 'user' | 'admin';
   title: string;
   message: string;
-  data?: any;
+  data?: unknown;
   priority: 'low' | 'medium' | 'high';
   timestamp: string;
 }
@@ -23,19 +24,19 @@ interface SystemUpdate {
   title: string;
   message: string;
   priority: 'low' | 'medium' | 'high';
-  data?: any;
+  data?: unknown;
   timestamp: string;
 }
 
 interface DashboardUpdate {
-  data: any;
+  data: unknown;
   timestamp: string;
 }
 
 interface PatientUpdate {
   type: 'visit' | 'lab_result' | 'prescription' | 'appointment';
   patientId: string;
-  data: any;
+  data: unknown;
   timestamp: string;
 }
 
@@ -44,7 +45,7 @@ export const useWebSocket = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [systemUpdates, setSystemUpdates] = useState<SystemUpdate[]>([]);
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [dashboardData, setDashboardData] = useState<unknown>(null);
   const [patientUpdates, setPatientUpdates] = useState<PatientUpdate[]>([]);
   
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -57,52 +58,52 @@ export const useWebSocket = () => {
       // Set up event listeners
       const handleConnected = () => {
         setIsConnected(true);
-        console.log('🔌 WebSocket connected in hook');
+        logger.debug('🔌 WebSocket connected in hook');
       };
 
       const handleDisconnected = (reason: string) => {
         setIsConnected(false);
-        console.log('🔌 WebSocket disconnected in hook:', reason);
+        logger.debug('🔌 WebSocket disconnected in hook:', reason);
       };
 
-      const handleConnectionError = (error: any) => {
+      const handleConnectionError = (error: unknown) => {
         setIsConnected(false);
-        console.error('🔌 WebSocket connection error in hook:', error);
+        logger.error('🔌 WebSocket connection error in hook:', error);
       };
 
       const handleNotification = (notification: NotificationData) => {
         setNotifications(prev => [notification, ...prev.slice(0, 49)]); // Keep last 50 notifications
-        console.log('📢 New notification received:', notification);
+        logger.debug('📢 New notification received:', notification);
       };
 
       const handleSystemUpdate = (update: SystemUpdate) => {
         setSystemUpdates(prev => [update, ...prev.slice(0, 19)]); // Keep last 20 updates
-        console.log('🔄 New system update received:', update);
+        logger.debug('🔄 New system update received:', update);
       };
 
       const handleDashboardUpdate = (update: DashboardUpdate) => {
         setDashboardData(update.data);
-        console.log('📊 Dashboard updated:', update);
+        logger.debug('📊 Dashboard updated:', update);
       };
 
       const handlePatientUpdate = (update: PatientUpdate) => {
         setPatientUpdates(prev => [update, ...prev.slice(0, 19)]); // Keep last 20 updates
-        console.log('🏥 New patient update received:', update);
+        logger.debug('🏥 New patient update received:', update);
       };
 
       // Add event listeners
       webSocketService.on('connected', handleConnected);
-      webSocketService.on('disconnected', handleDisconnected);
-      webSocketService.on('connection_error', handleConnectionError);
-      webSocketService.on('notification', handleNotification);
-      webSocketService.on('system_update', handleSystemUpdate);
-      webSocketService.on('dashboard_update', handleDashboardUpdate);
-      webSocketService.on('patient_update', handlePatientUpdate);
+      webSocketService.on('disconnected', handleDisconnected as any);
+      webSocketService.on('connection_error', handleConnectionError as any);
+      webSocketService.on('notification', handleNotification as any);
+      webSocketService.on('system_update', handleSystemUpdate as any);
+      webSocketService.on('dashboard_update', handleDashboardUpdate as any);
+      webSocketService.on('patient_update', handlePatientUpdate as any);
 
       // Set connection timeout
       connectionTimeoutRef.current = setTimeout(() => {
         if (!webSocketService.getConnectionStatus()) {
-          console.warn('⚠️ WebSocket connection timeout');
+          logger.warn('⚠️ WebSocket connection timeout');
           setIsConnected(false);
         }
       }, 10000);
@@ -111,12 +112,12 @@ export const useWebSocket = () => {
       return () => {
         // Remove event listeners
         webSocketService.off('connected', handleConnected);
-        webSocketService.off('disconnected', handleDisconnected);
-        webSocketService.off('connection_error', handleConnectionError);
-        webSocketService.off('notification', handleNotification);
-        webSocketService.off('system_update', handleSystemUpdate);
-        webSocketService.off('dashboard_update', handleDashboardUpdate);
-        webSocketService.off('patient_update', handlePatientUpdate);
+        webSocketService.off('disconnected', handleDisconnected as any);
+        webSocketService.off('connection_error', handleConnectionError as any);
+        webSocketService.off('notification', handleNotification as any);
+        webSocketService.off('system_update', handleSystemUpdate as any);
+        webSocketService.off('dashboard_update', handleDashboardUpdate as any);
+        webSocketService.off('patient_update', handlePatientUpdate as any);
 
         // Clear timeout
         if (connectionTimeoutRef.current) {
@@ -182,7 +183,7 @@ export const useWebSocket = () => {
 export const useNotifications = () => {
   const { notifications, clearNotifications } = useWebSocket();
   
-  const unreadCount = notifications.filter(n => !n.data?.read).length;
+  const unreadCount = notifications.filter(n => !(n.data as any)?.read).length;
   const highPriorityCount = notifications.filter(n => n.priority === 'high').length;
   
   return {
@@ -213,7 +214,7 @@ export const usePatientUpdates = () => {
   
   const recentUpdates = patientUpdates.slice(0, 10);
   const criticalUpdates = patientUpdates.filter(u => 
-    u.type === 'lab_result' && u.data?.status === 'critical'
+    u.type === 'lab_result' && (u.data as any)?.status === 'critical'
   );
   
   return {

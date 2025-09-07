@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/api';
-import { Appointment, CreateAppointmentRequest, APIResponse } from '@/types/api';
+import { Appointment, CreateAppointmentRequest, APIResponse, TimeSlot } from '@/types/api';
 
 export class AppointmentService {
   static async getAvailableTimeSlots(params: { 
@@ -10,12 +10,16 @@ export class AppointmentService {
     try {
       const { doctorId, date, typeId } = params;
       const response = await apiClient.get(`/appointments/available-slots/${doctorId}/${date}/${typeId}`);
-      return response.data;
-    } catch (error: any) {
+      return response as APIResponse<TimeSlot[]>;
+    } catch (error: unknown) {
       return {
-        success: false,
-        message: error.response?.data?.message || 'Failed to fetch available time slots',
-        errors: error.response?.data?.errors || error.message
+        data: null,
+        meta: null,
+        error: {
+          code: 'FETCH_ERROR',
+          message: 'Failed to fetch available time slots'
+        },
+        statusCode: 500
       };
     }
   }
@@ -24,11 +28,15 @@ export class AppointmentService {
     try {
       const response = await apiClient.getPatientAppointments(patientId);
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
-        success: false,
-        message: error.response?.data?.message || 'Failed to fetch appointments',
-        errors: error.response?.data?.errors || error.message
+        data: null,
+        meta: null,
+        error: {
+          code: 'FETCH_ERROR',
+          message: 'Failed to fetch appointments'
+        },
+        statusCode: 500
       };
     }
   }
@@ -37,11 +45,16 @@ export class AppointmentService {
     try {
       const response = await apiClient.getAppointment(appointmentId);
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
-        success: false,
-        message: error.response?.data?.message || 'Failed to fetch appointment',
-        errors: error.response?.data?.errors || error.message
+        data: null,
+        meta: null,
+        error: {
+          code: 'FETCH_ERROR',
+          message: (error as any).response?.data?.message || 'Failed to fetch appointment',
+          details: (error as any).response?.data?.errors || (error as any).message
+        },
+        statusCode: (error as any).response?.status || 500
       };
     }
   }
@@ -50,11 +63,16 @@ export class AppointmentService {
     try {
       const response = await apiClient.createAppointment(appointmentData);
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
-        success: false,
-        message: error.response?.data?.message || 'Failed to create appointment',
-        errors: error.response?.data?.errors || error.message
+        data: null,
+        meta: null,
+        error: {
+          code: 'CREATE_ERROR',
+          message: (error as any).response?.data?.message || 'Failed to create appointment',
+          details: (error as any).response?.data?.errors || (error as any).message
+        },
+        statusCode: (error as any).response?.status || 500
       };
     }
   }
@@ -63,11 +81,16 @@ export class AppointmentService {
     try {
       const response = await apiClient.updateAppointment(appointmentId, appointmentData);
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
-        success: false,
-        message: error.response?.data?.message || 'Failed to update appointment',
-        errors: error.response?.data?.errors || error.message
+        data: null,
+        meta: null,
+        error: {
+          code: 'UPDATE_ERROR',
+          message: (error as any).response?.data?.message || 'Failed to update appointment',
+          details: (error as any).response?.data?.errors || (error as any).message
+        },
+        statusCode: (error as any).response?.status || 500
       };
     }
   }
@@ -76,11 +99,16 @@ export class AppointmentService {
     try {
       const response = await apiClient.cancelAppointment(appointmentId);
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
-        success: false,
-        message: error.response?.data?.message || 'Failed to cancel appointment',
-        errors: error.response?.data?.errors || error.message
+        data: null,
+        meta: null,
+        error: {
+          code: 'CANCEL_ERROR',
+          message: (error as any).response?.data?.message || 'Failed to cancel appointment',
+          details: (error as any).response?.data?.errors || (error as any).message
+        },
+        statusCode: (error as any).response?.status || 500
       };
     }
   }
@@ -93,11 +121,16 @@ export class AppointmentService {
         status: 'rescheduled'
       });
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
-        success: false,
-        message: error.response?.data?.message || 'Failed to reschedule appointment',
-        errors: error.response?.data?.errors || error.message
+        data: null,
+        meta: null,
+        error: {
+          code: 'RESCHEDULE_ERROR',
+          message: (error as any).response?.data?.message || 'Failed to reschedule appointment',
+          details: (error as any).response?.data?.errors || (error as any).message
+        },
+        statusCode: (error as any).response?.status || 500
       };
     }
   }

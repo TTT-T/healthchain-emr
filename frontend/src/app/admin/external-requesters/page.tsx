@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { 
   Building2, 
   Search, 
@@ -170,7 +171,7 @@ const mockExternalRequesters: ExternalRequester[] = [
     allowedRequestTypes: ['medical_records'],
     complianceCertifications: [],
     isVerified: false,
-    suspensionReason: 'ไม่ได้ส่งเอกสารการรับรองตามกำหนด',
+    // suspensionReason: 'ไม่ได้ส่งเอกสารการรับรองตามกำหนด',
     createdAt: '2024-11-28T13:45:00Z',
     updatedAt: '2024-12-18T10:20:00Z'
   }
@@ -226,10 +227,10 @@ export default function ExternalRequestersPage() {
       setLoading(true);
       setError(null);
       
-      const response = await apiClient.getAdminExternalRequesters();
-      if (response.success && response.data) {
+      const response = await apiClient.getExternalRequesters();
+      if (response.statusCode === 200 && response.data) {
         // Map API response to ExternalRequester format
-        const mappedRequesters: ExternalRequester[] = response.data.requesters?.map((req: any) => ({
+        const mappedRequesters: ExternalRequester[] = (response.data as any).requesters?.map((req: any) => ({
           id: req.id,
           organizationName: req.organization_name || req.organizationName,
           organizationType: req.organization_type || req.organizationType,
@@ -260,7 +261,7 @@ export default function ExternalRequestersPage() {
         setRequesters(mockExternalRequesters);
       }
     } catch (error) {
-      console.error('Failed to load external requesters:', error);
+      logger.error('Failed to load external requesters:', error);
       setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
       // Fallback to mock data if API fails
       setRequesters(mockExternalRequesters);
@@ -271,8 +272,8 @@ export default function ExternalRequestersPage() {
 
   const handleStatusChange = async (requesterId: string, newStatus: string) => {
     try {
-      const response = await apiClient.updateExternalRequesterStatus(requesterId, newStatus);
-      if (response.success) {
+      const response = await apiClient.updateExternalRequesterStatus(requesterId, { status: newStatus });
+      if (response.statusCode === 200) {
         setRequesters(prev => prev.map(req => 
           req.id === requesterId ? { ...req, status: newStatus as any } : req
         ));
@@ -280,7 +281,7 @@ export default function ExternalRequestersPage() {
         setError('ไม่สามารถอัปเดตสถานะได้: ' + (response.error?.message || 'ไม่ทราบสาเหตุ'));
       }
     } catch (error) {
-      console.error('Failed to update status:', error);
+      logger.error('Failed to update status:', error);
       setError('เกิดข้อผิดพลาดในการอัปเดตสถานะ');
     }
   };

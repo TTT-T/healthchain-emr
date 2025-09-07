@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FileText, User, Calendar, Printer, Save, Search, X, Edit3, Download, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { FileText, User, Printer, Save, Search, X, Edit3, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
-import { apiClient } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 interface Patient {
   id: string;
@@ -101,7 +101,7 @@ export default function Documents() {
     setError(null);
     
     try {
-      console.log('📋 Loading patients and doctors...');
+      logger.debug('📋 Loading patients and doctors...');
       
       // Load patients
       const patientsResponse = await PatientService.searchPatients('', 'name');
@@ -128,9 +128,9 @@ export default function Documents() {
       ];
       setDoctors(mockDoctors);
       
-      console.log('✅ Patients and doctors loaded successfully');
+      logger.debug('✅ Patients and doctors loaded successfully');
     } catch (error) {
-      console.error('❌ Error loading patients and doctors:', error);
+      logger.error('❌ Error loading patients and doctors:', error);
       setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
     } finally {
       setIsLoadingPatients(false);
@@ -199,7 +199,7 @@ export default function Documents() {
     setSuccess(null);
 
     try {
-      console.log('📄 Creating document...');
+      logger.debug('📄 Creating document...');
       
       // Generate document number
       const documentNumber = `DOC${new Date().getFullYear()}${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`;
@@ -219,7 +219,7 @@ export default function Documents() {
         referralTo: formData.referralTo,
         additionalNotes: formData.additionalNotes,
         createdAt: new Date().toISOString(),
-        createdBy: user?.thai_name || 'ไม่ระบุ',
+        createdBy: user?.thaiName || 'ไม่ระบุ',
         status: 'issued'
       };
 
@@ -231,7 +231,7 @@ export default function Documents() {
       setSuccess(`สร้างเอกสารสำเร็จ! หมายเลขเอกสาร: ${documentNumber}`);
       
     } catch (error) {
-      console.error('❌ Error creating document:', error);
+      logger.error('❌ Error creating document:', error);
       setError('เกิดข้อผิดพลาดในการสร้างเอกสาร');
     } finally {
       setIsLoading(false);
@@ -291,7 +291,7 @@ export default function Documents() {
       ${createdDocument.additionalNotes ? `หมายเหตุ: ${createdDocument.additionalNotes}` : ''}
     `;
     
-    console.log('🖨️ Printing document:', printContent);
+    logger.debug('🖨️ Printing document:', printContent);
     setSuccess('กำลังพิมพ์เอกสาร...');
   };
 

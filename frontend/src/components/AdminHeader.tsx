@@ -3,6 +3,7 @@
 import React from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { Bell, Search, User, Settings, LogOut, Menu, Shield } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface AdminHeaderProps {
   title: string;
@@ -18,7 +19,7 @@ export default function AdminHeader({ title, subtitle, onToggleSidebar }: AdminH
     try {
       await logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     }
   };
 

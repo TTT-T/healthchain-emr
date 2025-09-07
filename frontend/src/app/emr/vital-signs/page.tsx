@@ -6,6 +6,7 @@ import { PatientService } from '@/services/patientService';
 import { VitalSignsService } from '@/services/vitalSignsService';
 import { VisitService } from '@/services/visitService';
 import { CreateVitalSignsRequest } from '@/types/api';
+import { logger } from '@/lib/logger';
 
 interface Patient {
   hn: string;
@@ -125,7 +126,7 @@ export default function VitalSigns() {
     setSuccess(null);
     
     try {
-      console.log(`🔍 Searching for patient by ${searchType}:`, searchQuery);
+      logger.debug(`🔍 Searching for patient by ${searchType}:`, searchQuery);
       
       // ค้นหาผู้ป่วยจาก API
       const response = await PatientService.searchPatients(searchQuery, searchType);
@@ -136,10 +137,10 @@ export default function VitalSigns() {
         // Map ข้อมูลผู้ป่วยจาก API response
         const mappedPatient: Patient = {
           hn: patient.hn,
-          nationalId: patient.national_id || '',
-          thaiName: patient.thai_name || 'ไม่ระบุชื่อ',
+          nationalId: patient.nationalId || '',
+          thaiName: patient.thaiName || 'ไม่ระบุชื่อ',
           gender: patient.gender || 'ไม่ระบุ',
-          birthDate: patient.birth_date || '',
+          birthDate: patient.birthDate || '',
           queueNumber: 'Q001', // Default queue number
           treatmentType: 'OPD - ตรวจรักษาทั่วไป', // Default treatment
           assignedDoctor: 'นพ.สมชาย วงศ์แพทย์' // Default doctor
@@ -147,14 +148,14 @@ export default function VitalSigns() {
 
         setSelectedPatient(mappedPatient);
         setSuccess('พบข้อมูลผู้ป่วยแล้ว');
-        console.log('✅ Patient found:', mappedPatient);
+        logger.debug('✅ Patient found:', mappedPatient);
       } else {
         setSelectedPatient(null);
         setError("ไม่พบข้อมูลผู้ป่วยในระบบ กรุณาตรวจสอบข้อมูล");
       }
       
     } catch (error: any) {
-      console.error('❌ Error searching patient:', error);
+      logger.error('❌ Error searching patient:', error);
       setError(error.message || "เกิดข้อผิดพลาดในการค้นหา กรุณาลองอีกครั้ง");
       setSelectedPatient(null);
     } finally {
@@ -227,7 +228,7 @@ export default function VitalSigns() {
       // สร้าง visit
       const visitResponse = await VisitService.createVisit(visitData);
       
-      if (!visitResponse.success || !visitResponse.data) {
+      if (visitResponse.statusCode !== 200 || !visitResponse.data) {
         throw new Error('ไม่สามารถสร้าง visit ได้');
       }
       
@@ -259,7 +260,7 @@ export default function VitalSigns() {
       // บันทึก vital signs
       const vitalResponse = await VitalSignsService.createVitalSigns(vitalSignsData);
       
-      if (vitalResponse.success && vitalResponse.data) {
+      if (vitalResponse.statusCode === 200 && vitalResponse.data) {
         alert(`บันทึกสัญญาณชีพสำเร็จ! Visit Number: ${visit.visit_number} | BMI: ${vitalResponse.data.bmi || 'N/A'}`);
         
         // Reset form
@@ -288,13 +289,13 @@ export default function VitalSigns() {
           measuredBy: "พยาบาลสมหญิง"
         });
         
-        console.log('Vital signs saved:', vitalResponse.data);
+        logger.debug('Vital signs saved:', vitalResponse.data);
       } else {
-        throw new Error(vitalResponse.message || 'ไม่สามารถบันทึกสัญญาณชีพได้');
+        throw new Error(vitalResponse.error?.message || 'ไม่สามารถบันทึกสัญญาณชีพได้');
       }
       
     } catch (error: any) {
-      console.error("Error saving vital signs:", error);
+      logger.error("Error saving vital signs:", error);
       alert(error.message || "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง");
     } finally {
       setIsSubmitting(false);

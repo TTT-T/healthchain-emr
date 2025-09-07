@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { logger } from '@/lib/logger'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
@@ -332,7 +333,7 @@ export default function ExternalRequesterRegistration() {
       // Submit to API
       const response = await apiClient.registerExternalRequester(formData)
 
-      if (response.success) {
+      if (response.statusCode === 200) {
         setSubmitResult({
           success: true,
           message: `${response.message || 'ลงทะเบียนสำเร็จ'}\n\nรหัสคำขอ: ${response.data?.requestId || response.data?.id}\nระยะเวลาตรวจสอบโดยประมาณ: 3-5 วันทำการ`,
@@ -349,7 +350,7 @@ export default function ExternalRequesterRegistration() {
       }
 
     } catch (error) {
-      console.error('Submit error:', error)
+      logger.error('Submit error:', error)
       setSubmitResult({
         success: false,
         message: 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง'

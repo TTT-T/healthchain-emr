@@ -8,6 +8,7 @@ import { PharmacyService } from '@/services/pharmacyService';
 import { LabService } from '@/services/labService';
 import { MedicalPatient, CreatePrescriptionRequest, CreateLabOrderRequest } from '@/types/api';
 import { CheckCircle, AlertCircle, Search, User, FileText, Plus, Trash2 } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface DrugOrder {
   name: string;
@@ -61,7 +62,7 @@ export default function DoctorVisit() {
     try {
       const response = await PatientService.searchPatients(searchQuery, searchType);
       
-      if (response.success && response.data && response.data.length > 0) {
+      if (response.statusCode === 200 && response.data && response.data.length > 0) {
         const exactMatch = response.data.find(p => 
           searchType === "hn" ? p.hn === searchQuery : p.hn === searchQuery
         );
@@ -77,7 +78,7 @@ export default function DoctorVisit() {
       }
       
     } catch (error) {
-      console.error("Error searching patient:", error);
+      logger.error("Error searching patient:", error);
       setError("เกิดข้อผิดพลาดในการค้นหา กรุณาลองอีกครั้ง");
     } finally {
       setIsSearching(false);
@@ -139,7 +140,7 @@ export default function DoctorVisit() {
 
       const visitResponse = await VisitService.createVisit(visitData);
       
-      if (!visitResponse.success || !visitResponse.data) {
+      if (visitResponse.statusCode !== 200 || !visitResponse.data) {
         throw new Error('Failed to create visit record');
       }
 
@@ -161,8 +162,8 @@ export default function DoctorVisit() {
 
         const prescriptionResponse = await PharmacyService.createPrescription(prescriptionData);
         
-        if (!prescriptionResponse.success) {
-          console.error('Failed to create prescription:', prescriptionResponse.errors);
+        if (prescriptionResponse.statusCode !== 200) {
+          logger.error('Failed to create prescription:', prescriptionResponse.error);
         }
       }
 
@@ -185,8 +186,8 @@ export default function DoctorVisit() {
 
           const labResponse = await LabService.createLabOrder(labOrderData);
           
-          if (!labResponse.success) {
-            console.error(`Failed to create lab order for ${test.testName}:`, labResponse.errors);
+          if (labResponse.statusCode !== 200) {
+            logger.error(`Failed to create lab order for ${test.testName}:`, labResponse.error);
           }
         }
       }
@@ -208,7 +209,7 @@ export default function DoctorVisit() {
       }, 3000);
       
     } catch (error) {
-      console.error("Error saving doctor visit:", error);
+      logger.error("Error saving doctor visit:", error);
       setError("เกิดข้อผิดพลาดในการบันทึก กรุณาลองอีกครั้ง");
     } finally {
       setIsSubmitting(false);
@@ -363,7 +364,7 @@ export default function DoctorVisit() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">อายุ</label>
-                  <p className="text-sm text-gray-900">{calculateAge(selectedPatient.birth_date)} ปี</p>
+                  <p className="text-sm text-gray-900">{selectedPatient.birth_date ? calculateAge(selectedPatient.birth_date) : 'ไม่ระบุ'} ปี</p>
                 </div>
               </div>
             </div>

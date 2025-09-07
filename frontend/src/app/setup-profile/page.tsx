@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 export default function SetupProfile() {
   const router = useRouter();
@@ -13,24 +14,24 @@ export default function SetupProfile() {
   // Check if user is authenticated
   useEffect(() => {
     const token = apiClient.getAccessToken();
-    console.log('🔍 Profile setup auth check - Token:', !!token);
+    logger.debug('🔍 Profile setup auth check - Token:', !!token);
     
     // Allow some time for auth context to initialize
     if (!isLoading) {
       if (!user && !token) {
-        console.log('❌ No user or token, redirecting to login');
+        logger.debug('❌ No user or token, redirecting to login');
         router.push('/login');
         return;
       }
       
       if (user && user.role !== 'patient') {
-        console.log('❌ User is not a patient, redirecting');
+        logger.debug('❌ User is not a patient, redirecting');
         router.push('/');
         return;
       }
       
-      if (user && user.profile_completed) {
-        console.log('✅ Profile already completed, redirecting to dashboard');
+      if (user && user.profileCompleted) {
+        logger.debug('✅ Profile already completed, redirecting to dashboard');
         router.push('/accounts/patient');
         return;
       }
@@ -180,23 +181,23 @@ export default function SetupProfile() {
         medications: formData.currentMedications
       };
 
-      console.log("Profile data to submit:", submitData);
+      logger.debug("Profile data to submit:", submitData);
       
       // Detailed token debugging
       const token = apiClient.getAccessToken();
-      console.log("🔍 Access token check:");
-      console.log("  - Token available:", !!token);
-      console.log("  - Token length:", token?.length || 0);
-      console.log("  - Token preview:", token ? token.substring(0, 30) + '...' : 'null');
-      console.log("  - All cookies:", document.cookie);
+      logger.debug("🔍 Access token check:");
+      logger.debug("  - Token available:", !!token);
+      logger.debug("  - Token length:", token?.length || 0);
+      logger.debug("  - Token preview:", token ? token.substring(0, 30) + '...' : 'null');
+      logger.debug("  - All cookies:", document.cookie);
 
       // Send to API
       const response = await apiClient.setupProfile(submitData);
       
-      console.log("Raw API response:", response);
+      logger.debug("Raw API response:", response);
       
-      if (response.success) {
-        console.log("Profile setup successful:", response.data);
+      if (response.statusCode === 200) {
+        logger.debug("Profile setup successful:", response.data);
         
         // Refresh user data to get updated profile_completed status
         await refreshUser();
@@ -204,12 +205,12 @@ export default function SetupProfile() {
         // Navigate to patient dashboard
         router.push('/accounts/patient');
       } else {
-        console.error("Profile setup failed - response not successful:", response);
-        throw new Error(response.message || 'Profile setup failed');
+        logger.error("Profile setup failed - response not successful:", response);
+        throw new Error(response.error?.message || 'Profile setup failed');
       }
       
     } catch (error) {
-      console.error("Profile setup failed:", error);
+      logger.error("Profile setup failed:", error);
       
       // Better error handling
       let errorMessage = "เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง";

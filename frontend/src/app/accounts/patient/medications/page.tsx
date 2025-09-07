@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { apiClient } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import AppLayout from '@/components/AppLayout';
+import { logger } from '@/lib/logger';
 import { 
   Pill, 
   AlertTriangle,
@@ -53,14 +54,14 @@ const PatientMedications = () => {
       try {
         if (user?.id) {
           const response = await apiClient.getPatientMedications(user.id);
-          if (response.success && response.data) {
-            setMedications(response.data);
+          if (response.statusCode === 200 && response.data) {
+            setMedications(response.data as Medication[]);
           } else {
             setError(response.error?.message || "ไม่สามารถดึงข้อมูลยาได้");
           }
         }
       } catch (err) {
-        console.error('Error fetching medications:', err);
+        logger.error('Error fetching medications:', err);
         setError('เกิดข้อผิดพลาดในการโหลดข้อมูลยา');
       } finally {
         setLoading(false);

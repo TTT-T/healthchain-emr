@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useAuth } from '@/contexts/AuthContext'
+// import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api'
+import { ExternalRequesterProfile, DashboardData, RequestItem, UserData } from '@/types/api'
+import { logger } from '@/lib/logger'
 import { 
-  Building2, 
   FileText, 
   Clock, 
   CheckCircle, 
@@ -18,16 +19,7 @@ import {
   TrendingUp
 } from 'lucide-react'
 
-interface UserData {
-  id: string
-  email: string
-  organizationName: string
-  organizationType: string
-  status: string
-  dataAccessLevel: string
-  lastLogin: string
-  createdAt: string
-}
+// Use imported types instead of local interface
 
 interface DashboardStats {
   totalRequests: number
@@ -65,24 +57,24 @@ export default function ExternalRequestersHomePage() {
         
         // Load user profile data
         const profileResponse = await apiClient.getExternalRequesterProfile()
-        if (profileResponse.success && profileResponse.data) {
-          const profileData = profileResponse.data
+        if (profileResponse.statusCode === 200 && profileResponse.data) {
+          const profileData = profileResponse.data as ExternalRequesterProfile
           setUser({
-            id: profileData.id,
+            id: (profileData as any).id,
             email: profileData.primaryContactEmail,
             organizationName: profileData.organizationName,
             organizationType: profileData.organizationType,
             status: profileData.status,
             dataAccessLevel: profileData.dataAccessLevel,
             lastLogin: profileData.lastLogin || new Date().toISOString(),
-            createdAt: profileData.createdAt
+            createdAt: profileData.createdAt || new Date().toISOString()
           })
         }
 
         // Load dashboard overview
         const dashboardResponse = await apiClient.getExternalRequestersDashboardOverview()
-        if (dashboardResponse.success && dashboardResponse.data) {
-          const dashboardData = dashboardResponse.data
+        if (dashboardResponse.statusCode === 200 && dashboardResponse.data) {
+          const dashboardData = dashboardResponse.data as DashboardData
           setStats({
             totalRequests: dashboardData.totalRequests || 0,
             pendingRequests: dashboardData.pendingRequests || 0,
@@ -96,19 +88,19 @@ export default function ExternalRequestersHomePage() {
 
           // Set recent requests
           if (dashboardData.recentRequests) {
-            setRecentRequests(dashboardData.recentRequests.map((req: any) => ({
+            setRecentRequests((dashboardData as any).recentRequests.map((req: RequestItem) => ({
               id: req.id,
-              type: req.requestType,
-              patientId: req.patientId,
-              status: req.status,
-              requestedAt: req.createdAt,
-              processedAt: req.updatedAt,
-              purpose: req.purpose
+              type: req.requestType || 'unknown',
+              patientId: req.patientId || 'unknown',
+              status: req.status || 'pending',
+              requestedAt: req.createdAt || new Date().toISOString(),
+              processedAt: req.updatedAt || new Date().toISOString(),
+              purpose: req.purpose || 'ไม่ระบุ'
             })))
           }
         }
       } catch (error) {
-        console.error('Error loading dashboard data:', error)
+        logger.error('Error loading dashboard data:', error)
         // Set empty data if API fails
         setUser(null)
         setStats(null)
@@ -126,21 +118,21 @@ export default function ExternalRequestersHomePage() {
     // Reload dashboard data
     try {
       const dashboardResponse = await apiClient.getExternalRequestersDashboardOverview()
-      if (dashboardResponse.success && dashboardResponse.data) {
+      if (dashboardResponse.statusCode === 200 && dashboardResponse.data) {
         const dashboardData = dashboardResponse.data
         setStats({
-          totalRequests: dashboardData.totalRequests || 0,
-          pendingRequests: dashboardData.pendingRequests || 0,
-          approvedRequests: dashboardData.approvedRequests || 0,
-          rejectedRequests: dashboardData.rejectedRequests || 0,
-          monthlyUsage: dashboardData.monthlyUsage || 0,
-          maxMonthlyUsage: dashboardData.maxMonthlyUsage || 100,
-          activeConnections: dashboardData.activeConnections || 0,
-          dataTransferred: dashboardData.dataTransferred || 0
+          totalRequests: (dashboardData as any).totalRequests || 0,
+          pendingRequests: (dashboardData as any).pendingRequests || 0,
+          approvedRequests: (dashboardData as any).approvedRequests || 0,
+          rejectedRequests: (dashboardData as any).rejectedRequests || 0,
+          monthlyUsage: (dashboardData as any).monthlyUsage || 0,
+          maxMonthlyUsage: (dashboardData as any).maxMonthlyUsage || 100,
+          activeConnections: (dashboardData as any).activeConnections || 0,
+          dataTransferred: (dashboardData as any).dataTransferred || 0
         })
 
-        if (dashboardData.recentRequests) {
-          setRecentRequests(dashboardData.recentRequests.map((req: any) => ({
+        if ((dashboardData as any).recentRequests) {
+          setRecentRequests((dashboardData as any).recentRequests.map((req: RequestItem) => ({
             id: req.id,
             type: req.requestType,
             patientId: req.patientId,
@@ -152,7 +144,7 @@ export default function ExternalRequestersHomePage() {
         }
       }
     } catch (error) {
-      console.error('Error refreshing dashboard data:', error)
+      logger.error('Error refreshing dashboard data:', error)
     }
   }
 
@@ -183,10 +175,10 @@ export default function ExternalRequestersHomePage() {
     }
   }
 
-  const handleLogout = () => {
-    // Handle logout logic
-    router.push('/')
-  }
+  // const handleLogout = () => {
+  //   // Handle logout logic
+  //   router.push('/')
+  // }
 
   if (loading) {
     return (

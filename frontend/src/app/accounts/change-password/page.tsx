@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Check, X, Shield, Lock } from "lucide-react";
+import { logger } from '@/lib/logger';
 
 export default function ChangePasswordPage() {
   const { user } = useAuth();
@@ -37,11 +38,11 @@ export default function ChangePasswordPage() {
     const loadRequirements = async () => {
       try {
         const response = await apiClient.getPasswordRequirements();
-        if (response.success) {
+        if (response.statusCode === 200 && !response.error) {
           setRequirements(response.data);
         }
       } catch (error) {
-        console.error("Error loading password requirements:", error);
+        logger.error("Error loading password requirements:", error);
       }
     };
 
@@ -54,11 +55,11 @@ export default function ChangePasswordPage() {
       const validatePassword = async () => {
         try {
           const response = await apiClient.validatePasswordStrength(formData.newPassword);
-          if (response.success) {
-            setPasswordStrength(response.data);
+          if (response.statusCode === 200 && !response.error) {
+            setPasswordStrength(response.data as { score: number; strength: string; feedback: string[]; isValid: boolean; });
           }
         } catch (error) {
-          console.error("Error validating password:", error);
+          logger.error("Error validating password:", error);
         }
       };
 
@@ -135,7 +136,7 @@ export default function ChangePasswordPage() {
 
       const response = await apiClient.changePassword(formData);
       
-      if (response.success && response.data) {
+      if (response.statusCode === 200 && !response.error && response.data) {
         setSuccess('เปลี่ยนรหัสผ่านสำเร็จ');
         setFormData({
           currentPassword: "",
@@ -157,7 +158,7 @@ export default function ChangePasswordPage() {
         setError(response.error?.message || 'เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน');
       }
     } catch (error: any) {
-      console.error('Error changing password:', error);
+      logger.error('Error changing password:', error);
       setError('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน');
     } finally {
       setLoading(false);

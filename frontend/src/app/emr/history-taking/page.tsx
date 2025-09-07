@@ -1,11 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
-import { Search, User, FileText, AlertTriangle, CheckCircle, Save, RotateCcw } from 'lucide-react';
+import { useState } from "react";
+import { Search, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
-import { VisitService } from '@/services/visitService';
-import { VitalSignsService } from '@/services/vitalSignsService';
 import { MedicalPatient } from '@/types/api';
+import { logger } from '@/lib/logger';
 
 interface Patient {
   hn: string;
@@ -93,7 +92,7 @@ interface MedicalHistory {
 }
 
 export default function HistoryTaking() {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<"hn" | "queue">("queue");
   const [isSearching, setIsSearching] = useState(false);
@@ -182,7 +181,7 @@ export default function HistoryTaking() {
     try {
       const response = await PatientService.searchPatients(searchQuery, searchType);
       
-      if (response.success && response.data && response.data.length > 0) {
+      if (response.statusCode === 200 && response.data && response.data.length > 0) {
         // Find exact match
         const exactMatch = response.data.find(p => 
           searchType === "hn" ? p.hn === searchQuery : p.hn === searchQuery
@@ -199,7 +198,7 @@ export default function HistoryTaking() {
       }
       
     } catch (error) {
-      console.error("Error searching patient:", error);
+      logger.error("Error searching patient:", error);
       setError("เกิดข้อผิดพลาดในการค้นหา กรุณาลองอีกครั้ง");
     } finally {
       setIsSearching(false);
@@ -269,7 +268,7 @@ export default function HistoryTaking() {
       
       // For now, we'll simulate the API call since medical history endpoint may not be ready
       // const response = await VisitService.createMedicalHistory(historyData);
-      console.log("Saving medical history:", historyData);
+      logger.debug("Saving medical history:", historyData);
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -347,7 +346,7 @@ export default function HistoryTaking() {
       }, 3000);
       
     } catch (error) {
-      console.error("Error saving medical history:", error);
+      logger.error("Error saving medical history:", error);
       setError("เกิดข้อผิดพลาดในการบันทึกประวัติ กรุณาลองอีกครั้ง");
     } finally {
       setIsSubmitting(false);
@@ -493,7 +492,7 @@ export default function HistoryTaking() {
                 </div>
                 <div>
                   <span className="text-slate-600">อายุ:</span>
-                  <span className="ml-2 font-medium text-slate-800">{calculateAge(selectedPatient.birth_date)} ปี</span>
+                  <span className="ml-2 font-medium text-slate-800">{selectedPatient.birth_date ? calculateAge(selectedPatient.birth_date) : 'ไม่ระบุ'} ปี</span>
                 </div>
                 <div>
                   <span className="text-slate-600">เพศ:</span>

@@ -44,7 +44,7 @@ export default function DebugAuth() {
         username: 'manualtest@example.com',
         password: 'ManualTest123!'
       });
-      addResult('Login Response', loginResponse.success ? 'Success' : 'Failed');
+      addResult('Login Response', loginResponse.statusCode === 200 ? 'Success' : 'Failed');
 
       // Check if token was stored
       const tokenAfterLogin = apiClient.getAccessToken();
@@ -57,7 +57,7 @@ export default function DebugAuth() {
         emergency_contact: 'Debug Emergency',
         address: 'Debug Address'
       });
-      addResult('Profile Setup Response', profileResponse.success ? 'Success' : 'Failed');
+      addResult('Profile Setup Response', profileResponse.statusCode === 200 ? 'Success' : 'Failed');
 
     } catch (error) {
       addResult('API Call Error', error instanceof Error ? error.message : 'Unknown error');

@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { 
   MedicalPatient, 
   CreatePatientRequest, 
@@ -15,7 +16,7 @@ export class PatientService {
    */
   static async searchPatients(query: string, type: 'hn' | 'queue' | 'name' = 'name') {
     try {
-      const params: any = {};
+      const params: { page?: number; limit?: number; search?: string; hn?: string; queue?: string } = {};
       
       if (type === 'hn') {
         params.hn = query;
@@ -28,7 +29,7 @@ export class PatientService {
       const response = await apiClient.getPatients(params);
       return response;
     } catch (error) {
-      console.error('Error searching patients:', error);
+      logger.error('Error searching patients:', error);
       throw error;
     }
   }
@@ -70,7 +71,7 @@ export class PatientService {
       const response = await apiClient.createPatient(patientData);
       return response;
     } catch (error) {
-      console.error('Error creating patient:', error);
+      logger.error('Error creating patient:', error);
       throw error;
     }
   }
@@ -84,7 +85,7 @@ export class PatientService {
       const response = await apiClient.getPatientProfile();
       return response;
     } catch (error) {
-      console.error('Error getting patient:', error);
+      logger.error('Error getting patient:', error);
       throw error;
     }
   }
@@ -97,7 +98,7 @@ export class PatientService {
       const response = await apiClient.updatePatient(id, data);
       return response;
     } catch (error) {
-      console.error('Error updating patient:', error);
+      logger.error('Error updating patient:', error);
       throw error;
     }
   }
@@ -114,7 +115,7 @@ export class PatientService {
       const response = await apiClient.getPatients(params);
       return response;
     } catch (error) {
-      console.error('Error listing patients:', error);
+      logger.error('Error listing patients:', error);
       throw error;
     }
   }

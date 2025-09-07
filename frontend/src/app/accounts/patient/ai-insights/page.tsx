@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
+import { logger } from '@/lib/logger';
 
 interface HealthInsight {
   riskLevel: string;
@@ -28,35 +29,35 @@ export default function AIInsights() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const [healthData, setHealthData] = useState<HealthInsight | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // const [isLoading, setIsLoading] = useState(true);
+  // const [error, setError] = useState<string | null>(null);
+
+  const fetchHealthInsights = useCallback(async () => {
+    try {
+      // setIsLoading(true);
+      // setError(null);
+      
+      if (user?.id) {
+        const response = await apiClient.getPatientAIInsights(user.id);
+        if (response.statusCode === 200 && !response.error && response.data) {
+          setHealthData(response.data as unknown as HealthInsight);
+        } else {
+          // setError(response.error?.message || "ไม่สามารถดึงข้อมูล AI insights ได้");
+        }
+      }
+    } catch (err) {
+      logger.error("Error fetching health insights:", err);
+      // setError("เกิดข้อผิดพลาดในการดึงข้อมูลการวิเคราะห์สุขภาพ");
+    } finally {
+      // setIsLoading(false);
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (user?.id) {
       fetchHealthInsights();
     }
-  }, [user]);
-
-  const fetchHealthInsights = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      if (user?.id) {
-        const response = await apiClient.getPatientAIInsights(user.id);
-        if (response.success && response.data) {
-          setHealthData(response.data);
-        } else {
-          setError(response.error?.message || "ไม่สามารถดึงข้อมูล AI insights ได้");
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching health insights:", err);
-      setError("เกิดข้อผิดพลาดในการดึงข้อมูลการวิเคราะห์สุขภาพ");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [user, fetchHealthInsights]);
 
   const getRiskColor = (risk: string) => {
     switch (risk.toLowerCase()) {

@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { 
   MedicalLabOrder, 
   CreateLabOrderRequest, 
@@ -18,7 +19,7 @@ export class LabService {
       const response = await apiClient.createLabOrder(data);
       return response;
     } catch (error) {
-      console.error('Error creating lab order:', error);
+      logger.error('Error creating lab order:', error);
       throw error;
     }
   }
@@ -31,7 +32,7 @@ export class LabService {
       const response = await apiClient.getLabOrder(id);
       return response;
     } catch (error) {
-      console.error('Error getting lab order:', error);
+      logger.error('Error getting lab order:', error);
       throw error;
     }
   }
@@ -44,7 +45,7 @@ export class LabService {
       const response = await apiClient.updateLabOrder(id, data);
       return response;
     } catch (error) {
-      console.error('Error updating lab order:', error);
+      logger.error('Error updating lab order:', error);
       throw error;
     }
   }
@@ -57,7 +58,7 @@ export class LabService {
       const response = await apiClient.getLabOrdersByVisit(visitId);
       return response;
     } catch (error) {
-      console.error('Error getting lab orders by visit:', error);
+      logger.error('Error getting lab orders by visit:', error);
       throw error;
     }
   }
@@ -65,12 +66,12 @@ export class LabService {
   /**
    * บันทึกผลตรวจ
    */
-  static async createLabResult(labOrderId: string, data: any): Promise<APIResponse<any>> {
+  static async createLabResult(labOrderId: string, data: Record<string, unknown>): Promise<APIResponse<any>> {
     try {
       const response = await apiClient.createLabResult(labOrderId, data);
       return response;
     } catch (error) {
-      console.error('Error creating lab result:', error);
+      logger.error('Error creating lab result:', error);
       throw error;
     }
   }
@@ -83,7 +84,7 @@ export class LabService {
       const response = await apiClient.getLabResults(labOrderId);
       return response;
     } catch (error) {
-      console.error('Error getting lab results:', error);
+      logger.error('Error getting lab results:', error);
       throw error;
     }
   }

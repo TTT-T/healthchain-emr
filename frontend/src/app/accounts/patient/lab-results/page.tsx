@@ -1,9 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
-import { CheckCircle, AlertCircle, FileText, Calendar, User, Download, Eye, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
+import { CheckCircle, AlertCircle, FileText, Calendar, User, Download, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
+import { logger } from '@/lib/logger';
 
 interface LabResult {
   id: string;
@@ -45,33 +46,33 @@ export default function LabResults() {
   const [selectedResult, setSelectedResult] = useState<LabResult | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchLabResults();
-    }
-  }, [user]);
-
-  const fetchLabResults = async () => {
+  const fetchLabResults = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
       
       if (user?.id) {
         const response = await apiClient.getPatientLabResults(user.id);
-        if (response.success && response.data) {
-          setResults(response.data);
+        if (response.statusCode === 200 && response.data) {
+          setResults(response.data as LabResult[]);
         } else {
           setError(response.error?.message || "ไม่สามารถดึงข้อมูลผลแลปได้");
         }
       }
       
     } catch (err) {
-      console.error('Error fetching lab results:', err);
+      logger.error('Error fetching lab results:', err);
       setError('เกิดข้อผิดพลาดในการโหลดผลการตรวจทางห้องปฏิบัติการ');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchLabResults();
+    }
+  }, [user, fetchLabResults]);
 
   const getCategoryText = (category: string) => {
     const categoryMap = {
@@ -145,7 +146,7 @@ export default function LabResults() {
 
   const handleDownload = (result: LabResult) => {
     // TODO: Implement download functionality
-    console.log('Download result:', result.id);
+    logger.debug('Download result:', result.id);
   };
 
   if (isLoading) {

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Download, RefreshCw, User, Clock, Activity, Eye } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface ActivityLog {
   id: string;
@@ -130,11 +131,11 @@ export default function ActivityLogsPage() {
   };
 
   const handleExport = () => {
-    console.log('Exporting activity logs...');
+    logger.debug('Exporting activity logs...');
   };
 
   const handleRefresh = () => {
-    console.log('Refreshing logs...');
+    logger.debug('Refreshing logs...');
   };
 
   return (

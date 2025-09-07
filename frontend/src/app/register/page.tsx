@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Shield, Mail, User, Phone, Lock, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 
 interface FormData {
   titlePrefix: string;
@@ -240,7 +241,7 @@ export default function Register() {
         // AuthContext will handle redirect to setup profile
       }
     } catch (error: any) {
-      console.error('Registration error:', error);
+      logger.error('Registration error:', error);
       
       // Handle specific error cases
       if (error.message?.includes('already exists') || error.message?.includes('409')) {

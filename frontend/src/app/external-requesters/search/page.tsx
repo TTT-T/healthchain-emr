@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api'
+import { logger } from '@/lib/logger'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -93,8 +94,8 @@ export default function PatientSearchPage() {
         limit: 20
       })
       
-      if (response.success && response.data) {
-        setSearchResults(response.data.map((patient: any) => ({
+      if (response.statusCode === 200 && response.data) {
+        setSearchResults((response.data as any[]).map((patient: any) => ({
           id: patient.id,
           patientId: patient.patientId || patient.id,
           firstName: patient.firstName || patient.first_name,
@@ -112,7 +113,7 @@ export default function PatientSearchPage() {
         })))
       }
     } catch (error) {
-      console.error('Error searching patients:', error)
+      logger.error('Error searching patients:', error)
       setSearchResults([])
     } finally {
       setIsSearching(false)
@@ -156,7 +157,7 @@ export default function PatientSearchPage() {
   }
 
   const handleSubmitRequest = async () => {
-    if (!selectedPatient || !requestData.purpose || !requestData.justification || !requestData.dataTypes?.length) {
+    if (!selectedPatient || !requestData.purpose || !requestData.dataTypes?.length) {
       setSubmitResult({
         success: false,
         message: 'กรุณากรอกข้อมูลให้ครบถ้วน'
@@ -165,29 +166,29 @@ export default function PatientSearchPage() {
     }
 
     // Create data request
-    const requestData = {
-      requester_name: formData.requesterName,
-      requester_organization: formData.organizationName,
-      requester_email: formData.requesterEmail,
-      requester_phone: formData.requesterPhone,
-      request_type: formData.requestType,
-      requested_data_types: formData.dataTypes,
-      purpose: formData.purpose,
-      data_usage_period: formData.validUntil,
+    const submitRequestData = {
+      requester_name: (requestData as any).requesterName,
+      requester_organization: (requestData as any).organizationName,
+      requester_email: (requestData as any).requesterEmail,
+      requester_phone: (requestData as any).requesterPhone,
+      request_type: requestData.requestType,
+      requested_data_types: requestData.dataTypes,
+      purpose: requestData.purpose,
+      data_usage_period: requestData.validUntil,
       consent_required: true,
       patient_ids: [selectedPatient.patientId],
       date_range_start: null,
       date_range_end: null,
-      additional_requirements: formData.legalBasis
+      additional_requirements: (requestData as any).legalBasis
     }
 
-    const response = await apiClient.createDataRequest(requestData)
+    const response = await apiClient.createDataRequest(submitRequestData)
     
-    if (response.success) {
+    if (response.statusCode === 200) {
       setSubmitResult({
         success: true,
         message: 'ส่งคำขอสำเร็จ! ระบบจะดำเนินการขอความยินยอมจากผู้ป่วย',
-        requestId: response.data?.id || response.data?.requestId
+        requestId: (response.data as any)?.id || (response.data as any)?.requestId
       })
     } else {
       setSubmitResult({

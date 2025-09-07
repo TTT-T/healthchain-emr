@@ -3,13 +3,13 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
 import { useRouter } from "next/navigation";
+import { logger } from '@/lib/logger';
 import { 
   Shield, 
   Bell, 
   Smartphone, 
   Eye, 
   Lock, 
-  AlertTriangle, 
   Check, 
   X,
   LogOut,
@@ -45,21 +45,21 @@ export default function SecuritySettingsPage() {
         setIsLoading(true);
         const response = await apiClient.getSecuritySettings();
         
-        if (response.success && response.data) {
+        if (response.statusCode === 200 && response.data) {
           const data = response.data;
           setSettings({
-            emailNotifications: data.user?.emailNotifications ?? true,
-            smsNotifications: data.user?.smsNotifications ?? false,
-            loginNotifications: data.user?.loginNotifications ?? true,
-            securityAlerts: data.user?.securityAlerts ?? true,
-            dataSharing: data.user?.dataSharing ?? false,
-            privacyLevel: data.user?.privacyLevel ?? 'private'
+            emailNotifications: (data as any).user?.emailNotifications ?? true,
+            smsNotifications: (data as any).user?.smsNotifications ?? false,
+            loginNotifications: (data as any).user?.loginNotifications ?? true,
+            securityAlerts: (data as any).user?.securityAlerts ?? true,
+            dataSharing: (data as any).user?.dataSharing ?? false,
+            privacyLevel: (data as any).user?.privacyLevel ?? 'private'
           });
-          setLoginHistory(data.loginHistory || []);
-          setActiveSessions(data.activeSessions || []);
+          setLoginHistory((data as any).loginHistory || []);
+          setActiveSessions((data as any).activeSessions || []);
         }
       } catch (error) {
-        console.error("Error loading security settings:", error);
+        logger.error("Error loading security settings:", error);
         setError("เกิดข้อผิดพลาดในการโหลดการตั้งค่าความปลอดภัย");
       } finally {
         setIsLoading(false);
@@ -84,14 +84,14 @@ export default function SecuritySettingsPage() {
 
       const response = await apiClient.updateSecuritySettings(settings);
       
-      if (response.success && response.data) {
+      if (response.statusCode === 200 && response.data) {
         setSuccess('บันทึกการตั้งค่าความปลอดภัยสำเร็จ');
         setTimeout(() => setSuccess(null), 3000);
       } else {
         setError(response.error?.message || 'เกิดข้อผิดพลาดในการบันทึก');
       }
     } catch (error: any) {
-      console.error('Error saving security settings:', error);
+      logger.error('Error saving security settings:', error);
       setError('เกิดข้อผิดพลาดในการบันทึก');
     } finally {
       setLoading(false);
@@ -109,19 +109,19 @@ export default function SecuritySettingsPage() {
 
       const response = await apiClient.terminateAllSessions();
       
-      if (response.success && response.data) {
+      if (response.statusCode === 200 && response.data) {
         setSuccess('ยกเลิกเซสชันทั้งหมดสำเร็จ');
         // Reload active sessions
         const settingsResponse = await apiClient.getSecuritySettings();
-        if (settingsResponse.success && settingsResponse.data) {
-          setActiveSessions(settingsResponse.data.activeSessions || []);
+        if (settingsResponse.statusCode === 200 && settingsResponse.data) {
+          setActiveSessions((settingsResponse.data as any).activeSessions || []);
         }
         setTimeout(() => setSuccess(null), 3000);
       } else {
         setError(response.error?.message || 'เกิดข้อผิดพลาดในการยกเลิกเซสชัน');
       }
     } catch (error: any) {
-      console.error('Error terminating sessions:', error);
+      logger.error('Error terminating sessions:', error);
       setError('เกิดข้อผิดพลาดในการยกเลิกเซสชัน');
     } finally {
       setLoading(false);

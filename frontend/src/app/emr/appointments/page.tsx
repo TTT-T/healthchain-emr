@@ -1,11 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { Calendar, Search, AlertCircle, CheckCircle, RefreshCw } from "lucide-react";
+import { Calendar, AlertCircle, CheckCircle, RefreshCw } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
-import { VisitService } from '@/services/visitService';
-import { apiClient } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 interface Patient {
   hn: string;
@@ -33,7 +32,7 @@ interface Appointment {
 }
 
 export default function Appointments() {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<"hn" | "queue">("queue");
   const [isSearching, setIsSearching] = useState(false);
@@ -82,7 +81,7 @@ export default function Appointments() {
     setSuccess(null);
     
     try {
-      console.log(`🔍 Searching for patient by ${searchType}:`, searchQuery);
+      logger.debug(`🔍 Searching for patient by ${searchType}:`, searchQuery);
       
       // Use real API call
       const response = await PatientService.searchPatients(searchQuery, searchType);
@@ -92,11 +91,11 @@ export default function Appointments() {
         
         // Convert MedicalPatient to Patient format
         const convertedPatient: Patient = {
-          hn: patient.hn,
-          nationalId: patient.national_id || '',
-          thaiName: patient.thai_name || 'ไม่ระบุชื่อ',
-          gender: patient.gender || 'ไม่ระบุ',
-          birthDate: patient.birth_date || '',
+          hn: (patient as any).hn,
+          nationalId: (patient as any).national_id || '',
+          thaiName: (patient as any).thai_name || 'ไม่ระบุชื่อ',
+          gender: (patient as any).gender || 'ไม่ระบุ',
+          birthDate: (patient as any).birth_date || '',
           queueNumber: 'Q001', // Default queue number
           treatmentType: 'OPD - ตรวจรักษาทั่วไป', // Default treatment type
           assignedDoctor: 'นพ.สมชาย วงศ์แพทย์' // Default doctor
@@ -114,7 +113,7 @@ export default function Appointments() {
         setSelectedPatient(null);
       }
     } catch (error) {
-      console.error('❌ Error searching patient:', error);
+      logger.error('❌ Error searching patient:', error);
       setError('เกิดข้อผิดพลาดในการค้นหา');
       setSelectedPatient(null);
     } finally {
@@ -176,12 +175,12 @@ export default function Appointments() {
         department: appointmentForm.department,
         doctor: appointmentForm.doctor,
         notes: appointmentForm.notes,
-        createdBy: user?.thai_name || "พยาบาลสมหญิง",
+        createdBy: (user as any)?.thai_name || "พยาบาลสมหญิง",
         createdDate: new Date().toISOString(),
         status: "scheduled"
       };
 
-      console.log("📅 Creating appointment:", newAppointment);
+      logger.debug("📅 Creating appointment:", newAppointment);
       
       // For now, just simulate success since we don't have appointment API yet
       // TODO: Replace with real API call when appointment endpoint is available
@@ -191,7 +190,7 @@ export default function Appointments() {
       setSuccess(`สร้างใบนัดสำเร็จ! หมายเลขนัด: ${appointmentId}`);
       
     } catch (error) {
-      console.error("❌ Error creating appointment:", error);
+      logger.error("❌ Error creating appointment:", error);
       setError("เกิดข้อผิดพลาด กรุณาลองอีกครั้ง");
     } finally {
       setIsSubmitting(false);
@@ -257,7 +256,7 @@ export default function Appointments() {
       หมายเหตุ: ${createdAppointment.notes || '-'}
     `;
     
-    console.log("Printing appointment:", printContent);
+    logger.debug("Printing appointment:", printContent);
     alert("กำลังพิมพ์ใบนัดหมาย...");
   };
 

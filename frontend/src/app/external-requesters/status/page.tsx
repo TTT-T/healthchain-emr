@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { logger } from '@/lib/logger'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
@@ -91,14 +92,14 @@ export default function ExternalRequesterStatusCheck() {
       const response = await fetch(`/api/external-requesters/register?${params.toString()}`)
       const result = await response.json()
 
-      if (result.success) {
+      if (result.statusCode === 200) {
         setStatusData(result.data)
       } else {
         setSearchError(result.error || 'ไม่พบข้อมูลที่ค้นหา')
       }
 
     } catch (error) {
-      console.error('Search error:', error)
+      logger.error('Search error:', error)
       setSearchError('เกิดข้อผิดพลาดในการค้นหา กรุณาลองใหม่อีกครั้ง')
     } finally {
       setIsSearching(false)

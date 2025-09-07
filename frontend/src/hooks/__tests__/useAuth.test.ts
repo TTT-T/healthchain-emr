@@ -1,5 +1,6 @@
 import { renderHook, act } from '@testing-library/react'
 import { useAuth } from '../useAuth'
+import { useAuth as useAuthContext } from '../../contexts/AuthContext'
 
 // Mock the AuthContext
 const mockLogin = jest.fn()
@@ -91,7 +92,7 @@ describe('useAuth Hook', () => {
   })
 
   it('should handle loading state', () => {
-    jest.mocked(require('../../contexts/AuthContext').useAuth).mockReturnValue({
+    jest.mocked(useAuthContext).mockReturnValue({
       user: null,
       isAuthenticated: false,
       isLoading: true,
@@ -108,7 +109,7 @@ describe('useAuth Hook', () => {
   })
 
   it('should handle error state', () => {
-    jest.mocked(require('../../contexts/AuthContext').useAuth).mockReturnValue({
+    jest.mocked(useAuthContext).mockReturnValue({
       user: null,
       isAuthenticated: false,
       isLoading: false,

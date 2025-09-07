@@ -2,11 +2,12 @@
  * Session Manager
  * จัดการ session และ token storage
  */
+import { logger } from '@/lib/logger';
 
 interface SessionData {
   accessToken: string;
   refreshToken: string;
-  user: any;
+  user: unknown;
   expiresAt: number;
 }
 
@@ -46,7 +47,7 @@ class SessionManager {
         }
       }
     } catch (error) {
-      console.error('Error loading session:', error);
+      logger.error('Error loading session:', error);
       this.clearSession();
     }
   }
@@ -60,7 +61,7 @@ class SessionManager {
 
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.sessionData));
     } catch (error) {
-      console.error('Error saving session:', error);
+      logger.error('Error saving session:', error);
     }
   }
 
@@ -70,7 +71,7 @@ class SessionManager {
   public setSession(data: {
     accessToken: string;
     refreshToken: string;
-    user: any;
+    user: unknown;
     expiresIn?: number;
   }): void {
     const expiresAt = Date.now() + (data.expiresIn || 3600) * 1000;
@@ -102,7 +103,7 @@ class SessionManager {
   /**
    * Get user data
    */
-  public getUser(): any | null {
+  public getUser(): unknown | null {
     return this.sessionData?.user || null;
   }
 
@@ -154,7 +155,7 @@ class SessionManager {
       // Dispatch session cleared event
       window.dispatchEvent(new CustomEvent('sessionCleared'));
     } catch (error) {
-      console.error('Error clearing session:', error);
+      logger.error('Error clearing session:', error);
     }
   }
 
@@ -200,11 +201,11 @@ class SessionManager {
     try {
       // This would typically call your API to refresh the token
       // For now, we'll just clear the session
-      console.log('Session expired, clearing...');
+      logger.debug('Session expired, clearing...');
       this.clearSession();
       return false;
     } catch (error) {
-      console.error('Error refreshing session:', error);
+      logger.error('Error refreshing session:', error);
       this.clearSession();
       return false;
     }

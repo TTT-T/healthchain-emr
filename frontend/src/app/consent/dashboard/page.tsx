@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
+import { logger } from '@/lib/logger'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -120,8 +121,8 @@ export default function ConsentDashboard() {
 
         // Load consent requests
         const requestsResponse = await apiClient.getConsentRequests()
-        if (requestsResponse.success && requestsResponse.data) {
-          setConsentRequests(requestsResponse.data)
+        if (requestsResponse.statusCode === 200 && requestsResponse.data) {
+          setConsentRequests(requestsResponse.data as ConsentRequest[])
         } else {
           // Fallback to mock data if API fails
           setConsentRequests(mockConsentRequests)
@@ -129,15 +130,15 @@ export default function ConsentDashboard() {
 
         // Load consent contracts
         const contractsResponse = await apiClient.getConsentContracts()
-        if (contractsResponse.success && contractsResponse.data) {
-          setConsentContracts(contractsResponse.data)
+        if (contractsResponse.statusCode === 200 && contractsResponse.data) {
+          setConsentContracts(contractsResponse.data as any)
         } else {
           // Fallback to mock data if API fails
           setConsentContracts(mockConsentContracts)
         }
 
       } catch (err) {
-        console.error('Error loading consent data:', err)
+        logger.error('Error loading consent data:', err)
         setError('ไม่สามารถโหลดข้อมูลได้')
         // Use mock data as fallback
         setConsentRequests(mockConsentRequests)
@@ -203,7 +204,7 @@ export default function ConsentDashboard() {
   const handleApproveRequest = async (requestId: string) => {
     try {
       const response = await apiClient.updateConsentStatus(requestId, 'approved')
-      if (response.success) {
+      if (response.statusCode === 200) {
         setConsentRequests(prev => 
           prev.map(req => 
             req.id === requestId 
@@ -216,7 +217,7 @@ export default function ConsentDashboard() {
         setError(response.error?.message || 'ไม่สามารถอนุมัติคำขอได้')
       }
     } catch (err) {
-      console.error('Error approving request:', err)
+      logger.error('Error approving request:', err)
       setError('เกิดข้อผิดพลาดในการอนุมัติคำขอ')
     }
   }
@@ -224,7 +225,7 @@ export default function ConsentDashboard() {
   const handleRejectRequest = async (requestId: string) => {
     try {
       const response = await apiClient.updateConsentStatus(requestId, 'rejected')
-      if (response.success) {
+      if (response.statusCode === 200) {
         setConsentRequests(prev => 
           prev.map(req => 
             req.id === requestId 
@@ -237,7 +238,7 @@ export default function ConsentDashboard() {
         setError(response.error?.message || 'ไม่สามารถปฏิเสธคำขอได้')
       }
     } catch (err) {
-      console.error('Error rejecting request:', err)
+      logger.error('Error rejecting request:', err)
       setError('เกิดข้อผิดพลาดในการปฏิเสธคำขอ')
     }
   }
@@ -245,7 +246,7 @@ export default function ConsentDashboard() {
   const handleRevokeContract = async (contractId: string) => {
     try {
       const response = await apiClient.updateConsentStatus(contractId, 'revoked')
-      if (response.success) {
+      if (response.statusCode === 200) {
         setConsentContracts(prev => 
           prev.map(contract => 
             contract.id === contractId 
@@ -258,7 +259,7 @@ export default function ConsentDashboard() {
         setError(response.error?.message || 'ไม่สามารถยกเลิกสัญญาได้')
       }
     } catch (err) {
-      console.error('Error revoking contract:', err)
+      logger.error('Error revoking contract:', err)
       setError('เกิดข้อผิดพลาดในการยกเลิกสัญญา')
     }
   }
@@ -292,7 +293,7 @@ export default function ConsentDashboard() {
       </div>
 
       {error && (
-        <Alert variant="destructive">
+        <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>

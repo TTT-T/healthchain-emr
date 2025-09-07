@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { logger } from '@/lib/logger';
 import { 
   Lock, 
   Eye, 
@@ -119,14 +120,14 @@ export default function ResetPasswordPage() {
         new_password: newPassword
       });
 
-      if (response.data.success) {
+      if ((response.data as any).statusCode === 200) {
         setIsSuccess(true);
         showSuccess('รีเซ็ตรหัสผ่านเรียบร้อยแล้ว');
       } else {
-        setError(response.data.message || 'เกิดข้อผิดพลาด');
+        setError((response.data as any).message || 'เกิดข้อผิดพลาด');
       }
     } catch (error: any) {
-      console.error('Reset password error:', error);
+      logger.error('Reset password error:', error);
       
       if (error.response?.data?.message) {
         setError(error.response.data.message);
@@ -267,7 +268,7 @@ export default function ResetPasswordPage() {
             </div>
 
             {error && (
-              <Alert variant="destructive">
+              <Alert className="border-red-300 bg-red-50">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>

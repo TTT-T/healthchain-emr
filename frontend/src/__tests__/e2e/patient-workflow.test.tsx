@@ -1,6 +1,7 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AppLayout } from '../../components/AppLayout'
+import { useAuth } from '../../hooks/useAuth'
 
 // Mock all the necessary hooks and services
 jest.mock('../../hooks/useAuth', () => ({
@@ -132,10 +133,10 @@ describe('Patient Workflow E2E Tests', () => {
   })
 
   it('should handle authentication flow', async () => {
-    const user = userEvent.setup()
+    // const user = userEvent.setup()
     
     // Mock unauthenticated state
-    jest.mocked(require('../../hooks/useAuth').useAuth).mockReturnValue({
+    jest.mocked(useAuth).mockReturnValue({
       user: null,
       isAuthenticated: false,
       logout: jest.fn()

@@ -1,6 +1,7 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { LoginForm } from '../../app/login/LoginForm'
+import { useAuth } from '../../hooks/useAuth'
 
 // Mock the useAuth hook
 const mockLogin = jest.fn()
@@ -78,7 +79,7 @@ describe('LoginForm Component', () => {
 
   it('shows loading state during submission', async () => {
     const mockLoginWithLoading = jest.fn()
-    jest.mocked(require('../../hooks/useAuth').useAuth).mockReturnValue({
+    jest.mocked(useAuth).mockReturnValue({
       login: mockLoginWithLoading,
       isLoading: true,
       error: null
@@ -90,7 +91,7 @@ describe('LoginForm Component', () => {
   })
 
   it('displays error message when login fails', () => {
-    jest.mocked(require('../../hooks/useAuth').useAuth).mockReturnValue({
+    jest.mocked(useAuth).mockReturnValue({
       login: mockLogin,
       isLoading: false,
       error: 'Invalid credentials'

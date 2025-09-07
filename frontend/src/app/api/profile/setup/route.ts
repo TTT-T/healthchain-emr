@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 // Interface สำหรับข้อมูล Profile
 interface ProfileSetupData {
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date()
     };
 
-    console.log('Profile data to save:', profileData);
+    logger.debug('Profile data to save:', profileData);
 
     // บันทึกข้อมูล profile ลง database (จำลอง)
     // const profile = await db.userProfile.create({ data: profileData });
@@ -143,7 +144,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(responseData, { status: 200 });
 
   } catch (error) {
-    console.error('Profile setup error:', error);
+    logger.error('Profile setup error:', error);
     return NextResponse.json(
       { error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล' },
       { status: 500 }

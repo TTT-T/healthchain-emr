@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Settings, User, Bell, Shield, Database, Mail, Globe, Palette, Save, RefreshCw, Key, Lock } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface SettingSection {
   id: string;
@@ -107,7 +108,7 @@ export default function SettingsPage() {
     // Simulate API call
     setTimeout(() => {
       setIsSaving(false);
-      console.log('Settings saved:', settings);
+      logger.debug('Settings saved:', settings);
     }, 2000);
   };
 

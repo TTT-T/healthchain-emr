@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   User, Heart, Activity, FileText, Calendar, Clock, 
   Search, Filter, RefreshCw, AlertCircle, CheckCircle,
@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/api';
 import { PatientService } from '@/services/patientService';
 import { VisitService } from '@/services/visitService';
+import { logger } from '@/lib/logger';
 
 interface Patient {
   id: string;
@@ -113,36 +114,36 @@ export default function PatientSummary() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'visits' | 'vitals' | 'labs' | 'prescriptions' | 'appointments'>('overview');
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadPatients();
-    }
-  }, [isAuthenticated]);
-
-  const loadPatients = async () => {
+  const loadPatients = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      console.log('🔍 Loading patients...');
+      logger.debug('🔍 Loading patients...');
       const response = await PatientService.searchPatients('', 'name');
       
       if (response.data && Array.isArray(response.data)) {
         // Convert MedicalPatient to Patient format
         const convertedPatients = response.data.map(convertMedicalPatientToPatient);
         setPatients(convertedPatients);
-        console.log('✅ Patients loaded:', convertedPatients.length);
+        logger.debug('✅ Patients loaded:', convertedPatients.length);
       } else {
         setPatients([]);
-        console.log('⚠️ No patients found');
+        logger.debug('⚠️ No patients found');
       }
     } catch (error) {
-      console.error('❌ Error loading patients:', error);
+      logger.error('❌ Error loading patients:', error);
       setError('เกิดข้อผิดพลาดในการโหลดข้อมูลผู้ป่วย');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadPatients();
+    }
+  }, [isAuthenticated, loadPatients]);
 
   const convertMedicalPatientToPatient = (medicalPatient: any): Patient => {
     return {
@@ -177,7 +178,7 @@ export default function PatientSummary() {
     setError(null);
     
     try {
-      console.log(`🔍 Searching patients by ${searchType}:`, searchQuery);
+      logger.debug(`🔍 Searching patients by ${searchType}:`, searchQuery);
       const response = await PatientService.searchPatients(searchQuery, searchType);
       
       if (response.data && Array.isArray(response.data)) {
@@ -187,14 +188,14 @@ export default function PatientSummary() {
         if (convertedPatients.length === 0) {
           setError('ไม่พบข้อมูลผู้ป่วยที่ค้นหา');
         } else {
-          console.log('✅ Search results:', convertedPatients.length);
+          logger.debug('✅ Search results:', convertedPatients.length);
         }
       } else {
         setPatients([]);
         setError('ไม่พบข้อมูลผู้ป่วยที่ค้นหา');
       }
     } catch (error) {
-      console.error('❌ Error searching patients:', error);
+      logger.error('❌ Error searching patients:', error);
       setError('เกิดข้อผิดพลาดในการค้นหา');
     } finally {
       setIsLoading(false);
@@ -207,7 +208,7 @@ export default function PatientSummary() {
     setError(null);
     
     try {
-      console.log('📋 Loading patient details for:', patient.hn);
+      logger.debug('📋 Loading patient details for:', patient.hn);
       
       // Load patient visits
       const visitsResponse = await apiClient.getPatientVisits(patient.id);
@@ -310,9 +311,9 @@ export default function PatientSummary() {
       // Set empty appointments for now
       setAppointments([]);
       
-      console.log('✅ Patient details loaded successfully');
+      logger.debug('✅ Patient details loaded successfully');
     } catch (error) {
-      console.error('❌ Error loading patient details:', error);
+      logger.error('❌ Error loading patient details:', error);
       setError('เกิดข้อผิดพลาดในการโหลดรายละเอียดผู้ป่วย');
     } finally {
       setIsLoadingDetails(false);

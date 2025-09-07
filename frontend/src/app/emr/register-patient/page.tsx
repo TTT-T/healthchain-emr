@@ -4,6 +4,7 @@ import Link from "next/link";
 import { UserPlus, User, Phone, MapPin, Heart, Shield, Save, RotateCcw, CheckCircle, AlertCircle } from 'lucide-react';
 import { PatientService } from '@/services/patientService';
 import { CreatePatientRequest } from '@/types/api';
+import { logger } from '@/lib/logger';
 
 interface PatientData {
   // ข้อมูลส่วนตัว
@@ -120,7 +121,7 @@ export default function RegisterPatient() {
       // ค้นหาผู้ป่วยจาก API
       const response = await PatientService.searchPatients(searchId, 'hn');
       
-      if (response.success && response.data && response.data.length > 0) {
+      if (response.statusCode === 200 && response.data && response.data.length > 0) {
         const patient = response.data[0];
         
         // Map ข้อมูลจาก API response กลับมาเป็น form format
@@ -156,7 +157,7 @@ export default function RegisterPatient() {
       }
       
     } catch (error) {
-      console.error("Error searching:", error);
+      logger.error("Error searching:", error);
       alert("เกิดข้อผิดพลาดในการค้นหา กรุณาลองอีกครั้ง");
     } finally {
       setIsSearching(false);
@@ -197,6 +198,10 @@ export default function RegisterPatient() {
     try {
       // เตรียมข้อมูลสำหรับ API
       const patientData: CreatePatientRequest = {
+        hospitalNumber: formData.hospitalNumber,
+        firstName: formData.englishName || formData.thaiName,
+        lastName: '',
+        dateOfBirth: formData.birthDate,
         nationalId: formData.nationalId,
         thaiName: formData.thaiName,
         englishName: formData.englishName || undefined,
@@ -209,14 +214,14 @@ export default function RegisterPatient() {
         province: formData.province,
         postalCode: formData.postalCode,
         bloodType: formData.bloodGroup + (formData.rhFactor === 'positive' ? '+' : '-'),
-        allergies: formData.drugAllergies ? formData.drugAllergies.split(',').map(a => a.trim()) : undefined,
-        chronicConditions: formData.chronicDiseases ? formData.chronicDiseases.split(',').map(c => c.trim()) : undefined
+        allergies: formData.drugAllergies ? formData.drugAllergies.split(',') : undefined,
+        medicalHistory: formData.chronicDiseases || undefined
       };
 
       // เรียก API
       const response = await PatientService.createPatient(patientData);
       
-      if (response.success && response.data) {
+      if (response.statusCode === 200 && response.data) {
         const patient = response.data;
         alert(`ลงทะเบียนสำเร็จ! หมายเลข HN: ${patient.hn}`);
         
@@ -224,13 +229,13 @@ export default function RegisterPatient() {
         handleClearForm();
         
         // อาจจะ redirect หรือแสดงข้อมูลผู้ป่วยที่สร้างใหม่
-        console.log('Patient created successfully:', patient);
+        logger.debug('Patient created successfully:', patient);
       } else {
-        throw new Error(response.message || 'การลงทะเบียนไม่สำเร็จ');
+        throw new Error(response.error?.message || 'การลงทะเบียนไม่สำเร็จ');
       }
       
     } catch (error: any) {
-      console.error("Error submitting:", error);
+      logger.error("Error submitting:", error);
       alert(error.message || "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง");
     } finally {
       setIsSubmitting(false);

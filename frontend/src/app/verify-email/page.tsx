@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiClient } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 export default function VerifyEmailPage() {
   const router = useRouter();
@@ -45,14 +46,14 @@ export default function VerifyEmailPage() {
         setIsSuccess(true);
         
         // In development mode, show verification token
-        if (response.data.devMode && response.data.verificationToken) {
-          setVerificationToken(response.data.verificationToken);
+        if ((response.data as any).devMode && (response.data as any).verificationToken) {
+          setVerificationToken((response.data as any).verificationToken);
         }
       } else {
         setError(response.error?.message || 'เกิดข้อผิดพลาดในการส่งอีเมล');
       }
     } catch (error: any) {
-      console.error('Resend verification error:', error);
+      logger.error('Resend verification error:', error);
       setError('เกิดข้อผิดพลาดในการส่งอีเมล กรุณาลองใหม่อีกครั้ง');
     } finally {
       setIsResending(false);
@@ -163,7 +164,7 @@ export default function VerifyEmailPage() {
                       <li>ตรวจสอบกล่องจดหมายของคุณ</li>
                       <li>ดูในโฟลเดอร์ Spam หรือ Junk</li>
                       <li>คลิกลิงก์ยืนยันในอีเมล</li>
-                      <li>หากไม่พบอีเมล ให้คลิกปุ่ม "ส่งอีเมลยืนยันอีกครั้ง"</li>
+                      <li>หากไม่พบอีเมล ให้คลิกปุ่ม &quot;ส่งอีเมลยืนยันอีกครั้ง&quot;</li>
                     </ul>
                   </div>
                 </div>

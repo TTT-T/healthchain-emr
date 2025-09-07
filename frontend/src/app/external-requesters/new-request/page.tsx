@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { logger } from '@/lib/logger'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
@@ -122,8 +123,8 @@ export default function NewRequestPage() {
         limit: 10
       })
       
-      if (response.success && response.data) {
-        setSearchResults(response.data.map((patient: any) => ({
+      if (response.statusCode === 200 && response.data) {
+        setSearchResults((response.data as any[]).map((patient: any) => ({
           id: patient.id,
           patientId: patient.patientId || patient.id,
           name: `${patient.firstName || patient.first_name} ${patient.lastName || patient.last_name}`,
@@ -134,7 +135,7 @@ export default function NewRequestPage() {
         })))
       }
     } catch (error) {
-      console.error('Error searching patients:', error)
+      logger.error('Error searching patients:', error)
       setSearchResults([])
     } finally {
       setIsSearching(false)
@@ -211,7 +212,7 @@ export default function NewRequestPage() {
 
       const response = await apiClient.createDataRequest(requestData)
       
-      if (response.success) {
+      if (response.statusCode === 200) {
         setSubmitSuccess(true)
         
         // Reset form
@@ -242,7 +243,7 @@ export default function NewRequestPage() {
         setSubmitError('เกิดข้อผิดพลาดในการส่งคำขอ: ' + (response.error?.message || 'ไม่ทราบสาเหตุ'))
       }
     } catch (error) {
-      console.error('Error submitting request:', error)
+      logger.error('Error submitting request:', error)
       setSubmitError('เกิดข้อผิดพลาดในการส่งคำขอ')
     } finally {
       setIsSubmitting(false)

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api'
+import { logger } from '@/lib/logger'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -64,19 +65,20 @@ export default function ExternalRequesterLogin() {
 
       // Submit to API
       const response = await apiClient.loginExternalRequester({
+        username: formData.email,
         email: formData.email,
         password: formData.password
       })
 
-      if (response.success) {
+      if (response.statusCode === 200) {
         setLoginResult({
           success: true,
           message: 'เข้าสู่ระบบสำเร็จ! กำลังนำไปยังหน้าหลัก...'
         })
         
         // Store token/session and redirect
-        if (response.data?.token) {
-          localStorage.setItem('external-requester-token', response.data.token)
+        if (response.data?.accessToken) {
+          localStorage.setItem('external-requester-token', response.data.accessToken)
         }
         
         // Redirect to dashboard after 2 seconds
@@ -92,7 +94,7 @@ export default function ExternalRequesterLogin() {
       }
 
     } catch (error) {
-      console.error('Login error:', error)
+      logger.error('Login error:', error)
       setLoginResult({
         success: false,
         message: 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง'

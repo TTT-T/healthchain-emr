@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
+import { logger } from '@/lib/logger';
 
 interface Notification {
   id: string;
@@ -23,32 +24,32 @@ export default function Notifications() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchNotifications();
-    }
-  }, [user]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
       
       if (user?.id) {
         const response = await apiClient.getPatientNotifications(user.id);
-        if (response.success && response.data) {
-          setNotifications(response.data);
+        if (response.statusCode === 200 && response.data) {
+          setNotifications(response.data as Notification[]);
         } else {
           setError(response.error?.message || "ไม่สามารถดึงข้อมูลการแจ้งเตือนได้");
         }
       }
     } catch (err) {
-      console.error("Error fetching notifications:", err);
+      logger.error("Error fetching notifications:", err);
       setError("เกิดข้อผิดพลาดในการดึงข้อมูลการแจ้งเตือน");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchNotifications();
+    }
+  }, [user, fetchNotifications]);
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -205,7 +206,19 @@ export default function Notifications() {
 
             {/* Notifications List */}
             <div className="p-4">
-              {filteredNotifications.length === 0 ? (
+              {isLoading ? (
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">⏳</div>
+                  <h3 className="text-lg font-medium text-slate-800 mb-2">กำลังโหลด...</h3>
+                  <p className="text-slate-600">กำลังดึงข้อมูลการแจ้งเตือน</p>
+                </div>
+              ) : error ? (
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">⚠️</div>
+                  <h3 className="text-lg font-medium text-red-800 mb-2">เกิดข้อผิดพลาด</h3>
+                  <p className="text-red-600">{error}</p>
+                </div>
+              ) : filteredNotifications.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="text-6xl mb-4">📭</div>
                   <h3 className="text-lg font-medium text-slate-800 mb-2">ไม่มีการแจ้งเตือน</h3>
