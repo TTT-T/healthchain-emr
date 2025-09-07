@@ -1,0 +1,14 @@
+[33mcc1263e[m[33m ([m[1;31morigin/chore/safe-cleanup-2025-09-07[m[33m)[m Merge pull request #1 from TTT-T/chore/safe-cleanup-2025-01-07
+[33m2ceaa6f[m[33m ([m[1;31morigin/master[m[33m, [m[1;31morigin/chore/safe-cleanup-2025-01-07[m[33m, [m[1;31morigin/TEST[m[33m)[m เคลียร์โค้ดไฟล์แล้ว
+[33m180e31f[m docs: add final cleanup report
+[33m058c08f[m fix: resolve database connection issues and type errors
+[33m7e1ab4d[m refactor: remove deprecated DatabaseConnection class
+[33m92d29d5[m chore: move unused documentation files to trash
+[33m5ff2b21[m chore: remove unused test scripts and PowerShell files
+[33md740f84[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmaster[m[33m)[m FINAL
+[33m997e64b[m V_1_pass_1
+[33m13a773a[m แก้ไขบั๊กในฟังก์ชัน
+[33m02cb9e4[m อัปเดตไฟล์ที่แก้ไขแล้ว V2
+[33m7c4ffd4[m อัปเดตไฟล์ที่แก้ไขแล้ว
+[33ma6e09a3[m อัปเดต backend และ frontend - แก้ไขและเพิ่มไฟล์ใหม่
+[33m26dd15e[m  Initial commit: EMR System with Cross-Layer Inconsistencies Fix
