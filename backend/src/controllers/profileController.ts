@@ -1,372 +1,83 @@
+/**
+ * Profile Controller
+ * จัดการข้อมูล profile ครบถ้วน รวมทั้งการแสดง แก้ไข และลบข้อมูล
+ */
+
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { databaseManager } from '../database/connection';
 import { 
-  successResponse,
-  errorResponse
-} from '../utils/index';
-import { UserRole } from '../types/index';
-
-// Create a database helper that combines databaseManager and DatabaseSchema
-const db = {
-  ...databaseManager,
-  query: databaseManager.query.bind(databaseManager),
-  transaction: databaseManager.transaction.bind(databaseManager),
-  createAuditLog: async (logData: any) => {
-    const query = `
-      INSERT INTO audit_logs (
-        user_id, action, resource, resource_id, details, ip_address, user_agent
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `;
-    await db.query(query, [
-      logData.userId, logData.action, logData.resource,
-      logData.resourceId, JSON.stringify(logData.details || {}),
-      logData.ipAddress, logData.userAgent
-    ]);
-  }
-};
-
-// Validation schema สำหรับการอัปเดตโปรไฟล์
-const profileSetupSchema = z.object({
-  thai_name: z.string().optional(),
-  phone: z.string().optional(),
-  emergency_contact: z.string().optional(),
-  national_id: z.string().optional(),
-  birth_date: z.string().optional(),
-  address: z.string().optional(),
-  medical_history: z.string().optional(),
-  allergies: z.string().optional(),
-  medications: z.string().optional(),
-  gender: z.enum(['male', 'female', 'other']).optional(),
-  religion: z.string().optional(),
-  race: z.string().optional(),
-  occupation: z.string().optional(),
-  marital_status: z.enum(['single', 'married', 'divorced', 'widowed']).optional(),
-  education: z.string().optional(),
-  blood_group: z.enum(['A', 'B', 'AB', 'O']).optional(),
-  blood_type: z.enum(['+', '-']).optional(),
-  weight: z.string().optional(),
-  height: z.string().optional(),
-  id_card_address: z.string().optional(),
-  current_address: z.string().optional(),
-  emergency_contact_phone: z.string().optional(),
-  emergency_contact_relation: z.string().optional(),
-  drug_allergies: z.string().optional(),
-  food_allergies: z.string().optional(),
-  environment_allergies: z.string().optional(),
-  chronic_diseases: z.string().optional()
-});
-
-// Validation schema สำหรับการอัปเดตโปรไฟล์แพทย์
-const doctorProfileSchema = z.object({
-  // Basic user fields
-  first_name: z.string().min(1, 'ชื่อต้องไม่ว่าง').max(100).optional(),
-  last_name: z.string().min(1, 'นามสกุลต้องไม่ว่าง').max(100).optional(),
-  email: z.string().email('รูปแบบอีเมลไม่ถูกต้อง').optional(),
-  phone: z.string().optional(),
-  
-  // Doctor specific fields
-  hospital: z.string().optional(),
-  department: z.string().optional(),
-  specialty: z.string().optional(),
-  medical_license: z.string().optional(),
-  experience_years: z.string().optional(),
-  education: z.string().optional(),
-  bio: z.string().optional(),
-  position: z.string().optional(),
-  professional_license: z.string().optional()
-});
-
-// Validation schema สำหรับการอัปเดตโปรไฟล์พยาบาล
-const nurseProfileSchema = z.object({
-  // Basic user fields
-  first_name: z.string().min(1, 'ชื่อต้องไม่ว่าง').max(100).optional(),
-  last_name: z.string().min(1, 'นามสกุลต้องไม่ว่าง').max(100).optional(),
-  email: z.string().email('รูปแบบอีเมลไม่ถูกต้อง').optional(),
-  phone: z.string().optional(),
-  
-  // Nurse specific fields
-  hospital: z.string().optional(),
-  department: z.string().optional(),
-  ward: z.string().optional(),
-  nursing_license: z.string().optional(),
-  experience_years: z.string().optional(),
-  education: z.string().optional(),
-  certifications: z.string().optional(),
-  shift: z.string().optional(),
-  bio: z.string().optional(),
-  position: z.string().optional(),
-  professional_license: z.string().optional()
-});
+  CompleteProfileSchema, 
+  UpdateProfileSchema, 
+  ProfileTransformers 
+} from '../schemas/profile';
+import { successResponse, errorResponse } from '../utils';
 
 /**
- * อัปเดตข้อมูลโปรไฟล์และสร้าง patient record
- * POST /api/profile/setup
+ * Get complete user profile
+ * GET /api/auth/profile/complete
  */
-export const setupProfile = async (req: Request, res: Response) => {
+export const getCompleteProfile = async (req: Request, res: Response) => {
   try {
-    console.log('🔍 Setup profile called');
-    console.log('🔍 req.user:', req.user ? {
-      id: req.user.id,
-      role: req.user.role,
-      profile_completed: req.user.profile_completed
-    } : 'null');
-    console.log('🔍 Request body:', req.body);
+    const user = (req as any).user;
     
-    // Temporary: ถ้าไม่มี req.user (เพราะไม่ผ่าน auth middleware) ให้สร้างจำลอง
-    if (!req.user) {
-      console.log('❌ No req.user found');
-      // ในการใช้งานจริง ควรส่ง 401 แต่สำหรับการทดสอบเราจะสร้างจำลอง
+    if (!user) {
       return res.status(401).json(
-        errorResponse('Authentication required', 401)
+        errorResponse('User not authenticated', 401)
       );
     }
 
-    // ตรวจสอบว่าเป็น patient และยังไม่ได้ทำ profile setup
-    if (req.user?.role !== 'patient') {
-      return res.status(403).json(
-        errorResponse('Only patients can setup profile', 403)
-      );
-    }
-
-    if (req.user?.profile_completed) {
-      return res.status(400).json(
-        errorResponse('Profile already completed', 400)
-      );
-    }
-
-    // Validate input
-    const validatedData = profileSetupSchema.parse(req.body);
-    
-    // เริ่มต้น transaction เพื่ออัปเดตทั้ง user และสร้าง patient record
-    const result = await db.transaction(async (client) => {
-      // 1. อัปเดต user profile_completed = true
-      await client.query(`
-        UPDATE users 
-        SET 
-          profile_completed = TRUE,
-          updated_at = CURRENT_TIMESTAMP 
-        WHERE id = $1
-      `, [req.user?.id]);
-
-      // 2. ตรวจสอบว่ามี patient record อยู่แล้วหรือไม่
-      const existingPatient = await client.query(`
-        SELECT id FROM patients WHERE created_by = $1
-      `, [req.user?.id]);
-
-      let patientId;
-      
-      if (existingPatient.rows.length === 0) {
-        // 3. สร้าง patient record ใหม่
-        const generatePatientNumber = () => {
-          const year = new Date().getFullYear().toString().slice(-2);
-          const random = Math.floor(Math.random() * 900000) + 100000;
-          return `${year}-${random}`;
-        };
-
-        const patientNumber = generatePatientNumber();
-
-        const patientResult = await client.query(`
-          INSERT INTO patients (
-            patient_number, first_name, last_name, thai_first_name, thai_last_name, 
-            date_of_birth, gender, phone, email, 
-            address, current_address, id_card_address,
-            emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
-            medical_history, allergies, drug_allergies, food_allergies, environment_allergies,
-            current_medications, chronic_diseases,
-            national_id, religion, race, occupation, marital_status, education,
-            blood_group, blood_type, weight, height,
-            created_by, created_at, updated_at
-          ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35
-          ) RETURNING id
-        `, [
-          patientNumber,
-          req.user?.first_name || 'Unknown',
-          req.user?.last_name || 'Unknown',
-          validatedData.thai_name || null,
-          validatedData.thai_name || null, // use same thai_name for both first and last
-          validatedData.birth_date || null,
-          validatedData.gender || 'other',
-          validatedData.phone || req.user?.phone || null,
-          req.user?.email || null,
-          validatedData.address || null,
-          validatedData.current_address || validatedData.address || null,
-          validatedData.id_card_address || null,
-          validatedData.emergency_contact || null,
-          validatedData.emergency_contact_phone || validatedData.phone || null,
-          validatedData.emergency_contact_relation || 'อื่นๆ',
-          validatedData.medical_history || null,
-          validatedData.allergies || null,
-          validatedData.drug_allergies || null,
-          validatedData.food_allergies || null,
-          validatedData.environment_allergies || null,
-          validatedData.medications || null,
-          validatedData.chronic_diseases || null,
-          validatedData.national_id || null,
-          validatedData.religion || null,
-          validatedData.race || null,
-          validatedData.occupation || null,
-          validatedData.marital_status || null,
-          validatedData.education || null,
-          validatedData.blood_group || null,
-          validatedData.blood_type || null,
-          validatedData.weight ? parseFloat(validatedData.weight) : null,
-          validatedData.height ? parseFloat(validatedData.height) : null,
-          req.user?.id,
-          new Date(),
-          new Date()
-        ]);
-
-        patientId = patientResult.rows[0].id;
-      } else {
-        patientId = existingPatient.rows[0].id;
-      }
-
-      return { patientId };
-    });
-
-    // Log audit
-    await db.createAuditLog({
-      userId: req.user?.id,
-      action: 'profile_setup',
-      resource: 'patient',
-      resourceId: result.patientId,
-      ipAddress: req.ip || 'unknown',
-      userAgent: req.get('User-Agent') || 'unknown',
-      details: {
-        profile_setup: true,
-        patient_created: result.patientId
-      }
-    });
-
-    // Return success response
-    return res.status(200).json(
-      successResponse(
-        'Profile setup completed successfully',
-        {
-          profile_completed: true,
-          patient_id: result.patientId
-        }
-      )
-    );
-
-  } catch (error) {
-    console.error('Profile setup error:', error);
-    
-    if (error instanceof z.ZodError) {
-      return res.status(400).json(
-        errorResponse('Invalid input data', 400, error.errors)
-      );
-    }
-
-    return res.status(500).json(
-      errorResponse('Internal server error', 500)
-    );
-  }
-};
-
-/**
- * Get user profile
- * GET /api/profile
- */
-export const getProfile = async (req: Request, res: Response) => {
-  try {
-    if (!req.user?.id) {
-      return res.status(401).json(
-        errorResponse('Authentication required', 401)
-      );
-    }
-
-    // Get user profile
-    const userResult = await db.query(`
+    // Get complete user data from database
+    const userQuery = `
       SELECT 
-        id, username, email, first_name, last_name, thai_name, 
-        role, phone, phone_number, is_active, is_verified, profile_completed,
-        created_at, updated_at
+        id, username, email, first_name, last_name, phone, role,
+        thai_name, national_id, birth_date, gender, blood_type,
+        address, id_card_address, current_address,
+        emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
+        allergies, drug_allergies, food_allergies, environment_allergies,
+        medical_history, current_medications, chronic_diseases,
+        weight, height, occupation, education, marital_status, religion, race,
+        insurance_type, insurance_number, insurance_expiry_date,
+        profile_image, is_active, email_verified, profile_completed,
+        created_at, updated_at, last_login, last_activity
       FROM users 
       WHERE id = $1
-    `, [req.user.id]);
-
-    if (userResult.rows.length === 0) {
+    `;
+    
+    const result = await databaseManager.query(userQuery, [user.id]);
+    
+    if (result.rows.length === 0) {
       return res.status(404).json(
         errorResponse('User not found', 404)
       );
     }
 
-    const user = userResult.rows[0];
-
-    // If user is a patient, get patient info too
-    let patientInfo = null;
-    if (user.role === 'patient') {
-      const patientResult = await db.query(`
-        SELECT 
-          id, patient_number, thai_first_name, thai_last_name, date_of_birth, gender, 
-          phone, email, address, current_address, id_card_address,
-          emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
-          medical_history, allergies, drug_allergies, food_allergies, environment_allergies,
-          current_medications, chronic_diseases,
-          national_id, religion, race, occupation, marital_status, education,
-          blood_group, blood_type, weight, height,
-          created_at, updated_at
-        FROM patients 
-        WHERE created_by = $1
-      `, [req.user.id]);
-
-      if (patientResult.rows.length > 0) {
-        patientInfo = patientResult.rows[0];
-      }
+    // Transform database data to frontend format
+    const userData = ProfileTransformers.fromDatabase(result.rows[0]);
+    
+    // Calculate BMI if weight and height are available
+    if (userData.weight && userData.height) {
+      const heightInMeters = userData.height / 100;
+      userData.bmi = parseFloat((userData.weight / (heightInMeters * heightInMeters)).toFixed(1));
     }
 
-    // Combine user and patient data for easier frontend handling
-    const combinedData = {
-      ...user,
-      ...(patientInfo && {
-        // Patient-specific fields
-        patient_number: patientInfo.patient_number,
-        thai_name: (patientInfo.thai_first_name || '') + (patientInfo.thai_last_name ? ' ' + patientInfo.thai_last_name : ''),
-        national_id: patientInfo.national_id,
-        birth_date: patientInfo.birth_date || patientInfo.date_of_birth,
-        gender: patientInfo.gender,
-        phone: patientInfo.phone || user.phone,
-        phone_number: patientInfo.phone_number || user.phone_number,
-        address: patientInfo.address,
-        current_address: patientInfo.current_address,
-        id_card_address: patientInfo.id_card_address,
-        emergency_contact: patientInfo.emergency_contact_name,
-        emergency_contact_phone: patientInfo.emergency_contact_phone,
-        emergency_contact_relation: patientInfo.emergency_contact_relation,
-        medical_history: patientInfo.medical_history,
-        allergies: patientInfo.allergies,
-        drug_allergies: patientInfo.drug_allergies,
-        food_allergies: patientInfo.food_allergies,
-        environment_allergies: patientInfo.environment_allergies,
-        medications: patientInfo.current_medications,
-        chronic_diseases: patientInfo.chronic_diseases,
-        religion: patientInfo.religion,
-        race: patientInfo.race,
-        occupation: patientInfo.occupation,
-        marital_status: patientInfo.marital_status,
-        education: patientInfo.education,
-        blood_group: patientInfo.blood_group,
-        blood_type: patientInfo.blood_type,
-        weight: patientInfo.weight,
-        height: patientInfo.height
-      })
-    };
+    // Add computed fields
+    userData.isProfileComplete = Boolean(
+      userData.firstName && 
+      userData.lastName && 
+      userData.email && 
+      userData.phone && 
+      userData.birthDate && 
+      userData.gender
+    );
 
-    return res.status(200).json(
-      successResponse(
-        'Profile retrieved successfully',
-        200,
-        combinedData
-      )
+    res.json(
+      successResponse('Profile retrieved successfully', userData)
     );
 
   } catch (error) {
-    console.error('Get profile error:', error);
-    return res.status(500).json(
+    console.error('Get complete profile error:', error);
+    res.status(500).json(
       errorResponse('Internal server error', 500)
     );
   }
@@ -374,136 +85,301 @@ export const getProfile = async (req: Request, res: Response) => {
 
 /**
  * Update user profile
- * PUT /api/profile
+ * PUT /api/auth/profile/complete
  */
-export const updateProfile = async (req: Request, res: Response) => {
+export const updateCompleteProfile = async (req: Request, res: Response) => {
   try {
-    if (!req.user?.id) {
+    const user = (req as any).user;
+    
+    if (!user) {
       return res.status(401).json(
-        errorResponse('Authentication required', 401)
+        errorResponse('User not authenticated', 401)
       );
     }
 
-    const updateSchema = z.object({
-      // User fields
-      first_name: z.string().optional(),
-      last_name: z.string().optional(),
-      thai_name: z.string().optional(),
-      phone: z.string().optional(),
-      phone_number: z.string().optional(),
-      email: z.string().email().optional(),
+    // Validate input
+    const validatedData = UpdateProfileSchema.parse(req.body);
+    
+    // Check if email is being changed and already exists
+    if (validatedData.email && validatedData.email !== user.email) {
+      const existingUser = await databaseManager.query(
+        'SELECT id FROM users WHERE email = $1 AND id != $2',
+        [validatedData.email, user.id]
+      );
       
-      // Patient fields
-      national_id: z.string().optional(),
-      birth_date: z.string().optional(),
-      gender: z.enum(['male', 'female', 'other']).optional(),
-      address: z.string().optional(),
-      current_address: z.string().optional(),
-      id_card_address: z.string().optional(),
-      emergency_contact: z.string().optional(),
-      emergency_contact_phone: z.string().optional(),
-      emergency_contact_relation: z.string().optional(),
-      medical_history: z.string().optional(),
-      allergies: z.string().optional(),
-      drug_allergies: z.string().optional(),
-      food_allergies: z.string().optional(),
-      environment_allergies: z.string().optional(),
-      medications: z.string().optional(),
-      chronic_diseases: z.string().optional(),
-      religion: z.string().optional(),
-      race: z.string().optional(),
-      occupation: z.string().optional(),
-      marital_status: z.enum(['single', 'married', 'divorced', 'widowed']).optional(),
-      education: z.string().optional(),
-      blood_group: z.enum(['A', 'B', 'AB', 'O']).optional(),
-      blood_type: z.enum(['+', '-']).optional(),
-      weight: z.string().optional(),
-      height: z.string().optional()
+      if (existingUser.rows.length > 0) {
+        return res.status(409).json(
+          errorResponse('Email already exists', 409)
+        );
+      }
+    }
+
+    // Transform data to database format
+    const dbData = ProfileTransformers.toDatabase(validatedData);
+    
+    // Remove undefined fields
+    const updateData: any = {};
+    Object.keys(dbData).forEach(key => {
+      if (dbData[key as keyof typeof dbData] !== undefined) {
+        updateData[key] = dbData[key as keyof typeof dbData];
+      }
     });
 
-    const validatedData = updateSchema.parse(req.body);
+    // Build dynamic update query
+    const setClause = Object.keys(updateData).map((key, index) => 
+      `${key} = $${index + 2}`
+    ).join(', ');
 
-    // Update user table
-    const userFields = ['first_name', 'last_name', 'thai_name', 'phone', 'phone_number', 'email'];
-    const userUpdates = [];
-    const userValues = [];
-    let paramIndex = 1;
+    const updateQuery = `
+      UPDATE users 
+      SET ${setClause}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING 
+        id, username, email, first_name, last_name, phone, role,
+        thai_name, national_id, birth_date, gender, blood_type,
+        address, id_card_address, current_address,
+        emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
+        allergies, drug_allergies, food_allergies, environment_allergies,
+        medical_history, current_medications, chronic_diseases,
+        weight, height, occupation, education, marital_status, religion, race,
+        insurance_type, insurance_number, insurance_expiry_date,
+        profile_image, is_active, email_verified, profile_completed,
+        created_at, updated_at, last_login, last_activity
+    `;
 
-    for (const field of userFields) {
-      if (validatedData[field] !== undefined) {
-        userUpdates.push(`${field} = $${paramIndex}`);
-        userValues.push(validatedData[field]);
-        paramIndex++;
-      }
-    }
+    const values = [user.id, ...Object.values(updateData)];
+    const result = await databaseManager.query(updateQuery, values);
 
-    if (userUpdates.length > 0) {
-      userUpdates.push(`updated_at = CURRENT_TIMESTAMP`);
-      userValues.push(req.user.id);
-      
-      await db.query(`
-        UPDATE users 
-        SET ${userUpdates.join(', ')} 
-        WHERE id = $${paramIndex}
-      `, userValues);
-    }
+    // Transform response data
+    const updatedUserData = ProfileTransformers.fromDatabase(result.rows[0]);
 
-    // If user is a patient, update patient table too
-    if (req.user.role === 'patient') {
-      const patientFields = [
-        'national_id', 'birth_date', 'gender', 'address', 'current_address', 'id_card_address',
-        'emergency_contact', 'emergency_contact_phone', 'emergency_contact_relation',
-        'medical_history', 'allergies', 'drug_allergies', 'food_allergies', 'environment_allergies',
-        'medications', 'chronic_diseases', 'religion', 'race', 'occupation', 'marital_status',
-        'education', 'blood_group', 'blood_type', 'weight', 'height'
-      ];
-      const patientUpdates = [];
-      const patientValues = [];
-      let patientParamIndex = 1;
+    // Log audit
+    await databaseManager.query(`
+      INSERT INTO audit_logs (
+        user_id, action, resource, resource_id, details, ip_address, user_agent
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [
+      user.id,
+      'PROFILE_UPDATE',
+      'USER',
+      user.id,
+      JSON.stringify({ updatedFields: Object.keys(updateData) }),
+      req.ip || 'unknown',
+      req.get('User-Agent') || 'unknown'
+    ]);
 
-      for (const field of patientFields) {
-        if (validatedData[field] !== undefined) {
-          let dbField = field;
-          // Map frontend field names to database column names
-          if (field === 'emergency_contact') dbField = 'emergency_contact_name';
-          else if (field === 'emergency_contact_relation') dbField = 'emergency_contact_relation';
-          else if (field === 'medications') dbField = 'current_medications';
-          
-          patientUpdates.push(`${dbField} = $${patientParamIndex}`);
-          patientValues.push(validatedData[field]);
-          patientParamIndex++;
-        }
-      }
-
-      if (patientUpdates.length > 0) {
-        patientUpdates.push(`updated_at = CURRENT_TIMESTAMP`);
-        patientValues.push(req.user.id);
-        
-        await db.query(`
-          UPDATE patients 
-          SET ${patientUpdates.join(', ')} 
-          WHERE created_by = $${patientParamIndex}
-        `, patientValues);
-      }
-    }
-
-    return res.status(200).json(
-      successResponse(
-        null,
-        'Profile updated successfully'
-      )
+    res.json(
+      successResponse('Profile updated successfully', updatedUserData)
     );
 
   } catch (error) {
-    console.error('Update profile error:', error);
+    console.error('Update complete profile error:', error);
     
     if (error instanceof z.ZodError) {
       return res.status(400).json(
-        errorResponse('Invalid input data', 400, error.errors)
+        errorResponse('Validation error', 400, error.errors)
+      );
+    }
+    
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
+  }
+};
+
+/**
+ * Delete profile field
+ * DELETE /api/auth/profile/field/:fieldName
+ */
+export const deleteProfileField = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { fieldName } = req.params;
+    
+    if (!user) {
+      return res.status(401).json(
+        errorResponse('User not authenticated', 401)
       );
     }
 
-    return res.status(500).json(
+    // List of deletable fields
+    const deletableFields = [
+      'thai_name', 'national_id', 'address', 'id_card_address', 'current_address',
+      'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation',
+      'allergies', 'drug_allergies', 'food_allergies', 'environment_allergies',
+      'medical_history', 'current_medications', 'chronic_diseases',
+      'weight', 'height', 'occupation', 'education', 'religion', 'race',
+      'insurance_type', 'insurance_number', 'insurance_expiry_date',
+      'profile_image'
+    ];
+
+    if (!deletableFields.includes(fieldName)) {
+      return res.status(400).json(
+        errorResponse('Field cannot be deleted', 400)
+      );
+    }
+
+    // Update field to NULL
+    const updateQuery = `
+      UPDATE users 
+      SET ${fieldName} = NULL, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING ${fieldName}
+    `;
+
+    await databaseManager.query(updateQuery, [user.id]);
+
+    // Log audit
+    await databaseManager.query(`
+      INSERT INTO audit_logs (
+        user_id, action, resource, resource_id, details, ip_address, user_agent
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [
+      user.id,
+      'PROFILE_FIELD_DELETE',
+      'USER',
+      user.id,
+      JSON.stringify({ deletedField: fieldName }),
+      req.ip || 'unknown',
+      req.get('User-Agent') || 'unknown'
+    ]);
+
+    res.json(
+      successResponse(`Field ${fieldName} deleted successfully`, { deletedField: fieldName })
+    );
+
+  } catch (error) {
+    console.error('Delete profile field error:', error);
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
+  }
+};
+
+/**
+ * Upload profile image
+ * POST /api/auth/profile/image
+ */
+export const uploadProfileImage = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { imageUrl } = req.body;
+    
+    if (!user) {
+      return res.status(401).json(
+        errorResponse('User not authenticated', 401)
+      );
+    }
+
+    if (!imageUrl) {
+      return res.status(400).json(
+        errorResponse('Image URL is required', 400)
+      );
+    }
+
+    // Update profile image
+    const updateQuery = `
+      UPDATE users 
+      SET profile_image = $2, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING profile_image
+    `;
+
+    const result = await databaseManager.query(updateQuery, [user.id, imageUrl]);
+
+    // Log audit
+    await databaseManager.query(`
+      INSERT INTO audit_logs (
+        user_id, action, resource, resource_id, details, ip_address, user_agent
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [
+      user.id,
+      'PROFILE_IMAGE_UPDATE',
+      'USER',
+      user.id,
+      JSON.stringify({ imageUrl }),
+      req.ip || 'unknown',
+      req.get('User-Agent') || 'unknown'
+    ]);
+
+    res.json(
+      successResponse('Profile image updated successfully', { 
+        profileImage: result.rows[0].profile_image 
+      })
+    );
+
+  } catch (error) {
+    console.error('Upload profile image error:', error);
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
+  }
+};
+
+/**
+ * Get profile completion status
+ * GET /api/auth/profile/completion
+ */
+export const getProfileCompletion = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    
+    if (!user) {
+      return res.status(401).json(
+        errorResponse('User not authenticated', 401)
+      );
+    }
+
+    // Get user data for completion check
+    const userQuery = `
+      SELECT 
+        first_name, last_name, email, phone, birth_date, gender,
+        thai_name, national_id, address, emergency_contact_name,
+        emergency_contact_phone, profile_image, profile_completed
+      FROM users 
+      WHERE id = $1
+    `;
+    
+    const result = await databaseManager.query(userQuery, [user.id]);
+    const userData = result.rows[0];
+
+    // Calculate completion percentage
+    const requiredFields = [
+      'first_name', 'last_name', 'email', 'phone', 'birth_date', 'gender'
+    ];
+    const optionalFields = [
+      'thai_name', 'national_id', 'address', 'emergency_contact_name', 
+      'emergency_contact_phone', 'profile_image'
+    ];
+
+    const completedRequired = requiredFields.filter(field => userData[field]).length;
+    const completedOptional = optionalFields.filter(field => userData[field]).length;
+    
+    const requiredPercentage = (completedRequired / requiredFields.length) * 70; // 70% weight
+    const optionalPercentage = (completedOptional / optionalFields.length) * 30; // 30% weight
+    
+    const completionPercentage = Math.round(requiredPercentage + optionalPercentage);
+    
+    const missingRequired = requiredFields.filter(field => !userData[field]);
+    const missingOptional = optionalFields.filter(field => !userData[field]);
+
+    const completionData = {
+      completionPercentage,
+      requiredComplete: completedRequired === requiredFields.length,
+      missingRequired,
+      missingOptional,
+      totalFields: requiredFields.length + optionalFields.length,
+      completedFields: completedRequired + completedOptional,
+      profileCompleted: userData.profile_completed
+    };
+
+    res.json(
+      successResponse('Profile completion status retrieved', completionData)
+    );
+
+  } catch (error) {
+    console.error('Get profile completion error:', error);
+    res.status(500).json(
       errorResponse('Internal server error', 500)
     );
   }

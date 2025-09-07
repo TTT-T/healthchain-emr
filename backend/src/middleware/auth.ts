@@ -40,13 +40,8 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
-        data: null,
-        meta: null,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: 'Access token is required'
-        },
-        statusCode: 401
+        success: false,
+        message: 'Authentication required'
       });
     }
     
@@ -56,17 +51,12 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     const decoded = jwt.verify(token, config.jwt.secret) as any;
     
     // Get user from database to check if still active
-    const user = await db.getUserById(decoded.sub);
+    const user = await db.getUserById(decoded.sub || decoded.userId);
     
     if (!user || !user.is_active) {
       return res.status(401).json({
-        data: null,
-        meta: null,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: 'User account is inactive'
-        },
-        statusCode: 401
+        success: false,
+        message: 'User account is inactive'
       });
     }
     
@@ -77,37 +67,22 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
       return res.status(401).json({
-        data: null,
-        meta: null,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: 'Invalid token'
-        },
-        statusCode: 401
+        success: false,
+        message: 'Invalid token'
       });
     }
     
     if (error instanceof jwt.TokenExpiredError) {
       return res.status(401).json({
-        data: null,
-        meta: null,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: 'Token expired'
-        },
-        statusCode: 401
+        success: false,
+        message: 'Token expired'
       });
     }
     
     console.error('Authentication error:', error);
     return res.status(500).json({
-      data: null,
-      meta: null,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Internal server error'
-      },
-      statusCode: 500
+      success: false,
+      message: 'Internal server error'
     });
   }
 };

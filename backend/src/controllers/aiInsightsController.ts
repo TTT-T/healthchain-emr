@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { databaseManager } from '../database/connection';
 import { v4 as uuidv4 } from 'uuid';
+// Removed getPatientIdForUser import - using direct patient lookup
 
 /**
  * AI Insights Controller
@@ -15,28 +16,86 @@ export const getPatientAIInsights = async (req: Request, res: Response) => {
   try {
     const { id: patientId } = req.params;
     const { page = 1, limit = 10, insightType, riskLevel, isActive } = req.query;
+    const user = (req as any).user;
 
-    // Validate patient exists
-    const patientExists = await databaseManager.query(
-      'SELECT id, first_name, last_name FROM patients WHERE id = $1',
-      [patientId]
-    );
-
-    if (patientExists.rows.length === 0) {
-      return res.status(404).json({
-        data: null,
-        meta: null,
-        error: { message: 'Patient not found' },
-        statusCode: 404
-      });
+    // Get patient ID based on user role
+    let actualPatientId: string;
+    let patient: any;
+    
+    // For patients, they can only access their own data
+    if (user.role === 'patient') {
+      // First try to get patient record using user_id (new schema)
+      let patientQuery = await databaseManager.query(
+        'SELECT id, first_name, last_name, user_id, email FROM patients WHERE user_id = $1',
+        [user.id]
+      );
+      
+      if (patientQuery.rows.length === 0) {
+        // If no patient found by user_id, try by email
+        patientQuery = await databaseManager.query(
+          'SELECT id, first_name, last_name, user_id, email FROM patients WHERE email = $1',
+          [user.email]
+        );
+      }
+      
+      if (patientQuery.rows.length === 0) {
+        // If still no patient found, create one
+        const newPatientId = uuidv4();
+        await databaseManager.query(
+          `INSERT INTO patients (
+            id, user_id, email, first_name, last_name, 
+            date_of_birth, phone, emergency_contact, 
+            created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          [
+            newPatientId,
+            user.id,
+            user.email,
+            user.first_name || 'Patient',
+            user.last_name || 'User',
+            '1990-01-01', // Default date
+            user.phone || '',
+            '{}', // Empty JSON object for emergency contact
+            new Date(),
+            new Date()
+          ]
+        );
+        
+        patient = {
+          id: newPatientId,
+          first_name: user.first_name || 'Patient',
+          last_name: user.last_name || 'User',
+          user_id: user.id,
+          email: user.email
+        };
+        actualPatientId = newPatientId;
+      } else {
+        patient = patientQuery.rows[0];
+        actualPatientId = patient.id;
+      }
+    } else {
+      // For doctors/admins, use the provided patient ID
+      const patientResult = await databaseManager.query(
+        'SELECT id, first_name, last_name, email FROM patients WHERE id = $1',
+        [patientId]
+      );
+      patient = patientResult.rows[0];
+      
+      if (!patient) {
+        return res.status(404).json({
+          data: null,
+          meta: null,
+          error: { message: 'Patient not found' },
+          statusCode: 404
+        });
+      }
+      actualPatientId = patientId;
     }
-
-    const patient = patientExists.rows[0];
     const offset = (Number(page) - 1) * Number(limit);
 
     // Build query for AI insights
     let whereClause = 'WHERE ai.patient_id = $1';
-    const queryParams: any[] = [patientId];
+    const queryParams: any[] = [actualPatientId];
 
     if (insightType) {
       whereClause += ' AND ai.insight_type = $2';
@@ -108,7 +167,7 @@ export const getPatientAIInsights = async (req: Request, res: Response) => {
           WHEN 'medium' THEN 3 
           WHEN 'low' THEN 4 
         END
-    `, [patientId]);
+    `, [actualPatientId]);
 
     // Format insights
     const formattedInsights = insights.map(insight => ({
@@ -172,24 +231,78 @@ export const calculatePatientAIInsights = async (req: Request, res: Response) =>
     const { id: patientId } = req.params;
     const { insightTypes, forceRecalculate = false } = req.body;
 
-    const userId = (req as any).user.id;
+    const user = (req as any).user;
+    const userId = user.id;
 
-    // Validate patient exists
-    const patientExists = await databaseManager.query(
-      'SELECT id, first_name, last_name FROM patients WHERE id = $1',
-      [patientId]
-    );
-
-    if (patientExists.rows.length === 0) {
-      return res.status(404).json({
-        data: null,
-        meta: null,
-        error: { message: 'Patient not found' },
-        statusCode: 404
-      });
+    // Get patient ID based on user role
+    let actualPatientId: string;
+    let patient: any;
+    
+    // For patients, they can only access their own data
+    if (user.role === 'patient') {
+      // First try to get patient record using user_id (new schema)
+      let patientQuery = await databaseManager.query(
+        'SELECT id, first_name, last_name, user_id, email FROM patients WHERE user_id = $1',
+        [user.id]
+      );
+      
+      if (patientQuery.rows.length === 0) {
+        // If not found by user_id, try by email
+        patientQuery = await databaseManager.query(
+          'SELECT id, first_name, last_name, user_id, email FROM patients WHERE email = $1',
+          [user.email]
+        );
+        
+        if (patientQuery.rows.length === 0) {
+          // Auto-create patient record if not found
+          const insertPatientQuery = `
+            INSERT INTO patients (
+              id, user_id, first_name, last_name, email, patient_number,
+              date_of_birth, gender, nationality, phone, is_active, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            RETURNING id, first_name, last_name, user_id, email
+          `;
+          
+          const newPatientId = require('uuid').v4();
+          const patientNumber = `P${new Date().getFullYear()}${String(Date.now()).slice(-6)}`;
+          
+          patientQuery = await databaseManager.query(insertPatientQuery, [
+            newPatientId,
+            user.id,
+            user.first_name || 'Unknown',
+            user.last_name || 'User',
+            user.email,
+            patientNumber,
+            '1990-01-01', // Default birth date
+            'other',      // Default gender
+            'Thai',       // Default nationality
+            user.phone || null,
+            true
+          ]);
+        }
+      }
+      
+      patient = patientQuery.rows[0];
+      actualPatientId = patient.id;
+    } else {
+      // For other roles (doctor, admin), use patient ID from URL parameter
+      const patientQuery = await databaseManager.query(
+        'SELECT id, first_name, last_name, user_id, email FROM patients WHERE id = $1',
+        [patientId]
+      );
+      
+      if (patientQuery.rows.length === 0) {
+        return res.status(404).json({
+          data: null,
+          meta: null,
+          error: { message: 'Patient not found' },
+          statusCode: 404
+        });
+      }
+      
+      patient = patientQuery.rows[0];
+      actualPatientId = patient.id;
     }
-
-    const patient = patientExists.rows[0];
 
     // Get a valid user ID if not provided
     let validUserId = userId;
@@ -211,7 +324,7 @@ export const calculatePatientAIInsights = async (req: Request, res: Response) =>
           WHERE patient_id = $1 AND insight_type = $2 
           AND generated_at > NOW() - INTERVAL '24 hours'
           AND is_active = true
-        `, [patientId, insightType]);
+        `, [actualPatientId, insightType]);
 
         if (recentInsight.rows.length > 0) {
           continue; // Skip if recent insight exists
@@ -222,19 +335,19 @@ export const calculatePatientAIInsights = async (req: Request, res: Response) =>
       let insight = null;
       switch (insightType) {
         case 'health_risk':
-          insight = await calculateHealthRiskInsight(patientId, validUserId);
+          insight = await calculateHealthRiskInsight(actualPatientId, validUserId);
           break;
         case 'medication_adherence':
-          insight = await calculateMedicationAdherenceInsight(patientId, validUserId);
+          insight = await calculateMedicationAdherenceInsight(actualPatientId, validUserId);
           break;
         case 'treatment_effectiveness':
-          insight = await calculateTreatmentEffectivenessInsight(patientId, validUserId);
+          insight = await calculateTreatmentEffectivenessInsight(actualPatientId, validUserId);
           break;
         case 'lab_trends':
-          insight = await calculateLabTrendsInsight(patientId, validUserId);
+          insight = await calculateLabTrendsInsight(actualPatientId, validUserId);
           break;
         case 'appointment_patterns':
-          insight = await calculateAppointmentPatternsInsight(patientId, validUserId);
+          insight = await calculateAppointmentPatternsInsight(actualPatientId, validUserId);
           break;
       }
 
@@ -271,7 +384,7 @@ export const calculatePatientAIInsights = async (req: Request, res: Response) =>
 /**
  * Calculate health risk insight
  */
-async function calculateHealthRiskInsight(patientId: string, userId: string) {
+async function calculateHealthRiskInsight(actualPatientId: string, userId: string) {
   try {
     // Get patient's recent lab results and vital signs
     const labResults = await databaseManager.query(`
@@ -282,7 +395,7 @@ async function calculateHealthRiskInsight(patientId: string, userId: string) {
       AND lr.result_date > NOW() - INTERVAL '90 days'
       ORDER BY lr.result_date DESC
       LIMIT 10
-    `, [patientId]);
+    `, [actualPatientId]);
 
     const vitalSigns = await databaseManager.query(`
       SELECT systolic_bp, diastolic_bp, heart_rate, temperature, weight, height, bmi
@@ -290,7 +403,7 @@ async function calculateHealthRiskInsight(patientId: string, userId: string) {
       WHERE patient_id = $1
       ORDER BY measurement_time DESC
       LIMIT 5
-    `, [patientId]);
+    `, [actualPatientId]);
 
     // Simple AI logic for health risk assessment
     let riskLevel = 'low';
@@ -327,7 +440,7 @@ async function calculateHealthRiskInsight(patientId: string, userId: string) {
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     `, [
-      insightId, patientId, 'health_risk', 'การประเมินความเสี่ยงด้านสุขภาพ',
+      insightId, actualPatientId, 'health_risk', 'การประเมินความเสี่ยงด้านสุขภาพ',
       description, confidenceScore, ['lab_results', 'vital_signs'],
       recommendations, riskLevel, userId
     ]);
@@ -351,7 +464,7 @@ async function calculateHealthRiskInsight(patientId: string, userId: string) {
 /**
  * Calculate medication adherence insight
  */
-async function calculateMedicationAdherenceInsight(patientId: string, userId: string) {
+async function calculateMedicationAdherenceInsight(actualPatientId: string, userId: string) {
   try {
     // Get patient's prescriptions and appointments
     const prescriptions = await databaseManager.query(`
@@ -361,7 +474,7 @@ async function calculateMedicationAdherenceInsight(patientId: string, userId: st
       WHERE p.patient_id = $1
       AND p.prescription_date > NOW() - INTERVAL '90 days'
       ORDER BY p.prescription_date DESC
-    `, [patientId]);
+    `, [actualPatientId]);
 
     const appointments = await databaseManager.query(`
       SELECT appointment_date, status, appointment_type
@@ -369,7 +482,7 @@ async function calculateMedicationAdherenceInsight(patientId: string, userId: st
       WHERE patient_id = $1
       AND appointment_date > NOW() - INTERVAL '90 days'
       ORDER BY appointment_date DESC
-    `, [patientId]);
+    `, [actualPatientId]);
 
     // Simple adherence calculation
     const totalPrescriptions = prescriptions.rows.length;
@@ -402,7 +515,7 @@ async function calculateMedicationAdherenceInsight(patientId: string, userId: st
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     `, [
-      insightId, patientId, 'medication_adherence', 'การประเมินการรับประทานยาตามแพทย์สั่ง',
+      insightId, actualPatientId, 'medication_adherence', 'การประเมินการรับประทานยาตามแพทย์สั่ง',
       description, confidenceScore, ['prescriptions', 'appointments'],
       recommendations, riskLevel, userId
     ]);
@@ -426,7 +539,7 @@ async function calculateMedicationAdherenceInsight(patientId: string, userId: st
 /**
  * Calculate treatment effectiveness insight
  */
-async function calculateTreatmentEffectivenessInsight(patientId: string, userId: string) {
+async function calculateTreatmentEffectivenessInsight(actualPatientId: string, userId: string) {
   try {
     // Get patient's visits and diagnoses
     const visits = await databaseManager.query(`
@@ -435,7 +548,7 @@ async function calculateTreatmentEffectivenessInsight(patientId: string, userId:
       WHERE v.patient_id = $1
       AND v.visit_date > NOW() - INTERVAL '180 days'
       ORDER BY v.visit_date DESC
-    `, [patientId]);
+    `, [actualPatientId]);
 
     // Simple treatment effectiveness analysis
     const totalVisits = visits.rows.length;
@@ -468,7 +581,7 @@ async function calculateTreatmentEffectivenessInsight(patientId: string, userId:
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     `, [
-      insightId, patientId, 'treatment_effectiveness', 'การประเมินประสิทธิภาพการรักษา',
+      insightId, actualPatientId, 'treatment_effectiveness', 'การประเมินประสิทธิภาพการรักษา',
       description, confidenceScore, ['visits', 'diagnoses'],
       recommendations, riskLevel, userId
     ]);
@@ -492,7 +605,7 @@ async function calculateTreatmentEffectivenessInsight(patientId: string, userId:
 /**
  * Calculate lab trends insight
  */
-async function calculateLabTrendsInsight(patientId: string, userId: string) {
+async function calculateLabTrendsInsight(actualPatientId: string, userId: string) {
   try {
     // Get patient's lab results over time
     const labResults = await databaseManager.query(`
@@ -503,7 +616,7 @@ async function calculateLabTrendsInsight(patientId: string, userId: string) {
       AND lr.result_numeric IS NOT NULL
       AND lr.result_date > NOW() - INTERVAL '180 days'
       ORDER BY lr.result_date DESC
-    `, [patientId]);
+    `, [actualPatientId]);
 
     // Simple trend analysis
     let riskLevel = 'low';
@@ -540,7 +653,7 @@ async function calculateLabTrendsInsight(patientId: string, userId: string) {
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     `, [
-      insightId, patientId, 'lab_trends', 'การวิเคราะห์แนวโน้มผลการตรวจ',
+      insightId, actualPatientId, 'lab_trends', 'การวิเคราะห์แนวโน้มผลการตรวจ',
       description, confidenceScore, ['lab_results'],
       recommendations, riskLevel, userId
     ]);
@@ -564,7 +677,7 @@ async function calculateLabTrendsInsight(patientId: string, userId: string) {
 /**
  * Calculate appointment patterns insight
  */
-async function calculateAppointmentPatternsInsight(patientId: string, userId: string) {
+async function calculateAppointmentPatternsInsight(actualPatientId: string, userId: string) {
   try {
     // Get patient's appointment history
     const appointments = await databaseManager.query(`
@@ -573,7 +686,7 @@ async function calculateAppointmentPatternsInsight(patientId: string, userId: st
       WHERE patient_id = $1
       AND appointment_date > NOW() - INTERVAL '365 days'
       ORDER BY appointment_date DESC
-    `, [patientId]);
+    `, [actualPatientId]);
 
     // Simple pattern analysis
     const totalAppointments = appointments.rows.length;
@@ -609,7 +722,7 @@ async function calculateAppointmentPatternsInsight(patientId: string, userId: st
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     `, [
-      insightId, patientId, 'appointment_patterns', 'การวิเคราะห์รูปแบบการนัดหมาย',
+      insightId, actualPatientId, 'appointment_patterns', 'การวิเคราะห์รูปแบบการนัดหมาย',
       description, confidenceScore, ['appointments'],
       recommendations, riskLevel, userId
     ]);

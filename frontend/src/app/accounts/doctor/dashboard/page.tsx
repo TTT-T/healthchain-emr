@@ -1,7 +1,28 @@
 "use client";
+import React from "react";
 import MedicalHeader from "@/components/MedicalHeader";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function DoctorDashboard() {
+  const { user } = useAuth();
+
+  // Get user display name
+  const getDisplayName = () => {
+    if (!user) return "แพทย์";
+    
+    // Try Thai names first, then English names, then fallback
+    if (user.thaiFirstName || user.thaiLastName) {
+      return `${user.thaiFirstName || ''} ${user.thaiLastName || ''}`.trim();
+    }
+    if (user.firstName || user.lastName) {
+      return `${user.firstName || ''} ${user.lastName || ''}`.trim();
+    }
+    if (user.username) {
+      return user.username;
+    }
+    return user.email?.split('@')[0] || "แพทย์";
+  };
+
   return (
     <>
       <MedicalHeader title="แดชบอร์ดแพทย์" userType="doctor" />
@@ -11,11 +32,16 @@ export default function DoctorDashboard() {
         {/* Welcome Section - Mobile First */}
         <div className="mb-6 lg:mb-8">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800 mb-2">
-            ยินดีต้อนรับ, ดร.สมชาย
+            ยินดีต้อนรับ, ดร.{getDisplayName()}
           </h1>
           <p className="text-sm sm:text-base text-slate-600">
             วันนี้ {new Date().toLocaleDateString('th-TH')} • {new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
           </p>
+          {user?.id && (
+            <p className="text-xs text-slate-500 mt-1">
+              ID: {user.id} • Role: {user.role}
+            </p>
+          )}
         </div>
 
         {/* Stats Cards - Responsive Grid */}

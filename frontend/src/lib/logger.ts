@@ -45,16 +45,16 @@ class Logger {
     
     switch (level) {
       case 'debug':
-        logger.debug(prefix, message, ...args);
+        console.debug(prefix, message, ...args);
         break;
       case 'info':
-        logger.info(prefix, message, ...args);
+        console.info(prefix, message, ...args);
         break;
       case 'warn':
-        logger.warn(prefix, message, ...args);
+        console.warn(prefix, message, ...args);
         break;
       case 'error':
-        logger.error(prefix, message, ...args);
+        console.error(prefix, message, ...args);
         break;
     }
   }

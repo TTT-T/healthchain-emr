@@ -1,13 +1,14 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { UserPlus, User, Phone, MapPin, Heart, Shield, Save, RotateCcw, CheckCircle, AlertCircle } from 'lucide-react';
+import { UserPlus, User, Phone, MapPin, Heart, Shield, Save, RotateCcw, CheckCircle, AlertCircle, Search } from 'lucide-react';
 import { PatientService } from '@/services/patientService';
 import { CreatePatientRequest } from '@/types/api';
 import { logger } from '@/lib/logger';
 
 interface PatientData {
   // ข้อมูลส่วนตัว
+  hospitalNumber: string;
   thaiName: string;
   englishName: string;
   gender: string;
@@ -39,6 +40,7 @@ interface PatientData {
 
 export default function RegisterPatient() {
   const [formData, setFormData] = useState<PatientData>({
+    hospitalNumber: "",
     thaiName: "",
     englishName: "",
     gender: "",
@@ -65,6 +67,36 @@ export default function RegisterPatient() {
   const [searchId, setSearchId] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResult, setSearchResult] = useState<PatientData | null>(null);
+  const [selectedUserData, setSelectedUserData] = useState<any>(null);
+
+  // Load user data from sessionStorage if available
+  useEffect(() => {
+    const userData = sessionStorage.getItem('selectedUserForPatientRegistration');
+    if (userData) {
+      try {
+        const parsedData = JSON.parse(userData);
+        setSelectedUserData(parsedData);
+        
+        // Pre-fill form with user data
+        setFormData(prev => ({
+          ...prev,
+          thaiName: `${parsedData.firstName} ${parsedData.lastName}`,
+          englishName: `${parsedData.firstName} ${parsedData.lastName}`,
+          nationalId: parsedData.nationalId || "",
+          phone: parsedData.phone || "",
+          email: parsedData.email || "",
+          gender: parsedData.gender || "",
+          birthDate: parsedData.birthDate ? parsedData.birthDate.split('T')[0] : "",
+          address: parsedData.address || ""
+        }));
+        
+        // Clear sessionStorage
+        sessionStorage.removeItem('selectedUserForPatientRegistration');
+      } catch (error) {
+        logger.error('Error parsing user data:', error);
+      }
+    }
+  }, []);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<PatientData> = {};
@@ -126,6 +158,7 @@ export default function RegisterPatient() {
         
         // Map ข้อมูลจาก API response กลับมาเป็น form format
         const mappedData: PatientData = {
+          hospitalNumber: patient.hospitalNumber || patient.hn || '',
           thaiName: patient.thai_name || '',
           englishName: patient.english_name || '',
           gender: patient.gender || '',
@@ -166,6 +199,7 @@ export default function RegisterPatient() {
 
   const handleClearForm = () => {
     setFormData({
+      hospitalNumber: "",
       thaiName: "",
       englishName: "",
       gender: "",
@@ -198,7 +232,7 @@ export default function RegisterPatient() {
     try {
       // เตรียมข้อมูลสำหรับ API
       const patientData: CreatePatientRequest = {
-        hospitalNumber: formData.hospitalNumber,
+        hospitalNumber: formData.hospitalNumber || `HN${Date.now()}`,
         firstName: formData.englishName || formData.thaiName,
         lastName: '',
         dateOfBirth: formData.birthDate,
@@ -266,8 +300,38 @@ export default function RegisterPatient() {
                 <p className="text-gray-600">ลงทะเบียนผู้ป่วยใหม่เข้าสู่ระบบ EMR</p>
               </div>
             </div>
+            <div className="flex space-x-3">
+              <Link
+                href="/emr/user-search"
+                className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <Search className="w-4 h-4 mr-2" />
+                ค้นหาผู้ใช้
+              </Link>
+            </div>
           </div>
         </div>
+
+        {/* Selected User Info */}
+        {selectedUserData && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center space-x-3">
+              <CheckCircle className="w-6 h-6 text-green-600" />
+              <div>
+                <h3 className="text-lg font-semibold text-green-800">
+                  ข้อมูลผู้ใช้ที่เลือก
+                </h3>
+                <p className="text-green-700">
+                  {selectedUserData.firstName} {selectedUserData.lastName} 
+                  {selectedUserData.email && ` (${selectedUserData.email})`}
+                </p>
+                <p className="text-sm text-green-600">
+                  ข้อมูลจากระบบสมัครสมาชิกได้ถูกนำมาเติมในฟอร์มแล้ว
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Search Section */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="mb-6">

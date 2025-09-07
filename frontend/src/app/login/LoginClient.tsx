@@ -1,11 +1,12 @@
 "use client";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { showError, showSuccess, showWarning, showFeatureComingSoon } from "@/lib/alerts";
 import { logger } from '@/lib/logger';
+import { apiClient } from '@/lib/api';
 
-function LoginClient() {
+function LoginClientContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -26,6 +27,8 @@ function LoginClient() {
   const [resendEmail, setResendEmail] = useState('');
   const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [showEmailVerificationModal, setShowEmailVerificationModal] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState('');
 
   // Clear form data when component mounts to prevent cached values
   useEffect(() => {
@@ -122,16 +125,27 @@ function LoginClient() {
       });
 
       const result = await response.json();
+      
+      // Debug logging
+      console.log('🔍 Login response:', result);
+      console.log('🔍 Response status:', response.status);
+      console.log('🔍 Result success:', result.success);
+      console.log('🔍 Result statusCode:', result.statusCode);
+      console.log('🔍 Result data:', result.data);
 
-      if (result.statusCode === 200 && result.data) {
+      if ((result.success === true || result.statusCode === 200) && result.data) {
         // Login successful
         
-        // Store tokens
+        // Store tokens in both localStorage and cookies for compatibility
         if (result.data.accessToken) {
           localStorage.setItem('access_token', result.data.accessToken);
+          // Also set cookie for middleware compatibility
+          document.cookie = `access_token=${result.data.accessToken}; path=/; max-age=${60 * 60}; SameSite=Lax`;
         }
         if (result.data.refreshToken) {
           localStorage.setItem('refresh_token', result.data.refreshToken);
+          // Also set cookie for middleware compatibility
+          document.cookie = `refresh_token=${result.data.refreshToken}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
         }
         
         // Store remember me preference
@@ -144,13 +158,83 @@ function LoginClient() {
         // Show success notification
         showSuccess('เข้าสู่ระบบสำเร็จ', 'ยินดีต้อนรับสู่ระบบบันทึกสุขภาพอิเล็กทรอนิกส์');
         
-        // Redirect to dashboard
-        router.push('/emr/dashboard');
+        // Update AuthContext with user data
+        if (typeof window !== 'undefined') {
+          // Dispatch custom event to update AuthContext
+          window.dispatchEvent(new CustomEvent('userLoggedIn', {
+            detail: { user: result.data.user }
+          }));
+        }
+        
+        // Redirect based on user role and profile completion
+        const userRole = result.data.user.role;
+        const requiresProfileSetup = result.data.requiresProfileSetup;
+        const redirectTo = result.data.redirectTo;
+        const profileCompleted = result.data.user.profileCompleted;
+        
+        console.log('🔍 User role:', userRole);
+        console.log('🔍 Requires profile setup:', requiresProfileSetup);
+        console.log('🔍 Redirect to:', redirectTo);
+        console.log('🔍 Profile completed:', profileCompleted);
+        
+        // Always redirect to dashboard first, then user can go to setup-profile if needed
+        // This prevents the redirect loop issue
+        console.log('🔍 Redirecting to dashboard based on role:', userRole);
+        let redirectPath = '/accounts/patient/dashboard'; // Default
+        
+        switch (userRole) {
+          case 'patient':
+            redirectPath = '/accounts/patient/dashboard';
+            break;
+          case 'doctor':
+          case 'nurse':
+          case 'staff':
+            redirectPath = '/emr/dashboard'; // Medical staff use EMR system
+            break;
+          case 'admin':
+            redirectPath = '/admin/dashboard';
+            break;
+          default:
+            redirectPath = '/accounts/patient/dashboard';
+            break;
+        }
+        
+        console.log('🔍 Final redirect path:', redirectPath);
+        window.location.href = redirectPath;
+        
+        // TODO: Alternative flow - if you want to force profile setup first, uncomment below:
+        // if (profileCompleted === false && requiresProfileSetup && redirectTo) {
+        //   // Redirect to profile setup if required
+        //   console.log('🔍 Redirecting to profile setup:', redirectTo);
+        //   router.push(redirectTo);
+        // } else {
+        //   // Redirect based on role
+        //   console.log('🔍 Redirecting to dashboard based on role:', userRole);
+        //   switch (userRole) {
+        //     case 'patient':
+        //       router.push('/accounts/patient/dashboard');
+        //       break;
+        //     case 'doctor':
+        //     case 'nurse':
+        //     case 'staff':
+        //       router.push('/emr/dashboard'); // Medical staff use EMR system
+        //       break;
+        //     case 'admin':
+        //       router.push('/admin/dashboard');
+        //       break;
+        //     default:
+        //       router.push('/accounts/patient/dashboard');
+        //       break;
+        //   }
+        // }
         
       } else {
-        // Login failed
+        // Login failed - Enhanced error handling
         const errorMessage = result.message || result.error?.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
-        showError('เข้าสู่ระบบไม่สำเร็จ', errorMessage);
+        const statusCode = result.statusCode || response.status;
+        
+        console.log('🔍 Login failed - Status:', statusCode, 'Message:', errorMessage);
+        console.log('🔍 Full response:', result);
         
         // Check if it's an unverified email error
         if (errorMessage.includes('verify your email') || 
@@ -160,42 +244,74 @@ function LoginClient() {
           
           // Store email for verification page
           const emailToStore = result.metadata?.email || formData.username;
-          localStorage.setItem('pendingVerificationEmail', emailToStore);
+          setPendingEmail(emailToStore);
           
-          // Show specific error message for email verification
-          setErrors({ 
-            submit: 'กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ ตรวจสอบอีเมลของคุณและคลิกลิงก์ยืนยัน',
-            emailVerification: 'required'
-          });
-          
-          // Redirect to verification page after a short delay
-          setTimeout(() => {
-            router.push(`/verify-email?email=${encodeURIComponent(emailToStore)}`);
-          }, 2000);
+          // Show modal for user to choose
+          setShowEmailVerificationModal(true);
           return;
         }
         
-        // Handle other login errors
-        if (errorMessage.includes('Invalid credentials') || 
-            errorMessage.includes('Invalid username or password') ||
-            errorMessage.includes('User not found') ||
-            errorMessage.includes('Request failed with status code 401')) {
-          setErrors({ 
-            submit: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่' 
-          });
-        } else if (errorMessage.includes('Account is deactivated')) {
-          setErrors({ 
-            submit: 'บัญชีของคุณถูกระงับ กรุณาติดต่อผู้ดูแลระบบ' 
-          });
+        // Enhanced error handling with specific messages
+        let displayMessage = '';
+        
+        if (statusCode === 401) {
+          if (errorMessage.includes('Invalid credentials') || 
+              errorMessage.includes('Invalid username or password') ||
+              errorMessage.includes('User not found')) {
+            displayMessage = '❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง\n\n💡 ข้อแนะนำ:\n• ตรวจสอบการสะกดชื่อผู้ใช้\n• ตรวจสอบรหัสผ่าน (ตัวพิมพ์เล็ก/ใหญ่)\n• ลองใช้ชื่อผู้ใช้แทนอีเมล';
+          } else if (errorMessage.includes('Account is deactivated')) {
+            displayMessage = '🚫 บัญชีของคุณถูกระงับ\n\nกรุณาติดต่อผู้ดูแลระบบเพื่อเปิดใช้งานบัญชี';
+          } else if (errorMessage.includes('email verification') || 
+                     errorMessage.includes('verify your email')) {
+            displayMessage = '📧 ต้องยืนยันอีเมลก่อนเข้าสู่ระบบ\n\nกรุณาตรวจสอบอีเมลและคลิกลิงก์ยืนยัน';
+          } else {
+            displayMessage = `❌ เข้าสู่ระบบไม่สำเร็จ (รหัส: ${statusCode})\n\n${errorMessage}`;
+          }
+        } else if (statusCode === 404) {
+          displayMessage = '❌ ไม่พบผู้ใช้\n\nกรุณาตรวจสอบชื่อผู้ใช้หรือสมัครสมาชิกใหม่';
+        } else if (statusCode === 429) {
+          displayMessage = '⏰ ส่งคำขอมากเกินไป\n\nกรุณารอสักครู่แล้วลองใหม่';
+        } else if (statusCode >= 500) {
+          displayMessage = '🔧 เกิดข้อผิดพลาดจากเซิร์ฟเวอร์\n\nกรุณาลองใหม่อีกครั้งในภายหลัง';
         } else {
-          setErrors({ 
-            submit: errorMessage
-          });
+          displayMessage = `❌ เกิดข้อผิดพลาด (รหัส: ${statusCode})\n\n${errorMessage}`;
         }
+        
+        setErrors({ 
+          submit: displayMessage
+        });
+        
+        // Also show toast notification
+        showError('เข้าสู่ระบบไม่สำเร็จ', displayMessage);
       }
 
     } catch (error: any) {
-      showError('ข้อผิดพลาดเครือข่าย', 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
+      console.log('💥 Login catch error:', error);
+      
+      let errorMessage = 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง';
+      
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        errorMessage = '🔌 ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้\n\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต';
+      } else if (error.response) {
+        const status = error.response.status;
+        if (status === 401) {
+          errorMessage = '❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง\n\nกรุณาตรวจสอบข้อมูลและลองใหม่';
+        } else if (status === 404) {
+          errorMessage = '❌ ไม่พบผู้ใช้\n\nกรุณาตรวจสอบชื่อผู้ใช้หรือสมัครสมาชิกใหม่';
+        } else if (status >= 500) {
+          errorMessage = '🔧 เกิดข้อผิดพลาดจากเซิร์ฟเวอร์\n\nกรุณาลองใหม่อีกครั้งในภายหลัง';
+        } else {
+          errorMessage = `❌ เกิดข้อผิดพลาด (รหัส: ${status})\n\n${error.response.data?.message || error.message}`;
+        }
+      } else if (error.message) {
+        errorMessage = `❌ เกิดข้อผิดพลาด\n\n${error.message}`;
+      }
+      
+      setErrors({ 
+        submit: errorMessage
+      });
+      
+      showError('ข้อผิดพลาดเครือข่าย', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -213,21 +329,14 @@ function LoginClient() {
     setResendMessage(null);
 
     try {
-      const response = await fetch('/api/auth/resend-verification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: resendEmail }),
-      });
+      const response = await apiClient.resendVerificationEmail(resendEmail);
 
-      if (response.ok) {
+      if (response.statusCode === 200 && !response.error) {
         setResendMessage('Verification email sent successfully! Please check your inbox.');
         setShowResendVerification(false);
         setResendEmail('');
       } else {
-        const data = await response.json();
-        setResendMessage(data.error || 'Failed to send verification email');
+        setResendMessage(response.error?.message || 'Failed to send verification email');
       }
     } catch (error) {
       setResendMessage('Network error. Please try again.');
@@ -235,6 +344,17 @@ function LoginClient() {
     } finally {
       setIsResendingEmail(false);
     }
+  };
+
+  const handleGoToVerification = () => {
+    localStorage.setItem('pendingVerificationEmail', pendingEmail);
+    setShowEmailVerificationModal(false);
+    router.push(`/resend-verification?email=${encodeURIComponent(pendingEmail)}`);
+  };
+
+  const handleCancelVerification = () => {
+    setShowEmailVerificationModal(false);
+    setPendingEmail('');
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -457,7 +577,7 @@ function LoginClient() {
 
             {/* Error Message */}
             {errors.submit && (
-              <div className="rounded-md bg-red-50 p-4 border border-red-200">
+              <div className="rounded-xl bg-red-50 p-4 border border-red-200 shadow-sm">
                 <div className="flex">
                   <div className="flex-shrink-0">
                     <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -465,7 +585,9 @@ function LoginClient() {
                     </svg>
                   </div>
                   <div className="ml-3 flex-1">
-                    <p className="text-sm font-medium text-red-800">{errors.submit}</p>
+                    <div className="text-sm font-medium text-red-800 whitespace-pre-line">
+                      {errors.submit}
+                    </div>
                     
                     {/* Email Verification Actions */}
                     {errors.emailVerification && (
@@ -603,6 +725,51 @@ function LoginClient() {
           </div>
         )}
 
+        {/* Email Verification Modal */}
+        {showEmailVerificationModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-8 max-w-md w-full shadow-2xl border border-white/20">
+              <div className="text-center">
+                <div className="w-20 h-20 bg-gradient-to-r from-amber-500 to-orange-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl">
+                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                  ต้องยืนยันอีเมลก่อนเข้าสู่ระบบ
+                </h3>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+                  <p className="text-amber-800 font-medium mb-2">
+                    📧 อีเมลที่ยังไม่ได้ยืนยัน:
+                  </p>
+                  <p className="text-amber-700 font-semibold text-lg">
+                    {pendingEmail}
+                  </p>
+                </div>
+                <p className="text-gray-600 mb-6 text-lg">
+                  กรุณายืนยันอีเมลของคุณก่อนเข้าสู่ระบบ
+                  <br />
+                  <span className="text-sm text-gray-500">เพื่อความปลอดภัยของบัญชี</span>
+                </p>
+                <div className="space-y-3">
+                  <button
+                    onClick={handleGoToVerification}
+                    className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  >
+                    ✉️ ไปยืนยันอีเมล
+                  </button>
+                  <button
+                    onClick={handleCancelVerification}
+                    className="w-full h-12 text-lg font-semibold border-2 border-gray-300 hover:border-gray-400 text-gray-700 rounded-xl hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                  >
+                    ❌ ยกเลิก
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="text-center mt-8">
           <p className="text-gray-500 text-sm">
@@ -611,6 +778,19 @@ function LoginClient() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LoginClient() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-500">กำลังโหลด...</p>
+      </div>
+    </div>}>
+      <LoginClientContent />
+    </Suspense>
   );
 }
 

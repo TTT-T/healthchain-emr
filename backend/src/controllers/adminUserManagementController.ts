@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { z } from 'zod';
 import { databaseManager } from '../database/connection';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -32,7 +33,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
 
     if (search) {
       paramCount++;
-      whereClause += ` AND (u.first_name ILIKE $${paramCount} OR u.last_name ILIKE $${paramCount} OR u.email ILIKE $${paramCount})`;
+      whereClause += ` AND (u.first_name ILIKE $${paramCount} OR u.last_name ILIKE $${paramCount} OR u.email ILIKE $${paramCount} OR u.username ILIKE $${paramCount})`;
       queryParams.push(`%${search}%`);
     }
 
@@ -49,7 +50,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
     }
 
     // Validate sortBy
-    const allowedSortFields = ['created_at', 'first_name', 'last_name', 'email', 'role', 'last_login'];
+    const allowedSortFields = ['created_at', 'username', 'first_name', 'last_name', 'email', 'role', 'last_login'];
     const validSortBy = allowedSortFields.includes(sortBy as string) ? sortBy : 'created_at';
     const validSortOrder = sortOrder === 'asc' ? 'ASC' : 'DESC';
 
@@ -57,6 +58,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
     const usersQuery = `
       SELECT 
         u.id,
+        u.username,
         u.first_name,
         u.last_name,
         u.email,
@@ -93,6 +95,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
     // Format response
     const formattedUsers = usersResult.rows.map(user => ({
       id: user.id,
+      username: user.username,
       name: `${user.first_name} ${user.last_name}`,
       email: user.email,
       role: user.role,
@@ -265,26 +268,21 @@ export const createUser = async (req: Request, res: Response) => {
 
     const userId = (req as any).user.id;
 
-    // Validate required fields
-    if (!first_name || !last_name || !email || !password || !role) {
-      return res.status(400).json({
-        data: null,
-        meta: null,
-        error: { message: 'Missing required fields: first_name, last_name, email, password, role' },
-        statusCode: 400
-      });
-    }
-
-    // Validate role
-    const validRoles = ['admin', 'doctor', 'nurse', 'staff', 'patient'];
-    if (!validRoles.includes(role)) {
-      return res.status(400).json({
-        data: null,
-        meta: null,
-        error: { message: 'Invalid role. Must be one of: admin, doctor, nurse, staff, patient' },
-        statusCode: 400
-      });
-    }
+    // Import and use standardized schema validation
+    const { CreateUserSchema } = await import('../schemas/user');
+    
+    // Transform snake_case input to camelCase for validation
+    const validationData = {
+      firstName: first_name,
+      lastName: last_name,
+      email,
+      password,
+      role,
+      phoneNumber: phone
+    };
+    
+    // Validate using Zod schema
+    const validatedData = CreateUserSchema.parse(validationData);
 
     // Check if email already exists
     const existingUser = await databaseManager.query(
@@ -352,6 +350,19 @@ export const createUser = async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Error creating user:', error);
+    
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        data: null,
+        meta: null,
+        error: { 
+          message: 'Validation error',
+          details: error.errors 
+        },
+        statusCode: 400
+      });
+    }
+    
     res.status(500).json({
       data: null,
       meta: null,

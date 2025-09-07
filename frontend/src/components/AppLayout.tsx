@@ -1,7 +1,7 @@
 "use client";
+import React, { useState } from "react";
 import Header from "./Header";
 import ResponsiveSidebar from "./ResponsiveSidebar";
-import { useState } from "react";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -11,13 +11,13 @@ interface AppLayoutProps {
   backHref?: string;
 }
 
-export default function AppLayout({ 
+const AppLayout: React.FC<AppLayoutProps> = ({ 
   children, 
   title, 
   userType = "patient", 
   showBackButton = false, 
   backHref = "/" 
-}: AppLayoutProps) {
+}) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
@@ -52,4 +52,6 @@ export default function AppLayout({
       </div>
     </div>
   );
-}
+};
+
+export default AppLayout;

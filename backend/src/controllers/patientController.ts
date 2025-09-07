@@ -67,49 +67,56 @@ export const createPatient = async (req: Request, res: Response, next: NextFunct
     
     // Create patient in transaction
     const result = await db.transaction(async (client) => {
-      // Parse Thai name to extract first and last names
-      const nameParts = (dbData.thai_name || '').trim().split(' ');
-      const firstName = nameParts[0] || 'Unknown';
-      const lastName = nameParts.slice(1).join(' ') || 'Unknown';
-      
       // Insert patient (using actual database schema)
       const patientResult = await client.query(`
         INSERT INTO patients (
-          hospital_number, first_name, last_name, 
-          gender, date_of_birth, phone, email, address,
+          hospital_number, first_name, last_name, thai_name,
+          national_id, birth_date, date_of_birth,
+          gender, phone, phone_number, email, address, current_address,
+          emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
+          blood_group, blood_type, weight, height,
+          drug_allergies, food_allergies, environment_allergies,
+          chronic_diseases, medical_history, current_medications,
+          religion, race, occupation, marital_status, education,
           created_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)
         RETURNING *
       `, [
-        validatedData.hospitalNumber, // Use the hospital number from request
+        validatedData.hospitalNumber,
         validatedData.firstName,
         validatedData.lastName,
-        validatedData.gender,
+        validatedData.thaiName || null,
+        validatedData.nationalId || null,
         validatedData.dateOfBirth,
+        validatedData.dateOfBirth, // Also store in date_of_birth for compatibility
+        validatedData.gender,
         validatedData.phone || null,
+        validatedData.phone || null, // Also store in phone_number
         validatedData.email || null,
         validatedData.address || null,
+        (validatedData as any).currentAddress || validatedData.address || null,
+        validatedData.emergencyContactName || null,
+        validatedData.emergencyContactPhone || null,
+        validatedData.emergencyContactRelation || null,
+        (validatedData as any).bloodGroup || null,
+        validatedData.bloodType || null,
+        (validatedData as any).weight || null,
+        (validatedData as any).height || null,
+        (validatedData as any).drugAllergies || null,
+        (validatedData as any).foodAllergies || null,
+        (validatedData as any).environmentAllergies || null,
+        (validatedData as any).chronicDiseases || null,
+        validatedData.medicalHistory || null,
+        validatedData.currentMedications || null,
+        validatedData.religion || null,
+        (validatedData as any).race || null,
+        (validatedData as any).occupation || null,
+        (validatedData as any).maritalStatus || null,
+        (validatedData as any).education || null,
         req.user?.id
       ]);
       
       const patient = patientResult.rows[0];
-      
-      // Insert emergency contact if provided
-      if (dbData.emergency_contact) {
-        await client.query(`
-          UPDATE patients SET 
-            emergency_contact_name = $1,
-            emergency_contact_phone = $2,
-            emergency_contact_relationship = $3
-          WHERE id = $4
-        `, [
-          validatedData.emergencyContactName,
-          validatedData.emergencyContactPhone,
-          validatedData.emergencyContactRelation,
-          patient.id
-        ]);
-      }
-      
       return patient;
     });
     
@@ -127,16 +134,36 @@ export const createPatient = async (req: Request, res: Response, next: NextFunct
     const patientData = {
       id: result.id,
       hospitalNumber: result.hospital_number,
-      nationalId: null, // Not available in current schema
+      nationalId: result.national_id,
       firstName: result.first_name,
       lastName: result.last_name,
-      thaiName: null, // Not available in current schema
+      thaiName: result.thai_name,
       gender: result.gender,
-      birthDate: result.date_of_birth,
-      phone: result.phone,
+      birthDate: result.birth_date || result.date_of_birth,
+      phone: result.phone || result.phone_number,
       email: result.email,
-      address: result.address || null,
-      emergencyContact: null, // Not available in current schema
+      address: result.address,
+      currentAddress: result.current_address,
+      emergencyContact: result.emergency_contact_name ? {
+        name: result.emergency_contact_name,
+        phone: result.emergency_contact_phone,
+        relationship: result.emergency_contact_relation
+      } : null,
+      bloodGroup: result.blood_group,
+      bloodType: result.blood_type,
+      weight: result.weight,
+      height: result.height,
+      drugAllergies: result.drug_allergies,
+      foodAllergies: result.food_allergies,
+      environmentAllergies: result.environment_allergies,
+      chronicDiseases: result.chronic_diseases,
+      medicalHistory: result.medical_history,
+      currentMedications: result.current_medications,
+      religion: result.religion,
+      race: result.race,
+      occupation: result.occupation,
+      maritalStatus: result.marital_status,
+      education: result.education,
       createdAt: result.created_at,
       updatedAt: result.updated_at
     };
@@ -185,16 +212,36 @@ export const getPatient = async (req: Request, res: Response) => {
     const patientData = {
       id: patient.id,
       hospitalNumber: patient.hospital_number,
-      nationalId: null, // Not available in current schema
+      nationalId: patient.national_id,
       firstName: patient.first_name,
       lastName: patient.last_name,
-      thaiName: null, // Not available in current schema
+      thaiName: patient.thai_name,
       gender: patient.gender,
-      birthDate: patient.date_of_birth,
-      phone: patient.phone,
+      birthDate: patient.birth_date || patient.date_of_birth,
+      phone: patient.phone || patient.phone_number,
       email: patient.email,
-      address: patient.address || null,
-      emergencyContact: null, // Not available in current schema
+      address: patient.address,
+      currentAddress: patient.current_address,
+      emergencyContact: patient.emergency_contact_name ? {
+        name: patient.emergency_contact_name,
+        phone: patient.emergency_contact_phone,
+        relationship: patient.emergency_contact_relation
+      } : null,
+      bloodGroup: patient.blood_group,
+      bloodType: patient.blood_type,
+      weight: patient.weight,
+      height: patient.height,
+      drugAllergies: patient.drug_allergies,
+      foodAllergies: patient.food_allergies,
+      environmentAllergies: patient.environment_allergies,
+      chronicDiseases: patient.chronic_diseases,
+      medicalHistory: patient.medical_history,
+      currentMedications: patient.current_medications,
+      religion: patient.religion,
+      race: patient.race,
+      occupation: patient.occupation,
+      maritalStatus: patient.marital_status,
+      education: patient.education,
       createdAt: patient.created_at,
       updatedAt: patient.updated_at
     };
@@ -582,23 +629,39 @@ export const getPatientProfile = async (req: Request, res: Response) => {
     const patientData = {
       id: patient.id,
       hospitalNumber: patient.hospital_number,
-      nationalId: null, // Not available in current schema
+      nationalId: patient.national_id,
       firstName: patient.first_name,
       lastName: patient.last_name,
       thaiName: patient.thai_name,
       gender: patient.gender,
-      birthDate: patient.date_of_birth,
-      phone: patient.phone,
+      birthDate: patient.birth_date || patient.date_of_birth,
+      phone: patient.phone || patient.phone_number,
       email: patient.email,
       address: patient.address,
+      currentAddress: patient.current_address,
       district: patient.district,
       province: patient.province,
       postalCode: patient.postal_code,
       emergencyContact: patient.emergency_contact_name ? {
         name: patient.emergency_contact_name,
         phone: patient.emergency_contact_phone,
-        relationship: patient.emergency_contact_relationship
+        relationship: patient.emergency_contact_relation
       } : null,
+      bloodGroup: patient.blood_group,
+      bloodType: patient.blood_type,
+      weight: patient.weight,
+      height: patient.height,
+      drugAllergies: patient.drug_allergies,
+      foodAllergies: patient.food_allergies,
+      environmentAllergies: patient.environment_allergies,
+      chronicDiseases: patient.chronic_diseases,
+      medicalHistory: patient.medical_history,
+      currentMedications: patient.current_medications,
+      religion: patient.religion,
+      race: patient.race,
+      occupation: patient.occupation,
+      maritalStatus: patient.marital_status,
+      education: patient.education,
       createdAt: patient.created_at,
       updatedAt: patient.updated_at
     };

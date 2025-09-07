@@ -15,28 +15,87 @@ export const getPatientRecords = async (req: Request, res: Response) => {
   try {
     const { id: patientId } = req.params;
     const { page = 1, limit = 10, type, startDate, endDate } = req.query;
+    const user = (req as any).user;
 
-    // Validate patient exists
-    const patientExists = await databaseManager.query(
-      'SELECT id, first_name, last_name FROM patients WHERE id = $1',
-      [patientId]
-    );
-
-    if (patientExists.rows.length === 0) {
-      return res.status(404).json({
-        data: null,
-        meta: null,
-        error: { message: 'Patient not found' },
-        statusCode: 404
-      });
+    // Get patient ID based on user role
+    let actualPatientId: string;
+    let patient: any;
+    
+    // For patients, they can only access their own data
+    if (user.role === 'patient') {
+      // First try to get patient record using user_id (new schema)
+      let patientQuery = await databaseManager.query(
+        'SELECT id, first_name, last_name, user_id, email FROM patients WHERE user_id = $1',
+        [user.id]
+      );
+      
+      if (patientQuery.rows.length === 0) {
+        // If no patient found by user_id, try by email
+        patientQuery = await databaseManager.query(
+          'SELECT id, first_name, last_name, user_id, email FROM patients WHERE email = $1',
+          [user.email]
+        );
+      }
+      
+      if (patientQuery.rows.length === 0) {
+        // If still no patient found, create one
+        const newPatientId = uuidv4();
+        await databaseManager.query(
+          `INSERT INTO patients (
+            id, user_id, email, first_name, last_name, 
+            date_of_birth, phone, emergency_contact, 
+            created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          [
+            newPatientId,
+            user.id,
+            user.email,
+            user.first_name || 'Patient',
+            user.last_name || 'User',
+            '1990-01-01', // Default date
+            user.phone || '',
+            '{}', // Empty JSON object for emergency contact
+            new Date(),
+            new Date()
+          ]
+        );
+        
+        patient = {
+          id: newPatientId,
+          first_name: user.first_name || 'Patient',
+          last_name: user.last_name || 'User',
+          user_id: user.id,
+          email: user.email
+        };
+        actualPatientId = newPatientId;
+      } else {
+        patient = patientQuery.rows[0];
+        actualPatientId = patient.id;
+      }
+    } else {
+      // For doctors/admins, use the provided patient ID
+      const patientResult = await databaseManager.query(
+        'SELECT id, first_name, last_name FROM patients WHERE id = $1',
+        [patientId]
+      );
+      patient = patientResult.rows[0];
+      
+      if (!patient) {
+        return res.status(404).json({
+          data: null,
+          meta: null,
+          error: { message: 'Patient not found' },
+          statusCode: 404
+        });
+      }
+      actualPatientId = patientId;
     }
 
-    const patient = patientExists.rows[0];
     const offset = (Number(page) - 1) * Number(limit);
 
     // Build query for medical records (visits, lab results, prescriptions)
     let whereClause = 'WHERE v.patient_id = $1';
-    const queryParams: any[] = [patientId];
+    const queryParams: any[] = [actualPatientId];
 
     if (type) {
       whereClause += ' AND v.visit_type = $2';
@@ -405,7 +464,7 @@ export const createPatientRecord = async (req: Request, res: Response) => {
  */
 export const updatePatientRecord = async (req: Request, res: Response) => {
   try {
-    const { id: patientId, recordId } = req.params;
+    const { id: actualPatientId, recordId } = req.params;
     const {
       chief_complaint,
       present_illness,
@@ -422,7 +481,7 @@ export const updatePatientRecord = async (req: Request, res: Response) => {
     const visitExists = await databaseManager.query(`
       SELECT id, status FROM visits 
       WHERE id = $1 AND patient_id = $2
-    `, [recordId, patientId]);
+    `, [recordId, actualPatientId]);
 
     if (visitExists.rows.length === 0) {
       return res.status(404).json({
@@ -524,14 +583,14 @@ export const updatePatientRecord = async (req: Request, res: Response) => {
  */
 export const deletePatientRecord = async (req: Request, res: Response) => {
   try {
-    const { id: patientId, recordId } = req.params;
+    const { id: actualPatientId, recordId } = req.params;
     const userId = (req as any).user.id;
 
     // Validate visit exists and belongs to patient
     const visitExists = await databaseManager.query(`
       SELECT id, status FROM visits 
       WHERE id = $1 AND patient_id = $2
-    `, [recordId, patientId]);
+    `, [recordId, actualPatientId]);
 
     if (visitExists.rows.length === 0) {
       return res.status(404).json({

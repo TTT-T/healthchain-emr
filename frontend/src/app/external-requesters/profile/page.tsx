@@ -55,7 +55,13 @@ export default function ProfilePage() {
     complianceCertifications: [],
     dataProtectionCertification: '',
     status: 'pending',
-    isVerified: false
+    isVerified: false,
+    description: '',
+    website: '',
+    contactPerson: '',
+    position: '',
+    email: '',
+    phone: ''
   })
 
   // Load profile data
@@ -66,7 +72,7 @@ export default function ProfilePage() {
         const response = await apiClient.getExternalRequesterProfile()
         
         if (response.statusCode === 200 && response.data) {
-          const data = response.data
+          const data = response.data as any
           setProfileData({
             organizationName: data.organizationName || '',
             organizationType: data.organizationType || 'hospital',
@@ -90,7 +96,13 @@ export default function ProfilePage() {
             complianceCertifications: data.complianceCertifications || [],
             dataProtectionCertification: data.dataProtectionCertification || '',
             status: data.status || 'pending',
-            isVerified: data.isVerified || false
+            isVerified: data.isVerified || false,
+            description: data.description || '',
+            website: data.website || '',
+            contactPerson: data.contactPerson || '',
+            position: data.position || '',
+            email: data.email || '',
+            phone: data.phone || ''
           })
         }
       } catch (error) {
@@ -387,13 +399,13 @@ export default function ProfilePage() {
                     </label>
                     {isEditing ? (
                       <textarea
-                        value={profileData.address}
+                        value={typeof profileData.address === 'string' ? profileData.address : JSON.stringify(profileData.address)}
                         onChange={(e) => handleInputChange('address', e.target.value)}
                         rows={2}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     ) : (
-                      <p className="text-gray-900">{profileData.address}</p>
+                      <p className="text-gray-900">{typeof profileData.address === 'string' ? profileData.address : JSON.stringify(profileData.address)}</p>
                     )}
                   </div>
 

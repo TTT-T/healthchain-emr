@@ -1,6 +1,9 @@
 "use client";
 import Link from "next/link";
+import React from "react";
 import { useSidebar } from "./SidebarContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 interface MedicalHeaderProps {
   title: string;
@@ -10,6 +13,32 @@ interface MedicalHeaderProps {
 
 export default function MedicalHeader({ title, backHref, userType }: MedicalHeaderProps) {
   const { toggleSidebar } = useSidebar();
+  const { user } = useAuth();
+  const { notificationCount } = useNotifications();
+
+  // Get user display name
+  const getDisplayName = () => {
+    if (!user) return userType === 'doctor' ? "แพทย์" : "พยาบาล";
+    
+    // Try Thai names first, then English names, then fallback
+    if (user.thaiFirstName || user.thaiLastName) {
+      return `${user.thaiFirstName || ''} ${user.thaiLastName || ''}`.trim();
+    }
+    if (user.firstName || user.lastName) {
+      return `${user.firstName || ''} ${user.lastName || ''}`.trim();
+    }
+    if (user.username) {
+      return user.username;
+    }
+    return user.email?.split('@')[0] || (userType === 'doctor' ? "แพทย์" : "พยาบาล");
+  };
+
+  // Get user title prefix
+  const getUserTitle = () => {
+    if (!user) return userType === 'doctor' ? "ดร." : "พ.";
+    
+    return userType === 'doctor' ? "ดร." : "พ.";
+  };
 
   const themeConfig = {
     doctor: {
@@ -67,15 +96,34 @@ export default function MedicalHeader({ title, backHref, userType }: MedicalHead
           
           {/* Action Buttons */}
           <div className="flex items-center space-x-1 sm:space-x-2">
-            {/* Notifications */}
-            <button className={`p-2 sm:p-2.5 text-slate-400 hover:text-slate-600 ${theme.buttonHover} rounded-lg transition-all duration-200 ease-out relative group`}>
+            {/* Notifications with counter */}
+            <Link
+              href="/accounts/patient/notifications"
+              className={`p-2 sm:p-2.5 text-slate-400 hover:text-slate-600 ${theme.buttonHover} rounded-lg transition-all duration-200 ease-out relative group`}
+            >
               <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-5 5v-5z"/>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 1.79 4 4 4h6M4 7c0-2.21 1.79-4 4-4h6M4 7h16"/>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-5-5v-5a5 5 0 00-10 0v5l-5 5h5m5 0v1a3 3 0 01-6 0v-1m6 0H9" />
               </svg>
-              {/* Notification Badge */}
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-red-500 rounded-full animate-pulse" />
-            </button>
+              
+              {/* Notification counter badge */}
+              {notificationCount > 0 && (
+                <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-lg">
+                  <span className="text-[10px] sm:text-xs leading-none">
+                    {notificationCount > 99 ? '99+' : notificationCount}
+                  </span>
+                </div>
+              )}
+              
+              {/* Hover tooltip */}
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+                {/* Arrow pointing up */}
+                <div className="w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-800 mx-auto"></div>
+                {/* Tooltip content */}
+                <div className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">
+                  {notificationCount > 0 ? `${notificationCount} การแจ้งเตือนใหม่` : 'ไม่มีการแจ้งเตือนใหม่'}
+                </div>
+              </div>
+            </Link>
 
             {/* Settings - Hidden on mobile */}
             <button className={`hidden md:block p-2 sm:p-2.5 text-slate-400 hover:text-slate-600 ${theme.buttonHover} rounded-lg transition-all duration-200 ease-out group`}>
@@ -99,11 +147,29 @@ export default function MedicalHeader({ title, backHref, userType }: MedicalHead
 
         {/* Mobile User Info - Only show on mobile */}
         <div className="mt-3 sm:hidden">
-          <div className="flex items-center space-x-2 text-xs text-slate-600">
-            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-            <span>ออนไลน์</span>
-            <span>•</span>
-            <span>{userType === 'doctor' ? 'แพทย์' : 'พยาบาล'}</span>
+          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <div className={`w-10 h-10 ${userType === 'doctor' ? 'bg-green-100' : 'bg-pink-100'} rounded-full flex items-center justify-center`}>
+                <span className={`text-sm font-semibold ${userType === 'doctor' ? 'text-green-600' : 'text-pink-600'}`}>
+                  {getUserTitle()}
+                </span>
+              </div>
+              <div>
+                <p className="font-medium text-slate-800 text-sm">{getUserTitle()}{getDisplayName()}</p>
+                <p className="text-xs text-slate-600">{userType === 'doctor' ? 'แพทย์' : 'พยาบาล'}</p>
+                {user?.id && (
+                  <p className="text-xs text-slate-400" title={`ID: ${user.id}`}>
+                    ID: {user.id.slice(0, 8)}...
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-slate-500">การแจ้งเตือน</p>
+              <p className="text-sm font-medium text-slate-700">
+                {notificationCount > 0 ? `${notificationCount} รายการ` : 'ไม่มี'}
+              </p>
+            </div>
           </div>
         </div>
 

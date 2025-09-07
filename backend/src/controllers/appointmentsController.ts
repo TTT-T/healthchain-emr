@@ -15,28 +15,55 @@ export const getPatientAppointments = async (req: Request, res: Response) => {
   try {
     const { id: patientId } = req.params;
     const { page = 1, limit = 10, status, startDate, endDate, type } = req.query;
+    const user = (req as any).user;
 
-    // Validate patient exists
-    const patientExists = await databaseManager.query(
-      'SELECT id, first_name, last_name FROM patients WHERE id = $1',
-      [patientId]
-    );
+    // For patient role, find patient record by user's email
+    // For other roles, use the patientId from URL
+    let actualPatientId = patientId;
+    let patient: any;
+    
+    if (user?.role === 'patient') {
+      // Find patient record by user's email
+      const patientByEmail = await databaseManager.query(
+        'SELECT id, first_name, last_name FROM patients WHERE email = $1',
+        [user.email]
+      );
+      
+      if (patientByEmail.rows.length === 0) {
+        return res.status(404).json({
+          data: null,
+          meta: null,
+          error: { message: 'Patient record not found for this user' },
+          statusCode: 404
+        });
+      }
+      
+      actualPatientId = patientByEmail.rows[0].id;
+      patient = patientByEmail.rows[0];
+    } else {
+      // For doctors/nurses/admins, validate patient exists
+      const patientExists = await databaseManager.query(
+        'SELECT id, first_name, last_name FROM patients WHERE id = $1',
+        [patientId]
+      );
 
-    if (patientExists.rows.length === 0) {
-      return res.status(404).json({
-        data: null,
-        meta: null,
-        error: { message: 'Patient not found' },
-        statusCode: 404
-      });
+      if (patientExists.rows.length === 0) {
+        return res.status(404).json({
+          data: null,
+          meta: null,
+          error: { message: 'Patient not found' },
+          statusCode: 404
+        });
+      }
+      
+      patient = patientExists.rows[0];
     }
 
-    const patient = patientExists.rows[0];
     const offset = (Number(page) - 1) * Number(limit);
 
     // Build query for appointments
     let whereClause = 'WHERE a.patient_id = $1';
-    const queryParams: any[] = [patientId];
+    const queryParams: any[] = [actualPatientId];
 
     if (status) {
       whereClause += ' AND a.status = $2';

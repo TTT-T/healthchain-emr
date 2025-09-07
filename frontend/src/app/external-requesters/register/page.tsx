@@ -336,7 +336,7 @@ export default function ExternalRequesterRegistration() {
       if (response.statusCode === 200) {
         setSubmitResult({
           success: true,
-          message: `${response.message || 'ลงทะเบียนสำเร็จ'}\n\nรหัสคำขอ: ${response.data?.requestId || response.data?.id}\nระยะเวลาตรวจสอบโดยประมาณ: 3-5 วันทำการ`,
+          message: `ลงทะเบียนสำเร็จ\n\nรหัสคำขอ: ${response.data?.requestId || response.data?.id}\nระยะเวลาตรวจสอบโดยประมาณ: 3-5 วันทำการ`,
           requestId: response.data?.requestId || response.data?.id
         })
         

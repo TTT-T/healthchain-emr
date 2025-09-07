@@ -94,6 +94,34 @@ export class MigrationManager {
         up: async () => {
           await this.createAuditTables();
         }
+      },
+      {
+        name: '006_add_user_profile_fields',
+        description: 'Add comprehensive user profile fields',
+        up: async () => {
+          await this.runSqlMigration('006_add_user_profile_fields.sql');
+        }
+      },
+      {
+        name: '007_fix_patient_schema_consistency',
+        description: 'Fix patient schema consistency',
+        up: async () => {
+          await this.runSqlMigration('007_fix_patient_schema_consistency.sql');
+        }
+      },
+      {
+        name: '008_add_user_id_to_patients',
+        description: 'Add user_id to patients table',
+        up: async () => {
+          await this.runSqlMigration('008_add_user_id_to_patients.sql');
+        }
+      },
+      {
+        name: '009_enhance_user_profile_fields',
+        description: 'Enhance user profile fields for comprehensive profile management',
+        up: async () => {
+          await this.runSqlMigration('009_enhance_user_profile_fields.sql');
+        }
       }
     ];
 
@@ -468,6 +496,26 @@ export class MigrationManager {
       failed,
       migrations
     };
+  }
+
+  /**
+   * Run SQL migration from file
+   */
+  private async runSqlMigration(filename: string): Promise<void> {
+    const fs = require('fs');
+    const path = require('path');
+    
+    const migrationPath = path.join(__dirname, 'migrations', filename);
+    
+    if (!fs.existsSync(migrationPath)) {
+      throw new Error(`Migration file not found: ${filename}`);
+    }
+    
+    const sql = fs.readFileSync(migrationPath, 'utf8');
+    
+    // Execute the SQL
+    await databaseManager.query(sql);
+    console.log(`✅ SQL migration executed: ${filename}`);
   }
 
   /**

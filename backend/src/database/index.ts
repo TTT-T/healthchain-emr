@@ -173,7 +173,7 @@ export class DatabaseSchema {
     return `
       CREATE TABLE IF NOT EXISTS email_verification_tokens (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
         token VARCHAR(255) UNIQUE NOT NULL,
         expires_at TIMESTAMP NOT NULL,
         used_at TIMESTAMP,
@@ -237,6 +237,7 @@ export class DatabaseSchema {
     return `
       CREATE TABLE IF NOT EXISTS patients (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
         hospital_number VARCHAR(20) UNIQUE NOT NULL,
         
         -- Personal Information
@@ -608,13 +609,15 @@ export class DatabaseSchema {
   static async createEmailVerificationToken(userId: string, token: string): Promise<void> {
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     
+    // First, delete any existing token for this user
+    await this.db.query(`
+      DELETE FROM email_verification_tokens WHERE user_id = $1
+    `, [userId]);
+    
+    // Then insert the new token
     await this.db.query(`
       INSERT INTO email_verification_tokens (user_id, token, expires_at)
       VALUES ($1, $2, $3)
-      ON CONFLICT (user_id) DO UPDATE SET
-        token = EXCLUDED.token,
-        expires_at = EXCLUDED.expires_at,
-        created_at = CURRENT_TIMESTAMP
     `, [userId, token, expiresAt]);
   }
 
