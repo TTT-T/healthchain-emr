@@ -39,16 +39,16 @@ const db = {
     const query = `
       INSERT INTO users (
         username, email, password_hash, first_name, last_name, 
-        phone, role, is_active, email_verified, profile_completed,
+        thai_name, thai_last_name, phone, role, is_active, email_verified, profile_completed,
         national_id, birth_date, gender, address, blood_type
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false, $10, $11, $12, $13, $14)
-      RETURNING id, username, email, first_name, last_name, role, is_active, email_verified, profile_completed
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, $12, $13, $14, $15, $16)
+      RETURNING id, username, email, first_name, last_name, thai_name, thai_last_name, role, is_active, email_verified, profile_completed
     `;
     const result = await db.query(query, [
       userData.username, userData.email, userData.password,
-      userData.firstName, userData.lastName, userData.phoneNumber,
-      userData.role, userData.isActive, userData.isEmailVerified,
+      userData.firstName, userData.lastName, userData.firstName, userData.lastName, // Thai names
+      userData.phoneNumber, userData.role, userData.isActive, userData.isEmailVerified,
       userData.nationalId, userData.birthDate, userData.gender, 
       userData.address, userData.bloodType
     ]);
@@ -229,7 +229,7 @@ export const register = async (req: Request, res: Response) => {
         lastName: validatedData.lastName,
         phoneNumber: validatedData.phoneNumber,
         role: validatedData.role || 'patient',
-        isActive: true,
+        isActive: validatedData.role === 'patient' ? true : false, // Only patients are active by default
         isEmailVerified: false,
         nationalId: validatedData.nationalId,
         birthDate: validatedData.birthDate,
@@ -257,7 +257,7 @@ export const register = async (req: Request, res: Response) => {
       throw error; // Re-throw if it's not a constraint error
     }
     
-    // Create patient record for patients
+    // Create role-specific records
     if (newUser.role === 'patient') {
       try {
         // Generate hospital number
@@ -287,7 +287,50 @@ export const register = async (req: Request, res: Response) => {
         console.error('❌ Failed to create patient record:', patientError);
         // Don't fail registration if patient creation fails
       }
-      
+    } else if (newUser.role === 'doctor') {
+      try {
+        // Import DoctorDB
+        const { DoctorDB } = await import('../database/doctors');
+        
+        // Create doctor profile
+        await DoctorDB.createDoctorProfile({
+          userId: newUser.id,
+          medicalLicenseNumber: validatedData.medicalLicenseNumber || '',
+          specialization: validatedData.specialization || '',
+          yearsOfExperience: validatedData.yearsOfExperience || null,
+          department: validatedData.department || null,
+          position: validatedData.position || null
+        });
+        
+        console.log('👨‍⚕️ Doctor profile created for user:', newUser.id);
+      } catch (doctorError) {
+        console.error('❌ Failed to create doctor profile:', doctorError);
+        // Don't fail registration if doctor profile creation fails
+      }
+    } else if (newUser.role === 'nurse') {
+      try {
+        // Import NurseDB
+        const { NurseDB } = await import('../database/doctors');
+        
+        // Create nurse profile
+        await NurseDB.createNurseProfile({
+          userId: newUser.id,
+          nursingLicenseNumber: validatedData.nursingLicenseNumber || validatedData.medicalLicenseNumber || '',
+          specialization: validatedData.specialization || '',
+          yearsOfExperience: validatedData.yearsOfExperience || null,
+          department: validatedData.department || null,
+          position: validatedData.position || null
+        });
+        
+        console.log('👩‍⚕️ Nurse profile created for user:', newUser.id);
+      } catch (nurseError) {
+        console.error('❌ Failed to create nurse profile:', nurseError);
+        // Don't fail registration if nurse profile creation fails
+      }
+    }
+    
+    // Send verification email for all users except admin
+    if (newUser.role !== 'admin') {
       try {
         // Generate verification token
         const verificationToken = crypto.randomBytes(32).toString('hex');
@@ -343,7 +386,7 @@ export const register = async (req: Request, res: Response) => {
       refreshToken
     };
     
-    // Different response for patients vs other users
+    // Different response based on user role
     if (newUser.role === 'patient') {
       res.status(201).json(
         successResponse('Registration successful. Please check your email to verify your account before logging in.', {
@@ -351,6 +394,17 @@ export const register = async (req: Request, res: Response) => {
           requiresEmailVerification: true,
           emailSent: true,
           email: validatedData.email
+        })
+      );
+    } else if (['doctor', 'nurse', 'staff'].includes(newUser.role)) {
+      res.status(201).json(
+        successResponse('Registration successful. Please check your email to verify your account. Your account will be activated after admin approval.', {
+          ...authResponse,
+          requiresEmailVerification: true,
+          requiresAdminApproval: true,
+          emailSent: true,
+          email: validatedData.email,
+          message: 'Your account is pending admin approval. You will be notified once approved.'
         })
       );
     } else {
@@ -464,7 +518,7 @@ export const login = async (req: Request, res: Response) => {
     if (!user) {
       console.log('❌ User not found');
       return res.status(401).json(
-        errorResponse('Invalid credentials', 401)
+        errorResponse('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 401)
       );
     }
     
@@ -472,22 +526,34 @@ export const login = async (req: Request, res: Response) => {
     console.log('🔍 User check - is_active:', user.is_active);
     if (!user.is_active) {
       console.log('❌ User is not active');
-      return res.status(401).json(
-        errorResponse('Account is deactivated', 401)
-      );
+      // For medical staff, inactive usually means pending admin approval
+      if (['doctor', 'nurse', 'staff'].includes(user.role)) {
+        return res.status(401).json(
+          errorResponse('บัญชีของคุณรอการอนุมัติจากผู้ดูแลระบบ', 401, null, {
+            requiresAdminApproval: true,
+            email: user.email,
+            message: 'บัญชีของคุณรอการอนุมัติจากผู้ดูแลระบบ คุณจะได้รับการแจ้งเตือนเมื่อบัญชีได้รับการอนุมัติ'
+          })
+        );
+      } else {
+        return res.status(401).json(
+          errorResponse('บัญชีของคุณถูกปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบ', 401)
+        );
+      }
     }
     
-    // Check email verification for patients only
+    // Check email verification for all users except admin
     console.log('🔍 User check - role:', user.role, 'email_verified:', user.email_verified);
-    if (user.role === 'patient' && !user.email_verified) {
-      console.log('❌ Patient email not verified');
+    if (user.role !== 'admin' && !user.email_verified) {
+      console.log('❌ Email not verified for role:', user.role);
       return res.status(401).json(
-        errorResponse('Please verify your email before logging in. Check your email for the verification link.', 401, null, {
+        errorResponse('กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ ตรวจสอบอีเมลของคุณเพื่อคลิกลิงก์ยืนยัน', 401, null, {
           requiresEmailVerification: true,
           email: user.email
         })
       );
     }
+    
     
     // Validate password
     console.log('🔍 Password validation - input length:', validatedData.password.length, 'hash length:', user.password_hash.length);
@@ -508,7 +574,7 @@ export const login = async (req: Request, res: Response) => {
       });
       
       return res.status(401).json(
-        errorResponse('Invalid credentials', 401)
+        errorResponse('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 401)
       );
     }
     

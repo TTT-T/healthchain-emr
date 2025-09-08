@@ -1,37 +1,16 @@
 "use client";
 import { useState } from "react";
-import Link from "next/link";
+import { Search, Stethoscope, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
-import { VisitService } from '@/services/visitService';
-import { PharmacyService } from '@/services/pharmacyService';
-import { LabService } from '@/services/labService';
-import { MedicalPatient, CreatePrescriptionRequest, CreateLabOrderRequest } from '@/types/api';
-import { CheckCircle, AlertCircle, Search, User, FileText, Plus, Trash2 } from 'lucide-react';
+import { DoctorVisitService } from '@/services/doctorVisitService';
+import { NotificationService } from '@/services/notificationService';
+import { PatientDocumentService } from '@/services/patientDocumentService';
+import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
 
-interface DrugOrder {
-  name: string;
-  dose: string;
-  quantity: string;
-  usage: string;
-}
-
-interface LabOrder {
-  cbc: boolean;
-  fbs: boolean;
-}
-
-interface DoctorVisitForm {
-  physicalExam: string;
-  diagnosis: string;
-  advice: string;
-  drugs: DrugOrder[];
-  labs: LabOrder;
-}
-
 export default function DoctorVisit() {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<"hn" | "queue">("queue");
   const [isSearching, setIsSearching] = useState(false);
@@ -39,522 +18,353 @@ export default function DoctorVisit() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [form, setForm] = useState<DoctorVisitForm>({
-    physicalExam: "",
-    diagnosis: "",
-    advice: "",
-    drugs: [],
-    labs: { cbc: false, fbs: false }
+
+  const [doctorVisitData, setDoctorVisitData] = useState({
+    chiefComplaint: '',
+    presentIllness: '',
+    physicalExamination: {
+      generalAppearance: '',
+      vitalSigns: '',
+      headNeck: '',
+      chest: '',
+      cardiovascular: '',
+      abdomen: '',
+      extremities: '',
+      neurological: '',
+      other: ''
+    },
+    diagnosis: {
+      primaryDiagnosis: '',
+      secondaryDiagnosis: [],
+      differentialDiagnosis: [],
+      icd10Code: ''
+    },
+    treatmentPlan: {
+      medications: [],
+      procedures: [],
+      lifestyleModifications: [],
+      followUpInstructions: ''
+    },
+    advice: '',
+    followUp: {
+      scheduledDate: '',
+      interval: '',
+      purpose: '',
+      notes: ''
+    },
+    notes: '',
+    examinedTime: new Date().toISOString().slice(0, 16)
   });
-  const [errors, setErrors] = useState<any>({});
-  const [newDrug, setNewDrug] = useState<DrugOrder>({ name: "", dose: "", quantity: "", usage: "" });
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      setError("กรุณากรอกข้อมูลที่ต้องการค้นหา");
-      return;
-    }
-
+    if (!searchQuery.trim()) return;
+    
     setIsSearching(true);
     setError(null);
-    setSelectedPatient(null);
     
     try {
       const response = await PatientService.searchPatients(searchQuery, searchType);
       
       if (response.statusCode === 200 && response.data && response.data.length > 0) {
-        const exactMatch = response.data.find(p => 
-          searchType === "hn" ? p.hn === searchQuery : p.hn === searchQuery
-        );
-        
-        if (exactMatch) {
-          setSelectedPatient(exactMatch);
-          setSuccess("พบข้อมูลผู้ป่วยแล้ว");
-        } else {
-          setError("ไม่พบข้อมูลผู้ป่วยในคิว กรุณาตรวจสอบข้อมูล");
-        }
+        setSelectedPatient(response.data[0]);
+        setError(null);
       } else {
-        setError("ไม่พบข้อมูลผู้ป่วยในคิว กรุณาตรวจสอบข้อมูล");
+        setError("ไม่พบข้อมูลผู้ป่วย");
+        setSelectedPatient(null);
       }
-      
     } catch (error) {
       logger.error("Error searching patient:", error);
-      setError("เกิดข้อผิดพลาดในการค้นหา กรุณาลองอีกครั้ง");
+      setError("เกิดข้อผิดพลาดในการค้นหาผู้ป่วย");
+      setSelectedPatient(null);
     } finally {
       setIsSearching(false);
     }
   };
 
-  const handleInputChange = (field: keyof DoctorVisitForm, value: any) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors((prev: any) => ({ ...prev, [field]: undefined }));
-  };
-
-  const handleDrugChange = (field: keyof DrugOrder, value: string) => {
-    setNewDrug(prev => ({ ...prev, [field]: value }));
-  };
-
-  const addDrug = () => {
-    if (!newDrug.name || !newDrug.dose || !newDrug.quantity || !newDrug.usage) {
-      setError("กรุณากรอกข้อมูลยาให้ครบถ้วน");
-      return;
-    }
-    setForm(prev => ({ ...prev, drugs: [...prev.drugs, newDrug] }));
-    setNewDrug({ name: "", dose: "", quantity: "", usage: "" });
-  };
-
-  const removeDrug = (idx: number) => {
-    setForm(prev => ({ ...prev, drugs: prev.drugs.filter((_, i) => i !== idx) }));
-  };
-
-  const validateForm = (): boolean => {
-    const newErrors: any = {};
-    if (!selectedPatient) {
-      setError("กรุณาเลือกผู้ป่วย");
-      return false;
-    }
-    if (!form.physicalExam.trim()) newErrors.physicalExam = "กรุณากรอกผลการตรวจร่างกาย";
-    if (!form.diagnosis.trim()) newErrors.diagnosis = "กรุณากรอกการวินิจฉัย";
-    if (!form.advice.trim()) newErrors.advice = "กรุณากรอกคำแนะนำ";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleSubmit = async () => {
-    if (!validateForm()) return;
-
+    if (!selectedPatient) return;
+    
     setIsSubmitting(true);
     setError(null);
     
     try {
-      // Create visit record
-      const visitData = {
-        patientId: selectedPatient!.id,
-        chiefComplaint: form.diagnosis,
-        presentIllness: form.physicalExam,
-        diagnosis: form.diagnosis,
-        advice: form.advice,
-        visitType: 'walk_in' as const,
-        status: 'completed'
-      };
-
-      const visitResponse = await VisitService.createVisit(visitData);
+      const formattedData = DoctorVisitService.formatDoctorVisitDataForAPI(
+        doctorVisitData,
+        selectedPatient.id,
+        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'แพทย์'
+      );
       
-      if (visitResponse.statusCode !== 200 || !visitResponse.data) {
-        throw new Error('Failed to create visit record');
-      }
-
-      // Create prescriptions if any drugs are prescribed
-      if (form.drugs.length > 0) {
-        const prescriptionData: CreatePrescriptionRequest = {
-          patientId: selectedPatient!.id,
-          visitId: visitResponse.data.id,
-          medications: form.drugs.map(drug => ({
-            medicationName: drug.name,
-            dosage: drug.dose,
-            frequency: "ตามแพทย์สั่ง",
-            duration: "7 days",
-            instructions: drug.usage,
-            quantity: parseInt(drug.quantity) || 1
-          })),
-          prescriberId: user?.id || 'doctor'
-        };
-
-        const prescriptionResponse = await PharmacyService.createPrescription(prescriptionData);
+      const response = await DoctorVisitService.createDoctorVisit(formattedData);
+      
+      if (response.statusCode === 201 && response.data) {
+        await sendPatientNotification(selectedPatient, response.data);
         
-        if (prescriptionResponse.statusCode !== 200) {
-          logger.error('Failed to create prescription:', prescriptionResponse.error);
-        }
+        // Create document for patient
+        await createPatientDocument(selectedPatient, response.data);
+        
+        setSuccess("บันทึกการตรวจโดยแพทย์สำเร็จ!\n\n✅ ระบบได้ส่งการแจ้งเตือนและเอกสารให้ผู้ป่วยแล้ว");
+      } else {
+        setError("เกิดข้อผิดพลาดในการบันทึกการตรวจ");
       }
-
-      // Create lab orders if any labs are ordered
-      if (form.labs.cbc || form.labs.fbs) {
-        const labTests = [];
-        if (form.labs.cbc) labTests.push({ testName: 'CBC', testCategory: 'blood' as const });
-        if (form.labs.fbs) labTests.push({ testName: 'FBS', testCategory: 'blood' as const });
-
-        // Create separate lab order for each test
-        for (const test of labTests) {
-          const labOrderData: CreateLabOrderRequest = {
-            patientId: selectedPatient!.id,
-            visitId: visitResponse.data.id,
-            testCategory: test.testCategory,
-            testName: test.testName,
-            orderedBy: user?.id || 'doctor',
-            priority: 'routine'
-          };
-
-          const labResponse = await LabService.createLabOrder(labOrderData);
-          
-          if (labResponse.statusCode !== 200) {
-            logger.error(`Failed to create lab order for ${test.testName}:`, labResponse.error);
-          }
-        }
-      }
-
-      setSuccess("บันทึกการตรวจของแพทย์สำเร็จ");
-      
-      // Reset form
-      setTimeout(() => {
-        setSelectedPatient(null);
-        setSearchQuery("");
-        setForm({
-          physicalExam: "",
-          diagnosis: "",
-          advice: "",
-          drugs: [],
-          labs: { cbc: false, fbs: false }
-        });
-        setSuccess(null);
-      }, 3000);
-      
     } catch (error) {
       logger.error("Error saving doctor visit:", error);
-      setError("เกิดข้อผิดพลาดในการบันทึก กรุณาลองอีกครั้ง");
+      setError("เกิดข้อผิดพลาดในการบันทึกการตรวจ");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const calculateAge = (birthDate: string): number => {
-    if (!birthDate) return 0;
-    const birth = new Date(birthDate);
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
-    }
-    return age;
-  };
+  const sendPatientNotification = async (patient: MedicalPatient, visitRecord: any) => {
+    try {
+      const notificationData = {
+        patientHn: patient.hn || patient.hospital_number || '',
+        patientNationalId: patient.national_id || '',
+        patientName: patient.thai_name || `${patient.firstName} ${patient.lastName}`,
+        patientPhone: patient.phone || '',
+        patientEmail: patient.email || '',
+        recordType: 'doctor_visit',
+        recordId: visitRecord.id,
+        chiefComplaint: visitRecord.chiefComplaint,
+        recordedBy: visitRecord.examinedBy,
+        recordedTime: visitRecord.examinedTime,
+        message: `มีการบันทึกการตรวจโดยแพทย์ใหม่สำหรับคุณ ${patient.thai_name || `${patient.firstName} ${patient.lastName}`} โดย ${visitRecord.examinedBy}`
+      };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
+      await NotificationService.notifyPatientRecordUpdate(notificationData);
+      logger.info('Patient notification sent for doctor visit', {
+        patientHn: notificationData.patientHn,
+        recordId: visitRecord.id
+      });
+    } catch (error) {
+      logger.error('Failed to send patient notification for doctor visit:', error);
     }
   };
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">กรุณาเข้าสู่ระบบ</h1>
-          <Link href="/login" className="text-blue-600 hover:text-blue-800">
-            เข้าสู่ระบบ
-          </Link>
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">กรุณาเข้าสู่ระบบ</h2>
+          <p className="text-gray-600">คุณต้องเข้าสู่ระบบเพื่อใช้งานระบบตรวจโดยแพทย์</p>
         </div>
       </div>
     );
   }
 
+  /**
+   * สร้างเอกสารให้ผู้ป่วย
+   */
+  const createPatientDocument = async (patient: MedicalPatient, visitData: any) => {
+    try {
+      await PatientDocumentService.createDocumentFromMedicalRecord(
+        'doctor_visit',
+        visitData,
+        {
+          patientHn: patient.hn || '',
+          patientNationalId: patient.national_id || '',
+          patientName: patient.thai_name || ''
+        },
+        user?.id || '',
+        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'แพทย์'
+      );
+      
+      logger.info('Patient document created successfully for doctor visit', { 
+        patientHn: patient.hn,
+        recordType: 'doctor_visit'
+      });
+    } catch (error) {
+      logger.error('Error creating patient document for doctor visit:', error);
+      // ไม่ throw error เพื่อไม่ให้กระทบการบันทึกการตรวจ
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <div className="flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <Stethoscope className="h-8 w-8 text-blue-600" />
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">ระบบตรวจรักษาของแพทย์</h1>
-              <p className="text-gray-600 mt-1">บันทึกการตรวจรักษาและสั่งยา</p>
-            </div>
-            <div className="flex space-x-4">
-              <Link href="/emr/dashboard" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                กลับสู่หน้าหลัก
-              </Link>
+              <h1 className="text-2xl font-bold text-gray-900">ตรวจโดยแพทย์</h1>
+              <p className="text-gray-600">บันทึกการตรวจและวินิจฉัยของแพทย์</p>
             </div>
           </div>
-        </div>
 
-        {/* Success/Error Messages */}
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 flex items-center">
-            <AlertCircle className="h-4 w-4 mr-2" />
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 flex items-center">
-            <CheckCircle className="h-4 w-4 mr-2" />
-            {success}
-          </div>
-        )}
-
-        {/* Search Section */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <div className="flex items-center mb-4">
-            <Search className="h-5 w-5 text-gray-400 mr-2" />
-            <h2 className="text-lg font-semibold text-gray-900">ค้นหาผู้ป่วย</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">ประเภทการค้นหา</label>
-              <select
-                value={searchType}
-                onChange={(e) => setSearchType(e.target.value as "hn" | "queue")}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="queue">หมายเลขคิว</option>
-                <option value="hn">HN</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {searchType === "hn" ? "หมายเลข HN" : "หมายเลขคิว"}
-              </label>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder={searchType === "hn" ? "ใส่หมายเลข HN" : "ใส่หมายเลขคิว"}
-              />
-            </div>
-            
-            <div className="flex items-end">
+          {/* Search Patient */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">ค้นหาผู้ป่วย</h3>
+            <div className="flex gap-4 mb-4">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="กรอก HN หรือหมายเลขคิว"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
               <button
                 onClick={handleSearch}
-                disabled={isSearching || !searchQuery.trim()}
-                className={`px-6 py-3 rounded-lg font-medium transition-all ${
-                  isSearching || !searchQuery.trim()
-                    ? 'bg-gray-400 text-white cursor-not-allowed'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
+                disabled={isSearching}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
               >
-                {isSearching ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    กำลังค้นหา...
-                  </div>
-                ) : (
-                  <div className="flex items-center">
-                    <Search className="h-4 w-4 mr-2" />
-                    ค้นหา
-                  </div>
-                )}
+                <Search className="h-4 w-4" />
+                {isSearching ? "กำลังค้นหา..." : "ค้นหา"}
               </button>
             </div>
           </div>
+
+          {/* Patient Info */}
+          {selectedPatient && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+              <h3 className="text-lg font-semibold text-green-800 mb-2">ข้อมูลผู้ป่วย</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospital_number}
+                </div>
+                <div>
+                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thai_name || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                </div>
+                <div>
+                  <span className="font-medium">อายุ:</span> {selectedPatient.age || 'ไม่ระบุ'}
+                </div>
+                <div>
+                  <span className="font-medium">เพศ:</span> {selectedPatient.gender || 'ไม่ระบุ'}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Doctor Visit Form */}
+          {selectedPatient && (
+            <div className="space-y-6">
+              {/* Chief Complaint */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  อาการหลัก (Chief Complaint) *
+                </label>
+                <textarea
+                  value={doctorVisitData.chiefComplaint}
+                  onChange={(e) => setDoctorVisitData(prev => ({ ...prev, chiefComplaint: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="กรอกอาการหลักของผู้ป่วย"
+                />
+              </div>
+
+              {/* Present Illness */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ประวัติการเจ็บป่วยปัจจุบัน (Present Illness) *
+                </label>
+                <textarea
+                  value={doctorVisitData.presentIllness}
+                  onChange={(e) => setDoctorVisitData(prev => ({ ...prev, presentIllness: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={4}
+                  placeholder="กรอกรายละเอียดประวัติการเจ็บป่วยปัจจุบัน"
+                />
+              </div>
+
+              {/* Physical Examination */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  การตรวจร่างกาย (Physical Examination)
+                </label>
+                <textarea
+                  value={doctorVisitData.physicalExamination.generalAppearance}
+                  onChange={(e) => setDoctorVisitData(prev => ({
+                    ...prev,
+                    physicalExamination: { ...prev.physicalExamination, generalAppearance: e.target.value }
+                  }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={4}
+                  placeholder="กรอกผลการตรวจร่างกาย"
+                />
+              </div>
+
+              {/* Diagnosis */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  การวินิจฉัย (Diagnosis) *
+                </label>
+                <input
+                  type="text"
+                  value={doctorVisitData.diagnosis.primaryDiagnosis}
+                  onChange={(e) => setDoctorVisitData(prev => ({
+                    ...prev,
+                    diagnosis: { ...prev.diagnosis, primaryDiagnosis: e.target.value }
+                  }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="กรอกการวินิจฉัยหลัก"
+                />
+              </div>
+
+              {/* Treatment Plan */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  แผนการรักษา (Treatment Plan)
+                </label>
+                <textarea
+                  value={doctorVisitData.treatmentPlan.followUpInstructions}
+                  onChange={(e) => setDoctorVisitData(prev => ({
+                    ...prev,
+                    treatmentPlan: { ...prev.treatmentPlan, followUpInstructions: e.target.value }
+                  }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="กรอกแผนการรักษา"
+                />
+              </div>
+
+              {/* Advice */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  คำแนะนำ (Advice) *
+                </label>
+                <textarea
+                  value={doctorVisitData.advice}
+                  onChange={(e) => setDoctorVisitData(prev => ({ ...prev, advice: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="กรอกคำแนะนำสำหรับผู้ป่วย"
+                />
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-end">
+                <button
+                  onClick={handleSubmit}
+                  disabled={isSubmitting || !doctorVisitData.chiefComplaint || !doctorVisitData.presentIllness || !doctorVisitData.diagnosis.primaryDiagnosis || !doctorVisitData.advice}
+                  className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <CheckCircle className="h-5 w-5" />
+                  {isSubmitting ? "กำลังบันทึก..." : "บันทึกการตรวจ"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Success/Error Messages */}
+          {success && (
+            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <p className="text-green-800 whitespace-pre-line">{success}</p>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+                <p className="text-red-800">{error}</p>
+              </div>
+            </div>
+          )}
         </div>
-
-        {/* Patient Information */}
-        {selectedPatient && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center mb-4">
-                <User className="h-5 w-5 text-gray-400 mr-2" />
-                <h3 className="text-lg font-semibold text-gray-900">ข้อมูลผู้ป่วย</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">คิว</label>
-                  <p className="text-sm text-gray-900">{searchQuery}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">HN</label>
-                  <p className="text-sm text-gray-900">{selectedPatient.hn}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">ชื่อ-นามสกุล</label>
-                  <p className="text-sm text-gray-900">{selectedPatient.thai_name}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">อายุ</label>
-                  <p className="text-sm text-gray-900">{selectedPatient.birth_date ? calculateAge(selectedPatient.birth_date) : 'ไม่ระบุ'} ปี</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Doctor Visit Form */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center mb-4">
-                <FileText className="h-5 w-5 text-gray-400 mr-2" />
-                <h3 className="text-lg font-semibold text-gray-900">บันทึกการตรวจรักษา</h3>
-              </div>
-              
-              <div className="space-y-6">
-                {/* Physical Examination */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ผลการตรวจร่างกาย *</label>
-                  <textarea
-                    value={form.physicalExam}
-                    onChange={(e) => handleInputChange('physicalExam', e.target.value)}
-                    rows={4}
-                    className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${
-                      errors.physicalExam ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-                    }`}
-                    placeholder="บันทึกผลการตรวจร่างกาย..."
-                  />
-                  {errors.physicalExam && <p className="text-red-600 text-sm mt-1">{errors.physicalExam}</p>}
-                </div>
-
-                {/* Diagnosis */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">การวินิจฉัยโรค *</label>
-                  <textarea
-                    value={form.diagnosis}
-                    onChange={(e) => handleInputChange('diagnosis', e.target.value)}
-                    rows={3}
-                    className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${
-                      errors.diagnosis ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-                    }`}
-                    placeholder="บันทึกการวินิจฉัยโรค..."
-                  />
-                  {errors.diagnosis && <p className="text-red-600 text-sm mt-1">{errors.diagnosis}</p>}
-                </div>
-
-                {/* Advice */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">คำแนะนำ *</label>
-                  <textarea
-                    value={form.advice}
-                    onChange={(e) => handleInputChange('advice', e.target.value)}
-                    rows={3}
-                    className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${
-                      errors.advice ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-                    }`}
-                    placeholder="คำแนะนำสำหรับผู้ป่วย..."
-                  />
-                  {errors.advice && <p className="text-red-600 text-sm mt-1">{errors.advice}</p>}
-                </div>
-
-                {/* Prescription */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">การสั่งยา</label>
-                  
-                  {/* Add Drug Form */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                    <input
-                      type="text"
-                      value={newDrug.name}
-                      onChange={(e) => handleDrugChange('name', e.target.value)}
-                      placeholder="ชื่อยา"
-                      className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <input
-                      type="text"
-                      value={newDrug.dose}
-                      onChange={(e) => handleDrugChange('dose', e.target.value)}
-                      placeholder="ขนาด"
-                      className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <input
-                      type="text"
-                      value={newDrug.quantity}
-                      onChange={(e) => handleDrugChange('quantity', e.target.value)}
-                      placeholder="จำนวน"
-                      className="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <div className="flex space-x-2">
-                      <input
-                        type="text"
-                        value={newDrug.usage}
-                        onChange={(e) => handleDrugChange('usage', e.target.value)}
-                        placeholder="วิธีใช้"
-                        className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <button
-                        onClick={addDrug}
-                        className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Drug List */}
-                  {form.drugs.length > 0 && (
-                    <div className="space-y-2">
-                      {form.drugs.map((drug, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="grid grid-cols-4 gap-4 flex-1">
-                            <span className="text-sm font-medium">{drug.name}</span>
-                            <span className="text-sm">{drug.dose}</span>
-                            <span className="text-sm">{drug.quantity}</span>
-                            <span className="text-sm">{drug.usage}</span>
-                          </div>
-                          <button
-                            onClick={() => removeDrug(index)}
-                            className="ml-4 text-red-600 hover:text-red-800"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Lab Orders */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">การสั่งตรวจ</label>
-                  <div className="space-y-2">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={form.labs.cbc}
-                        onChange={(e) => handleInputChange('labs', { ...form.labs, cbc: e.target.checked })}
-                        className="mr-2"
-                      />
-                      <span className="text-sm">CBC (Complete Blood Count)</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={form.labs.fbs}
-                        onChange={(e) => handleInputChange('labs', { ...form.labs, fbs: e.target.checked })}
-                        className="mr-2"
-                      />
-                      <span className="text-sm">FBS (Fasting Blood Sugar)</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={() => {
-                  setSelectedPatient(null);
-                  setSearchQuery("");
-                  setForm({
-                    physicalExam: "",
-                    diagnosis: "",
-                    advice: "",
-                    drugs: [],
-                    labs: { cbc: false, fbs: false }
-                  });
-                }}
-                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                ยกเลิก
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className={`px-6 py-3 rounded-lg font-medium transition-all ${
-                  isSubmitting
-                    ? 'bg-gray-400 text-white cursor-not-allowed'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-              >
-                {isSubmitting ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    กำลังบันทึก...
-                  </div>
-                ) : (
-                  'บันทึกการตรวจรักษา'
-                )}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

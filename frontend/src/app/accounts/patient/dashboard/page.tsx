@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
+import { PatientDocumentService, PatientDocument } from '@/services/patientDocumentService';
 import { 
   Calendar, 
   Pill, 
@@ -22,7 +23,11 @@ import {
   MapPin,
   Droplets,
   Settings,
-  ArrowRight
+  ArrowRight,
+  Bell,
+  CheckCircle,
+  Download,
+  Eye
 } from 'lucide-react';
 
 interface PatientData {
@@ -67,6 +72,8 @@ const PatientDashboard = () => {
   const [patient, setPatient] = useState<PatientData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [recentDocuments, setRecentDocuments] = useState<PatientDocument[]>([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
   const { user } = useAuth();
 
   // Calculate profile completion percentage
@@ -125,6 +132,8 @@ const PatientDashboard = () => {
           const response = await apiClient.getCompleteProfile();
           if (response.statusCode === 200 && response.data) {
             setPatient(response.data as any);
+            // โหลดเอกสารล่าสุด
+            loadRecentDocuments();
           } else {
             setError('ไม่สามารถโหลดข้อมูลผู้ป่วยได้');
           }
@@ -139,6 +148,25 @@ const PatientDashboard = () => {
 
     fetchPatientData();
   }, [user]);
+
+  // โหลดเอกสารล่าสุด
+  const loadRecentDocuments = async () => {
+    try {
+      setDocumentsLoading(true);
+      const patientId = user?.hn || user?.nationalId || '';
+      if (patientId) {
+        const response = await PatientDocumentService.getPatientDocuments(patientId, {
+          limit: 5,
+          page: 1
+        });
+        setRecentDocuments(response.documents);
+      }
+    } catch (error) {
+      logger.error('Error loading recent documents:', error);
+    } finally {
+      setDocumentsLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -415,11 +443,93 @@ const PatientDashboard = () => {
             <h2 className="text-lg font-semibold text-gray-900">กิจกรรมล่าสุด</h2>
           </div>
           <p className="text-sm text-gray-600 mb-4">ข้อมูลการใช้บริการล่าสุดของคุณ</p>
-          <div className="text-center py-8 text-gray-500">
-            <Clock className="h-12 w-12 mx-auto mb-4 opacity-30" />
-            <p className="text-gray-700">ยังไม่มีข้อมูลกิจกรรม</p>
-            <p className="text-sm">ข้อมูลจะแสดงเมื่อคุณเริ่มใช้บริการ</p>
+          <RecentActivities />
+        </div>
+
+        {/* Recent Documents */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-green-600" />
+              <h2 className="text-lg font-semibold text-gray-900">เอกสารล่าสุด</h2>
+            </div>
+            <Link href="/accounts/patient/documents">
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                ดูทั้งหมด
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </div>
+          <p className="text-sm text-gray-600 mb-4">เอกสารทางการแพทย์ล่าสุดของคุณ</p>
+          
+          {documentsLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+            </div>
+          ) : recentDocuments.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-30" />
+              <p className="text-gray-700">ยังไม่มีเอกสาร</p>
+              <p className="text-sm">เอกสารจะแสดงเมื่อมีการตรวจหรือรักษา</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentDocuments.map((document) => (
+                <div key={document.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="text-lg">
+                      {document.documentType === 'vital_signs' && '💓'}
+                      {document.documentType === 'history_taking' && '📋'}
+                      {document.documentType === 'doctor_visit' && '👨‍⚕️'}
+                      {document.documentType === 'lab_result' && '🧪'}
+                      {document.documentType === 'prescription' && '💊'}
+                      {document.documentType === 'appointment' && '📅'}
+                      {document.documentType === 'medical_certificate' && '📜'}
+                      {document.documentType === 'referral' && '📤'}
+                      {!['vital_signs', 'history_taking', 'doctor_visit', 'lab_result', 'prescription', 'appointment', 'medical_certificate', 'referral'].includes(document.documentType) && '📄'}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{document.documentTitle}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(document.createdAt).toLocaleDateString('th-TH')} • {document.doctorName || 'ระบบ'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => window.open(document.fileUrl, '_blank')}
+                      className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                      title="ดูออนไลน์"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const blob = await PatientDocumentService.downloadDocument(document.id);
+                          const url = window.URL.createObjectURL(blob);
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.download = document.fileName;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          window.URL.revokeObjectURL(url);
+                        } catch (error) {
+                          logger.error('Error downloading document:', error);
+                          alert('ไม่สามารถดาวน์โหลดเอกสารได้');
+                        }
+                      }}
+                      className="p-1 text-gray-400 hover:text-green-600 transition-colors"
+                      title="ดาวน์โหลด"
+                    >
+                      <Download className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Health Overview */}
@@ -437,6 +547,121 @@ const PatientDashboard = () => {
         </div>
       </div>
     </AppLayout>
+  );
+};
+
+/**
+ * Component สำหรับแสดงกิจกรรมล่าสุด
+ */
+const RecentActivities = () => {
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadRecentNotifications = () => {
+      try {
+        // ดึงการแจ้งเตือนล่าสุดจาก localStorage
+        const allNotifications = JSON.parse(localStorage.getItem('patient_notifications') || '[]');
+        
+        // เรียงตามวันที่ล่าสุด และเอาแค่ 5 รายการแรก
+        const recentNotifications = allNotifications
+          .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 5);
+        
+        setNotifications(recentNotifications);
+      } catch (error) {
+        logger.error('Error loading recent notifications:', error);
+        setNotifications([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRecentNotifications();
+
+    // Listen for new notifications
+    const handleNewNotification = () => {
+      loadRecentNotifications();
+    };
+
+    window.addEventListener('patientAppointmentNotification', handleNewNotification);
+    
+    return () => {
+      window.removeEventListener('patientAppointmentNotification', handleNewNotification);
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="text-center py-4">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+        <p className="text-sm text-gray-600">กำลังโหลด...</p>
+      </div>
+    );
+  }
+
+  if (notifications.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        <Clock className="h-12 w-12 mx-auto mb-4 opacity-30" />
+        <p className="text-gray-700">ยังไม่มีข้อมูลกิจกรรม</p>
+        <p className="text-sm">ข้อมูลจะแสดงเมื่อคุณเริ่มใช้บริการ</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {notifications.map((notification) => (
+        <div key={notification.id} className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+            {notification.type === 'appointment' ? (
+              <Calendar className="h-4 w-4 text-blue-600" />
+            ) : (
+              <Bell className="h-4 w-4 text-blue-600" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h4 className="text-sm font-medium text-gray-900 truncate">
+                {notification.title}
+              </h4>
+              {!notification.read && (
+                <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
+              )}
+            </div>
+            <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+              {notification.message}
+            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-500">
+                {new Date(notification.createdAt).toLocaleString('th-TH', {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </p>
+              {notification.queueNumber && (
+                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                  {notification.queueNumber}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+      
+      {notifications.length > 0 && (
+        <div className="text-center pt-4">
+          <Link href="/accounts/patient/notifications">
+            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+              ดูการแจ้งเตือนทั้งหมด →
+            </button>
+          </Link>
+        </div>
+      )}
+    </div>
   );
 };
 

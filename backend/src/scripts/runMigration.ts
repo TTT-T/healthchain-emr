@@ -1,50 +1,33 @@
-import fs from 'fs';
-import path from 'path';
-import { databaseManager } from '../database/connection';
+import { MigrationManager } from '../database/migrations';
 
-async function runMigration() {
+/**
+ * Run database migrations
+ */
+async function runMigrations() {
+  console.log('🔄 Running database migrations...');
+  
   try {
-    console.log('🔄 Running patient fields migration...');
+    const migrationManager = MigrationManager.getInstance();
+    await migrationManager.initialize();
     
-    // Read the migration file
-    const migrationPath = path.join(__dirname, '../database/migrations/002_add_patient_fields.sql');
-    const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
-    
-    // Execute the migration
-    await databaseManager.query(migrationSQL);
-    
-    console.log('✅ Migration completed successfully!');
-    
-    // Test the migration by checking if the new columns exist
-    const result = await databaseManager.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'patients' 
-      AND column_name IN ('national_id', 'birth_date', 'religion', 'race', 'occupation', 'marital_status', 'education', 'blood_group', 'weight', 'height')
-      ORDER BY column_name
-    `);
-    
-    console.log('📋 New columns added:');
-    result.rows.forEach(row => {
-      console.log(`  - ${row.column_name}`);
-    });
-    
+    console.log('✅ All migrations completed successfully');
   } catch (error) {
     console.error('❌ Migration failed:', error);
     throw error;
   }
 }
 
+// Run migrations if this file is executed directly
 if (require.main === module) {
-  runMigration()
+  runMigrations()
     .then(() => {
-      console.log('🎉 Migration script completed');
+      console.log('✅ Migration script completed successfully');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('💥 Migration script failed:', error);
+      console.error('❌ Migration script failed:', error);
       process.exit(1);
     });
 }
 
-export default runMigration;
+export { runMigrations };

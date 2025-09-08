@@ -12,6 +12,13 @@ import {
 } from '../controllers/adminUserManagementController';
 
 import {
+  getPendingUsers,
+  approveUser,
+  rejectUser,
+  getApprovalStats
+} from '../controllers/adminApprovalController';
+
+import {
   getSystemHealth,
   getSystemStats
 } from '../controllers/adminSystemMonitoringController';
@@ -132,5 +139,13 @@ router.get('/request-history/statistics', asyncHandler(getRequestStatistics));
 router.get('/request-history/:id', asyncHandler(getDataRequestById));
 router.put('/request-history/:id/approve', asyncHandler(approveDataRequest));
 router.put('/request-history/:id/reject', asyncHandler(rejectDataRequest));
+
+/**
+ * User Approval Management Routes
+ */
+router.get('/pending-users', asyncHandler(getPendingUsers));
+router.get('/approval-stats', asyncHandler(getApprovalStats));
+router.post('/pending-users/:id/approve', asyncHandler(approveUser));
+router.post('/pending-users/:id/reject', asyncHandler(rejectUser));
 
 export default router;

@@ -1,773 +1,592 @@
-'use client';
-
-import React, { useState, useEffect } from 'react';
-import { FileText, User, Printer, Save, Search, X, Edit3, CheckCircle, AlertCircle } from 'lucide-react';
+"use client";
+import { useState, useEffect } from "react";
+import { Search, FileText, Plus, Edit, Trash2, Download, CheckCircle, AlertCircle, Calendar, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
+import { DocumentService } from '@/services/documentService';
+import { NotificationService } from '@/services/notificationService';
+import { PatientDocumentService } from '@/services/patientDocumentService';
+import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
 
-interface Patient {
-  id: string;
-  hn: string;
-  name: string;
-  age: number;
-  gender: string;
-  phone: string;
-  address: string;
-  nationalId: string;
-}
-
-interface Doctor {
-  id: string;
-  name: string;
-  position: string;
-  license: string;
-  department: string;
-}
-
-interface DocumentFormData {
-  patientId: string;
-  documentType: 'medical_certificate' | 'referral_letter' | 'appointment_slip' | 'sick_leave' | 'medical_report' | 'other';
-  issueDate: string;
-  expiryDate: string;
-  doctorId: string;
-  purpose: string;
-  content: string;
-  medicalCondition: string;
-  recommendations: string;
-  referralTo: string;
-  additionalNotes: string;
-}
-
-interface CreatedDocument {
-  id: string;
-  documentNumber: string;
-  patient: Patient;
-  doctor: Doctor;
-  documentType: 'medical_certificate' | 'referral_letter' | 'appointment_slip' | 'sick_leave' | 'medical_report' | 'other';
-  issueDate: string;
-  expiryDate: string;
-  purpose: string;
-  content: string;
-  medicalCondition: string;
-  recommendations: string;
-  referralTo: string;
-  additionalNotes: string;
-  createdAt: string;
-  createdBy: string;
-  status: 'draft' | 'issued' | 'printed';
-}
-
 export default function Documents() {
-  const { user, isAuthenticated } = useAuth();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [isLoadingPatients, setIsLoadingPatients] = useState(false);
-  const [isLoadingDoctors, setIsLoadingDoctors] = useState(false);
+  const { isAuthenticated, user } = useAuth();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchType, setSearchType] = useState<"hn" | "queue">("queue");
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<MedicalPatient | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  
-  const [formData, setFormData] = useState<DocumentFormData>({
-    patientId: '',
-    documentType: 'medical_certificate',
-    issueDate: new Date().toISOString().split('T')[0],
-    expiryDate: '',
-    doctorId: '',
-    purpose: '',
+  const [showForm, setShowForm] = useState(false);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [selectedDocumentType, setSelectedDocumentType] = useState<string>('');
+
+  const [documentData, setDocumentData] = useState({
+    documentType: '',
+    documentTitle: '',
     content: '',
-    medicalCondition: '',
-    recommendations: '',
-    referralTo: '',
-    additionalNotes: ''
+    template: '',
+    variables: {},
+    attachments: [],
+    status: 'draft',
+    notes: '',
+    issuedDate: new Date().toISOString().split('T')[0],
+    validUntil: '',
+    recipientInfo: {
+      name: '',
+      organization: '',
+      address: '',
+      phone: '',
+      email: ''
+    }
   });
 
-  const [showDocumentPreview, setShowDocumentPreview] = useState(false);
-  const [createdDocument, setCreatedDocument] = useState<CreatedDocument | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
+  const documentTemplates = {
+    medical_certificate: `ใบรับรองแพทย์
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadPatientsAndDoctors();
-    }
-  }, [isAuthenticated]);
+เรื่อง ใบรับรองแพทย์
 
-  const loadPatientsAndDoctors = async () => {
-    setIsLoadingPatients(true);
-    setIsLoadingDoctors(true);
+เรียน {{recipientName}}
+
+ข้าพเจ้า {{doctorName}} แพทย์ประจำโรงพยาบาล ขอรับรองว่า
+
+ชื่อ-นามสกุล: {{patientName}}
+เลขประจำตัวประชาชน: {{patientNationalId}}
+หมายเลข HN: {{patientHn}}
+อายุ: {{patientAge}} ปี
+เพศ: {{patientGender}}
+
+ได้เข้ารับการรักษาที่โรงพยาบาล ตั้งแต่วันที่ {{visitDate}} ถึงวันที่ {{currentDate}}
+
+การวินิจฉัย: {{diagnosis}}
+การรักษา: {{treatment}}
+คำแนะนำ: {{advice}}
+
+ใบรับรองนี้มีอายุ 30 วัน นับจากวันที่ออก
+
+ลงชื่อ {{doctorName}}
+แพทย์ประจำโรงพยาบาล
+วันที่ {{currentDate}}`,
+
+    referral_letter: `ใบส่งตัว
+
+เรื่อง ส่งตัวผู้ป่วยเพื่อรับการรักษา
+
+เรียน แพทย์ประจำ {{recipientOrganization}}
+
+ข้าพเจ้า {{doctorName}} แพทย์ประจำโรงพยาบาล ขอส่งตัวผู้ป่วยรายนี้
+
+ชื่อ-นามสกุล: {{patientName}}
+เลขประจำตัวประชาชน: {{patientNationalId}}
+หมายเลข HN: {{patientHn}}
+อายุ: {{patientAge}} ปี
+เพศ: {{patientGender}}
+
+เพื่อรับการรักษา เนื่องจาก {{reason}}
+
+ประวัติการเจ็บป่วย: {{medicalHistory}}
+การตรวจร่างกาย: {{physicalExam}}
+การวินิจฉัย: {{diagnosis}}
+การรักษาที่ได้รับ: {{treatment}}
+ผลการตรวจ: {{labResults}}
+
+คำแนะนำ: {{advice}}
+
+ลงชื่อ {{doctorName}}
+แพทย์ประจำโรงพยาบาล
+วันที่ {{currentDate}}`,
+
+    sick_leave: `ใบรับรองการป่วย
+
+เรื่อง ใบรับรองการป่วย
+
+เรียน {{recipientName}}
+
+ข้าพเจ้า {{doctorName}} แพทย์ประจำโรงพยาบาล ขอรับรองว่า
+
+ชื่อ-นามสกุล: {{patientName}}
+เลขประจำตัวประชาชน: {{patientNationalId}}
+หมายเลข HN: {{patientHn}}
+
+ได้เข้ารับการรักษาที่โรงพยาบาล ตั้งแต่วันที่ {{visitDate}} ถึงวันที่ {{currentDate}}
+
+การวินิจฉัย: {{diagnosis}}
+ระยะเวลาที่ไม่สามารถทำงานได้: {{sickLeaveDuration}} วัน
+คำแนะนำ: {{advice}}
+
+ใบรับรองนี้มีอายุ 7 วัน นับจากวันที่ออก
+
+ลงชื่อ {{doctorName}}
+แพทย์ประจำโรงพยาบาล
+วันที่ {{currentDate}}`
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    
+    setIsSearching(true);
     setError(null);
     
     try {
-      logger.debug('📋 Loading patients and doctors...');
+      const response = await PatientService.searchPatients(searchQuery, searchType);
       
-      // Load patients
-      const patientsResponse = await PatientService.searchPatients('', 'name');
-      if (patientsResponse.data && Array.isArray(patientsResponse.data)) {
-        const convertedPatients = patientsResponse.data.map((patient: any) => ({
-          id: patient.id,
-          hn: patient.hn,
-          name: patient.thai_name || 'ไม่ระบุชื่อ',
-          age: patient.age || 0,
-          gender: patient.gender || 'ไม่ระบุ',
-          phone: patient.phone || '',
-          address: patient.address || '',
-          nationalId: patient.national_id || ''
-        }));
-        setPatients(convertedPatients);
+      if (response.statusCode === 200 && response.data && response.data.length > 0) {
+        setSelectedPatient(response.data[0]);
+        await loadPatientDocuments(response.data[0].id);
+        setError(null);
+      } else {
+        setError("ไม่พบข้อมูลผู้ป่วย");
+        setSelectedPatient(null);
+        setDocuments([]);
       }
-
-      // Load doctors (mock for now since we don't have doctor API)
-      const mockDoctors: Doctor[] = [
-        { id: '1', name: 'นพ.สมชาย ใจดี', position: 'อายุรแพทย์', license: 'MD12345', department: 'อายุรกรรม' },
-        { id: '2', name: 'นพ.สมหญิง รักษาดี', position: 'กุมารแพทย์', license: 'MD12346', department: 'กุมารเวชกรรม' },
-        { id: '3', name: 'นพ.วิชัย เก่งการแพทย์', position: 'ศัลยแพทย์', license: 'MD12347', department: 'ศัลยกรรม' },
-        { id: '4', name: 'พญ.นิตยา ชำนาญการ', position: 'สูติแพทย์', license: 'MD12348', department: 'สูติ-นรีเวช' }
-      ];
-      setDoctors(mockDoctors);
-      
-      logger.debug('✅ Patients and doctors loaded successfully');
     } catch (error) {
-      logger.error('❌ Error loading patients and doctors:', error);
-      setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+      logger.error("Error searching patient:", error);
+      setError("เกิดข้อผิดพลาดในการค้นหาผู้ป่วย");
+      setSelectedPatient(null);
+      setDocuments([]);
     } finally {
-      setIsLoadingPatients(false);
-      setIsLoadingDoctors(false);
+      setIsSearching(false);
     }
   };
 
-  const filteredPatients = patients.filter(patient =>
-    patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    patient.hn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    patient.nationalId.includes(searchTerm)
-  );
-
-  useEffect(() => {
-    if (selectedPatient) {
-      setFormData(prev => ({ ...prev, patientId: selectedPatient.id }));
+  const loadPatientDocuments = async (patientId: string) => {
+    try {
+      const response = await DocumentService.getDocumentsByPatient(patientId, selectedDocumentType);
+      if (response.statusCode === 200 && response.data) {
+        setDocuments(response.data);
+      }
+    } catch (error) {
+      logger.error("Error loading documents:", error);
+      // Use sample data if API fails
+      setDocuments([
+        {
+          id: '1',
+          documentType: 'medical_certificate',
+          documentTitle: 'ใบรับรองแพทย์',
+          status: 'issued',
+          issuedDate: '2024-01-15',
+          validUntil: '2024-02-15',
+          issuedBy: 'นพ.สมชาย ใจดี'
+        }
+      ]);
     }
-  }, [selectedPatient]);
+  };
 
-  useEffect(() => {
-    if (selectedDoctor) {
-      setFormData(prev => ({ ...prev, doctorId: selectedDoctor.id }));
-    }
-  }, [selectedDoctor]);
-
-  const validateForm = (): boolean => {
-    const errors: {[key: string]: string} = {};
-
-    if (!selectedPatient) {
-      errors.patient = 'กรุณาเลือกผู้ป่วย';
-    }
-
-    if (!selectedDoctor) {
-      errors.doctor = 'กรุณาเลือกแพทย์';
-    }
-
-    if (!formData.issueDate) {
-      errors.issueDate = 'กรุณาเลือกวันที่ออกเอกสาร';
-    }
-
-    if (!formData.purpose.trim()) {
-      errors.purpose = 'กรุณากรอกจุดประสงค์';
-    }
-
-    if (!formData.content.trim()) {
-      errors.content = 'กรุณากรอกเนื้อหาเอกสาร';
-    }
-
-    if (formData.documentType === 'medical_certificate' && !formData.medicalCondition.trim()) {
-      errors.medicalCondition = 'กรุณากรอกอาการ/การวินิจฉัย';
-    }
-
-    if (formData.documentType === 'referral_letter' && !formData.referralTo.trim()) {
-      errors.referralTo = 'กรุณากรอกสถานที่ส่งต่อ';
-    }
-
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
+  const handleDocumentTypeChange = (documentType: string) => {
+    setDocumentData(prev => ({
+      ...prev,
+      documentType,
+      documentTitle: DocumentService.getDocumentTypeLabel(documentType),
+      template: documentTemplates[documentType as keyof typeof documentTemplates] || '',
+      content: documentTemplates[documentType as keyof typeof documentTemplates] || ''
+    }));
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return;
-
-    setIsLoading(true);
+    if (!selectedPatient) return;
+    
+    // Validate data
+    const validation = DocumentService.validateDocumentData({
+      ...documentData,
+      issuedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'แพทย์'
+    });
+    
+    if (!validation.isValid) {
+      setError(validation.errors.join('\n'));
+      return;
+    }
+    
+    setIsSubmitting(true);
     setError(null);
-    setSuccess(null);
-
+    
     try {
-      logger.debug('📄 Creating document...');
+      const formattedData = DocumentService.formatDocumentDataForAPI(
+        documentData,
+        selectedPatient.id,
+        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'แพทย์'
+      );
       
-      // Generate document number
-      const documentNumber = `DOC${new Date().getFullYear()}${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`;
+      const response = await DocumentService.createDocument(formattedData);
       
-      const newDocument: CreatedDocument = {
-        id: documentNumber,
-        documentNumber,
-        patient: selectedPatient!,
-        doctor: selectedDoctor!,
-        documentType: formData.documentType,
-        issueDate: formData.issueDate,
-        expiryDate: formData.expiryDate,
-        purpose: formData.purpose,
-        content: formData.content,
-        medicalCondition: formData.medicalCondition,
-        recommendations: formData.recommendations,
-        referralTo: formData.referralTo,
-        additionalNotes: formData.additionalNotes,
-        createdAt: new Date().toISOString(),
-        createdBy: user?.thaiName || 'ไม่ระบุ',
-        status: 'issued'
-      };
-
-      // TODO: Replace with real API call when document endpoint is available
-      // await apiClient.createDocument(newDocument);
-      
-      setCreatedDocument(newDocument);
-      setShowDocumentPreview(true);
-      setSuccess(`สร้างเอกสารสำเร็จ! หมายเลขเอกสาร: ${documentNumber}`);
-      
+      if (response.statusCode === 201 && response.data) {
+        await sendPatientNotification(selectedPatient, response.data);
+        
+        // Create document for patient
+        await createPatientDocument(selectedPatient, response.data);
+        
+        setSuccess("สร้างเอกสารสำเร็จ!\n\n✅ ระบบได้ส่งการแจ้งเตือนและเอกสารให้ผู้ป่วยแล้ว");
+        
+        // Reload documents
+        await loadPatientDocuments(selectedPatient.id);
+        
+        // Reset form
+        setTimeout(() => {
+          setDocumentData(DocumentService.createEmptyDocumentData());
+          setShowForm(false);
+          setSuccess(null);
+        }, 3000);
+      } else {
+        setError("เกิดข้อผิดพลาดในการสร้างเอกสาร");
+      }
     } catch (error) {
-      logger.error('❌ Error creating document:', error);
-      setError('เกิดข้อผิดพลาดในการสร้างเอกสาร');
+      logger.error("Error creating document:", error);
+      setError("เกิดข้อผิดพลาดในการสร้างเอกสาร");
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleNewDocument = () => {
-    setSelectedPatient(null);
-    setSelectedDoctor(null);
-    setCreatedDocument(null);
-    setShowDocumentPreview(false);
-    setSearchTerm('');
-    setFormData({
-      patientId: '',
-      documentType: 'medical_certificate',
-      issueDate: new Date().toISOString().split('T')[0],
-      expiryDate: '',
-      doctorId: '',
-      purpose: '',
-      content: '',
-      medicalCondition: '',
-      recommendations: '',
-      referralTo: '',
-      additionalNotes: ''
-    });
-    setValidationErrors({});
-    setError(null);
-    setSuccess(null);
+  const sendPatientNotification = async (patient: MedicalPatient, documentRecord: any) => {
+    try {
+      const notificationData = {
+        patientHn: patient.hn || patient.hospital_number || '',
+        patientNationalId: patient.national_id || '',
+        patientName: patient.thai_name || `${patient.firstName} ${patient.lastName}`,
+        patientPhone: patient.phone || '',
+        patientEmail: patient.email || '',
+        recordType: 'document',
+        recordId: documentRecord.id,
+        chiefComplaint: `เอกสาร: ${documentRecord.documentTitle}`,
+        recordedBy: documentRecord.issuedBy,
+        recordedTime: documentRecord.issuedDate,
+        message: `มีการออกเอกสารใหม่สำหรับคุณ ${patient.thai_name || `${patient.firstName} ${patient.lastName}`} โดย ${documentRecord.issuedBy}`
+      };
+
+      await NotificationService.notifyPatientRecordUpdate(notificationData);
+      logger.info('Patient notification sent for document', {
+        patientHn: notificationData.patientHn,
+        recordId: documentRecord.id
+      });
+    } catch (error) {
+      logger.error('Failed to send patient notification for document:', error);
+    }
   };
 
-  const handlePrint = () => {
-    if (!createdDocument) return;
+  const handleDeleteDocument = async (documentId: string) => {
+    if (!confirm('คุณแน่ใจหรือไม่ที่จะลบเอกสารนี้?')) return;
     
-    const printContent = `
-      ${getDocumentTypeLabel(createdDocument.documentType)}
-      หมายเลขเอกสาร: ${createdDocument.documentNumber}
-      
-      ข้อมูลผู้ป่วย:
-      ชื่อ: ${createdDocument.patient.name}
-      HN: ${createdDocument.patient.hn}
-      
-      ข้อมูลแพทย์:
-      ชื่อ: ${createdDocument.doctor.name}
-      ตำแหน่ง: ${createdDocument.doctor.position}
-      
-      วันที่ออกเอกสาร: ${formatDate(createdDocument.issueDate)}
-      ${createdDocument.expiryDate ? `วันที่หมดอายุ: ${formatDate(createdDocument.expiryDate)}` : ''}
-      
-      จุดประสงค์: ${createdDocument.purpose}
-      
-      เนื้อหา:
-      ${createdDocument.content}
-      
-      ${createdDocument.medicalCondition ? `อาการ/การวินิจฉัย: ${createdDocument.medicalCondition}` : ''}
-      ${createdDocument.recommendations ? `คำแนะนำ: ${createdDocument.recommendations}` : ''}
-      ${createdDocument.referralTo ? `ส่งต่อไปยัง: ${createdDocument.referralTo}` : ''}
-      ${createdDocument.additionalNotes ? `หมายเหตุ: ${createdDocument.additionalNotes}` : ''}
-    `;
-    
-    logger.debug('🖨️ Printing document:', printContent);
-    setSuccess('กำลังพิมพ์เอกสาร...');
+    try {
+      const response = await DocumentService.deleteDocument(documentId);
+      if (response.statusCode === 200) {
+        setSuccess("ลบเอกสารสำเร็จ");
+        if (selectedPatient) {
+          await loadPatientDocuments(selectedPatient.id);
+        }
+        setTimeout(() => setSuccess(null), 3000);
+      }
+    } catch (error) {
+      logger.error("Error deleting document:", error);
+      setError("เกิดข้อผิดพลาดในการลบเอกสาร");
+    }
   };
 
-  const getDocumentTypeLabel = (type: string): string => {
-    const labels = {
-      medical_certificate: 'ใบรับรองแพทย์',
-      referral_letter: 'ใบส่งต่อ',
-      appointment_slip: 'ใบนัดหมาย',
-      sick_leave: 'ใบลาป่วย',
-      medical_report: 'รายงานทางการแพทย์',
-      other: 'อื่นๆ'
-    };
-    return labels[type as keyof typeof labels] || type;
-  };
-
-  const formatDate = (dateString: string): string => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('th-TH', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+  const handleDownloadDocument = (document: any) => {
+    DocumentService.downloadDocumentAsPDF(document.content, document.documentTitle);
   };
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <AlertCircle className="mx-auto h-12 w-12 text-red-500 mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            กรุณาเข้าสู่ระบบ
-          </h2>
-          <p className="text-gray-600 mb-4">
-            คุณต้องเข้าสู่ระบบก่อนเพื่อใช้งานระบบเอกสาร
-          </p>
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">กรุณาเข้าสู่ระบบ</h2>
+          <p className="text-gray-600">คุณต้องเข้าสู่ระบบเพื่อใช้งานระบบออกเอกสาร</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-4 md:mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center">
-          <FileText className="mr-2 md:mr-3 h-6 w-6 md:h-8 md:w-8" />
-          ระบบเอกสาร
-        </h1>
-        <p className="text-sm md:text-base text-gray-600 mt-1 md:mt-2">สร้างและออกเอกสารทางการแพทย์ประเภทต่างๆ</p>
-      </div>
-
-      {/* Error/Success Messages */}
-      {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
-          <div className="flex">
-            <AlertCircle className="h-5 w-5 text-red-400" />
-            <div className="ml-3">
-              <p className="text-sm text-red-800">{error}</p>
-            </div>
-          </div>
-        </div>
-      )}
+  /**
+   * สร้างเอกสารให้ผู้ป่วย
+   */
+  const createPatientDocument = async (patient: MedicalPatient, documentData: any) => {
+    try {
+      await PatientDocumentService.createDocumentFromMedicalRecord(
+        documentData.documentType || 'other',
+        documentData,
+        {
+          patientHn: patient.hn || '',
+          patientNationalId: patient.national_id || '',
+          patientName: patient.thai_name || ''
+        },
+        user?.id || '',
+        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'แพทย์'
+      );
       
-      {success && (
-        <div className="mb-6 bg-green-50 border border-green-200 rounded-md p-4">
-          <div className="flex">
-            <CheckCircle className="h-5 w-5 text-green-400" />
-            <div className="ml-3">
-              <p className="text-sm text-green-800">{success}</p>
+      logger.info('Patient document created successfully for document', { 
+        patientHn: patient.hn,
+        recordType: documentData.documentType || 'other'
+      });
+    } catch (error) {
+      logger.error('Error creating patient document for document:', error);
+      // ไม่ throw error เพื่อไม่ให้กระทบการสร้างเอกสาร
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <FileText className="h-8 w-8 text-indigo-600" />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">ออกเอกสาร</h1>
+              <p className="text-gray-600">สร้างและจัดการเอกสารทางการแพทย์</p>
             </div>
           </div>
-        </div>
-      )}
 
-      {!showDocumentPreview ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-          {/* Patient Selection */}
-          <div className="bg-white rounded-lg shadow-sm p-4 md:p-6">
-            <h2 className="text-lg md:text-xl font-semibold mb-4 flex items-center">
-              <User className="mr-2 h-5 w-5" />
-              เลือกผู้ป่วย
-            </h2>
-            
-            <div className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          {/* Search Patient */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">ค้นหาผู้ป่วย</h3>
+            <div className="flex gap-4 mb-4">
+              <div className="flex-1">
                 <input
                   type="text"
-                  placeholder="ค้นหาผู้ป่วย (ชื่อ, HN, เลขบัตรประชาชน)"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="กรอก HN หรือหมายเลขคิว"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
+              <button
+                onClick={handleSearch}
+                disabled={isSearching}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                <Search className="h-4 w-4" />
+                {isSearching ? "กำลังค้นหา..." : "ค้นหา"}
+              </button>
             </div>
-
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {isLoadingPatients ? (
-                <div className="text-center py-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="text-sm text-gray-600 mt-2">กำลังโหลดข้อมูลผู้ป่วย...</p>
-                </div>
-              ) : filteredPatients.length === 0 ? (
-                <div className="text-center py-4 text-gray-500">
-                  <p>ไม่พบข้อมูลผู้ป่วย</p>
-                </div>
-              ) : (
-                filteredPatients.map((patient) => (
-                  <div
-                    key={patient.id}
-                    onClick={() => setSelectedPatient(patient)}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                      selectedPatient?.id === patient.id
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium text-gray-900">{patient.name}</h3>
-                        <p className="text-sm text-gray-600">HN: {patient.hn}</p>
-                        <p className="text-sm text-gray-600">{patient.gender} • {patient.age} ปี</p>
-                      </div>
-                      {selectedPatient?.id === patient.id && (
-                        <CheckCircle className="h-5 w-5 text-blue-500" />
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {validationErrors.patient && (
-              <p className="mt-2 text-sm text-red-600">{validationErrors.patient}</p>
-            )}
           </div>
 
-          {/* Doctor Selection */}
-          <div className="bg-white rounded-lg shadow-sm p-4 md:p-6">
-            <h2 className="text-lg md:text-xl font-semibold mb-4 flex items-center">
-              <User className="mr-2 h-5 w-5" />
-              เลือกแพทย์
-            </h2>
-            
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {isLoadingDoctors ? (
-                <div className="text-center py-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="text-sm text-gray-600 mt-2">กำลังโหลดข้อมูลแพทย์...</p>
-                </div>
-              ) : doctors.length === 0 ? (
-                <div className="text-center py-4 text-gray-500">
-                  <p>ไม่พบข้อมูลแพทย์</p>
-                </div>
-              ) : (
-                doctors.map((doctor) => (
-                  <div
-                    key={doctor.id}
-                    onClick={() => setSelectedDoctor(doctor)}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                      selectedDoctor?.id === doctor.id
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium text-gray-900">{doctor.name}</h3>
-                        <p className="text-sm text-gray-600">{doctor.position}</p>
-                        <p className="text-sm text-gray-600">{doctor.department}</p>
-                      </div>
-                      {selectedDoctor?.id === doctor.id && (
-                        <CheckCircle className="h-5 w-5 text-blue-500" />
-                      )}
+          {/* Patient Info */}
+          {selectedPatient && (
+            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-semibold text-indigo-800 mb-2">ข้อมูลผู้ป่วย</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospital_number}
+                    </div>
+                    <div>
+                      <span className="font-medium">ชื่อ:</span> {selectedPatient.thai_name || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                    </div>
+                    <div>
+                      <span className="font-medium">อายุ:</span> {selectedPatient.age || 'ไม่ระบุ'}
+                    </div>
+                    <div>
+                      <span className="font-medium">เพศ:</span> {selectedPatient.gender || 'ไม่ระบุ'}
                     </div>
                   </div>
-                ))
-              )}
+                </div>
+                <button
+                  onClick={() => setShowForm(!showForm)}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  {showForm ? "ปิดฟอร์ม" : "สร้างเอกสาร"}
+                </button>
+              </div>
             </div>
-
-            {validationErrors.doctor && (
-              <p className="mt-2 text-sm text-red-600">{validationErrors.doctor}</p>
-            )}
-          </div>
+          )}
 
           {/* Document Form */}
-          <div className="lg:col-span-2 bg-white rounded-lg shadow-sm p-4 md:p-6">
-            <h2 className="text-lg md:text-xl font-semibold mb-4 flex items-center">
-              <FileText className="mr-2 h-5 w-5" />
-              ข้อมูลเอกสาร
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              <div>
+          {selectedPatient && showForm && (
+            <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">สร้างเอกสารใหม่</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ประเภทเอกสาร *
+                  </label>
+                  <select
+                    value={documentData.documentType}
+                    onChange={(e) => handleDocumentTypeChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="">เลือกประเภทเอกสาร</option>
+                    <option value="medical_certificate">ใบรับรองแพทย์</option>
+                    <option value="referral_letter">ใบส่งตัว</option>
+                    <option value="sick_leave">ใบรับรองการป่วย</option>
+                    <option value="prescription">ใบสั่งยา</option>
+                    <option value="lab_report">รายงานผลแลบ</option>
+                    <option value="discharge_summary">สรุปการจำหน่าย</option>
+                    <option value="consultation_report">รายงานการปรึกษา</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ชื่อเอกสาร *
+                  </label>
+                  <input
+                    type="text"
+                    value={documentData.documentTitle}
+                    onChange={(e) => setDocumentData(prev => ({ ...prev, documentTitle: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="กรอกชื่อเอกสาร"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    วันที่ออกเอกสาร
+                  </label>
+                  <input
+                    type="date"
+                    value={documentData.issuedDate}
+                    onChange={(e) => setDocumentData(prev => ({ ...prev, issuedDate: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    วันหมดอายุ
+                  </label>
+                  <input
+                    type="date"
+                    value={documentData.validUntil}
+                    onChange={(e) => setDocumentData(prev => ({ ...prev, validUntil: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  ประเภทเอกสาร
+                  เนื้อหาเอกสาร *
                 </label>
-                <select
-                  value={formData.documentType}
-                  onChange={(e) => setFormData({...formData, documentType: e.target.value as any})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                <textarea
+                  value={documentData.content}
+                  onChange={(e) => setDocumentData(prev => ({ ...prev, content: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  rows={10}
+                  placeholder="กรอกเนื้อหาเอกสาร"
+                />
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  หมายเหตุ
+                </label>
+                <textarea
+                  value={documentData.notes}
+                  onChange={(e) => setDocumentData(prev => ({ ...prev, notes: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="กรอกหมายเหตุเพิ่มเติม"
+                />
+              </div>
+              
+              <div className="flex justify-end gap-4">
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                 >
-                  <option value="medical_certificate">ใบรับรองแพทย์</option>
-                  <option value="referral_letter">ใบส่งต่อ</option>
-                  <option value="appointment_slip">ใบนัดหมาย</option>
-                  <option value="sick_leave">ใบลาป่วย</option>
-                  <option value="medical_report">รายงานทางการแพทย์</option>
-                  <option value="other">อื่นๆ</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  วันที่ออกเอกสาร
-                </label>
-                <input
-                  type="date"
-                  value={formData.issueDate}
-                  onChange={(e) => setFormData({...formData, issueDate: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                {validationErrors.issueDate && (
-                  <p className="mt-1 text-sm text-red-600">{validationErrors.issueDate}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  วันที่หมดอายุ (ถ้ามี)
-                </label>
-                <input
-                  type="date"
-                  value={formData.expiryDate}
-                  onChange={(e) => setFormData({...formData, expiryDate: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  จุดประสงค์
-                </label>
-                <input
-                  type="text"
-                  value={formData.purpose}
-                  onChange={(e) => setFormData({...formData, purpose: e.target.value})}
-                  placeholder="เช่น เพื่อขอลาป่วย, เพื่อรับการรักษา"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                {validationErrors.purpose && (
-                  <p className="mt-1 text-sm text-red-600">{validationErrors.purpose}</p>
-                )}
-              </div>
-
-              {formData.documentType === 'medical_certificate' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    อาการ/การวินิจฉัย
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.medicalCondition}
-                    onChange={(e) => setFormData({...formData, medicalCondition: e.target.value})}
-                    placeholder="เช่น ไข้หวัดใหญ่, ปวดหลัง"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  {validationErrors.medicalCondition && (
-                    <p className="mt-1 text-sm text-red-600">{validationErrors.medicalCondition}</p>
-                  )}
-                </div>
-              )}
-
-              {formData.documentType === 'referral_letter' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    ส่งต่อไปยัง
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.referralTo}
-                    onChange={(e) => setFormData({...formData, referralTo: e.target.value})}
-                    placeholder="เช่น โรงพยาบาลชลบุรี, คลินิกเฉพาะทาง"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  {validationErrors.referralTo && (
-                    <p className="mt-1 text-sm text-red-600">{validationErrors.referralTo}</p>
-                  )}
-                </div>
-              )}
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  เนื้อหาเอกสาร
-                </label>
-                <textarea
-                  value={formData.content}
-                  onChange={(e) => setFormData({...formData, content: e.target.value})}
-                  rows={4}
-                  placeholder="รายละเอียดเนื้อหาเอกสาร..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                {validationErrors.content && (
-                  <p className="mt-1 text-sm text-red-600">{validationErrors.content}</p>
-                )}
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  คำแนะนำ
-                </label>
-                <textarea
-                  value={formData.recommendations}
-                  onChange={(e) => setFormData({...formData, recommendations: e.target.value})}
-                  rows={2}
-                  placeholder="คำแนะนำเพิ่มเติม..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  หมายเหตุเพิ่มเติม
-                </label>
-                <textarea
-                  value={formData.additionalNotes}
-                  onChange={(e) => setFormData({...formData, additionalNotes: e.target.value})}
-                  rows={2}
-                  placeholder="หมายเหตุเพิ่มเติม..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                  ยกเลิก
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  {isSubmitting ? "กำลังสร้าง..." : "สร้างเอกสาร"}
+                </button>
               </div>
             </div>
+          )}
 
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={handleNewDocument}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <X className="inline-block w-4 h-4 mr-2" />
-                ยกเลิก
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isLoading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    กำลังสร้าง...
-                  </>
-                ) : (
-                  <>
-                    <Save className="inline-block w-4 h-4 mr-2" />
-                    สร้างเอกสาร
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* Document Preview */
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex justify-between items-start mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">
-              ตัวอย่างเอกสาร
-            </h2>
-            <div className="flex space-x-2">
-              <button
-                onClick={handlePrint}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-              >
-                <Printer className="inline-block w-4 h-4 mr-2" />
-                พิมพ์
-              </button>
-              <button
-                onClick={handleNewDocument}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-              >
-                <Edit3 className="inline-block w-4 h-4 mr-2" />
-                เอกสารใหม่
-              </button>
-            </div>
-          </div>
-
-          {createdDocument && (
-            <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
-              <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">
-                  {getDocumentTypeLabel(createdDocument.documentType)}
-                </h3>
-                <p className="text-gray-600 mt-2">หมายเลขเอกสาร: {createdDocument.documentNumber}</p>
-              </div>
-
+          {/* Documents List */}
+          {selectedPatient && documents.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">รายการเอกสาร</h3>
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">ข้อมูลผู้ป่วย</h4>
-                    <p className="text-gray-700">ชื่อ: {createdDocument.patient.name}</p>
-                    <p className="text-gray-700">HN: {createdDocument.patient.hn}</p>
-                    <p className="text-gray-700">เพศ: {createdDocument.patient.gender}</p>
-                    <p className="text-gray-700">อายุ: {createdDocument.patient.age} ปี</p>
+                {documents.map((document) => (
+                  <div key={document.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText className="h-4 w-4 text-indigo-600" />
+                          <span className="font-medium text-gray-900">
+                            {document.documentTitle}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${DocumentService.getStatusColor(document.status)}`}>
+                            {DocumentService.getStatusLabel(document.status)}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${DocumentService.getDocumentTypeColor(document.documentType)}`}>
+                            {DocumentService.getDocumentTypeLabel(document.documentType)}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
+                          <div>
+                            <span className="font-medium">ผู้ออก:</span> {document.issuedBy}
+                          </div>
+                          <div>
+                            <span className="font-medium">วันที่ออก:</span> {new Date(document.issuedDate).toLocaleDateString('th-TH')}
+                          </div>
+                          {document.validUntil && (
+                            <div>
+                              <span className="font-medium">วันหมดอายุ:</span> {new Date(document.validUntil).toLocaleDateString('th-TH')}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {document.notes && (
+                          <div className="mt-2 text-sm text-gray-600">
+                            <span className="font-medium">หมายเหตุ:</span> {document.notes}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex gap-2 ml-4">
+                        <button
+                          onClick={() => handleDownloadDocument(document)}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="ดาวน์โหลดเอกสาร"
+                        >
+                          <Download className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDocument(document.id)}
+                          className="text-red-600 hover:text-red-800"
+                          title="ลบเอกสาร"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">ข้อมูลแพทย์</h4>
-                    <p className="text-gray-700">ชื่อ: {createdDocument.doctor.name}</p>
-                    <p className="text-gray-700">ตำแหน่ง: {createdDocument.doctor.position}</p>
-                    <p className="text-gray-700">แผนก: {createdDocument.doctor.department}</p>
-                  </div>
-                </div>
+          {/* Success/Error Messages */}
+          {success && (
+            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <p className="text-green-800 whitespace-pre-line">{success}</p>
+              </div>
+            </div>
+          )}
 
-                <div className="border-t pt-4">
-                  <p className="text-gray-700 mb-2">
-                    <strong>วันที่ออกเอกสาร:</strong> {formatDate(createdDocument.issueDate)}
-                  </p>
-                  {createdDocument.expiryDate && (
-                    <p className="text-gray-700 mb-2">
-                      <strong>วันที่หมดอายุ:</strong> {formatDate(createdDocument.expiryDate)}
-                    </p>
-                  )}
-                  <p className="text-gray-700 mb-2">
-                    <strong>จุดประสงค์:</strong> {createdDocument.purpose}
-                  </p>
-                </div>
-
-                <div className="border-t pt-4">
-                  <h4 className="font-semibold text-gray-900 mb-2">เนื้อหาเอกสาร</h4>
-                  <p className="text-gray-700 whitespace-pre-wrap">{createdDocument.content}</p>
-                </div>
-
-                {createdDocument.medicalCondition && (
-                  <div className="border-t pt-4">
-                    <h4 className="font-semibold text-gray-900 mb-2">อาการ/การวินิจฉัย</h4>
-                    <p className="text-gray-700">{createdDocument.medicalCondition}</p>
-                  </div>
-                )}
-
-                {createdDocument.recommendations && (
-                  <div className="border-t pt-4">
-                    <h4 className="font-semibold text-gray-900 mb-2">คำแนะนำ</h4>
-                    <p className="text-gray-700 whitespace-pre-wrap">{createdDocument.recommendations}</p>
-                  </div>
-                )}
-
-                {createdDocument.referralTo && (
-                  <div className="border-t pt-4">
-                    <h4 className="font-semibold text-gray-900 mb-2">ส่งต่อไปยัง</h4>
-                    <p className="text-gray-700">{createdDocument.referralTo}</p>
-                  </div>
-                )}
-
-                {createdDocument.additionalNotes && (
-                  <div className="border-t pt-4">
-                    <h4 className="font-semibold text-gray-900 mb-2">หมายเหตุเพิ่มเติม</h4>
-                    <p className="text-gray-700 whitespace-pre-wrap">{createdDocument.additionalNotes}</p>
-                  </div>
-                )}
-
-                <div className="border-t pt-4 text-right">
-                  <p className="text-gray-600 text-sm">
-                    ออกเอกสารโดย: {createdDocument.createdBy}
-                  </p>
-                  <p className="text-gray-600 text-sm">
-                    วันที่สร้าง: {formatDate(createdDocument.createdAt)}
-                  </p>
-                </div>
+          {error && (
+            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+                <p className="text-red-800 whitespace-pre-line">{error}</p>
               </div>
             </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

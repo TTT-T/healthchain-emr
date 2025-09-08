@@ -1,8 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useAuth } from '@/contexts/AuthContext';
 import { UserPlus, User, Phone, MapPin, Heart, Shield, Save, RotateCcw, CheckCircle, AlertCircle, Search } from 'lucide-react';
 import { PatientService } from '@/services/patientService';
+import { NotificationService } from '@/services/notificationService';
+import { PatientDocumentService } from '@/services/patientDocumentService';
 import { CreatePatientRequest } from '@/types/api';
 import { logger } from '@/lib/logger';
 
@@ -13,6 +16,9 @@ interface PatientData {
   englishName: string;
   gender: string;
   birthDate: string;
+  birthDay: number;
+  birthMonth: number;
+  birthYear: number;
   nationalId: string;
   
   // ข้อมูลติดต่อ
@@ -39,12 +45,16 @@ interface PatientData {
 }
 
 export default function RegisterPatient() {
+  const { user } = useAuth();
   const [formData, setFormData] = useState<PatientData>({
     hospitalNumber: "",
     thaiName: "",
     englishName: "",
     gender: "",
     birthDate: "",
+    birthDay: 1,
+    birthMonth: 1,
+    birthYear: 2540,
     nationalId: "",
     phone: "",
     email: "",
@@ -66,7 +76,7 @@ export default function RegisterPatient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchId, setSearchId] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResult, setSearchResult] = useState<PatientData | null>(null);
+  const [searchResult, setSearchResult] = useState<any | null>(null);
   const [selectedUserData, setSelectedUserData] = useState<any>(null);
 
   // Load user data from sessionStorage if available
@@ -104,7 +114,9 @@ export default function RegisterPatient() {
     // ข้อมูลส่วนตัว
     if (!formData.thaiName.trim()) newErrors.thaiName = "กรุณากรอกชื่อภาษาไทย";
     if (!formData.gender) newErrors.gender = "กรุณาเลือกเพศ";
-    if (!formData.birthDate) newErrors.birthDate = "กรุณาเลือกวันเกิด";
+    if (!formData.birthDay || !formData.birthMonth || !formData.birthYear) {
+      newErrors.birthDate = "กรุณาเลือกวันเกิด";
+    }
     if (!formData.nationalId.trim()) newErrors.nationalId = "กรุณากรอกเลขบัตรประชาชน";
     else if (!/^\d{13}$/.test(formData.nationalId)) newErrors.nationalId = "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก";
     
@@ -130,7 +142,7 @@ export default function RegisterPatient() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleInputChange = (field: keyof PatientData, value: string) => {
+  const handleInputChange = (field: keyof PatientData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
@@ -154,35 +166,18 @@ export default function RegisterPatient() {
       const response = await PatientService.searchPatients(searchId, 'hn');
       
       if (response.statusCode === 200 && response.data && response.data.length > 0) {
-        const patient = response.data[0];
+        const user = response.data[0];
+        const isExistingPatient = (response.meta as any)?.isExistingPatient;
         
-        // Map ข้อมูลจาก API response กลับมาเป็น form format
-        const mappedData: PatientData = {
-          hospitalNumber: patient.hospitalNumber || patient.hn || '',
-          thaiName: patient.thai_name || '',
-          englishName: patient.english_name || '',
-          gender: patient.gender || '',
-          birthDate: patient.birth_date || '',
-          nationalId: patient.national_id || '',
-          phone: patient.phone || '',
-          email: patient.email || '',
-          houseNumber: patient.address?.split(' ')[0] || '',
-          subDistrict: patient.district || '',
-          district: patient.district || '',
-          province: patient.province || '',
-          postalCode: patient.postal_code || '',
-          religion: '',
-          nationality: 'ไทย',
-          ethnicity: 'ไทย',
-          bloodGroup: patient.blood_type?.charAt(0) || '',
-          rhFactor: patient.blood_type?.includes('+') ? 'positive' : 'negative',
-          chronicDiseases: patient.chronic_conditions?.join(', ') || '',
-          drugAllergies: patient.allergies?.join(', ') || ''
-        };
-
-        setSearchResult(mappedData);
-        setFormData(mappedData);
-        alert(`พบข้อมูลผู้ป่วย HN: ${patient.hn} ในระบบแล้ว กรุณาตรวจสอบและแก้ไขข้อมูลตามต้องการ`);
+        if (isExistingPatient) {
+          // ผู้ป่วยมีอยู่แล้วในตาราง patients
+          setSearchResult({ ...user, isExistingPatient: true });
+          setFormData(prev => ({ ...prev, nationalId: searchId }));
+        } else {
+          // ผู้ใช้มีอยู่แล้วในตาราง users แต่ยังไม่ได้ลงทะเบียนเป็นผู้ป่วย
+          setSearchResult({ ...user, isExistingPatient: false });
+          setFormData(prev => ({ ...prev, nationalId: searchId }));
+        }
       } else {
         setSearchResult(null);
         setFormData(prev => ({ ...prev, nationalId: searchId }));
@@ -197,6 +192,43 @@ export default function RegisterPatient() {
     }
   };
 
+  const handleLoadUserData = () => {
+    if (!searchResult) return;
+
+    // Map ข้อมูลจาก API response กลับมาเป็น form format
+    const birthDate = searchResult.personal_info?.birth_date || searchResult.birth_date || "";
+    const birthDateObj = birthDate ? new Date(birthDate) : new Date();
+    
+    const mappedData: PatientData = {
+      hospitalNumber: "", // จะสร้างใหม่ใน backend
+      thaiName: searchResult.personal_info?.thai_name || searchResult.thai_name || "",
+      englishName: searchResult.personal_info?.first_name || searchResult.first_name || "",
+      gender: searchResult.personal_info?.gender || searchResult.gender || "",
+      birthDate: birthDate,
+      birthDay: searchResult.birth_day || birthDateObj.getDate() || 1,
+      birthMonth: searchResult.birth_month || (birthDateObj.getMonth() + 1) || 1,
+      birthYear: searchResult.birth_year || (birthDateObj.getFullYear() + 543) || 2540, // Convert to Buddhist Era
+      nationalId: searchResult.personal_info?.national_id || searchResult.national_id || searchId,
+      phone: searchResult.contact_info?.phone || searchResult.phone || "",
+      email: searchResult.contact_info?.email || searchResult.email || "",
+      houseNumber: "",
+      subDistrict: "",
+      district: "",
+      province: "",
+      postalCode: "",
+      religion: "",
+      nationality: "ไทย",
+      ethnicity: "ไทย",
+      bloodGroup: searchResult.medical_info?.blood_group || (searchResult.blood_type ? searchResult.blood_type.charAt(0) : ""),
+      rhFactor: searchResult.medical_info?.blood_type?.includes('+') || searchResult.blood_type?.includes('+') ? 'positive' : 'negative',
+      chronicDiseases: searchResult.medical_info?.chronic_diseases || searchResult.chronic_diseases || "",
+      drugAllergies: searchResult.medical_info?.drug_allergies || searchResult.drug_allergies || ""
+    };
+    
+    setFormData(mappedData);
+    setErrors({});
+  };
+
   const handleClearForm = () => {
     setFormData({
       hospitalNumber: "",
@@ -204,6 +236,9 @@ export default function RegisterPatient() {
       englishName: "",
       gender: "",
       birthDate: "",
+      birthDay: 1,
+      birthMonth: 1,
+      birthYear: 2540,
       nationalId: "",
       phone: "",
       email: "",
@@ -228,28 +263,37 @@ export default function RegisterPatient() {
   const handleSubmit = async () => {
     if (!validateForm()) return;
     
+    // ตรวจสอบว่าผู้ป่วยมีการลงทะเบียนแล้วหรือไม่
+    if (searchResult && searchResult.isExistingPatient) {
+      alert("ไม่สามารถลงทะเบียนได้ เนื่องจากผู้ป่วยนี้มีการลงทะเบียนแล้วในระบบ");
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
-      // เตรียมข้อมูลสำหรับ API
-      const patientData: CreatePatientRequest = {
-        hospitalNumber: formData.hospitalNumber || `HN${Date.now()}`,
-        firstName: formData.englishName || formData.thaiName,
-        lastName: '',
-        dateOfBirth: formData.birthDate,
-        nationalId: formData.nationalId,
-        thaiName: formData.thaiName,
-        englishName: formData.englishName || undefined,
-        gender: formData.gender as 'male' | 'female' | 'other',
-        birthDate: formData.birthDate,
+      // แปลงวันเกิดจาก Buddhist Era เป็น Christian Era
+      const christianYear = formData.birthYear - 543;
+      const birthDate = `${christianYear}-${String(formData.birthMonth).padStart(2, '0')}-${String(formData.birthDay).padStart(2, '0')}`;
+      
+      // เตรียมข้อมูลสำหรับ API - ใช้ format ที่ backend ต้องการ
+      const patientData = {
+        first_name: formData.englishName || formData.thaiName,
+        last_name: '', // Backend requires last_name
+        thai_name: formData.thaiName,
+        national_id: formData.nationalId,
+        birth_date: birthDate,
+        gender: formData.gender,
         phone: formData.phone || undefined,
         email: formData.email || undefined,
         address: `${formData.houseNumber} ${formData.subDistrict} ${formData.district} ${formData.province} ${formData.postalCode}`,
-        district: formData.district,
-        province: formData.province,
-        postalCode: formData.postalCode,
-        bloodType: formData.bloodGroup + (formData.rhFactor === 'positive' ? '+' : '-'),
-        allergies: formData.drugAllergies ? formData.drugAllergies.split(',') : undefined,
-        medicalHistory: formData.chronicDiseases || undefined
+        current_address: `${formData.houseNumber} ${formData.subDistrict} ${formData.district} ${formData.province} ${formData.postalCode}`,
+        blood_group: formData.bloodGroup,
+        blood_type: formData.bloodGroup + (formData.rhFactor === 'positive' ? '+' : '-'),
+        medical_history: formData.chronicDiseases || undefined,
+        allergies: formData.drugAllergies ? formData.drugAllergies.split(',').map(a => a.trim()) : undefined,
+        drug_allergies: formData.drugAllergies || undefined,
+        chronic_diseases: formData.chronicDiseases || undefined,
+        is_active: true
       };
 
       // เรียก API
@@ -258,6 +302,9 @@ export default function RegisterPatient() {
       if (response.statusCode === 200 && response.data) {
         const patient = response.data;
         alert(`ลงทะเบียนสำเร็จ! หมายเลข HN: ${patient.hn}`);
+        
+        // ส่งการแจ้งเตือนให้ผู้ป่วย
+        await sendPatientNotification(patient);
         
         // ล้างฟอร์ม
         handleClearForm();
@@ -273,6 +320,89 @@ export default function RegisterPatient() {
       alert(error.message || "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  /**
+   * ส่งการแจ้งเตือนให้ผู้ป่วยเมื่อลงทะเบียนสำเร็จ
+   */
+  const sendPatientNotification = async (patient: any) => {
+    try {
+      // สร้างข้อมูลการแจ้งเตือน
+      const notificationData = {
+        patientHn: patient.hn || patient.hospital_number || '',
+        patientNationalId: patient.national_id || formData.nationalId || '',
+        patientName: patient.thai_name || formData.thaiName || '',
+        patientPhone: patient.phone || formData.phone || '',
+        patientEmail: patient.email || formData.email || '',
+        recordType: 'patient_registration',
+        recordId: patient.id || patient.hn || '',
+        recordTitle: 'ลงทะเบียนผู้ป่วยใหม่',
+        recordDescription: `ยินดีต้อนรับ! คุณได้ลงทะเบียนเป็นผู้ป่วยของโรงพยาบาลเรียบร้อยแล้ว หมายเลข HN: ${patient.hn || patient.hospital_number}`,
+        recordDetails: {
+          hospitalNumber: patient.hn || patient.hospital_number,
+          patientName: patient.thai_name || formData.thaiName,
+          registrationDate: new Date().toLocaleDateString('th-TH'),
+          nextSteps: 'คุณสามารถใช้หมายเลข HN นี้เพื่อเช็คอินและรับบริการทางการแพทย์'
+        },
+        createdBy: user?.id || '',
+        createdByName: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่',
+        createdAt: new Date().toISOString()
+      };
+
+      // ส่งการแจ้งเตือนผ่าน NotificationService
+      await NotificationService.notifyPatientRecordUpdate(notificationData);
+      
+      // สร้างเอกสารให้ผู้ป่วย
+      await createPatientDocument(patient);
+      
+      logger.info('Patient notification sent successfully for registration', { 
+        patientHn: notificationData.patientHn,
+        recordType: 'patient_registration'
+      });
+    } catch (error) {
+      logger.error('Error sending patient notification for registration:', error);
+      // ไม่ throw error เพื่อไม่ให้กระทบการลงทะเบียนผู้ป่วย
+    }
+  };
+
+  /**
+   * สร้างเอกสารให้ผู้ป่วย
+   */
+  const createPatientDocument = async (patient: any) => {
+    try {
+      await PatientDocumentService.createDocumentFromMedicalRecord(
+        'patient_registration',
+        {
+          hospitalNumber: patient.hn || patient.hospital_number,
+          patientName: patient.thai_name || formData.thaiName,
+          registrationDate: new Date().toISOString(),
+          personalInfo: {
+            thaiName: patient.thai_name || formData.thaiName,
+            englishName: patient.english_name || formData.englishName,
+            gender: patient.gender || formData.gender,
+            birthDate: patient.birth_date || formData.birthDate,
+            nationalId: patient.national_id || formData.nationalId,
+            phone: patient.phone || formData.phone,
+            email: patient.email || formData.email
+          }
+        },
+        {
+          patientHn: patient.hn || patient.hospital_number || '',
+          patientNationalId: patient.national_id || formData.nationalId || '',
+          patientName: patient.thai_name || formData.thaiName || ''
+        },
+        user?.id || '',
+        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'
+      );
+      
+      logger.info('Patient document created successfully for registration', { 
+        patientHn: patient.hn || patient.hospital_number,
+        recordType: 'patient_registration'
+      });
+    } catch (error) {
+      logger.error('Error creating patient document for registration:', error);
+      // ไม่ throw error เพื่อไม่ให้กระทบการลงทะเบียนผู้ป่วย
     }
   };
 
@@ -400,16 +530,50 @@ export default function RegisterPatient() {
 
           {/* Search Status */}
           {searchResult && (
-            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center">
-                <svg className="w-5 h-5 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                <span className="text-green-800 font-medium">พบข้อมูลผู้ป่วยในระบบ</span>
+            <div className={`mt-4 p-4 border rounded-lg ${
+              searchResult.isExistingPatient 
+                ? 'bg-red-50 border-red-200' 
+                : 'bg-blue-50 border-blue-200'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <svg className={`w-5 h-5 mr-2 ${searchResult.isExistingPatient ? 'text-red-600' : 'text-blue-600'}`} fill="currentColor" viewBox="0 0 20 20">
+                    {searchResult.isExistingPatient ? (
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    ) : (
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    )}
+                  </svg>
+                  <span className={`font-medium ${searchResult.isExistingPatient ? 'text-red-800' : 'text-blue-800'}`}>
+                    {searchResult.isExistingPatient ? 'ผู้ป่วยมีการลงทะเบียนแล้ว' : 'พบข้อมูลผู้ใช้ในระบบ'}
+                  </span>
+                </div>
+                {!searchResult.isExistingPatient && (
+                  <button
+                    onClick={handleLoadUserData}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                  >
+                    <svg className="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    ดึงข้อมูล
+                  </button>
+                )}
               </div>
-              <p className="text-green-700 text-sm mt-1">
-                ข้อมูลได้ถูกนำเข้าในฟอร์มแล้ว กรุณาตรวจสอบและแก้ไขตามต้องการ
-              </p>
+              <div className={`mt-2 text-sm ${searchResult.isExistingPatient ? 'text-red-700' : 'text-blue-700'}`}>
+                <p><strong>ชื่อ:</strong> {searchResult.personal_info?.thai_name || searchResult.thai_name || searchResult.first_name}</p>
+                <p><strong>อีเมล:</strong> {searchResult.contact_info?.email || searchResult.email}</p>
+                <p><strong>โทรศัพท์:</strong> {searchResult.contact_info?.phone || searchResult.phone}</p>
+                {searchResult.isExistingPatient ? (
+                  <div className="mt-2 p-3 bg-red-100 rounded-lg">
+                    <p className="font-medium text-red-800">⚠️ ผู้ป่วยนี้มีการลงทะเบียนแล้ว</p>
+                    <p className="text-red-700"><strong>HN ID:</strong> {searchResult.hospital_number || searchResult.hn}</p>
+                    <p className="text-red-600 text-xs mt-1">ไม่สามารถลงทะเบียนซ้ำได้ กรุณาตรวจสอบข้อมูลผู้ป่วยในระบบ</p>
+                  </div>
+                ) : (
+                  <p className="mt-1 text-blue-600">กดปุ่ม "ดึงข้อมูล" เพื่อนำข้อมูลลงในฟอร์ม</p>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -485,18 +649,54 @@ export default function RegisterPatient() {
                     {errors.gender && <p className="text-red-500 text-sm mt-1">{errors.gender}</p>}
                   </div>
 
-                  <div>
+                  <div className="col-span-full">
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                       วันเกิด <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="date"
-                      value={formData.birthDate}
-                      onChange={(e) => handleInputChange("birthDate", e.target.value)}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        errors.birthDate ? 'border-red-500' : 'border-slate-300'
-                      }`}
-                    />
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs text-slate-600 mb-1">วัน</label>
+                        <select
+                          value={formData.birthDay}
+                          onChange={(e) => handleInputChange("birthDay", parseInt(e.target.value))}
+                          className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                            errors.birthDate ? 'border-red-500' : 'border-slate-300'
+                          }`}
+                        >
+                          {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                            <option key={day} value={day}>{day}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-600 mb-1">เดือน</label>
+                        <select
+                          value={formData.birthMonth}
+                          onChange={(e) => handleInputChange("birthMonth", parseInt(e.target.value))}
+                          className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                            errors.birthDate ? 'border-red-500' : 'border-slate-300'
+                          }`}
+                        >
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                            <option key={month} value={month}>{month}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-600 mb-1">ปี (พ.ศ.)</label>
+                        <select
+                          value={formData.birthYear}
+                          onChange={(e) => handleInputChange("birthYear", parseInt(e.target.value))}
+                          className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                            errors.birthDate ? 'border-red-500' : 'border-slate-300'
+                          }`}
+                        >
+                          {Array.from({ length: 100 }, (_, i) => 2567 - i).map(year => (
+                            <option key={year} value={year}>{year}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                     {errors.birthDate && <p className="text-red-500 text-sm mt-1">{errors.birthDate}</p>}
                   </div>
 
@@ -794,10 +994,10 @@ export default function RegisterPatient() {
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || (searchResult && searchResult.isExistingPatient)}
                   className={`px-8 py-3 rounded-lg font-medium transition-all ${
-                    isSubmitting
-                      ? 'bg-blue-400 text-white cursor-not-allowed'
+                    isSubmitting || (searchResult && searchResult.isExistingPatient)
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
                       : 'bg-green-600 text-white hover:bg-green-700'
                   }`}
                 >
@@ -809,6 +1009,8 @@ export default function RegisterPatient() {
                       </svg>
                       กำลังบันทึก...
                     </div>
+                  ) : searchResult && searchResult.isExistingPatient ? (
+                    'ไม่สามารถลงทะเบียนได้'
                   ) : (
                     'ลงทะเบียน'
                   )}

@@ -122,6 +122,27 @@ export class MigrationManager {
         up: async () => {
           await this.runSqlMigration('009_enhance_user_profile_fields.sql');
         }
+      },
+      {
+        name: '010_add_thai_last_name_field',
+        description: 'Add thai_last_name field for proper Thai name handling',
+        up: async () => {
+          await this.runSqlMigration('010_add_thai_last_name_field.sql');
+        }
+      },
+      {
+        name: '011_create_doctors_nurses_tables',
+        description: 'Create doctors and nurses tables for professional profiles',
+        up: async () => {
+          await this.runSqlMigration('011_create_doctors_nurses_tables.sql');
+        }
+      },
+      {
+        name: '012_add_user_approval_fields',
+        description: 'Add user approval and rejection tracking fields',
+        up: async () => {
+          await this.runSqlMigration('012_add_user_approval_fields.sql');
+        }
       }
     ];
 

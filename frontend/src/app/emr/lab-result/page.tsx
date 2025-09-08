@@ -1,498 +1,556 @@
 "use client";
 import { useState } from "react";
-import Link from "next/link";
+import { Search, FileText, Plus, Trash2, Upload, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
-import { LabService } from '@/services/labService';
-import { VisitService } from '@/services/visitService';
-import { CreateLabOrderRequest } from '@/types/api';
-import { Search, FileText, Plus, Trash2, CheckCircle, AlertCircle, User } from 'lucide-react';
+import { LabResultService } from '@/services/labResultService';
+import { NotificationService } from '@/services/notificationService';
+import { PatientDocumentService } from '@/services/patientDocumentService';
+import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
 
-interface Patient {
-  hn: string;
-  nationalId: string;
-  thaiName: string;
-  gender: string;
-  birthDate: string;
-  queueNumber: string;
-  treatmentType: string;
-  assignedDoctor: string;
-}
-
-interface LabTest {
-  id: string;
-  testName: string;
-  testCategory: string;
-  priority: 'routine' | 'urgent' | 'stat';
-  status: 'pending' | 'collected' | 'processing' | 'completed' | 'cancelled';
-  orderedBy: string;
-  orderedDate: string;
-  notes?: string;
-}
-
-export default function LabResultPage() {
-  const { user, isAuthenticated } = useAuth();
+export default function LabResult() {
+  const { isAuthenticated, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<"hn" | "queue">("queue");
   const [isSearching, setIsSearching] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<MedicalPatient | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [labTests, setLabTests] = useState<LabTest[]>([]);
-  const [newTest, setNewTest] = useState<Partial<LabTest>>({
-    testName: "",
-    testCategory: "blood",
-    priority: "routine",
-    notes: ""
+
+  const [labResultData, setLabResultData] = useState({
+    testType: '',
+    testName: '',
+    testResults: [],
+    overallResult: 'normal',
+    interpretation: '',
+    recommendations: '',
+    attachments: [],
+    notes: '',
+    testedTime: new Date().toISOString().slice(0, 16)
   });
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      setError("กรุณากรอกข้อมูลที่ต้องการค้นหา");
-      return;
-    }
-
+    if (!searchQuery.trim()) return;
+    
     setIsSearching(true);
     setError(null);
-    setSuccess(null);
     
     try {
-      logger.debug(`🔍 Searching for patient by ${searchType}:`, searchQuery);
-      
-      // ค้นหาผู้ป่วยจาก API
       const response = await PatientService.searchPatients(searchQuery, searchType);
       
-      if (response.data && response.data.length > 0) {
-        const patient = response.data[0];
-        
-        // Map ข้อมูลผู้ป่วยจาก API response
-        const mappedPatient: Patient = {
-          hn: patient.hn,
-          nationalId: patient.national_id || '',
-          thaiName: patient.thai_name || 'ไม่ระบุชื่อ',
-          gender: patient.gender || 'ไม่ระบุ',
-          birthDate: patient.birth_date || '',
-          queueNumber: 'Q001', // Default queue number
-          treatmentType: 'OPD - ตรวจรักษาทั่วไป', // Default treatment
-          assignedDoctor: 'นพ.สมชาย วงศ์แพทย์' // Default doctor
-        };
-
-        setSelectedPatient(mappedPatient);
-        setSuccess('พบข้อมูลผู้ป่วยแล้ว');
-        logger.debug('✅ Patient found:', mappedPatient);
+      if (response.statusCode === 200 && response.data && response.data.length > 0) {
+        setSelectedPatient(response.data[0]);
+        setError(null);
       } else {
+        setError("ไม่พบข้อมูลผู้ป่วย");
         setSelectedPatient(null);
-        setError("ไม่พบข้อมูลผู้ป่วยในระบบ กรุณาตรวจสอบข้อมูล");
       }
-      
-    } catch (error: any) {
-      logger.error('❌ Error searching patient:', error);
-      setError(error.message || "เกิดข้อผิดพลาดในการค้นหา กรุณาลองอีกครั้ง");
+    } catch (error) {
+      logger.error("Error searching patient:", error);
+      setError("เกิดข้อผิดพลาดในการค้นหาผู้ป่วย");
       setSelectedPatient(null);
     } finally {
       setIsSearching(false);
     }
   };
 
-  const addLabTest = () => {
-    if (!newTest.testName) {
-      setError("กรุณากรอกชื่อการตรวจ");
-      return;
-    }
-
-    const test: LabTest = {
-      id: Date.now().toString(),
-      testName: newTest.testName!,
-      testCategory: newTest.testCategory!,
-      priority: newTest.priority!,
-      status: 'pending',
-      orderedBy: user?.thaiName || 'แพทย์',
-      orderedDate: new Date().toISOString().slice(0, 16),
-      notes: newTest.notes
+  const addTestResult = () => {
+    const newTestResult = {
+      parameter: '',
+      value: '',
+      unit: '',
+      normalRange: '',
+      status: 'normal',
+      notes: ''
     };
+    
+    setLabResultData(prev => ({
+      ...prev,
+      testResults: [...prev.testResults, newTestResult]
+    }));
+  };
 
-    setLabTests(prev => [...prev, test]);
-    setNewTest({
-      testName: "",
-      testCategory: "blood",
-      priority: "routine",
-      notes: ""
+  const removeTestResult = (index: number) => {
+    setLabResultData(prev => ({
+      ...prev,
+      testResults: prev.testResults.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateTestResult = (index: number, field: string, value: any) => {
+    setLabResultData(prev => {
+      const updatedTestResults = [...prev.testResults];
+      updatedTestResults[index] = { ...updatedTestResults[index], [field]: value };
+      
+      return {
+        ...prev,
+        testResults: updatedTestResults
+      };
     });
   };
 
-  const removeLabTest = (id: string) => {
-    setLabTests(prev => prev.filter(test => test.id !== id));
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      const file = files[0];
+      const processedFile = await LabResultService.processUploadedFile(file);
+      
+      setLabResultData(prev => ({
+        ...prev,
+        attachments: [...prev.attachments, processedFile]
+      }));
+    } catch (error) {
+      logger.error('Error processing file:', error);
+      setError('เกิดข้อผิดพลาดในการอัปโหลดไฟล์');
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setLabResultData(prev => ({
+      ...prev,
+      attachments: prev.attachments.filter((_, i) => i !== index)
+    }));
   };
 
   const handleSubmit = async () => {
-    if (!selectedPatient || labTests.length === 0) {
-      setError("กรุณาเลือกผู้ป่วยและเพิ่มการตรวจ");
+    if (!selectedPatient) return;
+    
+    // Validate data
+    const validation = LabResultService.validateLabResultData({
+      ...labResultData,
+      testedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่แลบ'
+    });
+    
+    if (!validation.isValid) {
+      setError(validation.errors.join('\n'));
       return;
     }
-
+    
     setIsSubmitting(true);
+    setError(null);
+    
     try {
-      // สร้าง visit ก่อน (ถ้าไม่มี)
-      const visitData = {
-        patientId: selectedPatient.hn, // จะใช้ HN หา patient ID
-        visitType: 'walk_in' as const,
-        chiefComplaint: 'สั่งตรวจแล็บ',
-        priority: 'normal' as const
-      };
+      const formattedData = LabResultService.formatLabResultDataForAPI(
+        labResultData,
+        selectedPatient.id,
+        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่แลบ'
+      );
       
-      // สร้าง visit
-      const visitResponse = await VisitService.createVisit(visitData);
+      const response = await LabResultService.createLabResult(formattedData);
       
-      if (visitResponse.statusCode !== 200 || !visitResponse.data) {
-        throw new Error('ไม่สามารถสร้าง visit ได้');
-      }
-      
-      const visit = visitResponse.data;
-      
-      // สร้าง lab orders สำหรับแต่ละ test
-      for (const test of labTests) {
-        const labOrderData: CreateLabOrderRequest = {
-          patientId: selectedPatient.hn,
-          visitId: visit.id,
-          testCategory: test.testCategory as 'blood' | 'urine' | 'stool' | 'imaging' | 'other',
-          testName: test.testName,
-          orderedBy: user?.id || 'doctor',
-          priority: test.priority,
-          notes: test.notes
-        };
-
-        const labResponse = await LabService.createLabOrder(labOrderData);
+      if (response.statusCode === 201 && response.data) {
+        await sendPatientNotification(selectedPatient, response.data);
         
-        if (labResponse.statusCode !== 200) {
-          logger.error(`Failed to create lab order for ${test.testName}:`, labResponse.error);
-        }
+        // Create document for patient
+        await createPatientDocument(selectedPatient, response.data);
+        
+        setSuccess("บันทึกผลแลบสำเร็จ!\n\n✅ ระบบได้ส่งการแจ้งเตือนและเอกสารให้ผู้ป่วยแล้ว");
+        
+        // Reset form
+        setTimeout(() => {
+          setSelectedPatient(null);
+          setSearchQuery("");
+          setLabResultData(LabResultService.createEmptyLabResultData());
+          setSuccess(null);
+        }, 3000);
+      } else {
+        setError("เกิดข้อผิดพลาดในการบันทึกผลแลบ");
       }
-
-      setSuccess("สั่งตรวจแล็บสำเร็จ");
-      
-      // Reset form
-      setTimeout(() => {
-        setSelectedPatient(null);
-        setSearchQuery("");
-        setLabTests([]);
-        setSuccess(null);
-      }, 3000);
-      
-    } catch (error: any) {
-      logger.error("Error creating lab orders:", error);
-      setError(error.message || "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง");
+    } catch (error) {
+      logger.error("Error saving lab result:", error);
+      setError("เกิดข้อผิดพลาดในการบันทึกผลแลบ");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const calculateAge = (birthDate: string): number => {
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
-    }
-    
-    return age;
-  };
+  const sendPatientNotification = async (patient: MedicalPatient, labResultRecord: any) => {
+    try {
+      const notificationData = {
+        patientHn: patient.hn || patient.hospital_number || '',
+        patientNationalId: patient.national_id || '',
+        patientName: patient.thai_name || `${patient.firstName} ${patient.lastName}`,
+        patientPhone: patient.phone || '',
+        patientEmail: patient.email || '',
+        recordType: 'lab_result',
+        recordId: labResultRecord.id,
+        chiefComplaint: `ผลแลบ: ${labResultRecord.testName}`,
+        recordedBy: labResultRecord.testedBy,
+        recordedTime: labResultRecord.testedTime,
+        message: `มีผลแลบใหม่สำหรับคุณ ${patient.thai_name || `${patient.firstName} ${patient.lastName}`} โดย ${labResultRecord.testedBy}`
+      };
 
-  const getPriorityColor = (priority: string): string => {
-    switch (priority) {
-      case 'routine': return 'text-green-600 bg-green-100';
-      case 'urgent': return 'text-orange-600 bg-orange-100';
-      case 'stat': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
-
-  const getStatusColor = (status: string): string => {
-    switch (status) {
-      case 'pending': return 'text-yellow-600 bg-yellow-100';
-      case 'collected': return 'text-blue-600 bg-blue-100';
-      case 'processing': return 'text-orange-600 bg-orange-100';
-      case 'completed': return 'text-green-600 bg-green-100';
-      case 'cancelled': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+      await NotificationService.notifyPatientRecordUpdate(notificationData);
+      logger.info('Patient notification sent for lab result', {
+        patientHn: notificationData.patientHn,
+        recordId: labResultRecord.id
+      });
+    } catch (error) {
+      logger.error('Failed to send patient notification for lab result:', error);
     }
   };
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">กรุณาเข้าสู่ระบบ</h1>
-          <Link href="/login" className="text-blue-600 hover:text-blue-800">
-            เข้าสู่ระบบ
-          </Link>
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">กรุณาเข้าสู่ระบบ</h2>
+          <p className="text-gray-600">คุณต้องเข้าสู่ระบบเพื่อใช้งานระบบผลแลบ</p>
         </div>
       </div>
     );
   }
 
+  /**
+   * สร้างเอกสารให้ผู้ป่วย
+   */
+  const createPatientDocument = async (patient: MedicalPatient, labData: any) => {
+    try {
+      await PatientDocumentService.createDocumentFromMedicalRecord(
+        'lab_result',
+        labData,
+        {
+          patientHn: patient.hn || '',
+          patientNationalId: patient.national_id || '',
+          patientName: patient.thai_name || ''
+        },
+        user?.id || '',
+        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่แลบ'
+      );
+      
+      logger.info('Patient document created successfully for lab result', { 
+        patientHn: patient.hn,
+        recordType: 'lab_result'
+      });
+    } catch (error) {
+      logger.error('Error creating patient document for lab result:', error);
+      // ไม่ throw error เพื่อไม่ให้กระทบการบันทึกผลแลบ
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <div className="flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <FileText className="h-8 w-8 text-purple-600" />
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">ระบบสั่งตรวจแล็บ</h1>
-              <p className="text-gray-600 mt-1">สั่งตรวจแล็บและติดตามผล</p>
-            </div>
-            <div className="flex space-x-4">
-              <Link href="/emr/dashboard" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                กลับสู่หน้าหลัก
-              </Link>
+              <h1 className="text-2xl font-bold text-gray-900">ผลแลบ / แนบไฟล์</h1>
+              <p className="text-gray-600">บันทึกผลตรวจทางห้องปฏิบัติการและแนบไฟล์</p>
             </div>
           </div>
-        </div>
 
-        {/* Success/Error Messages */}
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 flex items-center">
-            <AlertCircle className="h-4 w-4 mr-2" />
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 flex items-center">
-            <CheckCircle className="h-4 w-4 mr-2" />
-            {success}
-          </div>
-        )}
-
-        {/* Search Section */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <div className="flex items-center mb-4">
-            <Search className="h-5 w-5 text-gray-400 mr-2" />
-            <h2 className="text-lg font-semibold text-gray-900">ค้นหาผู้ป่วย</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">ประเภทการค้นหา</label>
-              <select
-                value={searchType}
-                onChange={(e) => setSearchType(e.target.value as "hn" | "queue")}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="queue">หมายเลขคิว</option>
-                <option value="hn">HN</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {searchType === "hn" ? "หมายเลข HN" : "หมายเลขคิว"}
-              </label>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder={searchType === "hn" ? "ใส่หมายเลข HN" : "ใส่หมายเลขคิว"}
-              />
-            </div>
-            
-            <div className="flex items-end">
+          {/* Search Patient */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">ค้นหาผู้ป่วย</h3>
+            <div className="flex gap-4 mb-4">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="กรอก HN หรือหมายเลขคิว"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
               <button
                 onClick={handleSearch}
-                disabled={isSearching || !searchQuery.trim()}
-                className={`px-6 py-3 rounded-lg font-medium transition-all ${
-                  isSearching || !searchQuery.trim()
-                    ? 'bg-gray-400 text-white cursor-not-allowed'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
+                disabled={isSearching}
+                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
               >
-                {isSearching ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    กำลังค้นหา...
-                  </div>
-                ) : (
-                  <div className="flex items-center">
-                    <Search className="h-4 w-4 mr-2" />
-                    ค้นหา
-                  </div>
-                )}
+                <Search className="h-4 w-4" />
+                {isSearching ? "กำลังค้นหา..." : "ค้นหา"}
               </button>
             </div>
           </div>
-        </div>
 
-        {/* Patient Information */}
-        {selectedPatient && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center mb-4">
-                <User className="h-5 w-5 text-gray-400 mr-2" />
-                <h3 className="text-lg font-semibold text-gray-900">ข้อมูลผู้ป่วย</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Patient Info */}
+          {selectedPatient && (
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+              <h3 className="text-lg font-semibold text-purple-800 mb-2">ข้อมูลผู้ป่วย</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">คิว</label>
-                  <p className="text-sm text-gray-900">{selectedPatient.queueNumber}</p>
+                  <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospital_number}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">HN</label>
-                  <p className="text-sm text-gray-900">{selectedPatient.hn}</p>
+                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thai_name || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">ชื่อ-นามสกุล</label>
-                  <p className="text-sm text-gray-900">{selectedPatient.thaiName}</p>
+                  <span className="font-medium">อายุ:</span> {selectedPatient.age || 'ไม่ระบุ'}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">อายุ</label>
-                  <p className="text-sm text-gray-900">{calculateAge(selectedPatient.birthDate)} ปี</p>
+                  <span className="font-medium">เพศ:</span> {selectedPatient.gender || 'ไม่ระบุ'}
                 </div>
               </div>
             </div>
+          )}
 
-            {/* Lab Orders Form */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center mb-4">
-                <FileText className="h-5 w-5 text-gray-400 mr-2" />
-                <h3 className="text-lg font-semibold text-gray-900">สั่งตรวจแล็บ</h3>
+          {/* Lab Result Form */}
+          {selectedPatient && (
+            <div className="space-y-6">
+              {/* Test Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ประเภทการตรวจ *
+                  </label>
+                  <input
+                    type="text"
+                    value={labResultData.testType}
+                    onChange={(e) => setLabResultData(prev => ({ ...prev, testType: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="เช่น ตรวจเลือด, ตรวจปัสสาวะ"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ชื่อการตรวจ *
+                  </label>
+                  <input
+                    type="text"
+                    value={labResultData.testName}
+                    onChange={(e) => setLabResultData(prev => ({ ...prev, testName: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="เช่น CBC, Urinalysis"
+                  />
+                </div>
               </div>
-              
-              <div className="space-y-6">
-                {/* Add New Test */}
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <h4 className="text-md font-medium text-gray-900 mb-4">เพิ่มการตรวจใหม่</h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">ชื่อการตรวจ</label>
-                      <input
-                        type="text"
-                        value={newTest.testName || ""}
-                        onChange={(e) => setNewTest(prev => ({ ...prev, testName: e.target.value }))}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="เช่น CBC, FBS, UA"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">ประเภท</label>
-                      <select
-                        value={newTest.testCategory || "blood"}
-                        onChange={(e) => setNewTest(prev => ({ ...prev, testCategory: e.target.value }))}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="blood">ตรวจเลือด</option>
-                        <option value="urine">ตรวจปัสสาวะ</option>
-                        <option value="stool">ตรวจอุจจาระ</option>
-                        <option value="imaging">ตรวจทางภาพ</option>
-                        <option value="other">อื่นๆ</option>
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">ความสำคัญ</label>
-                      <select
-                        value={newTest.priority || "routine"}
-                        onChange={(e) => setNewTest(prev => ({ ...prev, priority: e.target.value as any }))}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="routine">ปกติ</option>
-                        <option value="urgent">เร่งด่วน</option>
-                        <option value="stat">ฉุกเฉิน</option>
-                      </select>
-                    </div>
-                    
-                    <div className="flex items-end">
+
+              {/* Test Results */}
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">ผลการตรวจ</h3>
+                  <button
+                    onClick={addTestResult}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    เพิ่มผลการตรวจ
+                  </button>
+                </div>
+
+                {labResultData.testResults.map((testResult, index) => (
+                  <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="font-medium text-gray-900">ผลการตรวจ {index + 1}</h4>
                       <button
-                        onClick={addLabTest}
-                        className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        onClick={() => removeTestResult(index)}
+                        className="text-red-600 hover:text-red-800"
                       >
-                        <Plus className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
-                  </div>
-                  
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">หมายเหตุ</label>
-                    <input
-                      type="text"
-                      value={newTest.notes || ""}
-                      onChange={(e) => setNewTest(prev => ({ ...prev, notes: e.target.value }))}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="หมายเหตุเพิ่มเติม"
-                    />
-                  </div>
-                </div>
-
-                {/* Lab Tests List */}
-                {labTests.length > 0 && (
-                  <div>
-                    <h4 className="text-md font-medium text-gray-900 mb-4">รายการตรวจที่สั่ง</h4>
-                    <div className="space-y-2">
-                      {labTests.map((test) => (
-                        <div key={test.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="grid grid-cols-4 gap-4 flex-1">
-                            <span className="text-sm font-medium">{test.testName}</span>
-                            <span className="text-sm">{test.testCategory}</span>
-                            <span className={`text-sm px-2 py-1 rounded ${getPriorityColor(test.priority)}`}>
-                              {test.priority}
-                            </span>
-                            <span className={`text-sm px-2 py-1 rounded ${getStatusColor(test.status)}`}>
-                              {test.status}
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => removeLabTest(test.id)}
-                            className="ml-4 text-red-600 hover:text-red-800"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">พารามิเตอร์ *</label>
+                        <input
+                          type="text"
+                          value={testResult.parameter}
+                          onChange={(e) => updateTestResult(index, 'parameter', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          placeholder="เช่น Hemoglobin, Glucose"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">ค่า *</label>
+                        <input
+                          type="text"
+                          value={testResult.value}
+                          onChange={(e) => updateTestResult(index, 'value', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          placeholder="เช่น 12.5, 95"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">หน่วย</label>
+                        <input
+                          type="text"
+                          value={testResult.unit}
+                          onChange={(e) => updateTestResult(index, 'unit', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          placeholder="เช่น g/dL, mg/dL"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">ค่าปกติ</label>
+                        <input
+                          type="text"
+                          value={testResult.normalRange}
+                          onChange={(e) => updateTestResult(index, 'normalRange', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          placeholder="เช่น 12-16 g/dL"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">สถานะ *</label>
+                        <select
+                          value={testResult.status}
+                          onChange={(e) => updateTestResult(index, 'status', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        >
+                          <option value="normal">ปกติ</option>
+                          <option value="abnormal">ผิดปกติ</option>
+                          <option value="critical">วิกฤต</option>
+                        </select>
+                      </div>
                     </div>
+                    
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
+                      <textarea
+                        value={testResult.notes}
+                        onChange={(e) => updateTestResult(index, 'notes', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        rows={2}
+                        placeholder="กรอกหมายเหตุเพิ่มเติม"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Overall Result */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ผลการตรวจโดยรวม *
+                </label>
+                <select
+                  value={labResultData.overallResult}
+                  onChange={(e) => setLabResultData(prev => ({ ...prev, overallResult: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  <option value="normal">ปกติ</option>
+                  <option value="abnormal">ผิดปกติ</option>
+                  <option value="critical">วิกฤต</option>
+                </select>
+              </div>
+
+              {/* Interpretation */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  การแปลผล
+                </label>
+                <textarea
+                  value={labResultData.interpretation}
+                  onChange={(e) => setLabResultData(prev => ({ ...prev, interpretation: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="กรอกการแปลผลการตรวจ"
+                />
+              </div>
+
+              {/* Recommendations */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  คำแนะนำ
+                </label>
+                <textarea
+                  value={labResultData.recommendations}
+                  onChange={(e) => setLabResultData(prev => ({ ...prev, recommendations: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="กรอกคำแนะนำ"
+                />
+              </div>
+
+              {/* File Upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  แนบไฟล์
+                </label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <input
+                    type="file"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="file-upload"
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  />
+                  <label
+                    htmlFor="file-upload"
+                    className="cursor-pointer bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 inline-block"
+                  >
+                    เลือกไฟล์
+                  </label>
+                  <p className="text-sm text-gray-500 mt-2">
+                    รองรับไฟล์ PDF, JPG, PNG, DOC, DOCX
+                  </p>
+                </div>
+                
+                {labResultData.attachments.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">ไฟล์ที่แนบ:</h4>
+                    {labResultData.attachments.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded mb-2">
+                        <span className="text-sm text-gray-700">{file.fileName}</span>
+                        <button
+                          onClick={() => removeAttachment(index)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Submit Button */}
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={() => {
-                  setSelectedPatient(null);
-                  setSearchQuery("");
-                  setLabTests([]);
-                }}
-                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                ยกเลิก
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={isSubmitting || labTests.length === 0}
-                className={`px-6 py-3 rounded-lg font-medium transition-all ${
-                  isSubmitting || labTests.length === 0
-                    ? 'bg-gray-400 text-white cursor-not-allowed'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-              >
-                {isSubmitting ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    กำลังบันทึก...
-                  </div>
-                ) : (
-                  'สั่งตรวจแล็บ'
-                )}
-              </button>
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">หมายเหตุ</label>
+                <textarea
+                  value={labResultData.notes}
+                  onChange={(e) => setLabResultData(prev => ({ ...prev, notes: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="กรอกหมายเหตุเพิ่มเติม"
+                />
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-end">
+                <button
+                  onClick={handleSubmit}
+                  disabled={isSubmitting || !labResultData.testType || !labResultData.testName || labResultData.testResults.length === 0}
+                  className="px-8 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <CheckCircle className="h-5 w-5" />
+                  {isSubmitting ? "กำลังบันทึก..." : "บันทึกผลแลบ"}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Success/Error Messages */}
+          {success && (
+            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <p className="text-green-800 whitespace-pre-line">{success}</p>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+                <p className="text-red-800 whitespace-pre-line">{error}</p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

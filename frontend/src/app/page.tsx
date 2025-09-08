@@ -147,42 +147,42 @@ export default function Home() {
             <p className="text-xl text-slate-500">เลือกประเภทการเข้าสู่ระบบที่เหมาะสมกับคุณ</p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* General Login */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* Patient Login */}
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 hover:shadow-xl transition-all border border-blue-200 group">
               <div className="w-16 h-16 bg-blue-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-slate-700 mb-4">การเข้าสู่ระบบทั่วไป</h3>
+              <h3 className="text-2xl font-bold text-slate-700 mb-4">ผู้ป่วย</h3>
               <p className="text-slate-600 mb-6 leading-relaxed">
-                สำหรับผู้ป่วยและบุคลากรทางการแพทย์ที่ต้องการเข้าถึงระบบ EMR
+                สำหรับผู้ป่วยที่ต้องการเข้าถึงข้อมูลสุขภาพและประวัติการรักษาของตนเอง
               </p>
               <ul className="text-sm text-slate-600 mb-8 space-y-2">
                 <li className="flex items-center">
                   <svg className="w-4 h-4 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
                   </svg>
-                  ผู้ป่วย
+                  ดูประวัติการรักษา
                 </li>
                 <li className="flex items-center">
                   <svg className="w-4 h-4 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
                   </svg>
-                  แพทย์
+                  จัดการนัดหมาย
                 </li>
                 <li className="flex items-center">
                   <svg className="w-4 h-4 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
                   </svg>
-                  พยาบาล
+                  ดูผลตรวจ
                 </li>
                 <li className="flex items-center">
                   <svg className="w-4 h-4 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
                   </svg>
-                  เจ้าหน้าที่
+                  AI Insights
                 </li>
               </ul>
               <Link 
@@ -193,39 +193,84 @@ export default function Home() {
               </Link>
             </div>
 
-            {/* External Login */}
+            {/* Doctor Login */}
             <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl p-8 hover:shadow-xl transition-all border border-emerald-200 group">
               <div className="w-16 h-16 bg-emerald-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-slate-700 mb-4">การเข้าสู่ระบบ External</h3>
+              <h3 className="text-2xl font-bold text-slate-700 mb-4">แพทย์</h3>
               <p className="text-slate-600 mb-6 leading-relaxed">
-                สำหรับองค์กรภายนอกที่ต้องการเข้าถึงข้อมูลสุขภาพ ระบบจัดการคำขอข้อมูลสุขภาพ
-                
+                สำหรับแพทย์ที่ต้องการเข้าถึงระบบ EMR เพื่อดูแลผู้ป่วย ระบบจัดการคำขอข้อมูลสุขภาพ
               </p>
               <ul className="text-sm text-slate-600 mb-8 space-y-2">
                 <li className="flex items-center">
                   <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
                   </svg>
-                  โรงพยาบาล
+                  ระบบ EMR
                 </li>
                 <li className="flex items-center">
                   <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  บันทึกการรักษา
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  สั่งยาและตรวจ
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  ดูประวัติผู้ป่วย
+                </li>
+              </ul>
+              <Link 
+                href="/doctor/login" 
+                className="block w-full bg-emerald-400 hover:bg-emerald-500 text-white font-semibold py-3 px-6 rounded-xl transition-all text-center"
+              >
+                เข้าสู่ระบบ
+              </Link>
+            </div>
+
+            {/* External Login */}
+            <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl p-8 hover:shadow-xl transition-all border border-amber-200 group">
+              <div className="w-16 h-16 bg-amber-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-slate-700 mb-4">External</h3>
+              <p className="text-slate-600 mb-6 leading-relaxed">
+                สำหรับองค์กรภายนอกที่ต้องการเข้าถึงข้อมูลสุขภาพ ระบบจัดการคำขอข้อมูลสุขภาพ
+                
+              </p>
+              <ul className="text-sm text-slate-600 mb-8 space-y-2">
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-amber-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  โรงพยาบาล
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-amber-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
                   </svg>
                   คลินิก
                 </li>
                 <li className="flex items-center">
-                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 text-amber-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
                   </svg>
                   บริษัทประกัน
                 </li>
                 <li className="flex items-center">
-                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 text-amber-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
                   </svg>
                   สถาบันวิจัย
@@ -233,7 +278,7 @@ export default function Home() {
               </ul>
               <Link 
                 href="/external-requesters/login" 
-                className="block w-full bg-emerald-400 hover:bg-emerald-500 text-white font-semibold py-3 px-6 rounded-xl transition-all text-center"
+                className="block w-full bg-amber-400 hover:bg-amber-500 text-white font-semibold py-3 px-6 rounded-xl transition-all text-center"
               >
                 เข้าสู่ระบบ
               </Link>
@@ -246,7 +291,7 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-slate-700 mb-4">การเข้าสู่ระบบ Admin</h3>
+              <h3 className="text-2xl font-bold text-slate-700 mb-4">Admin</h3>
               <p className="text-slate-600 mb-6 leading-relaxed">
                 สำหรับบุคลากรภายในที่ต้องการเข้าถึงระบบจัดการ ระบบจัดการคำขอข้อมูลสุขภาพ
               </p>
@@ -497,7 +542,7 @@ export default function Home() {
             <p className="text-xl text-slate-500">เลือกประเภทการสมัครที่เหมาะสมกับคุณ</p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {/* General Registration */}
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 hover:shadow-xl transition-all border border-blue-200 group">
               <div className="w-16 h-16 bg-blue-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
@@ -507,7 +552,7 @@ export default function Home() {
               </div>
               <h3 className="text-2xl font-bold text-slate-700 mb-4">การสมัครทั่วไป</h3>
               <p className="text-slate-600 mb-6 leading-relaxed">
-                สำหรับผู้ป่วยและบุคลากรทางการแพทย์ที่ต้องการเข้าถึงระบบ EMR
+                สำหรับผู้ป่วยและบุคลากรทางการแพทย์ที่ต้องการเข้าถึงระบบ EMR ระบบจัดการคำขอข้อมูลสุขภาพ
               </p>
               <ul className="text-sm text-slate-600 mb-8 space-y-2">
                 <li className="flex items-center">
@@ -543,9 +588,54 @@ export default function Home() {
               </Link>
             </div>
 
-            {/* External Registration */}
+            {/* Medical Staff Registration */}
             <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl p-8 hover:shadow-xl transition-all border border-emerald-200 group">
               <div className="w-16 h-16 bg-emerald-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-slate-700 mb-4">การสมัครบุคลากร</h3>
+              <p className="text-slate-600 mb-6 leading-relaxed">
+                สำหรับแพทย์ พยาบาล และเจ้าหน้าที่ที่ต้องการเข้าถึงระบบ EMR เพื่อดูแลผู้ป่วย
+              </p>
+              <ul className="text-sm text-slate-600 mb-8 space-y-2">
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  ระบบ EMR
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  บันทึกการรักษา
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  สั่งยาและตรวจ
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                  </svg>
+                  ดูประวัติผู้ป่วย
+                </li>
+              </ul>
+              <Link 
+                href="/medical-staff/register" 
+                className="block w-full bg-emerald-400 hover:bg-emerald-500 text-white font-semibold py-3 px-6 rounded-xl transition-all text-center"
+              >
+                สมัครสมาชิก
+              </Link>
+            </div>
+
+            {/* External Registration */}
+            <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl p-8 hover:shadow-xl transition-all border border-amber-200 group">
+              <div className="w-16 h-16 bg-amber-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                 </svg>
@@ -557,25 +647,25 @@ export default function Home() {
               </p>
               <ul className="text-sm text-slate-600 mb-8 space-y-2">
                 <li className="flex items-center">
-                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 text-amber-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
                   </svg>
                   โรงพยาบาล
                 </li>
                 <li className="flex items-center">
-                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 text-amber-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
                   </svg>
                   คลินิก
                 </li>
                 <li className="flex items-center">
-                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 text-amber-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
                   </svg>
                   บริษัทประกัน
                 </li>
                 <li className="flex items-center">
-                  <svg className="w-4 h-4 text-emerald-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 text-amber-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
                   </svg>
                   สถาบันวิจัย
@@ -583,7 +673,7 @@ export default function Home() {
               </ul>
               <Link 
                 href="/external-requesters/register" 
-                className="block w-full bg-emerald-400 hover:bg-emerald-500 text-white font-semibold py-3 px-6 rounded-xl transition-all text-center"
+                className="block w-full bg-amber-400 hover:bg-amber-500 text-white font-semibold py-3 px-6 rounded-xl transition-all text-center"
               >
                 สมัครองค์กร
               </Link>

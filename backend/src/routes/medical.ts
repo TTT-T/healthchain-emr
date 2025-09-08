@@ -8,8 +8,15 @@ import {
   getAllPatients,
   getPatientById,
   createPatient,
-  updatePatient
+  updatePatient,
+  searchUsersByNationalId
 } from '../controllers/patientManagementController';
+import {
+  getAllDoctors,
+  getDoctorById,
+  createDoctor,
+  updateDoctor
+} from '../controllers/doctorsController';
 import {
   getAllVisits,
   createVisit,
@@ -40,6 +47,62 @@ import {
   getPrescriptionById,
   updatePrescriptionStatus
 } from '../controllers/prescriptionsController';
+import {
+  createHistoryTaking,
+  getHistoryTakingByPatient,
+  getHistoryTakingById,
+  updateHistoryTaking,
+  deleteHistoryTaking
+} from '../controllers/historyTakingController';
+import {
+  createDoctorVisit,
+  getDoctorVisitsByPatient,
+  getDoctorVisitById,
+  updateDoctorVisit,
+  deleteDoctorVisit
+} from '../controllers/doctorVisitController';
+import {
+  createPharmacyDispensing,
+  getPharmacyDispensingsByPatient,
+  getPharmacyDispensingById,
+  updatePharmacyDispensing,
+  deletePharmacyDispensing
+} from '../controllers/pharmacyController';
+import {
+  createLabResult,
+  getLabResultsByPatient,
+  getLabResultById,
+  updateLabResult,
+  deleteLabResult
+} from '../controllers/labResultController';
+import {
+  createAppointment,
+  getAppointmentsByPatient,
+  getAppointmentsByDoctor,
+  getAppointmentById,
+  updateAppointment,
+  deleteAppointment
+} from '../controllers/appointmentController';
+import {
+  createDocument,
+  getDocumentsByPatient,
+  getDocumentById,
+  updateDocument,
+  deleteDocument
+} from '../controllers/documentController';
+import {
+  getPatientSummary,
+  getPatientTimeline
+} from '../controllers/patientSummaryController';
+import {
+  getAllQueueHistory,
+  getQueueHistoryByPatient,
+  getQueueHistoryByDoctor,
+  getQueueHistoryById,
+  getQueueStatistics,
+  downloadQueueReport,
+  generateStatisticsReport
+} from '../controllers/queueHistoryController';
 
 // Patient Portal Controllers
 import { 
@@ -117,7 +180,8 @@ import {
 
 const router = Router();
 
-// Authentication is handled by individual route modules
+// Apply authentication to all routes
+router.use(authenticate);
 
 /**
  * Medical API Routes
@@ -134,6 +198,15 @@ router.get('/patients', authorize(['doctor', 'nurse', 'admin']), asyncHandler(ge
 router.get('/patients/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getPatientById));
 router.post('/patients', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createPatient));
 router.put('/patients/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(updatePatient));
+
+// User Search for Patient Registration
+router.get('/users/search', authorize(['doctor', 'nurse', 'admin']), asyncHandler(searchUsersByNationalId));
+
+// Doctor Management
+router.get('/doctors', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAllDoctors));
+router.get('/doctors/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getDoctorById));
+router.post('/doctors', authorize(['admin']), asyncHandler(createDoctor));
+router.put('/doctors/:id', authorize(['doctor', 'admin']), asyncHandler(updateDoctor));
 
 // Visit Management
 router.get('/visits', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAllVisits));
@@ -195,6 +268,62 @@ router.get('/prescriptions/:id', authorize(['doctor', 'nurse', 'admin', 'pharmac
 router.put('/prescriptions/:id', authorize(['doctor', 'pharmacist', 'admin']), asyncHandler(updatePrescription));
 router.put('/prescription-items/:id', authorize(['pharmacist', 'admin']), asyncHandler(updatePrescriptionItem));
 router.get('/visits/:visitId/prescriptions', authorize(['doctor', 'nurse', 'admin', 'pharmacist']), asyncHandler(getPrescriptionsByVisit));
+
+// History Taking routes
+router.post('/history-taking', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createHistoryTaking));
+router.get('/patients/:patientId/history-taking', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getHistoryTakingByPatient));
+router.get('/history-taking/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getHistoryTakingById));
+router.put('/history-taking/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(updateHistoryTaking));
+router.delete('/history-taking/:id', authorize(['doctor', 'admin']), asyncHandler(deleteHistoryTaking));
+
+// Doctor Visit routes
+router.post('/doctor-visit', authorize(['doctor', 'admin']), asyncHandler(createDoctorVisit));
+router.get('/patients/:patientId/doctor-visits', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getDoctorVisitsByPatient));
+router.get('/doctor-visit/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getDoctorVisitById));
+router.put('/doctor-visit/:id', authorize(['doctor', 'admin']), asyncHandler(updateDoctorVisit));
+router.delete('/doctor-visit/:id', authorize(['doctor', 'admin']), asyncHandler(deleteDoctorVisit));
+
+// Pharmacy routes
+router.post('/pharmacy', authorize(['pharmacist', 'nurse', 'admin']), asyncHandler(createPharmacyDispensing));
+router.get('/patients/:patientId/pharmacy', authorize(['pharmacist', 'nurse', 'admin']), asyncHandler(getPharmacyDispensingsByPatient));
+router.get('/pharmacy/:id', authorize(['pharmacist', 'nurse', 'admin']), asyncHandler(getPharmacyDispensingById));
+router.put('/pharmacy/:id', authorize(['pharmacist', 'admin']), asyncHandler(updatePharmacyDispensing));
+router.delete('/pharmacy/:id', authorize(['pharmacist', 'admin']), asyncHandler(deletePharmacyDispensing));
+
+// Lab Results routes
+router.post('/lab-results', authorize(['lab_tech', 'doctor', 'admin']), asyncHandler(createLabResult));
+router.get('/patients/:patientId/lab-results', authorize(['lab_tech', 'doctor', 'nurse', 'admin']), asyncHandler(getLabResultsByPatient));
+router.get('/lab-results/:id', authorize(['lab_tech', 'doctor', 'nurse', 'admin']), asyncHandler(getLabResultById));
+router.put('/lab-results/:id', authorize(['lab_tech', 'doctor', 'admin']), asyncHandler(updateLabResult));
+router.delete('/lab-results/:id', authorize(['lab_tech', 'admin']), asyncHandler(deleteLabResult));
+
+// Appointments routes
+router.post('/appointments', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createAppointment));
+router.get('/patients/:patientId/appointments', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAppointmentsByPatient));
+router.get('/doctors/:doctorId/appointments', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAppointmentsByDoctor));
+router.get('/appointments/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAppointmentById));
+router.put('/appointments/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(updateAppointment));
+router.delete('/appointments/:id', authorize(['doctor', 'admin']), asyncHandler(deleteAppointment));
+
+// Documents routes
+router.post('/documents', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createDocument));
+router.get('/patients/:patientId/documents', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getDocumentsByPatient));
+router.get('/documents/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getDocumentById));
+router.put('/documents/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(updateDocument));
+router.delete('/documents/:id', authorize(['doctor', 'admin']), asyncHandler(deleteDocument));
+
+// Patient Summary routes
+router.get('/patients/:patientId/summary', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getPatientSummary));
+router.get('/patients/:patientId/timeline', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getPatientTimeline));
+
+// Queue History routes
+router.get('/queue-history', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAllQueueHistory));
+router.get('/queue-history/statistics', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getQueueStatistics));
+router.get('/queue-history/statistics/report', authorize(['doctor', 'nurse', 'admin']), asyncHandler(generateStatisticsReport));
+router.get('/queue-history/patients/:patientId', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getQueueHistoryByPatient));
+router.get('/queue-history/doctors/:doctorId', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getQueueHistoryByDoctor));
+router.get('/queue-history/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getQueueHistoryById));
+router.get('/queue-history/:id/report', authorize(['doctor', 'nurse', 'admin']), asyncHandler(downloadQueueReport));
 
 // Medical records
 router.get('/patients/:id/records', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(getPatientRecords));

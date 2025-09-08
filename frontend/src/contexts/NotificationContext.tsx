@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/api';
-import { mockNotifications, getUnreadNotificationCount } from '@/lib/mockNotifications';
+// Removed mock notifications import - using real data only
 
 interface NotificationContextType {
   notificationCount: number;
@@ -28,30 +28,42 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       return;
     }
 
-    try {
-      // Try to fetch from API first
-      const response = await apiClient.getPatientNotifications(user.id);
-      if (response.statusCode === 200 && response.data) {
-        // Count unread notifications
-        const notifications = Array.isArray(response.data) 
-          ? response.data 
-          : (response.data as any)?.notifications || [];
-        
-        const unreadCount = notifications.filter((notif: any) => 
-          !notif.isRead && !notif.is_read && !notif.read_at
-        ).length;
-        
-        setNotificationCount(unreadCount);
-      } else {
-        // Fallback to mock data for demonstration
-        const unreadCount = getUnreadNotificationCount(mockNotifications);
-        setNotificationCount(unreadCount);
+    // For medical staff (doctors, nurses, admins), use real notification system
+    if (['doctor', 'nurse', 'admin', 'staff'].includes(user.role)) {
+      // TODO: Implement real notification system for medical staff
+      // For now, set to 0 as we don't have medical staff notifications yet
+      setNotificationCount(0);
+      return;
+    }
+
+    // Only fetch patient notifications for patient role
+    if (user.role === 'patient') {
+      try {
+        // Try to fetch from API first
+        const response = await apiClient.getPatientNotifications(user.id);
+        if (response.statusCode === 200 && response.data) {
+          // Count unread notifications
+          const notifications = Array.isArray(response.data) 
+            ? response.data 
+            : (response.data as any)?.notifications || [];
+          
+          const unreadCount = notifications.filter((notif: any) => 
+            !notif.isRead && !notif.is_read && !notif.read_at
+          ).length;
+          
+          setNotificationCount(unreadCount);
+        } else {
+          // No notifications found
+          setNotificationCount(0);
+        }
+      } catch (error) {
+        console.error('Error fetching notification count:', error);
+        // Set to 0 on error instead of using mock data
+        setNotificationCount(0);
       }
-    } catch (error) {
-      console.error('Error fetching notification count:', error);
-      // Use mock data as fallback
-      const unreadCount = getUnreadNotificationCount(mockNotifications);
-      setNotificationCount(unreadCount);
+    } else {
+      // For other roles, no notifications
+      setNotificationCount(0);
     }
   };
 

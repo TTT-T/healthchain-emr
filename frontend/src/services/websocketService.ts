@@ -1,282 +1,295 @@
-import { io, Socket } from 'socket.io-client';
+"use client";
 import { logger } from '@/lib/logger';
-// import { useAuth } from '@/contexts/AuthContext';
 
-/**
- * WebSocket Service for Frontend
- * จัดการ real-time communication กับ Backend
- */
-
-interface NotificationData {
+export interface WebSocketMessage {
+  type: string;
+  data: any;
+  timestamp: string;
   id: string;
-  type: 'system' | 'user' | 'admin';
-  title: string;
-  message: string;
-  data?: unknown;
-  priority: 'low' | 'medium' | 'high';
-  timestamp: string;
 }
 
-interface SystemUpdate {
-  id: string;
-  type: 'maintenance' | 'feature' | 'security' | 'general';
-  title: string;
-  message: string;
-  priority: 'low' | 'medium' | 'high';
-  data?: unknown;
-  timestamp: string;
+export interface WebSocketConfig {
+  url: string;
+  reconnectInterval?: number;
+  maxReconnectAttempts?: number;
+  heartbeatInterval?: number;
 }
 
-interface DashboardUpdate {
-  data: unknown;
-  timestamp: string;
-}
+export type WebSocketEventHandler = (message: WebSocketMessage) => void;
 
-interface PatientUpdate {
-  type: 'visit' | 'lab_result' | 'prescription' | 'appointment';
-  patientId: string;
-  data: unknown;
-  timestamp: string;
-}
-
-interface TypingIndicator {
-  userId: string;
-  userEmail: string;
-  isTyping: boolean;
-}
-
-class WebSocketService {
-  private socket: Socket | null = null;
-  private isConnected = false;
+export class WebSocketService {
+  private ws: WebSocket | null = null;
+  private config: WebSocketConfig;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
-  private eventListeners: Map<string, ((...args: unknown[]) => void)[]> = new Map();
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private heartbeatTimer: NodeJS.Timeout | null = null;
+  private eventHandlers: Map<string, WebSocketEventHandler[]> = new Map();
+  private isConnecting = false;
+  private isConnected = false;
 
-  constructor() {
-    this.setupEventListeners();
+  constructor(config: WebSocketConfig) {
+    this.config = {
+      reconnectInterval: 5000,
+      maxReconnectAttempts: 5,
+      heartbeatInterval: 30000,
+      ...config
+    };
   }
 
   /**
-   * Connect to WebSocket server
+   * เชื่อมต่อ WebSocket
    */
-  public connect(token: string): void {
-    if (this.socket && this.socket.connected) {
-      logger.debug('🔌 WebSocket already connected');
-      return;
-    }
+  public connect(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (this.isConnecting || this.isConnected) {
+        resolve();
+        return;
+      }
 
-    const serverUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
-    
-    this.socket = io(serverUrl, {
-      auth: {
-        token: token
-      },
-      transports: ['websocket', 'polling'],
-      timeout: 20000,
-      forceNew: true
+      this.isConnecting = true;
+
+      try {
+        this.ws = new WebSocket(this.config.url);
+
+        this.ws.onopen = () => {
+          logger.info('WebSocket connected', { url: this.config.url });
+          this.isConnected = true;
+          this.isConnecting = false;
+          this.reconnectAttempts = 0;
+          this.startHeartbeat();
+          resolve();
+        };
+
+        this.ws.onmessage = (event) => {
+          try {
+            const message: WebSocketMessage = JSON.parse(event.data);
+            this.handleMessage(message);
+          } catch (error) {
+            logger.error('Failed to parse WebSocket message:', error);
+          }
+        };
+
+        this.ws.onclose = (event) => {
+          logger.warn('WebSocket disconnected', { 
+            code: event.code, 
+            reason: event.reason,
+            wasClean: event.wasClean 
+          });
+          
+          this.isConnected = false;
+          this.isConnecting = false;
+          this.stopHeartbeat();
+          
+          if (!event.wasClean && this.reconnectAttempts < this.config.maxReconnectAttempts!) {
+            this.scheduleReconnect();
+          }
+        };
+
+        this.ws.onerror = (error) => {
+          logger.error('WebSocket error:', error);
+          this.isConnecting = false;
+          reject(error);
+        };
+
+      } catch (error) {
+        this.isConnecting = false;
+        reject(error);
+      }
     });
-
-    this.setupSocketEventListeners();
   }
 
   /**
-   * Disconnect from WebSocket server
+   * ปิดการเชื่อมต่อ WebSocket
    */
   public disconnect(): void {
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
-      this.isConnected = false;
-      logger.debug('🔌 WebSocket disconnected');
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    this.stopHeartbeat();
+
+    if (this.ws) {
+      this.ws.close(1000, 'Client disconnect');
+      this.ws = null;
+    }
+
+    this.isConnected = false;
+    this.isConnecting = false;
+    this.reconnectAttempts = 0;
+  }
+
+  /**
+   * ส่งข้อความผ่าน WebSocket
+   */
+  public send(type: string, data: any): boolean {
+    if (!this.isConnected || !this.ws) {
+      logger.warn('WebSocket not connected, cannot send message');
+      return false;
+    }
+
+    try {
+      const message: WebSocketMessage = {
+        type,
+        data,
+        timestamp: new Date().toISOString(),
+        id: this.generateMessageId()
+      };
+
+      this.ws.send(JSON.stringify(message));
+      logger.debug('WebSocket message sent', { type, data });
+      return true;
+    } catch (error) {
+      logger.error('Failed to send WebSocket message:', error);
+      return false;
     }
   }
 
   /**
-   * Setup socket event listeners
+   * ลงทะเบียน event handler
    */
-  private setupSocketEventListeners(): void {
-    if (!this.socket) return;
-
-    this.socket.on('connect', () => {
-      logger.debug('🔌 WebSocket connected');
-      this.isConnected = true;
-      this.reconnectAttempts = 0;
-      this.emit('connected');
-    });
-
-    this.socket.on('disconnect', (reason) => {
-      logger.debug('🔌 WebSocket disconnected:', reason);
-      this.isConnected = false;
-      this.emit('disconnected', reason);
-      
-      // Attempt to reconnect if not manually disconnected
-      if (reason !== 'io client disconnect' && this.reconnectAttempts < this.maxReconnectAttempts) {
-        this.attemptReconnect();
-      }
-    });
-
-    this.socket.on('connect_error', (error) => {
-      logger.error('🔌 WebSocket connection error:', error);
-      this.emit('connection_error', error);
-    });
-
-    this.socket.on('notification', (notification: NotificationData) => {
-      logger.debug('📢 Received notification:', notification);
-      this.emit('notification', notification);
-    });
-
-    this.socket.on('system_update', (update: SystemUpdate) => {
-      logger.debug('🔄 Received system update:', update);
-      this.emit('system_update', update);
-    });
-
-    this.socket.on('dashboard_update', (update: DashboardUpdate) => {
-      logger.debug('📊 Received dashboard update:', update);
-      this.emit('dashboard_update', update);
-    });
-
-    this.socket.on('patient_update', (update: PatientUpdate) => {
-      logger.debug('🏥 Received patient update:', update);
-      this.emit('patient_update', update);
-    });
-
-    this.socket.on('user_typing', (indicator: TypingIndicator) => {
-      this.emit('user_typing', indicator);
-    });
-
-    this.socket.on('connected', (data) => {
-      logger.debug('✅ WebSocket connection confirmed:', data);
-      this.emit('connection_confirmed', data);
-    });
-  }
-
-  /**
-   * Attempt to reconnect
-   */
-  private attemptReconnect(): void {
-    this.reconnectAttempts++;
-    logger.debug(`🔄 Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-    
-    setTimeout(() => {
-      if (this.socket && !this.socket.connected) {
-        this.socket.connect();
-      }
-    }, this.reconnectDelay * this.reconnectAttempts);
-  }
-
-  /**
-   * Join a room
-   */
-  public joinRoom(roomName: string): void {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('join_room', roomName);
+  public on(eventType: string, handler: WebSocketEventHandler): void {
+    if (!this.eventHandlers.has(eventType)) {
+      this.eventHandlers.set(eventType, []);
     }
+    this.eventHandlers.get(eventType)!.push(handler);
   }
 
   /**
-   * Leave a room
+   * ยกเลิกการลงทะเบียน event handler
    */
-  public leaveRoom(roomName: string): void {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('leave_room', roomName);
-    }
-  }
-
-  /**
-   * Send typing start indicator
-   */
-  public startTyping(room: string, userId: string): void {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('typing_start', { room, userId });
-    }
-  }
-
-  /**
-   * Send typing stop indicator
-   */
-  public stopTyping(room: string, userId: string): void {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('typing_stop', { room, userId });
-    }
-  }
-
-  /**
-   * Setup event listeners
-   */
-  private setupEventListeners(): void {
-    // Initialize event listener map
-    const events = [
-      'connected',
-      'disconnected',
-      'connection_error',
-      'connection_confirmed',
-      'notification',
-      'system_update',
-      'dashboard_update',
-      'patient_update',
-      'user_typing'
-    ];
-
-    events.forEach(event => {
-      this.eventListeners.set(event, []);
-    });
-  }
-
-  /**
-   * Add event listener
-   */
-  public on(event: string, callback: (...args: unknown[]) => void): void {
-    if (this.eventListeners.has(event)) {
-      this.eventListeners.get(event)!.push(callback);
-    } else {
-      this.eventListeners.set(event, [callback]);
-    }
-  }
-
-  /**
-   * Remove event listener
-   */
-  public off(event: string, callback: (...args: unknown[]) => void): void {
-    if (this.eventListeners.has(event)) {
-      const listeners = this.eventListeners.get(event)!;
-      const index = listeners.indexOf(callback);
+  public off(eventType: string, handler: WebSocketEventHandler): void {
+    const handlers = this.eventHandlers.get(eventType);
+    if (handlers) {
+      const index = handlers.indexOf(handler);
       if (index > -1) {
-        listeners.splice(index, 1);
+        handlers.splice(index, 1);
       }
     }
   }
 
   /**
-   * Emit event to listeners
+   * ตรวจสอบสถานะการเชื่อมต่อ
    */
-  private emit(event: string, data?: unknown): void {
-    if (this.eventListeners.has(event)) {
-      this.eventListeners.get(event)!.forEach(callback => {
+  public getConnectionStatus(): {
+    isConnected: boolean;
+    isConnecting: boolean;
+    reconnectAttempts: number;
+  } {
+    return {
+      isConnected: this.isConnected,
+      isConnecting: this.isConnecting,
+      reconnectAttempts: this.reconnectAttempts
+    };
+  }
+
+  /**
+   * จัดการข้อความที่ได้รับ
+   */
+  private handleMessage(message: WebSocketMessage): void {
+    logger.debug('WebSocket message received', { type: message.type });
+
+    // เรียกใช้ handlers ที่ลงทะเบียนไว้
+    const handlers = this.eventHandlers.get(message.type);
+    if (handlers) {
+      handlers.forEach(handler => {
         try {
-          callback(data);
+          handler(message);
         } catch (error) {
-          logger.error(`Error in event listener for ${event}:`, error);
+          logger.error('Error in WebSocket event handler:', error);
+        }
+      });
+    }
+
+    // เรียกใช้ wildcard handler
+    const wildcardHandlers = this.eventHandlers.get('*');
+    if (wildcardHandlers) {
+      wildcardHandlers.forEach(handler => {
+        try {
+          handler(message);
+        } catch (error) {
+          logger.error('Error in WebSocket wildcard handler:', error);
         }
       });
     }
   }
 
   /**
-   * Get connection status
+   * เริ่มการ reconnect
    */
-  public getConnectionStatus(): boolean {
-    return this.isConnected && this.socket ? this.socket.connected : false;
+  private scheduleReconnect(): void {
+    if (this.reconnectTimer) {
+      return;
+    }
+
+    this.reconnectAttempts++;
+    const delay = this.config.reconnectInterval! * Math.pow(2, this.reconnectAttempts - 1);
+
+    logger.info('Scheduling WebSocket reconnect', { 
+      attempt: this.reconnectAttempts,
+      delay 
+    });
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.connect().catch(error => {
+        logger.error('WebSocket reconnect failed:', error);
+      });
+    }, delay);
   }
 
   /**
-   * Get socket instance
+   * เริ่ม heartbeat
    */
-  public getSocket(): Socket | null {
-    return this.socket;
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+    
+    this.heartbeatTimer = setInterval(() => {
+      if (this.isConnected) {
+        this.send('ping', { timestamp: new Date().toISOString() });
+      }
+    }, this.config.heartbeatInterval);
+  }
+
+  /**
+   * หยุด heartbeat
+   */
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  }
+
+  /**
+   * สร้าง message ID
+   */
+  private generateMessageId(): string {
+    return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 }
 
-// Create singleton instance
-export const webSocketService = new WebSocketService();
-export default webSocketService;
+// Singleton instance for the application
+let wsServiceInstance: WebSocketService | null = null;
+
+export const getWebSocketService = (): WebSocketService => {
+  if (!wsServiceInstance) {
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001/ws';
+    wsServiceInstance = new WebSocketService({ url: wsUrl });
+  }
+  return wsServiceInstance;
+};
+
+// Hook for using WebSocket in React components
+export const useWebSocket = (config?: WebSocketConfig) => {
+  const service = config ? new WebSocketService(config) : getWebSocketService();
+  
+  return {
+    connect: () => service.connect(),
+    disconnect: () => service.disconnect(),
+    send: (type: string, data: any) => service.send(type, data),
+    on: (eventType: string, handler: WebSocketEventHandler) => service.on(eventType, handler),
+    off: (eventType: string, handler: WebSocketEventHandler) => service.off(eventType, handler),
+    getConnectionStatus: () => service.getConnectionStatus()
+  };
+};

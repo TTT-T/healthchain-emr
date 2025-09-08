@@ -3,6 +3,9 @@ import { useState } from "react";
 import { Search, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
+import { HistoryTakingService } from '@/services/historyTakingService';
+import { NotificationService } from '@/services/notificationService';
+import { PatientDocumentService } from '@/services/patientDocumentService';
 import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
 
@@ -92,7 +95,7 @@ interface MedicalHistory {
 }
 
 export default function HistoryTaking() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<"hn" | "queue">("queue");
   const [isSearching, setIsSearching] = useState(false);
@@ -266,14 +269,27 @@ export default function HistoryTaking() {
         recordedBy: medicalHistory.recordedBy
       };
       
-      // For now, we'll simulate the API call since medical history endpoint may not be ready
-      // const response = await VisitService.createMedicalHistory(historyData);
-      logger.debug("Saving medical history:", historyData);
+      // Format data for API
+      const formattedData = HistoryTakingService.formatHistoryDataForAPI(
+        medicalHistory,
+        selectedPatient!.id,
+        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'
+      );
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Create medical history record using HistoryTakingService
+      const response = await HistoryTakingService.createHistoryTaking(formattedData);
       
-      setSuccess("บันทึกประวัติผู้ป่วยสำเร็จ! พร้อมสำหรับขั้นตอนการตรวจร่างกาย");
+      if (response.statusCode === 201 && response.data) {
+        // Send notification to patient
+        await sendPatientNotification(selectedPatient!, response.data);
+        
+        // Create document for patient
+        await createPatientDocument(selectedPatient!, response.data);
+        
+        setSuccess("บันทึกประวัติผู้ป่วยสำเร็จ! พร้อมสำหรับขั้นตอนการตรวจร่างกาย\n\n✅ ระบบได้ส่งการแจ้งเตือนและเอกสารให้ผู้ป่วยแล้ว");
+      } else {
+        setError("เกิดข้อผิดพลาดในการบันทึกประวัติผู้ป่วย");
+      }
       
       // Reset form
       setTimeout(() => {
@@ -353,6 +369,36 @@ export default function HistoryTaking() {
     }
   };
 
+  // Send notification to patient when history is recorded
+  const sendPatientNotification = async (
+    patient: MedicalPatient,
+    historyRecord: any
+  ) => {
+    try {
+      const notificationData = {
+        patientHn: patient.hn || patient.hospital_number || '',
+        patientNationalId: patient.national_id || '',
+        patientName: patient.thai_name || `${patient.firstName} ${patient.lastName}`,
+        patientPhone: patient.phone || '',
+        patientEmail: patient.email || '',
+        recordType: 'history_taking',
+        recordId: historyRecord.id,
+        chiefComplaint: historyRecord.chiefComplaint,
+        recordedBy: historyRecord.recordedBy,
+        recordedTime: historyRecord.recordedTime,
+        message: `มีการบันทึกประวัติการซักประวัติใหม่สำหรับคุณ ${patient.thai_name || `${patient.firstName} ${patient.lastName}`} โดย ${historyRecord.recordedBy}`
+      };
+
+      await NotificationService.notifyPatientRecordUpdate(notificationData);
+      logger.info('Patient notification sent for history taking', {
+        patientHn: notificationData.patientHn,
+        recordId: historyRecord.id
+      });
+    } catch (error) {
+      logger.error('Failed to send patient notification for history taking:', error);
+    }
+  };
+
   const calculateAge = (birthDate: string): number => {
     const today = new Date();
     const birth = new Date(birthDate);
@@ -378,6 +424,33 @@ export default function HistoryTaking() {
     { id: "lifestyle", label: "Lifestyle", title: "Lifestyle Factors", icon: "💪" },
     { id: "ros", label: "ROS", title: "Review of Systems", icon: "🔍" }
   ];
+
+  /**
+   * สร้างเอกสารให้ผู้ป่วย
+   */
+  const createPatientDocument = async (patient: Patient, historyData: any) => {
+    try {
+      await PatientDocumentService.createDocumentFromMedicalRecord(
+        'history_taking',
+        historyData,
+        {
+          patientHn: patient.hn || '',
+          patientNationalId: patient.national_id || '',
+          patientName: patient.thai_name || ''
+        },
+        user?.id || '',
+        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'
+      );
+      
+      logger.info('Patient document created successfully for history taking', { 
+        patientHn: patient.hn,
+        recordType: 'history_taking'
+      });
+    } catch (error) {
+      logger.error('Error creating patient document for history taking:', error);
+      // ไม่ throw error เพื่อไม่ให้กระทบการบันทึกประวัติ
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">

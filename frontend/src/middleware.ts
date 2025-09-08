@@ -14,6 +14,9 @@ const publicRoutes = [
   '/login',
   '/register',
   '/admin/login',
+  '/doctor/login',
+  '/nurse/login',
+  '/medical-staff/register',
   '/external-requesters/login',
   '/external-requesters/register',
   '/api/health'
@@ -45,12 +48,59 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Check for general user routes
-  if (pathname.startsWith('/emr') || pathname.startsWith('/accounts')) {
+  // Check for doctor routes (but not doctor/login)
+  if (pathname.startsWith('/doctor') && pathname !== '/doctor/login') {
     const userToken = request.cookies.get('access_token')?.value
-    console.log('🔍 Middleware - Checking token for path:', pathname, 'Token exists:', !!userToken)
+    console.log('🔍 Middleware - Checking doctor token for path:', pathname, 'Token exists:', !!userToken)
     if (!userToken) {
-      console.log('🔍 Middleware - No token, redirecting to login')
+      console.log('🔍 Middleware - No doctor token, redirecting to doctor login')
+      return NextResponse.redirect(new URL('/doctor/login', request.url))
+    }
+  }
+
+  // Check for nurse routes (but not nurse/login)
+  if (pathname.startsWith('/nurse') && pathname !== '/nurse/login') {
+    const userToken = request.cookies.get('access_token')?.value
+    console.log('🔍 Middleware - Checking nurse token for path:', pathname, 'Token exists:', !!userToken)
+    if (!userToken) {
+      console.log('🔍 Middleware - No nurse token, redirecting to nurse login')
+      return NextResponse.redirect(new URL('/nurse/login', request.url))
+    }
+  }
+
+  // Check for medical-staff routes (but not register)
+  if (pathname.startsWith('/medical-staff') && 
+      !pathname.startsWith('/medical-staff/register')) {
+    const userToken = request.cookies.get('access_token')?.value
+    console.log('🔍 Middleware - Checking medical-staff token for path:', pathname, 'Token exists:', !!userToken)
+    if (!userToken) {
+      console.log('🔍 Middleware - No medical-staff token, redirecting to doctor login')
+      return NextResponse.redirect(new URL('/doctor/login', request.url))
+    }
+  }
+
+  // Check for EMR routes (for doctors and medical staff)
+  if (pathname.startsWith('/emr')) {
+    const userToken = request.cookies.get('access_token')?.value
+    console.log('🔍 Middleware - Checking EMR token for path:', pathname, 'Token exists:', !!userToken)
+    if (!userToken) {
+      console.log('🔍 Middleware - No EMR token, redirecting to doctor login')
+      return NextResponse.redirect(new URL('/doctor/login', request.url))
+    }
+    
+    // Additional validation: check if token is valid JWT format
+    if (userToken && !userToken.startsWith('eyJ')) {
+      console.log('🔍 Middleware - Invalid token format, redirecting to doctor login')
+      return NextResponse.redirect(new URL('/doctor/login', request.url))
+    }
+  }
+
+  // Check for general user routes (patients)
+  if (pathname.startsWith('/accounts')) {
+    const userToken = request.cookies.get('access_token')?.value
+    console.log('🔍 Middleware - Checking patient token for path:', pathname, 'Token exists:', !!userToken)
+    if (!userToken) {
+      console.log('🔍 Middleware - No patient token, redirecting to login')
       return NextResponse.redirect(new URL('/login', request.url))
     }
   }

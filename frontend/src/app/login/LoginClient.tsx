@@ -166,67 +166,9 @@ function LoginClientContent() {
           }));
         }
         
-        // Redirect based on user role and profile completion
-        const userRole = result.data.user.role;
-        const requiresProfileSetup = result.data.requiresProfileSetup;
-        const redirectTo = result.data.redirectTo;
-        const profileCompleted = result.data.user.profileCompleted;
-        
-        console.log('🔍 User role:', userRole);
-        console.log('🔍 Requires profile setup:', requiresProfileSetup);
-        console.log('🔍 Redirect to:', redirectTo);
-        console.log('🔍 Profile completed:', profileCompleted);
-        
-        // Always redirect to dashboard first, then user can go to setup-profile if needed
-        // This prevents the redirect loop issue
-        console.log('🔍 Redirecting to dashboard based on role:', userRole);
-        let redirectPath = '/accounts/patient/dashboard'; // Default
-        
-        switch (userRole) {
-          case 'patient':
-            redirectPath = '/accounts/patient/dashboard';
-            break;
-          case 'doctor':
-          case 'nurse':
-          case 'staff':
-            redirectPath = '/emr/dashboard'; // Medical staff use EMR system
-            break;
-          case 'admin':
-            redirectPath = '/admin/dashboard';
-            break;
-          default:
-            redirectPath = '/accounts/patient/dashboard';
-            break;
-        }
-        
-        console.log('🔍 Final redirect path:', redirectPath);
-        window.location.href = redirectPath;
-        
-        // TODO: Alternative flow - if you want to force profile setup first, uncomment below:
-        // if (profileCompleted === false && requiresProfileSetup && redirectTo) {
-        //   // Redirect to profile setup if required
-        //   console.log('🔍 Redirecting to profile setup:', redirectTo);
-        //   router.push(redirectTo);
-        // } else {
-        //   // Redirect based on role
-        //   console.log('🔍 Redirecting to dashboard based on role:', userRole);
-        //   switch (userRole) {
-        //     case 'patient':
-        //       router.push('/accounts/patient/dashboard');
-        //       break;
-        //     case 'doctor':
-        //     case 'nurse':
-        //     case 'staff':
-        //       router.push('/emr/dashboard'); // Medical staff use EMR system
-        //       break;
-        //     case 'admin':
-        //       router.push('/admin/dashboard');
-        //       break;
-        //     default:
-        //       router.push('/accounts/patient/dashboard');
-        //       break;
-        //   }
-        // }
+        // Redirect to patient dashboard only (for patient login)
+        console.log('🔍 Redirecting to patient dashboard');
+        window.location.href = '/accounts/patient/dashboard';
         
       } else {
         // Login failed - Enhanced error handling
@@ -379,6 +321,17 @@ function LoginClientContent() {
       <div className="max-w-md w-full">
         {/* Header Section */}
         <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <Link 
+              href="/" 
+              className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              กลับไปหน้าแรก
+            </Link>
+          </div>
           <div className="flex justify-center mb-6">
             <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center shadow-xl">
               <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -400,12 +353,28 @@ function LoginClientContent() {
             <h2 className="text-2xl font-semibold text-gray-900 mb-2">
               เข้าสู่ระบบ
             </h2>
-            <p className="text-gray-600">
-              ยังไม่มีบัญชี?{' '}
-              <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-                สมัครสมาชิก
-              </Link>
-            </p>
+            <div className="space-y-3">
+              <p className="text-gray-600">
+                ยังไม่มีบัญชี?{' '}
+                <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
+                  สมัครสมาชิก
+                </Link>
+              </p>
+              <div className="text-sm text-gray-500">
+                หรือเข้าสู่ระบบสำหรับ{' '}
+                <Link href="/doctor/login" className="font-medium text-emerald-600 hover:text-emerald-500 transition-colors">
+                  บุคลากรทางการแพทย์
+                </Link>
+                {' '}|{' '}
+                <Link href="/external-requesters/login" className="font-medium text-amber-600 hover:text-amber-500 transition-colors">
+                  องค์กรภายนอก
+                </Link>
+                {' '}|{' '}
+                <Link href="/admin/login" className="font-medium text-purple-600 hover:text-purple-500 transition-colors">
+                  ผู้ดูแลระบบ
+                </Link>
+              </div>
+            </div>
           </div>
 
           {/* Success Message */}

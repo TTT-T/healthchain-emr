@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,7 +23,8 @@ import {
   Hospital,
   Users,
   Scale,
-  Building
+  Building,
+  ArrowLeft
 } from 'lucide-react'
 
 interface ExternalRequesterRegistration {
@@ -365,6 +367,15 @@ export default function ExternalRequesterRegistration() {
       <div className="max-w-4xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8 lg:mb-12">
+          <div className="flex justify-center mb-4">
+            <Link 
+              href="/" 
+              className="inline-flex items-center gap-2 text-gray-600 hover:text-amber-600 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              กลับไปหน้าแรก
+            </Link>
+          </div>
           <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-2 sm:mb-3 lg:mb-4">
             ลงทะเบียนผู้ขอเข้าถึงข้อมูลจากภายนอก
           </h1>

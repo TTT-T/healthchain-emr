@@ -1,23 +1,87 @@
 import { apiClient } from '@/lib/api';
 import { logger } from '@/lib/logger';
-import { 
-  MedicalDocument, 
-  CreateDocumentRequest, 
-  APIResponse 
-} from '@/types/api';
+import { APIResponse } from '@/types/api';
+
+export interface CreateDocumentRequest {
+  patientId: string;
+  visitId?: string;
+  documentType: string;
+  documentTitle: string;
+  content: string;
+  template?: string;
+  variables?: Record<string, any>;
+  attachments?: Array<{
+    fileName: string;
+    filePath: string;
+    fileType: string;
+    fileSize: number;
+  }>;
+  status: 'draft' | 'signed' | 'issued' | 'cancelled';
+  issuedBy: string;
+  issuedDate?: string;
+  validUntil?: string;
+  notes?: string;
+  recipientInfo?: {
+    name?: string;
+    organization?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+  };
+}
+
+export interface UpdateDocumentRequest {
+  documentTitle?: string;
+  content?: string;
+  template?: string;
+  variables?: Record<string, any>;
+  attachments?: any[];
+  status?: string;
+  issuedBy?: string;
+  issuedDate?: string;
+  validUntil?: string;
+  notes?: string;
+  recipientInfo?: any;
+}
+
+export interface DocumentRecord {
+  id: string;
+  patientId: string;
+  visitId?: string;
+  recordType: string;
+  documentType: string;
+  documentTitle: string;
+  content: string;
+  template?: string;
+  variables: Record<string, any>;
+  attachments: any[];
+  status: string;
+  notes?: string;
+  issuedBy: string;
+  issuedDate: string;
+  validUntil?: string;
+  recipientInfo?: any;
+  createdAt: string;
+  updatedAt: string;
+  patient?: {
+    thaiName: string;
+    nationalId: string;
+    hospitalNumber: string;
+  };
+}
 
 /**
  * Document Service
- * จัดการเอกสารแพทย์
+ * จัดการข้อมูลเอกสารทางการแพทย์
  */
 export class DocumentService {
   /**
-   * สร้างเอกสารแพทย์
+   * สร้างเอกสาร
    */
-  static async createDocument(data: CreateDocumentRequest): Promise<APIResponse<MedicalDocument>> {
+  static async createDocument(data: CreateDocumentRequest): Promise<APIResponse<DocumentRecord>> {
     try {
-      const response = await apiClient.createDocument(data);
-      return response;
+      const response = await apiClient.post('/medical/documents', data);
+      return response as APIResponse<DocumentRecord>;
     } catch (error) {
       logger.error('Error creating document:', error);
       throw error;
@@ -27,36 +91,39 @@ export class DocumentService {
   /**
    * ดึงข้อมูลเอกสารโดย ID
    */
-  static async getDocument(id: string): Promise<APIResponse<MedicalDocument>> {
+  static async getDocumentById(id: string): Promise<APIResponse<DocumentRecord>> {
     try {
-      const response = await apiClient.getDocument(id);
-      return response;
+      const response = await apiClient.get(`/medical/documents/${id}`);
+      return response as APIResponse<DocumentRecord>;
     } catch (error) {
-      logger.error('Error getting document:', error);
+      logger.error('Error retrieving document:', error);
       throw error;
     }
   }
 
   /**
-   * ดึงเอกสารของผู้ป่วย
+   * ดึงข้อมูลเอกสารของผู้ป่วย
    */
-  static async getPatientDocuments(patientId: string): Promise<APIResponse<MedicalDocument[]>> {
+  static async getDocumentsByPatient(patientId: string, documentType?: string): Promise<APIResponse<DocumentRecord[]>> {
     try {
-      const response = await apiClient.getPatientDocuments(patientId);
-      return response;
+      const url = documentType 
+        ? `/medical/patients/${patientId}/documents?documentType=${documentType}`
+        : `/medical/patients/${patientId}/documents`;
+      const response = await apiClient.get(url);
+      return response as APIResponse<DocumentRecord[]>;
     } catch (error) {
-      logger.error('Error getting patient documents:', error);
+      logger.error('Error retrieving patient documents:', error);
       throw error;
     }
   }
 
   /**
-   * อัปเดตเอกสาร
+   * อัปเดตข้อมูลเอกสาร
    */
-  static async updateDocument(id: string, data: Partial<MedicalDocument>): Promise<APIResponse<MedicalDocument>> {
+  static async updateDocument(id: string, data: UpdateDocumentRequest): Promise<APIResponse<DocumentRecord>> {
     try {
-      const response = await apiClient.updateDocument(id, data);
-      return response;
+      const response = await apiClient.put(`/medical/documents/${id}`, data);
+      return response as APIResponse<DocumentRecord>;
     } catch (error) {
       logger.error('Error updating document:', error);
       throw error;
@@ -66,10 +133,10 @@ export class DocumentService {
   /**
    * ลบเอกสาร
    */
-  static async deleteDocument(id: string): Promise<APIResponse<void>> {
+  static async deleteDocument(id: string): Promise<APIResponse<{ id: string }>> {
     try {
-      const response = await apiClient.deleteDocument(id);
-      return response;
+      const response = await apiClient.delete(`/medical/documents/${id}`);
+      return response as APIResponse<{ id: string }>;
     } catch (error) {
       logger.error('Error deleting document:', error);
       throw error;
@@ -77,116 +144,268 @@ export class DocumentService {
   }
 
   /**
-   * ดาวน์โหลดเอกสาร
+   * แปลงข้อมูลจาก UI form เป็น API format
    */
-  static async downloadDocument(id: string): Promise<Blob> {
-    try {
-      const response = await apiClient.downloadDocument(id);
-      return response;
-    } catch (error) {
-      logger.error('Error downloading document:', error);
-      throw error;
+  static formatDocumentDataForAPI(documentData: any, patientId: string, issuedBy: string): CreateDocumentRequest {
+    return {
+      patientId,
+      visitId: documentData.visitId,
+      documentType: documentData.documentType,
+      documentTitle: documentData.documentTitle,
+      content: documentData.content,
+      template: documentData.template,
+      variables: documentData.variables || {},
+      attachments: documentData.attachments || [],
+      status: documentData.status || 'draft',
+      issuedBy,
+      issuedDate: documentData.issuedDate || new Date().toISOString(),
+      validUntil: documentData.validUntil,
+      notes: documentData.notes,
+      recipientInfo: documentData.recipientInfo
+    };
+  }
+
+  /**
+   * แปลงข้อมูลจาก API เป็น UI format
+   */
+  static formatDocumentDataFromAPI(record: DocumentRecord): any {
+    return {
+      id: record.id,
+      patientId: record.patientId,
+      visitId: record.visitId,
+      documentType: record.documentType,
+      documentTitle: record.documentTitle,
+      content: record.content,
+      template: record.template,
+      variables: record.variables || {},
+      attachments: record.attachments || [],
+      status: record.status,
+      notes: record.notes,
+      issuedBy: record.issuedBy,
+      issuedDate: record.issuedDate,
+      validUntil: record.validUntil,
+      recipientInfo: record.recipientInfo,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+      patient: record.patient
+    };
+  }
+
+  /**
+   * สร้างข้อมูลเริ่มต้นสำหรับฟอร์ม
+   */
+  static createEmptyDocumentData(): any {
+    return {
+      documentType: '',
+      documentTitle: '',
+      content: '',
+      template: '',
+      variables: {},
+      attachments: [],
+      status: 'draft',
+      notes: '',
+      issuedDate: new Date().toISOString().split('T')[0],
+      validUntil: '',
+      recipientInfo: {
+        name: '',
+        organization: '',
+        address: '',
+        phone: '',
+        email: ''
+      }
+    };
+  }
+
+  /**
+   * ตรวจสอบความถูกต้องของข้อมูลเอกสาร
+   */
+  static validateDocumentData(data: any): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (!data.documentType?.trim()) {
+      errors.push('กรุณาเลือกประเภทเอกสาร');
+    }
+    if (!data.documentTitle?.trim()) {
+      errors.push('กรุณากรอกชื่อเอกสาร');
+    }
+    if (!data.content?.trim()) {
+      errors.push('กรุณากรอกเนื้อหาเอกสาร');
+    }
+    if (!data.issuedBy?.trim()) {
+      errors.push('กรุณากรอกชื่อผู้ออกเอกสาร');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+
+  /**
+   * กำหนดสีตามสถานะเอกสาร
+   */
+  static getStatusColor(status: string): string {
+    switch (status) {
+      case 'draft':
+        return 'text-gray-600 bg-gray-100';
+      case 'signed':
+        return 'text-blue-600 bg-blue-100';
+      case 'issued':
+        return 'text-green-600 bg-green-100';
+      case 'cancelled':
+        return 'text-red-600 bg-red-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
     }
   }
 
   /**
-   * อัปโหลดเอกสาร
+   * กำหนดข้อความสถานะเป็นภาษาไทย
    */
-  static async uploadDocument(file: File, metadata: unknown): Promise<APIResponse<MedicalDocument>> {
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('metadata', JSON.stringify(metadata));
-      
-      const response = await apiClient.uploadDocument(formData);
-      return response;
-    } catch (error) {
-      logger.error('Error uploading document:', error);
-      throw error;
+  static getStatusLabel(status: string): string {
+    switch (status) {
+      case 'draft':
+        return 'ร่าง';
+      case 'signed':
+        return 'ลงนามแล้ว';
+      case 'issued':
+        return 'ออกแล้ว';
+      case 'cancelled':
+        return 'ยกเลิก';
+      default:
+        return 'ไม่ระบุ';
     }
   }
 
   /**
-   * ประเภทเอกสาร
+   * กำหนดสีตามประเภทเอกสาร
    */
-  static getDocumentCategories(): { value: string; label: string }[] {
-    return [
-      { value: 'lab-results', label: 'ผลตรวจทางห้องปฏิบัติการ' },
-      { value: 'prescriptions', label: 'ใบสั่งยา' },
-      { value: 'certificates', label: 'ใบรับรองแพทย์' },
-      { value: 'imaging', label: 'ภาพถ่ายทางการแพทย์' },
-      { value: 'reports', label: 'รายงานแพทย์' },
-      { value: 'consent', label: 'ใบยินยอม' },
-      { value: 'discharge', label: 'ใบสรุปการรักษา' },
-      { value: 'insurance', label: 'เอกสารประกัน' },
-      { value: 'other', label: 'อื่นๆ' }
-    ];
+  static getDocumentTypeColor(documentType: string): string {
+    switch (documentType) {
+      case 'medical_certificate':
+        return 'text-blue-600 bg-blue-100';
+      case 'referral_letter':
+        return 'text-green-600 bg-green-100';
+      case 'sick_leave':
+        return 'text-orange-600 bg-orange-100';
+      case 'prescription':
+        return 'text-purple-600 bg-purple-100';
+      case 'lab_report':
+        return 'text-red-600 bg-red-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
+    }
   }
 
   /**
-   * สถานะเอกสาร
+   * กำหนดข้อความประเภทเอกสารเป็นภาษาไทย
    */
-  static getDocumentStatuses(): { value: string; label: string }[] {
-    return [
-      { value: 'draft', label: 'ร่าง' },
-      { value: 'pending', label: 'รอดำเนินการ' },
-      { value: 'completed', label: 'เสร็จสิ้น' },
-      { value: 'cancelled', label: 'ยกเลิก' },
-      { value: 'expired', label: 'หมดอายุ' }
-    ];
+  static getDocumentTypeLabel(documentType: string): string {
+    switch (documentType) {
+      case 'medical_certificate':
+        return 'ใบรับรองแพทย์';
+      case 'referral_letter':
+        return 'ใบส่งตัว';
+      case 'sick_leave':
+        return 'ใบรับรองการป่วย';
+      case 'prescription':
+        return 'ใบสั่งยา';
+      case 'lab_report':
+        return 'รายงานผลแลบ';
+      case 'discharge_summary':
+        return 'สรุปการจำหน่าย';
+      case 'consultation_report':
+        return 'รายงานการปรึกษา';
+      default:
+        return 'เอกสารอื่นๆ';
+    }
   }
 
   /**
-   * รองรับไฟล์ประเภทใด
+   * สร้างเนื้อหาเอกสารจากเทมเพลต
    */
-  static getSupportedFileTypes(): { value: string; label: string; extensions: string[] }[] {
-    return [
-      { value: 'pdf', label: 'PDF', extensions: ['.pdf'] },
-      { value: 'image', label: 'รูปภาพ', extensions: ['.jpg', '.jpeg', '.png', '.gif', '.bmp'] },
-      { value: 'document', label: 'เอกสาร', extensions: ['.doc', '.docx', '.txt', '.rtf'] },
-      { value: 'spreadsheet', label: 'ตารางคำนวณ', extensions: ['.xls', '.xlsx', '.csv'] },
-      { value: 'presentation', label: 'งานนำเสนอ', extensions: ['.ppt', '.pptx'] }
-    ];
-  }
-
-  /**
-   * ตรวจสอบประเภทไฟล์
-   */
-  static validateFileType(file: File): { isValid: boolean; message?: string } {
-    const supportedTypes = this.getSupportedFileTypes();
-    const allExtensions = supportedTypes.flatMap(type => type.extensions);
+  static generateDocumentContent(template: string, variables: Record<string, any>, patientInfo: any): string {
+    let content = template;
     
-    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-    
-    if (!allExtensions.includes(fileExtension)) {
-      return {
-        isValid: false,
-        message: `ไฟล์ประเภท ${fileExtension} ไม่รองรับ`
+    // Replace variables in template
+    Object.entries(variables).forEach(([key, value]) => {
+      const placeholder = `{{${key}}}`;
+      content = content.replace(new RegExp(placeholder, 'g'), value || '');
+    });
+
+    // Replace patient info
+    if (patientInfo) {
+      content = content.replace(/\{\{patientName\}\}/g, patientInfo.thaiName || `${patientInfo.firstName} ${patientInfo.lastName}`);
+      content = content.replace(/\{\{patientHn\}\}/g, patientInfo.hn || patientInfo.hospital_number || '');
+      content = content.replace(/\{\{patientNationalId\}\}/g, patientInfo.national_id || '');
+      content = content.replace(/\{\{patientAge\}\}/g, patientInfo.age || '');
+      content = content.replace(/\{\{patientGender\}\}/g, patientInfo.gender || '');
+    }
+
+    // Replace current date
+    const currentDate = new Date().toLocaleDateString('th-TH');
+    content = content.replace(/\{\{currentDate\}\}/g, currentDate);
+
+    return content;
+  }
+
+  /**
+   * ประมวลผลไฟล์ที่อัปโหลด
+   */
+  static processUploadedFile(file: File): Promise<{
+    fileName: string;
+    filePath: string;
+    fileType: string;
+    fileSize: number;
+  }> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve({
+          fileName: file.name,
+          filePath: result, // ในระบบจริงจะต้องอัปโหลดไปยัง server
+          fileType: file.type,
+          fileSize: file.size
+        });
       };
-    }
-
-    // ตรวจสอบขนาดไฟล์ (สูงสุด 10MB)
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (file.size > maxSize) {
-      return {
-        isValid: false,
-        message: 'ขนาดไฟล์ต้องไม่เกิน 10MB'
-      };
-    }
-
-    return { isValid: true };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   }
 
   /**
-   * แปลงขนาดไฟล์เป็นรูปแบบอ่านง่าย
+   * ดาวน์โหลดเอกสารเป็น PDF
    */
-  static formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
-    
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  static downloadDocumentAsPDF(content: string, filename: string): void {
+    // ในระบบจริงจะต้องใช้ library เช่น jsPDF หรือ html2pdf
+    const element = document.createElement('a');
+    const file = new Blob([content], { type: 'text/plain' });
+    element.href = URL.createObjectURL(file);
+    element.download = `${filename}.txt`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  }
+
+  /**
+   * ตรวจสอบวันหมดอายุของเอกสาร
+   */
+  static isDocumentExpired(validUntil: string): boolean {
+    if (!validUntil) return false;
+    const expiryDate = new Date(validUntil);
+    const currentDate = new Date();
+    return expiryDate < currentDate;
+  }
+
+  /**
+   * คำนวณจำนวนวันที่เหลือก่อนหมดอายุ
+   */
+  static getDaysUntilExpiry(validUntil: string): number {
+    if (!validUntil) return -1;
+    const expiryDate = new Date(validUntil);
+    const currentDate = new Date();
+    const diffTime = expiryDate.getTime() - currentDate.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   }
 }

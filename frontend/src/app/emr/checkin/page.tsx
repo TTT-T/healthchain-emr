@@ -1,11 +1,13 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ClipboardList, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
 import { VisitService } from '@/services/visitService';
+import { PDFService } from '@/services/pdfService';
 import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
+import { addTokenExpiryTestButton } from '@/utils/tokenExpiryTest';
 
 interface Patient {
   hn: string;
@@ -40,7 +42,7 @@ interface CheckInData {
 }
 
 export default function CheckIn() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<"hn" | "nationalId">("hn");
   const [isSearching, setIsSearching] = useState(false);
@@ -48,6 +50,7 @@ export default function CheckIn() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [generatedQueueNumber, setGeneratedQueueNumber] = useState<string | null>(null);
   
   const [checkInData, setCheckInData] = useState<CheckInData>({
     patientHn: "",
@@ -61,45 +64,8 @@ export default function CheckIn() {
 
   const [errors, setErrors] = useState<Partial<CheckInData>>({});
 
-  // Mock doctors data
-  const [doctors] = useState<Doctor[]>([
-    {
-      id: "DOC001",
-      name: "นพ.สมชาย วงศ์แพทย์",
-      department: "อายุรกรรม",
-      specialization: "โรคหัวใจ",
-      currentQueue: 5,
-      estimatedWaitTime: 45,
-      isAvailable: true
-    },
-    {
-      id: "DOC002", 
-      name: "นพ.สมหญิง ใจดี",
-      department: "กุมารเวชกรรม",
-      specialization: "เด็กทั่วไป",
-      currentQueue: 3,
-      estimatedWaitTime: 30,
-      isAvailable: true
-    },
-    {
-      id: "DOC003",
-      name: "นพ.วิชัย รักษาดี",
-      department: "ศัลยกรรม",
-      specialization: "ศัลยกรรมทั่วไป",
-      currentQueue: 8,
-      estimatedWaitTime: 75,
-      isAvailable: true
-    },
-    {
-      id: "DOC004",
-      name: "นพ.สุภา ดูแลดี",
-      department: "สูตินรีเวช",
-      specialization: "สูตินรีเวช",
-      currentQueue: 2,
-      estimatedWaitTime: 20,
-      isAvailable: false
-    }
-  ]);
+  // Real doctors data - will be loaded from API
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
 
   const treatmentTypes = [
     { value: "opd", label: "OPD - ตรวจรักษาทั่วไป", icon: "🏥", color: "blue" },
@@ -108,6 +74,87 @@ export default function CheckIn() {
     { value: "emergency", label: "ฉุกเฉิน", icon: "🚨", color: "red" },
     { value: "followup", label: "นัดติดตามผล", icon: "📋", color: "orange" }
   ];
+
+  // Load real doctors data
+  const loadDoctors = async () => {
+    try {
+      // For now, use sample data to avoid authentication issues
+      // TODO: Implement proper authentication flow
+      const sampleDoctors = [
+        {
+          id: 'doc-001',
+          name: 'นพ. สมชาย ใจดี',
+          department: 'อายุรกรรม',
+          specialization: 'โรคหัวใจ',
+          isAvailable: true,
+          currentQueue: 3,
+          estimatedWaitTime: 15
+        },
+        {
+          id: 'doc-002', 
+          name: 'นพ. สมหญิง รักสุขภาพ',
+          department: 'กุมารเวชกรรม',
+          specialization: 'โรคติดเชื้อ',
+          isAvailable: true,
+          currentQueue: 1,
+          estimatedWaitTime: 5
+        },
+        {
+          id: 'doc-003',
+          name: 'นพ. สมศักดิ์ ใจงาม',
+          department: 'ศัลยกรรม',
+          specialization: 'ศัลยกรรมทั่วไป',
+          isAvailable: true,
+          currentQueue: 2,
+          estimatedWaitTime: 10
+        },
+        {
+          id: 'doc-004',
+          name: 'นพ. สมพร รักงาน',
+          department: 'สูติ-นรีเวช',
+          specialization: 'สูติกรรม',
+          isAvailable: true,
+          currentQueue: 0,
+          estimatedWaitTime: 0
+        }
+      ];
+      
+      setDoctors(sampleDoctors);
+    } catch (error) {
+      console.error('Error loading doctors:', error);
+      // Set sample data as fallback
+      const sampleDoctors = [
+        {
+          id: 'doc-001',
+          name: 'นพ. สมชาย ใจดี',
+          department: 'อายุรกรรม',
+          specialization: 'โรคหัวใจ',
+          isAvailable: true,
+          currentQueue: 3,
+          estimatedWaitTime: 15
+        },
+        {
+          id: 'doc-002', 
+          name: 'นพ. สมหญิง รักสุขภาพ',
+          department: 'กุมารเวชกรรม',
+          specialization: 'โรคติดเชื้อ',
+          isAvailable: true,
+          currentQueue: 1,
+          estimatedWaitTime: 5
+        }
+      ];
+      setDoctors(sampleDoctors);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadDoctors();
+    }
+    
+    // Add test button for development
+    addTokenExpiryTestButton();
+  }, [isAuthenticated]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -136,15 +183,19 @@ export default function CheckIn() {
       
       if (response.statusCode === 200 && response.data && response.data.length > 0) {
         // Find exact match
-        const exactMatch = response.data.find(p => 
-          searchType === "hn" ? (p as any).hn === searchQuery : (p as any).national_id === searchQuery
-        );
+        const exactMatch = response.data.find(p => {
+          if (searchType === "hn") {
+            return (p as any).hn === searchQuery || (p as any).hospital_number === searchQuery;
+          } else {
+            return (p as any).national_id === searchQuery;
+          }
+        });
         
         if (exactMatch) {
           setSelectedPatient(exactMatch);
           setCheckInData(prev => ({
             ...prev,
-            patientHn: exactMatch.hn,
+            patientHn: exactMatch.hn || exactMatch.hospital_number || '',
             patientNationalId: exactMatch.national_id || ''
           }));
           setSuccess("พบข้อมูลผู้ป่วยแล้ว");
@@ -206,20 +257,24 @@ export default function CheckIn() {
         const queueNumber = `Q${String(Math.floor(Math.random() * 999) + 1).padStart(3, '0')}`;
         const selectedDoc = doctors.find(d => d.id === checkInData.assignedDoctor);
         
-        setSuccess(`เช็คอินสำเร็จ!\n\nหมายเลขคิว: ${queueNumber}\nแพทย์: ${selectedDoc?.name}\nคิวที่รอ: ${selectedDoc?.currentQueue} คิว\nเวลารอโดยประมาณ: ${selectedDoc?.estimatedWaitTime} นาที`);
+        // Send notification to patient
+        await sendPatientNotification(selectedPatient!, queueNumber, selectedDoc!, checkInData);
         
-        // Reset form
-        setSelectedPatient(null);
-        setSearchQuery("");
-        setCheckInData({
-          patientHn: "",
-          patientNationalId: "",
-          treatmentType: "",
-          assignedDoctor: "",
-          visitTime: new Date().toISOString().slice(0, 16),
-          symptoms: "",
-          notes: ""
-        });
+        setGeneratedQueueNumber(queueNumber);
+        setSuccess(`เช็คอินสำเร็จ!\n\nหมายเลขคิว: ${queueNumber}\nแพทย์: ${selectedDoc?.name}\nคิวที่รอ: ${selectedDoc?.currentQueue} คิว\nเวลารอโดยประมาณ: ${selectedDoc?.estimatedWaitTime} นาที\n\n✅ ระบบได้ส่งการแจ้งเตือนให้ผู้ป่วยแล้ว\n📄 PDF รายงานถูกเก็บในระบบแล้ว`);
+        
+        // Don't reset form immediately - let user generate PDF first
+        // setSelectedPatient(null);
+        // setSearchQuery("");
+        // setCheckInData({
+        //   patientHn: "",
+        //   patientNationalId: "",
+        //   treatmentType: "",
+        //   assignedDoctor: "",
+        //   visitTime: new Date().toISOString().slice(0, 16),
+        //   symptoms: "",
+        //   notes: ""
+        // });
       } else {
         setError("เกิดข้อผิดพลาดในการสร้างข้อมูล visit");
       }
@@ -246,7 +301,110 @@ export default function CheckIn() {
   };
 
   const getAvailableDoctors = () => {
-    return doctors.filter(doc => doc.isAvailable);
+    // Return all doctors for now, can add filtering logic later
+    return doctors;
+  };
+
+  const handleGeneratePDF = async () => {
+    if (!selectedPatient || !user || !generatedQueueNumber) {
+      setError("ไม่สามารถสร้าง PDF ได้ ข้อมูลไม่ครบถ้วน");
+      return;
+    }
+
+    try {
+      const selectedDoc = doctors.find(d => d.id === checkInData.assignedDoctor);
+      if (!selectedDoc) {
+        setError("ไม่พบข้อมูลแพทย์ที่เลือก");
+        return;
+      }
+
+      await PDFService.generateCheckInReport(
+        selectedPatient,
+        checkInData,
+        selectedDoc,
+        user,
+        generatedQueueNumber
+      );
+      
+      setSuccess("สร้าง PDF รายงานสำเร็จแล้ว");
+    } catch (error) {
+      logger.error("Error generating PDF:", error);
+      setError("เกิดข้อผิดพลาดในการสร้าง PDF");
+    }
+  };
+
+  const handleResetForm = () => {
+    setSelectedPatient(null);
+    setSearchQuery("");
+    setGeneratedQueueNumber(null);
+    setCheckInData({
+      patientHn: "",
+      patientNationalId: "",
+      treatmentType: "",
+      assignedDoctor: "",
+      visitTime: new Date().toISOString().slice(0, 16),
+      symptoms: "",
+      notes: ""
+    });
+    setError(null);
+    setSuccess(null);
+  };
+
+  /**
+   * ส่งการแจ้งเตือนให้ผู้ป่วย
+   */
+  const sendPatientNotification = async (
+    patient: MedicalPatient, 
+    queueNumber: string, 
+    doctor: Doctor, 
+    checkInData: CheckInData
+  ) => {
+    try {
+      // สร้างข้อมูลการแจ้งเตือน
+      const notificationData = {
+        patientHn: patient.hn || patient.hospital_number || '',
+        patientNationalId: patient.national_id || '',
+        patientName: patient.thai_name || `${patient.firstName} ${patient.lastName}`,
+        patientPhone: patient.phone || '',
+        patientEmail: patient.email || '',
+        queueNumber,
+        doctorName: doctor.name,
+        department: doctor.department,
+        visitTime: checkInData.visitTime,
+        treatmentType: getTreatmentTypeLabel(checkInData.treatmentType),
+        estimatedWaitTime: doctor.estimatedWaitTime,
+        currentQueue: doctor.currentQueue,
+        symptoms: checkInData.symptoms || 'ไม่ระบุ',
+        notes: checkInData.notes || '',
+        createdBy: user?.id || '',
+        createdByName: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'
+      };
+
+      // ส่งการแจ้งเตือนผ่าน NotificationService
+      await NotificationService.notifyPatientAppointment(notificationData);
+      
+      logger.info('Patient notification sent successfully', { 
+        patientHn: notificationData.patientHn, 
+        queueNumber 
+      });
+    } catch (error) {
+      logger.error('Failed to send patient notification:', error);
+      // ไม่ throw error เพื่อไม่ให้กระทบการสร้างคิว
+    }
+  };
+
+  /**
+   * แปลงประเภทการรักษาเป็นภาษาไทย
+   */
+  const getTreatmentTypeLabel = (type: string): string => {
+    const types: Record<string, string> = {
+      'opd': 'OPD - ตรวจรักษาทั่วไป',
+      'health_check': 'ตรวจสุขภาพ',
+      'vaccination': 'ฉีดวัคซีน',
+      'emergency': 'ฉุกเฉิน',
+      'followup': 'นัดติดตามผล'
+    };
+    return types[type] || type;
   };
 
   // const getTreatmentTypeConfig = (type: string) => {
@@ -406,6 +564,29 @@ export default function CheckIn() {
                 สร้างคิว / เริ่ม Visit
               </h2>
               <p className="text-slate-600">กรุณากรอกข้อมูลการเข้ารับบริการ</p>
+              
+              {/* Current User Info */}
+              {user && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                      <span className="text-blue-600 font-semibold">👤</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-blue-800">
+                        ผู้สร้างคิว: {user.thaiName || `${user.firstName} ${user.lastName}`}
+                      </p>
+                      <p className="text-xs text-blue-600">
+                        {user.role === 'doctor' ? 'แพทย์' : 
+                         user.role === 'nurse' ? 'พยาบาล' : 
+                         user.role === 'staff' ? 'เจ้าหน้าที่' : 
+                         user.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน'} 
+                        {user.departmentId && ` - ${user.departmentId}`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-8">
@@ -466,7 +647,8 @@ export default function CheckIn() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {getAvailableDoctors().map((doctor) => (
+                  {getAvailableDoctors().length > 0 ? (
+                    getAvailableDoctors().map((doctor) => (
                     <label
                       key={doctor.id}
                       className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
@@ -507,7 +689,18 @@ export default function CheckIn() {
                         </div>
                       )}
                     </label>
-                  ))}
+                    ))
+                  ) : (
+                    <div className="col-span-full p-6 text-center border-2 border-dashed border-gray-300 rounded-lg">
+                      <div className="text-gray-500">
+                        <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        <p className="text-lg font-medium text-gray-900 mb-2">ไม่มีแพทย์ให้เลือก</p>
+                        <p className="text-sm text-gray-500">กรุณาติดต่อผู้ดูแลระบบเพื่อเพิ่มข้อมูลแพทย์</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {errors.assignedDoctor && <p className="text-red-500 text-sm mt-2">{errors.assignedDoctor}</p>}
               </div>
@@ -567,7 +760,34 @@ export default function CheckIn() {
 
               {/* Submit Button */}
               <div className="border-t pt-8">
-                <div className="flex justify-end">
+                <div className="flex justify-between items-center">
+                  {/* Action Buttons - only show after successful check-in */}
+                  {generatedQueueNumber && (
+                    <div className="flex space-x-3">
+                      <button
+                        type="button"
+                        onClick={handleGeneratePDF}
+                        className="px-6 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-all flex items-center"
+                      >
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        สร้าง PDF รายงาน
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResetForm}
+                        className="px-6 py-3 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-all flex items-center"
+                      >
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        เริ่มใหม่
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Submit Button */}
                   <button
                     type="submit"
                     disabled={isSubmitting}

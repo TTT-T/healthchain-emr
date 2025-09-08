@@ -1,284 +1,329 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
-import AppLayout from "@/components/AppLayout";
-import { useAuth } from "@/contexts/AuthContext";
-import { apiClient } from "@/lib/api";
-import { AlertCircle, FileText, User, Download, Upload, RefreshCw, Eye } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { PatientDocumentService, PatientDocument, DocumentSearchQuery } from '@/services/patientDocumentService';
+import { FileText, Download, Eye, Search, Filter, Calendar, User, Stethoscope, Tag, Clock, File } from 'lucide-react';
 import { logger } from '@/lib/logger';
 
-interface MedicalDocument {
-  id: string;
-  document_name: string;
-  document_type: string;
-  file_path: string;
-  file_size: number;
-  mime_type: string;
-  description?: string;
-  tags: string[];
-  is_confidential: boolean;
-  upload_date: string;
-  created_at: string;
-  updated_at: string;
-  uploaded_by: {
-    name: string;
-  };
-  visit?: {
-    number: string;
-    date: string;
-  } | null;
-}
-
-export default function MedicalDocuments() {
+export default function PatientDocuments() {
   const { user } = useAuth();
-  const [documents, setDocuments] = useState<MedicalDocument[]>([]);
-  const [selectedCategory] = useState("all");
-  const [selectedStatus] = useState("all");
+  const [documents, setDocuments] = useState<PatientDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchTerm] = useState("");
-  const [selectedDocument, setSelectedDocument] = useState<MedicalDocument | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<DocumentSearchQuery>({
+    documentType: '',
+    dateFrom: '',
+    dateTo: '',
+    doctorName: '',
+    department: '',
+    page: 1,
+    limit: 20
+  });
+  const [totalDocuments, setTotalDocuments] = useState(0);
+  const [selectedDocument, setSelectedDocument] = useState<PatientDocument | null>(null);
 
-  const fetchDocuments = useCallback(async () => {
+  useEffect(() => {
+    if (user?.hn || user?.nationalId) {
+      loadDocuments();
+    }
+  }, [user, filters]);
+
+  const loadDocuments = async () => {
     try {
       setIsLoading(true);
-      setError(null);
+      const patientId = user?.hn || user?.nationalId || '';
       
-      if (user?.id) {
-        const response = await apiClient.getPatientDocuments(user.id);
-        if (response.statusCode === 200 && response.data) {
-          // ตรวจสอบว่าข้อมูลเป็น array หรือไม่
-          const documentsData = response.data;
-          if (Array.isArray(documentsData)) {
-            setDocuments(documentsData as unknown as MedicalDocument[]);
-          } else if (documentsData && typeof documentsData === 'object' && Array.isArray((documentsData as any).documents)) {
-            // กรณีที่ข้อมูลอยู่ใน documents property (ตามโครงสร้าง backend)
-            setDocuments((documentsData as any).documents as unknown as MedicalDocument[]);
-          } else {
-            // ถ้าไม่มีข้อมูลหรือไม่ใช่ array ให้ตั้งเป็น array ว่าง
-            setDocuments([]);
-            logger.warn('Documents data is not an array:', documentsData);
-          }
-        } else {
-          setError(response.error?.message || "ไม่สามารถดึงข้อมูลเอกสารได้");
-        }
-      }
-    } catch (err) {
-      logger.error("Error fetching documents:", err);
-      setError("เกิดข้อผิดพลาดในการดึงข้อมูลเอกสาร");
+      const response = await PatientDocumentService.getPatientDocuments(patientId, filters);
+      setDocuments(response.documents);
+      setTotalDocuments(response.total);
+    } catch (error) {
+      logger.error('Error loading patient documents:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  };
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchDocuments();
-    }
-  }, [user, fetchDocuments]);
+  const handleSearch = () => {
+    setFilters(prev => ({ ...prev, page: 1 }));
+    loadDocuments();
+  };
 
-  const filteredDocuments = documents.filter(document => {
-    const matchesSearch = document.document_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (document.description && document.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         document.uploaded_by.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         document.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCategory = selectedCategory === 'all' || document.document_type === selectedCategory;
-    // Note: status matching removed as backend doesn't have status field for documents
-    
-    return matchesSearch && matchesCategory;
-  });
+  const handleFilterChange = (key: keyof DocumentSearchQuery, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
+  };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'text-green-600 bg-green-50';
-      case 'pending': return 'text-yellow-600 bg-yellow-50';
-      case 'draft': return 'text-gray-800 bg-gray-50';
-      case 'cancelled': return 'text-red-600 bg-red-50';
-      case 'expired': return 'text-orange-600 bg-orange-50';
-      default: return 'text-gray-800 bg-gray-50';
+  const handleDownload = async (document: PatientDocument) => {
+    try {
+      const blob = await PatientDocumentService.downloadDocument(document.id);
+      
+      // สร้าง download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = document.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      // รีเฟรชข้อมูล
+      loadDocuments();
+    } catch (error) {
+      logger.error('Error downloading document:', error);
+      alert('ไม่สามารถดาวน์โหลดเอกสารได้');
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'completed': return 'เสร็จสิ้น';
-      case 'pending': return 'รอดำเนินการ';
-      case 'draft': return 'ร่าง';
-      case 'cancelled': return 'ยกเลิก';
-      case 'expired': return 'หมดอายุ';
-      default: return status;
+  const handleViewOnline = async (document: PatientDocument) => {
+    try {
+      const fileUrl = await PatientDocumentService.viewDocumentOnline(document.id);
+      window.open(fileUrl, '_blank');
+      
+      // รีเฟรชข้อมูล
+      loadDocuments();
+    } catch (error) {
+      logger.error('Error viewing document online:', error);
+      alert('ไม่สามารถเปิดเอกสารได้');
     }
   };
 
-  const getCategoryText = (category: string) => {
-    switch (category) {
-      case 'lab_result': return 'ผลตรวจทางห้องปฏิบัติการ';
-      case 'prescription': return 'ใบสั่งยา';
-      case 'medical_certificate': return 'ใบรับรองแพทย์';
-      case 'imaging': return 'ภาพถ่ายทางการแพทย์';
-      case 'medical_report': return 'รายงานการรักษา';
-      case 'consent_form': return 'เอกสารความยินยอม';
-      case 'discharge_summary': return 'ใบสรุปการรักษา';
-      case 'insurance': return 'เอกสารประกันสุขภาพ';
-      case 'referral': return 'ใบส่งตัว';
-      case 'vaccination': return 'ใบรับรองการฉีดวัคซีน';
-      case 'other': return 'อื่นๆ';
-      default: return category;
-    }
+  const getDocumentTypeIcon = (type: string) => {
+    const icons: { [key: string]: any } = {
+      'vital_signs': '💓',
+      'history_taking': '📋',
+      'doctor_visit': '👨‍⚕️',
+      'lab_result': '🧪',
+      'prescription': '💊',
+      'appointment': '📅',
+      'medical_certificate': '📜',
+      'referral': '📤',
+      'xray': '📷',
+      'blood_test': '🩸'
+    };
+    return icons[type] || '📄';
   };
 
-  const formatFileSize = (bytes: number): string => {
+  const getDocumentTypeLabel = (type: string) => {
+    const labels: { [key: string]: string } = {
+      'vital_signs': 'รายงานสัญญาณชีพ',
+      'history_taking': 'รายงานการซักประวัติ',
+      'doctor_visit': 'รายงานการตรวจโดยแพทย์',
+      'lab_result': 'ผลการตรวจทางห้องปฏิบัติการ',
+      'prescription': 'ใบสั่งยา',
+      'appointment': 'ใบนัดหมาย',
+      'medical_certificate': 'ใบรับรองแพทย์',
+      'referral': 'ใบส่งตัว',
+      'xray': 'ผล X-ray',
+      'blood_test': 'ผลตรวจเลือด'
+    };
+    return labels[type] || 'เอกสารทางการแพทย์';
+  };
+
+  const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
-    
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const handleDocumentClick = (document: MedicalDocument) => {
-    setSelectedDocument(document);
-    setIsModalOpen(true);
-  };
-
-  const handleDownload = (document: MedicalDocument) => {
-    logger.debug('Downloading document:', document.id);
-    alert(`กำลังดาวน์โหลด: ${document.document_name}`);
-  };
-
-  const handleUpload = () => {
-    setIsUploadModalOpen(true);
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString('th-TH', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
-    <AppLayout title="เอกสารแพทย์" userType="patient">
-      <div className="p-4 md:p-6 space-y-6">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <div className="flex justify-between items-center">
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">เอกสารแพทย์</h1>
-              <p className="text-gray-600 mt-1">จัดเก็บและจัดการเอกสารทางการแพทย์ของคุณ</p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleUpload}
-                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <Upload className="h-4 w-4" />
-                อัปโหลดเอกสาร
-              </button>
-              <button
-                onClick={fetchDocuments}
-                disabled={isLoading}
-                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                รีเฟรช
-              </button>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <FileText className="h-6 w-6 text-blue-600" />
+                เอกสารทางการแพทย์ของฉัน
+              </h1>
+              <p className="text-gray-600 mt-1">
+                เอกสารทั้งหมดที่เกี่ยวข้องกับการรักษาของคุณ ({totalDocuments} เอกสาร)
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Error State */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 shadow-sm">
-            <AlertCircle className="h-5 w-5 text-red-500" />
-            <span className="text-red-700">{error}</span>
-          </div>
-        )}
-
-        {/* Loading State */}
-        {isLoading && (
-          <div className="bg-white rounded-xl shadow-sm p-8 border border-slate-200">
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600">กำลังโหลดข้อมูล...</span>
+        {/* Search and Filters */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">ค้นหา</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="ค้นหาจากชื่อเอกสาร, แพทย์, แผนก"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">ประเภทเอกสาร</label>
+              <select
+                value={filters.documentType}
+                onChange={(e) => handleFilterChange('documentType', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">ทั้งหมด</option>
+                <option value="vital_signs">รายงานสัญญาณชีพ</option>
+                <option value="history_taking">รายงานการซักประวัติ</option>
+                <option value="doctor_visit">รายงานการตรวจโดยแพทย์</option>
+                <option value="lab_result">ผลการตรวจทางห้องปฏิบัติการ</option>
+                <option value="prescription">ใบสั่งยา</option>
+                <option value="appointment">ใบนัดหมาย</option>
+                <option value="medical_certificate">ใบรับรองแพทย์</option>
+                <option value="referral">ใบส่งตัว</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">วันที่เริ่มต้น</label>
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">วันที่สิ้นสุด</label>
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
             </div>
           </div>
-        )}
+          
+          <div className="flex justify-end">
+            <button
+              onClick={handleSearch}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Search className="h-4 w-4" />
+              ค้นหา
+            </button>
+          </div>
+        </div>
 
         {/* Documents Grid */}
-        {!isLoading && !error && (
-          <div className="grid gap-4">
-            {filteredDocuments.map((document) => (
-              <div
-                key={document.id}
-                className="bg-white rounded-xl shadow-sm p-6 border border-slate-200 hover:shadow-md transition-all"
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className="bg-blue-100 p-3 rounded-lg">
-                      <FileText className="h-6 w-6 text-blue-600" />
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : documents.length === 0 ? (
+          <div className="text-center py-12">
+            <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">ไม่มีเอกสาร</h3>
+            <p className="text-gray-500">ยังไม่มีเอกสารทางการแพทย์ในระบบ</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {documents.map((document) => (
+              <div key={document.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="text-2xl">{getDocumentTypeIcon(document.documentType)}</div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 text-sm">
+                          {getDocumentTypeLabel(document.documentType)}
+                        </h3>
+                        <p className="text-xs text-gray-500">
+                          {document.fileName}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-semibold text-gray-900">{document.document_name}</h3>
-                        {document.is_confidential && (
-                          <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
-                            ความลับ
-                          </span>
-                        )}
-                        <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
-                          {document.mime_type.split('/')[1]?.toUpperCase() || 'FILE'}
-                        </span>
-                      </div>
-                      
-                      {document.description && (
-                        <p className="text-gray-800 mb-3">{document.description}</p>
-                      )}
-                      
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-700">หมวดหมู่:</span>
-                          <span className="ml-1 font-medium">{getCategoryText(document.document_type)}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-700">วันที่อัปโหลด:</span>
-                          <span className="ml-1 font-medium">{new Date(document.upload_date).toLocaleDateString('th-TH')}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-700">ขนาดไฟล์:</span>
-                          <span className="ml-1 font-medium">{formatFileSize(document.file_size)}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-2 flex items-center gap-2 text-sm text-gray-700">
-                        <User className="h-4 w-4" />
-                        <span>อัปโหลดโดย: {document.uploaded_by.name}</span>
-                      </div>
-                      
-                      {document.tags.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {document.tags.map((tag, index) => (
-                            <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      
-                      {document.visit && (
-                        <div className="mt-2 text-sm text-gray-700">
-                          <span>เข้ารับการรักษาครั้งที่: {document.visit.number} ({new Date(document.visit.date).toLocaleDateString('th-TH')})</span>
-                        </div>
-                      )}
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleViewOnline(document)}
+                        className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                        title="ดูออนไลน์"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDownload(document)}
+                        className="p-1 text-gray-400 hover:text-green-600 transition-colors"
+                        title="ดาวน์โหลด"
+                      >
+                        <Download className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
-                  
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Calendar className="h-4 w-4" />
+                      <span>{formatDateTime(document.createdAt)}</span>
+                    </div>
+                    
+                    {document.doctorName && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <User className="h-4 w-4" />
+                        <span>{document.doctorName}</span>
+                      </div>
+                    )}
+                    
+                    {document.department && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Stethoscope className="h-4 w-4" />
+                        <span>{document.department}</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <File className="h-4 w-4" />
+                      <span>{formatFileSize(document.fileSize)}</span>
+                    </div>
+
+                    {document.downloadCount > 0 && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Download className="h-4 w-4" />
+                        <span>ดาวน์โหลดแล้ว {document.downloadCount} ครั้ง</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {document.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-4">
+                      {document.tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800"
+                        >
+                          <Tag className="h-3 w-3 mr-1" />
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="flex gap-2">
                     <button
-                      onClick={() => handleDocumentClick(document)}
-                      className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      onClick={() => handleViewOnline(document)}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                     >
                       <Eye className="h-4 w-4" />
-                      ดูรายละเอียด
+                      ดูออนไลน์
                     </button>
                     <button
                       onClick={() => handleDownload(document)}
-                      className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
                     >
                       <Download className="h-4 w-4" />
                       ดาวน์โหลด
@@ -290,149 +335,31 @@ export default function MedicalDocuments() {
           </div>
         )}
 
-        {/* No Results */}
-        {!isLoading && !error && filteredDocuments.length === 0 && (
-          <div className="bg-white rounded-xl shadow-sm p-8 border border-slate-200 text-center">
-            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">ไม่พบเอกสาร</h3>
-            <p className="text-gray-600 mb-4">ยังไม่มีเอกสารในระบบ</p>
-            <button
-              onClick={handleUpload}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 mx-auto transition-colors"
-            >
-              <Upload className="h-4 w-4" />
-              อัปโหลดเอกสารแรก
-            </button>
-          </div>
-        )}
-
-        {/* Modal for Document Details */}
-        {isModalOpen && selectedDocument && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <h2 className="text-2xl font-bold text-gray-900">{selectedDocument.document_name}</h2>
-                  <button
-                    onClick={() => setIsModalOpen(false)}
-                    className="text-gray-700 hover:text-gray-900"
-                  >
-                    ✕
-                  </button>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">ข้อมูลเอกสาร</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-700">หมวดหมู่:</span>
-                        <span className="ml-1">{getCategoryText(selectedDocument.document_type)}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-700">รูปแบบ:</span>
-                        <span className="ml-1">{selectedDocument.mime_type}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-700">ขนาดไฟล์:</span>
-                        <span className="ml-1">{formatFileSize(selectedDocument.file_size)}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-700">วันที่อัปโหลด:</span>
-                        <span className="ml-1">{new Date(selectedDocument.upload_date).toLocaleDateString('th-TH')}</span>
-                      </div>
-                      {selectedDocument.is_confidential && (
-                        <div>
-                          <span className="text-gray-700">สถานะ:</span>
-                          <span className="ml-1 text-red-600 font-medium">เอกสารความลับ</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">ผู้อัปโหลด</h3>
-                    <div className="flex items-center gap-2 text-sm">
-                      <User className="h-4 w-4 text-gray-700" />
-                      <span>{selectedDocument.uploaded_by.name}</span>
-                    </div>
-                  </div>
-
-                  {selectedDocument.tags.length > 0 && (
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">แท็ก</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedDocument.tags.map((tag, index) => (
-                          <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedDocument.visit && (
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">การเข้ารับการรักษา</h3>
-                      <div className="text-sm">
-                        <span>ครั้งที่: {selectedDocument.visit.number}</span>
-                        <span className="ml-4">วันที่: {new Date(selectedDocument.visit.date).toLocaleDateString('th-TH')}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedDocument.description && (
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">คำอธิบาย</h3>
-                      <p className="text-sm text-gray-700">{selectedDocument.description}</p>
-                    </div>
-                  )}
-
-                  <div className="flex gap-3 pt-4">
-                    <button
-                      onClick={() => handleDownload(selectedDocument)}
-                      className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                    >
-                      <Download className="h-4 w-4" />
-                      ดาวน์โหลด
-                    </button>
-                    <button
-                      onClick={() => setIsModalOpen(false)}
-                      className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
-                    >
-                      ปิด
-                    </button>
-                  </div>
-                </div>
-              </div>
+        {/* Pagination */}
+        {totalDocuments > (filters.limit || 20) && (
+          <div className="mt-6 flex justify-center">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setFilters(prev => ({ ...prev, page: (prev.page || 1) - 1 }))}
+                disabled={!filters.page || filters.page <= 1}
+                className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                ก่อนหน้า
+              </button>
+              <span className="px-3 py-2 text-sm text-gray-600">
+                หน้า {filters.page || 1} จาก {Math.ceil(totalDocuments / (filters.limit || 20))}
+              </span>
+              <button
+                onClick={() => setFilters(prev => ({ ...prev, page: (prev.page || 1) + 1 }))}
+                disabled={!filters.page || filters.page >= Math.ceil(totalDocuments / (filters.limit || 20))}
+                className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                ถัดไป
+              </button>
             </div>
           </div>
         )}
-
-        {/* Upload Modal */}
-        {isUploadModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-md w-full">
-              <div className="p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">อัปโหลดเอกสาร</h2>
-                <div className="text-center py-8">
-                  <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-800 mb-4">คุณสมบัติการอัปโหลดเอกสารยังไม่พร้อมใช้งาน</p>
-                  <p className="text-sm text-gray-700">กรุณาติดต่อแพทย์หรือเจ้าหน้าที่เพื่อช่วยเหลือ</p>
-                </div>
-                <div className="flex justify-end gap-3">
-                  <button
-                    onClick={() => setIsUploadModalOpen(false)}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-                  >
-                    ปิด
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        </div>
-      </AppLayout>
+      </div>
+    </div>
   );
 }

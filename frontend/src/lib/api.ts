@@ -1,7 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import Cookies from 'js-cookie';
 import { logger } from '@/lib/logger';
-// import { showError, showWarning } from '@/lib/alerts';
 
 // Types
 import { 
@@ -181,6 +180,62 @@ class APIClient {
     if (error.response) {
       // Server responded with error status
       const responseData = error.response.data as { message?: string; code?: string; details?: unknown; errors?: unknown };
+      
+      // Handle specific status codes
+      switch (error.response.status) {
+        case 401:
+          // Dispatch custom event for token expiry
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('tokenExpired', {
+              detail: {
+                message: responseData?.message || 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่',
+                statusCode: 401
+              }
+            }));
+          }
+          break;
+        case 403:
+          // Forbidden - insufficient permissions
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('accessDenied', {
+              detail: {
+                message: responseData?.message || 'คุณไม่มีสิทธิ์เข้าถึงข้อมูลนี้',
+                statusCode: 403
+              }
+            }));
+          }
+          break;
+        case 404:
+          // Not found
+          logger.warn('Resource not found', { url: error.config?.url, status: 404 });
+          break;
+        case 429:
+          // Rate limited
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('rateLimited', {
+              detail: {
+                message: 'คำขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่',
+                statusCode: 429
+              }
+            }));
+          }
+          break;
+        case 500:
+        case 502:
+        case 503:
+        case 504:
+          // Server errors
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('serverError', {
+              detail: {
+                message: 'เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง',
+                statusCode: error.response.status
+              }
+            }));
+          }
+          break;
+      }
+      
       return {
         message: responseData?.message || error.message,
         code: responseData?.code || error.code,
@@ -1160,11 +1215,22 @@ class APIClient {
   /**
    * Get patients list
    */
-  async getPatients(params?: { page?: number; limit?: number; search?: string }): Promise<APIResponse<MedicalPatient[]>> {
+  async getPatients(params?: { page?: number; limit?: number; search?: string; hn?: string }): Promise<APIResponse<MedicalPatient[]>> {
     return this.request<MedicalPatient[]>({
       method: 'GET',
       url: '/medical/patients',
       params
+    });
+  }
+
+  /**
+   * Search users by national ID
+   */
+  async searchUsersByNationalId(nationalId: string): Promise<APIResponse<any[]>> {
+    return this.request<any[]>({
+      method: 'GET',
+      url: '/medical/users/search',
+      params: { national_id: nationalId }
     });
   }
 
@@ -1230,7 +1296,7 @@ class APIClient {
   async getPatientNotifications(patientId: string): Promise<APIResponse<unknown[]>> {
     return this.request<unknown[]>({
       method: 'GET',
-      url: `/patients/${patientId}/notifications`
+      url: `/medical/patients/${patientId}/notifications`
     });
   }
 

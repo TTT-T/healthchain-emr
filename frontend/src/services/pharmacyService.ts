@@ -1,274 +1,273 @@
 import { apiClient } from '@/lib/api';
 import { logger } from '@/lib/logger';
-import { 
-  MedicalPrescription, 
-  CreatePrescriptionRequest, 
-  APIResponse 
-} from '@/types/api';
+import { APIResponse } from '@/types/api';
+
+export interface CreatePharmacyRequest {
+  patientId: string;
+  visitId?: string;
+  prescriptionId?: string;
+  medications: Array<{
+    medicationName: string;
+    dosage: string;
+    frequency: string;
+    duration: string;
+    quantity: number;
+    unit: string;
+    instructions?: string;
+    dispensedQuantity?: number;
+    dispensedBy?: string;
+    dispensedTime?: string;
+  }>;
+  totalAmount?: number;
+  paymentMethod?: string;
+  dispensedBy: string;
+  dispensedTime?: string;
+  notes?: string;
+}
+
+export interface UpdatePharmacyRequest {
+  medications?: any[];
+  totalAmount?: number;
+  paymentMethod?: string;
+  dispensedBy?: string;
+  dispensedTime?: string;
+  notes?: string;
+  status?: string;
+}
+
+export interface PharmacyRecord {
+  id: string;
+  patientId: string;
+  visitId?: string;
+  prescriptionId?: string;
+  recordType: string;
+  medications: any[];
+  totalAmount: number;
+  paymentMethod: string;
+  notes?: string;
+  dispensedBy: string;
+  dispensedTime: string;
+  createdAt: string;
+  updatedAt: string;
+  patient?: {
+    thaiName: string;
+    nationalId: string;
+    hospitalNumber: string;
+  };
+}
 
 /**
  * Pharmacy Service
- * จัดการข้อมูลร้านยาและใบสั่งยา
+ * จัดการข้อมูลการจ่ายยา
  */
 export class PharmacyService {
   /**
-   * สร้างใบสั่งยา
+   * สร้างบันทึกการจ่ายยา
    */
-  static async createPrescription(data: CreatePrescriptionRequest): Promise<APIResponse<MedicalPrescription>> {
+  static async createPharmacyDispensing(data: CreatePharmacyRequest): Promise<APIResponse<PharmacyRecord>> {
     try {
-      const response = await apiClient.createPrescription(data);
-      return response;
+      const response = await apiClient.post('/medical/pharmacy', data);
+      return response as APIResponse<PharmacyRecord>;
     } catch (error) {
-      logger.error('Error creating prescription:', error);
+      logger.error('Error creating pharmacy dispensing record:', error);
       throw error;
     }
   }
 
   /**
-   * ดึงข้อมูลใบสั่งยาโดย ID
+   * ดึงข้อมูลการจ่ายยาโดย ID
    */
-  static async getPrescription(id: string): Promise<APIResponse<MedicalPrescription>> {
+  static async getPharmacyDispensingById(id: string): Promise<APIResponse<PharmacyRecord>> {
     try {
-      const response = await apiClient.getPrescription(id);
-      return response;
+      const response = await apiClient.get(`/medical/pharmacy/${id}`);
+      return response as APIResponse<PharmacyRecord>;
     } catch (error) {
-      logger.error('Error getting prescription:', error);
+      logger.error('Error retrieving pharmacy dispensing record:', error);
       throw error;
     }
   }
 
   /**
-   * อัปเดตใบสั่งยา
+   * ดึงข้อมูลการจ่ายยาของผู้ป่วย
    */
-  static async updatePrescription(id: string, data: Partial<MedicalPrescription>): Promise<APIResponse<MedicalPrescription>> {
+  static async getPharmacyDispensingsByPatient(patientId: string): Promise<APIResponse<PharmacyRecord[]>> {
     try {
-      const response = await apiClient.updatePrescription(id, data);
-      return response;
+      const response = await apiClient.get(`/medical/patients/${patientId}/pharmacy`);
+      return response as APIResponse<PharmacyRecord[]>;
     } catch (error) {
-      logger.error('Error updating prescription:', error);
+      logger.error('Error retrieving patient pharmacy dispensings:', error);
       throw error;
     }
   }
 
   /**
-   * อัปเดตรายการยา
+   * อัปเดตข้อมูลการจ่ายยา
    */
-  static async updatePrescriptionItem(id: string, data: unknown): Promise<APIResponse<any>> {
+  static async updatePharmacyDispensing(id: string, data: UpdatePharmacyRequest): Promise<APIResponse<PharmacyRecord>> {
     try {
-      const response = await apiClient.updatePrescriptionItem(id, data);
-      return response;
+      const response = await apiClient.put(`/medical/pharmacy/${id}`, data);
+      return response as APIResponse<PharmacyRecord>;
     } catch (error) {
-      logger.error('Error updating prescription item:', error);
+      logger.error('Error updating pharmacy dispensing record:', error);
       throw error;
     }
   }
 
   /**
-   * ดึงใบสั่งยาของการมาพบแพทย์
+   * ลบบันทึกการจ่ายยา
    */
-  static async getPrescriptionsByVisit(visitId: string): Promise<APIResponse<MedicalPrescription[]>> {
+  static async deletePharmacyDispensing(id: string): Promise<APIResponse<{ id: string }>> {
     try {
-      const response = await apiClient.getPrescriptionsByVisit(visitId);
-      return response;
+      const response = await apiClient.delete(`/medical/pharmacy/${id}`);
+      return response as APIResponse<{ id: string }>;
     } catch (error) {
-      logger.error('Error getting prescriptions by visit:', error);
+      logger.error('Error deleting pharmacy dispensing record:', error);
       throw error;
     }
   }
 
   /**
-   * รายการยาทั่วไป
+   * แปลงข้อมูลจาก UI form เป็น API format
    */
-  static getCommonMedications(): { 
-    name: string; 
-    genericName: string; 
-    strength: string; 
-    unit: string;
-    category: string;
-  }[] {
+  static formatPharmacyDataForAPI(pharmacyData: any, patientId: string, dispensedBy: string): CreatePharmacyRequest {
+    return {
+      patientId,
+      visitId: pharmacyData.visitId,
+      prescriptionId: pharmacyData.prescriptionId,
+      medications: pharmacyData.medications || [],
+      totalAmount: pharmacyData.totalAmount || 0,
+      paymentMethod: pharmacyData.paymentMethod || 'cash',
+      dispensedBy,
+      dispensedTime: pharmacyData.dispensedTime || new Date().toISOString(),
+      notes: pharmacyData.notes
+    };
+  }
+
+  /**
+   * แปลงข้อมูลจาก API เป็น UI format
+   */
+  static formatPharmacyDataFromAPI(record: PharmacyRecord): any {
+    return {
+      id: record.id,
+      patientId: record.patientId,
+      visitId: record.visitId,
+      prescriptionId: record.prescriptionId,
+      medications: record.medications || [],
+      totalAmount: record.totalAmount,
+      paymentMethod: record.paymentMethod,
+      notes: record.notes,
+      dispensedBy: record.dispensedBy,
+      dispensedTime: record.dispensedTime,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+      patient: record.patient
+    };
+  }
+
+  /**
+   * สร้างข้อมูลเริ่มต้นสำหรับฟอร์ม
+   */
+  static createEmptyPharmacyData(): any {
+    return {
+      medications: [],
+      totalAmount: 0,
+      paymentMethod: 'cash',
+      notes: '',
+      dispensedTime: new Date().toISOString().slice(0, 16)
+    };
+  }
+
+  /**
+   * เพิ่มยาลงในรายการ
+   */
+  static addMedication(medications: any[]): any[] {
     return [
-      // ยาแก้ปวดลดไข้
-      { name: 'พาราเซตามอล', genericName: 'Paracetamol', strength: '500', unit: 'mg', category: 'แก้ปวดลดไข้' },
-      { name: 'ไอบูโพรเฟน', genericName: 'Ibuprofen', strength: '400', unit: 'mg', category: 'แก้ปวดลดไข้' },
-      { name: 'แอสไพริน', genericName: 'Aspirin', strength: '100', unit: 'mg', category: 'แก้ปวดลดไข้' },
-      
-      // ยาปฏิชีวนะ
-      { name: 'อมอกซีซิลลิน', genericName: 'Amoxicillin', strength: '500', unit: 'mg', category: 'ปฏิชีวนะ' },
-      { name: 'เซฟาเล็กซิน', genericName: 'Cephalexin', strength: '500', unit: 'mg', category: 'ปฏิชีวนะ' },
-      { name: 'อะซิโทรไมซิน', genericName: 'Azithromycin', strength: '250', unit: 'mg', category: 'ปฏิชีวนะ' },
-      
-      // ยาลดความดัน
-      { name: 'เอนาลาพริล', genericName: 'Enalapril', strength: '5', unit: 'mg', category: 'ลดความดันโลหิต' },
-      { name: 'แอมโลไดพิน', genericName: 'Amlodipine', strength: '5', unit: 'mg', category: 'ลดความดันโลหิต' },
-      { name: 'ลอซาร์แทน', genericName: 'Losartan', strength: '50', unit: 'mg', category: 'ลดความดันโลหิต' },
-      
-      // ยาเบาหวาน
-      { name: 'เมตฟอร์มิน', genericName: 'Metformin', strength: '500', unit: 'mg', category: 'เบาหวาน' },
-      { name: 'กลิเบนคลาไมด์', genericName: 'Glibenclamide', strength: '5', unit: 'mg', category: 'เบาหวาน' },
-      
-      // ยาลดไขมัน
-      { name: 'ซิมวาสแตติน', genericName: 'Simvastatin', strength: '20', unit: 'mg', category: 'ลดไขมัน' },
-      { name: 'อะทอร์วาสแตติน', genericName: 'Atorvastatin', strength: '20', unit: 'mg', category: 'ลดไขมัน' },
-      
-      // ยาแก้แพ้
-      { name: 'เซทิริซีน', genericName: 'Cetirizine', strength: '10', unit: 'mg', category: 'แก้แพ้' },
-      { name: 'โลราทาไดน์', genericName: 'Loratadine', strength: '10', unit: 'mg', category: 'แก้แพ้' },
-      
-      // ยาระบบทางเดินหายใจ
-      { name: 'ซัลบูทามอล', genericName: 'Salbutamol', strength: '2', unit: 'mg', category: 'ระบบทางเดินหายใจ' },
-      { name: 'เทียโอฟิลลีน', genericName: 'Theophylline', strength: '200', unit: 'mg', category: 'ระบบทางเดินหายใจ' }
+      ...medications,
+      {
+        medicationName: '',
+        dosage: '',
+        frequency: '',
+        duration: '',
+        quantity: 1,
+        unit: 'tablet',
+        instructions: '',
+        dispensedQuantity: 1
+      }
     ];
   }
 
   /**
-   * รายการความถี่ในการใช้ยา
+   * ลบยาออกจากรายการ
    */
-  static getFrequencyOptions(): { value: string; label: string; timesPerDay: number }[] {
-    return [
-      { value: 'once_daily', label: 'วันละ 1 ครั้ง', timesPerDay: 1 },
-      { value: 'twice_daily', label: 'วันละ 2 ครั้ง (เช้า-เย็น)', timesPerDay: 2 },
-      { value: 'three_times_daily', label: 'วันละ 3 ครั้ง (เช้า-เที่ยง-เย็น)', timesPerDay: 3 },
-      { value: 'four_times_daily', label: 'วันละ 4 ครั้ง (ทุก 6 ชั่วโมง)', timesPerDay: 4 },
-      { value: 'every_8_hours', label: 'ทุก 8 ชั่วโมง', timesPerDay: 3 },
-      { value: 'every_6_hours', label: 'ทุก 6 ชั่วโมง', timesPerDay: 4 },
-      { value: 'every_4_hours', label: 'ทุก 4 ชั่วโมง', timesPerDay: 6 },
-      { value: 'as_needed', label: 'เมื่อจำเป็น', timesPerDay: 0 }
-    ];
+  static removeMedication(medications: any[], index: number): any[] {
+    return medications.filter((_, i) => i !== index);
   }
 
   /**
-   * รายการระยะเวลาการใช้ยา
+   * คำนวณยอดรวม
    */
-  static getDurationOptions(): { value: string; label: string; days: number }[] {
-    return [
-      { value: '3_days', label: '3 วัน', days: 3 },
-      { value: '5_days', label: '5 วัน', days: 5 },
-      { value: '7_days', label: '7 วัน', days: 7 },
-      { value: '10_days', label: '10 วัน', days: 10 },
-      { value: '14_days', label: '14 วัน', days: 14 },
-      { value: '30_days', label: '30 วัน', days: 30 },
-      { value: '60_days', label: '60 วัน', days: 60 },
-      { value: '90_days', label: '90 วัน', days: 90 },
-      { value: 'continuous', label: 'ใช้ต่อเนื่อง', days: 0 }
-    ];
-  }
-
-  /**
-   * คำนวณจำนวนยาที่ต้องการ
-   */
-  static calculateQuantity(frequency: string, duration: string): number {
-    const freq = this.getFrequencyOptions().find(f => f.value === frequency);
-    const dur = this.getDurationOptions().find(d => d.value === duration);
-    
-    if (!freq || !dur || freq.timesPerDay === 0 || dur.days === 0) {
-      return 0;
-    }
-    
-    return freq.timesPerDay * dur.days;
-  }
-
-  /**
-   * แปลงสถานะเป็นภาษาไทย
-   */
-  static getStatusLabel(status: string): string {
-    const statusMap: { [key: string]: string } = {
-      'pending': 'รอจ่ายยา',
-      'dispensed': 'จ่ายยาแล้ว',
-      'completed': 'เสร็จสิ้น',
-      'cancelled': 'ยกเลิก'
-    };
-    return statusMap[status] || status;
-  }
-
-  /**
-   * แปลงสถานะเป็นสี
-   */
-  static getStatusColor(status: string): string {
-    const colorMap: { [key: string]: string } = {
-      'pending': 'text-yellow-600 bg-yellow-100',
-      'dispensed': 'text-blue-600 bg-blue-100',
-      'completed': 'text-green-600 bg-green-100',
-      'cancelled': 'text-red-600 bg-red-100'
-    };
-    return colorMap[status] || 'text-gray-600 bg-gray-100';
-  }
-
-  /**
-   * สร้าง Prescription Number แบบจำลอง (สำหรับ UI เท่านั้น)
-   */
-  static generatePrescriptionNumber(): string {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const random = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
-    return `RX${year}${month}${day}${random}`;
-  }
-
-  /**
-   * คำนวณราคาโดยประมาณ
-   */
-  static calculateEstimatedCost(medications: unknown[]): number {
-    // ราคาประมาณการต่อเม็ด/หน่วย (บาท)
-    const estimatedPrices: { [key: string]: number } = {
-      'paracetamol': 0.5,
-      'ibuprofen': 1.5,
-      'aspirin': 0.3,
-      'amoxicillin': 2.0,
-      'cephalexin': 3.0,
-      'azithromycin': 8.0,
-      'enalapril': 1.0,
-      'amlodipine': 1.5,
-      'losartan': 3.0,
-      'metformin': 0.8,
-      'glibenclamide': 0.5,
-      'simvastatin': 2.0,
-      'atorvastatin': 4.0,
-      'cetirizine': 2.0,
-      'loratadine': 3.0,
-      'salbutamol': 5.0,
-      'theophylline': 1.5
-    };
-
-    return medications.reduce((total: number, med: any) => {
-      const genericName = med.medicationName?.toLowerCase() || '';
-      const matchedPrice = Object.entries(estimatedPrices).find(([key]) => 
-        genericName.includes(key)
-      );
-      
-      const pricePerUnit = matchedPrice ? matchedPrice[1] : 2.0; // ราคาเริ่มต้น 2 บาท
-      const quantity = med.quantity || 0;
-      
-      return total + (pricePerUnit * quantity);
+  static calculateTotalAmount(medications: any[]): number {
+    return medications.reduce((total, med) => {
+      const price = med.price || 0;
+      const quantity = med.dispensedQuantity || med.quantity || 1;
+      return total + (price * quantity);
     }, 0);
   }
 
   /**
-   * สร้างคำแนะนำการใช้ยา
+   * ตรวจสอบความถูกต้องของข้อมูลยา
    */
-  static generateInstructions(medication: {
-    medicationName: string;
-    frequency: string;
-    duration: string;
-    instructions?: string;
-  }): string {
-    const freq = this.getFrequencyOptions().find(f => f.value === medication.frequency);
-    const dur = this.getDurationOptions().find(d => d.value === medication.duration);
-    
-    let instructions = `ใช้ ${freq?.label || medication.frequency}`;
-    
-    if (dur && dur.days > 0) {
-      instructions += ` เป็นเวลา ${dur.label}`;
-    } else if (medication.duration === 'continuous') {
-      instructions += ` ใช้ต่อเนื่องตามแพทย์สั่ง`;
+  static validateMedication(medication: any): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (!medication.medicationName?.trim()) {
+      errors.push('กรุณากรอกชื่อยา');
     }
-    
-    if (medication.instructions) {
-      instructions += ` ${medication.instructions}`;
+    if (!medication.dosage?.trim()) {
+      errors.push('กรุณากรอกขนาดยา');
     }
-    
-    return instructions;
+    if (!medication.frequency?.trim()) {
+      errors.push('กรุณากรอกความถี่ในการใช้ยา');
+    }
+    if (!medication.duration?.trim()) {
+      errors.push('กรุณากรอกระยะเวลาในการใช้ยา');
+    }
+    if (!medication.quantity || medication.quantity <= 0) {
+      errors.push('กรุณากรอกจำนวนยาที่ถูกต้อง');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+
+  /**
+   * ตรวจสอบความถูกต้องของข้อมูลทั้งหมด
+   */
+  static validatePharmacyData(data: any): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (!data.medications || data.medications.length === 0) {
+      errors.push('กรุณาเพิ่มยาอย่างน้อย 1 รายการ');
+    } else {
+      data.medications.forEach((med: any, index: number) => {
+        const validation = this.validateMedication(med);
+        if (!validation.isValid) {
+          validation.errors.forEach(error => {
+            errors.push(`ยา ${index + 1}: ${error}`);
+          });
+        }
+      });
+    }
+
+    if (!data.dispensedBy?.trim()) {
+      errors.push('กรุณากรอกชื่อผู้จ่ายยา');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
   }
 }
-
-export default PharmacyService;

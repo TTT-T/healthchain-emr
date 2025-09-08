@@ -7,7 +7,7 @@ import {
   updatePatient,
   deletePatient,
   listPatients
-} from '../controllers/patientController';
+} from '../controllers/patientManagementController';
 import { authenticate, authorize } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
 

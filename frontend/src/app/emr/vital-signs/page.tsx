@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
 import { VitalSignsService } from '@/services/vitalSignsService';
 import { VisitService } from '@/services/visitService';
+import { NotificationService } from '@/services/notificationService';
+import { PatientDocumentService } from '@/services/patientDocumentService';
 import { CreateVitalSignsRequest } from '@/types/api';
 import { logger } from '@/lib/logger';
 
@@ -263,6 +265,9 @@ export default function VitalSigns() {
       if (vitalResponse.statusCode === 200 && vitalResponse.data) {
         alert(`บันทึกสัญญาณชีพสำเร็จ! Visit Number: ${visit.visit_number} | BMI: ${vitalResponse.data.bmi || 'N/A'}`);
         
+        // ส่งการแจ้งเตือนให้ผู้ป่วย
+        await sendPatientNotification(selectedPatient, vitalResponse.data);
+        
         // Reset form
         setSelectedPatient(null);
         setSearchQuery("");
@@ -313,6 +318,79 @@ export default function VitalSigns() {
     }
     
     return age;
+  };
+
+  /**
+   * ส่งการแจ้งเตือนให้ผู้ป่วยเมื่อบันทึกสัญญาณชีพ
+   */
+  const sendPatientNotification = async (patient: Patient, vitalSignsData: any) => {
+    try {
+      // สร้างข้อมูลการแจ้งเตือน
+      const notificationData = {
+        patientHn: patient.hn || '',
+        patientNationalId: patient.nationalId || '',
+        patientName: patient.thaiName || '',
+        patientPhone: '', // ต้องดึงจากข้อมูลผู้ป่วย
+        patientEmail: '', // ต้องดึงจากข้อมูลผู้ป่วย
+        recordType: 'vital_signs',
+        recordId: vitalSignsData.id || '',
+        recordTitle: 'บันทึกสัญญาณชีพ',
+        recordDescription: `บันทึกสัญญาณชีพ: น้ำหนัก ${vitalSignsData.weight || 'N/A'} กก., ส่วนสูง ${vitalSignsData.height || 'N/A'} ซม., BMI ${vitalSignsData.bmi || 'N/A'}`,
+        recordDetails: {
+          weight: vitalSignsData.weight,
+          height: vitalSignsData.height,
+          bmi: vitalSignsData.bmi,
+          bloodPressure: `${vitalSignsData.systolicBP || 'N/A'}/${vitalSignsData.diastolicBP || 'N/A'}`,
+          heartRate: vitalSignsData.heartRate,
+          temperature: vitalSignsData.temperature,
+          oxygenSaturation: vitalSignsData.oxygenSaturation
+        },
+        createdBy: user?.id || '',
+        createdByName: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่',
+        createdAt: new Date().toISOString()
+      };
+
+      // ส่งการแจ้งเตือนผ่าน NotificationService
+      await NotificationService.notifyPatientRecordUpdate(notificationData);
+      
+      // สร้างเอกสารให้ผู้ป่วย
+      await createPatientDocument(patient, vitalSignsData);
+      
+      logger.info('Patient notification sent successfully for vital signs', { 
+        patientHn: notificationData.patientHn,
+        recordType: 'vital_signs'
+      });
+    } catch (error) {
+      logger.error('Error sending patient notification for vital signs:', error);
+      // ไม่ throw error เพื่อไม่ให้กระทบการบันทึกสัญญาณชีพ
+    }
+  };
+
+  /**
+   * สร้างเอกสารให้ผู้ป่วย
+   */
+  const createPatientDocument = async (patient: Patient, vitalSignsData: any) => {
+    try {
+      await PatientDocumentService.createDocumentFromMedicalRecord(
+        'vital_signs',
+        vitalSignsData,
+        {
+          patientHn: patient.hn || '',
+          patientNationalId: patient.nationalId || '',
+          patientName: patient.thaiName || ''
+        },
+        user?.id || '',
+        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'
+      );
+      
+      logger.info('Patient document created successfully for vital signs', { 
+        patientHn: patient.hn,
+        recordType: 'vital_signs'
+      });
+    } catch (error) {
+      logger.error('Error creating patient document for vital signs:', error);
+      // ไม่ throw error เพื่อไม่ให้กระทบการบันทึกสัญญาณชีพ
+    }
   };
 
   const getBMIColor = (category: string): string => {

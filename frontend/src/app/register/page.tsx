@@ -189,9 +189,10 @@ export default function Register() {
       newErrors.lastNameEn = 'นามสกุลภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษเท่านั้น';
     }
 
-    // Birth date validation
+    // Birth date validation (Buddhist Era to Christian Era)
     if (formData.birthDay && formData.birthMonth && formData.birthYear) {
-      const birthDate = new Date(parseInt(formData.birthYear), parseInt(formData.birthMonth) - 1, parseInt(formData.birthDay));
+      const christianYear = parseInt(formData.birthYear) - 543;
+      const birthDate = new Date(christianYear, parseInt(formData.birthMonth) - 1, parseInt(formData.birthDay));
       const today = new Date();
       
       if (birthDate > today) {
@@ -247,7 +248,7 @@ export default function Register() {
         lastName: formData.lastName,
         phoneNumber: formData.phone,
         nationalId: formData.nationalId,
-        birthDate: `${formData.birthYear}-${formData.birthMonth.padStart(2, '0')}-${formData.birthDay.padStart(2, '0')}`,
+        birthDate: `${parseInt(formData.birthYear) - 543}-${formData.birthMonth.padStart(2, '0')}-${formData.birthDay.padStart(2, '0')}`,
         gender: formData.gender,
         address: formData.address,
         bloodType: formData.bloodType,
@@ -295,6 +296,15 @@ export default function Register() {
       <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="text-center mb-6">
+          <div className="flex justify-center mb-4">
+            <Link 
+              href="/" 
+              className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              กลับไปหน้าแรก
+            </Link>
+          </div>
           <div className="flex justify-center items-center gap-3 mb-4">
             <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-green-600 rounded-xl flex items-center justify-center">
               <Shield className="text-white" size={24} />
@@ -321,17 +331,17 @@ export default function Register() {
                     lastName: 'ระบบ',
                     firstNameEn: 'Test',
                     lastNameEn: 'System',
-                    nationalId: '1234567890123',
+                    nationalId: `1234567890${timestamp.toString().slice(-3)}`,
                     birthDay: '15',
                     birthMonth: '06',
-                    birthYear: '1990',
+                    birthYear: '2533',
                     gender: 'male',
                     username: `testuser${timestamp}`,
                     email: `test${timestamp}@example.com`,
                     confirmEmail: `test${timestamp}@example.com`,
                     phone: '0812345678',
                     address: '123 ถนนทดสอบ แขวงทดสอบ เขตทดสอบ กรุงเทพฯ 10110',
-                    bloodType: 'O',
+                    bloodType: 'O+',
                     password: 'SecurePass123!',
                     confirmPassword: 'SecurePass123!',
                     acceptTerms: true,
@@ -662,9 +672,13 @@ export default function Register() {
                         errors.birthYear ? 'border-red-500 bg-red-50' : 'border-gray-300'
                       }`}
                     >
-                      <option value="">ปี (ค.ศ.)</option>
-                      {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                        <option key={year} value={year.toString()}>{year}</option>
+                      <option value="">ปี (พ.ศ.)</option>
+                      {Array.from({ length: 100 }, (_, i) => {
+                        const christianYear = new Date().getFullYear() - i;
+                        const buddhistYear = christianYear + 543;
+                        return { christianYear, buddhistYear };
+                      }).map(({ christianYear, buddhistYear }) => (
+                        <option key={christianYear} value={buddhistYear.toString()}>{buddhistYear}</option>
                       ))}
                     </select>
                     {errors.birthYear && <p className="text-red-500 text-sm mt-1">{errors.birthYear}</p>}

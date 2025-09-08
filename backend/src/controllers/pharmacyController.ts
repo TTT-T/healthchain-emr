@@ -1,537 +1,459 @@
 import { Request, Response } from 'express';
-import { z } from 'zod';
-import { db } from '../database';
-import { 
-  successResponse, 
-  errorResponse
-} from '../utils';
+import { databaseManager } from '../database';
+import { asyncHandler } from '../middleware/errorHandler';
+import { logger } from '../utils/logger';
 
-// Validation schemas
-const createPrescriptionSchema = z.object({
-  visitId: z.string().uuid("Visit ID ต้องเป็น UUID"),
-  diagnosis: z.string().min(1, "กรุณาระบุการวินิจฉัย").max(500),
-  totalAmount: z.number().min(0, "จำนวนเงินต้องไม่น้อยกว่า 0").optional(),
-  notes: z.string().max(1000, "หมายเหตุต้องไม่เกิน 1000 ตัวอักษร").optional(),
-  items: z.array(z.object({
-    medicationName: z.string().min(1, "กรุณาระบุชื่อยา").max(200),
-    dosage: z.string().min(1, "กรุณาระบุขนาดยา").max(100),
-    frequency: z.string().min(1, "กรุณาระบุความถี่ในการใช้").max(100),
-    duration: z.string().min(1, "กรุณาระบุระยะเวลาการใช้").max(100),
-    quantity: z.number().min(1, "จำนวนยาต้องมากกว่า 0"),
-    unitPrice: z.number().min(0, "ราคาต่อหน่วยต้องไม่น้อยกว่า 0").optional(),
-    totalPrice: z.number().min(0, "ราคารวมต้องไม่น้อยกว่า 0").optional(),
-    instructions: z.string().max(500, "คำแนะนำต้องไม่เกิน 500 ตัวอักษร").optional()
-  })).min(1, "ต้องมีรายการยาอย่างน้อย 1 รายการ")
-});
+interface CreatePharmacyRequest {
+  patientId: string;
+  visitId?: string;
+  prescriptionId?: string;
+  medications: Array<{
+    medicationName: string;
+    dosage: string;
+    frequency: string;
+    duration: string;
+    quantity: number;
+    unit: string;
+    instructions?: string;
+    dispensedQuantity?: number;
+    dispensedBy?: string;
+    dispensedTime?: string;
+  }>;
+  totalAmount?: number;
+  paymentMethod?: string;
+  dispensedBy: string;
+  dispensedTime?: string;
+  notes?: string;
+}
 
-const updatePrescriptionSchema = z.object({
-  status: z.enum(['pending', 'dispensed', 'completed', 'cancelled']).optional(),
-  dispensedAt: z.string().regex(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/, "รูปแบบวันที่ไม่ถูกต้อง").optional(),
-  totalAmount: z.number().min(0).optional(),
-  notes: z.string().max(1000).optional()
-});
-
-const updatePrescriptionItemSchema = z.object({
-  dispensedQuantity: z.number().min(0, "จำนวนยาที่จ่ายต้องไม่น้อยกว่า 0").optional(),
-  status: z.enum(['pending', 'dispensed', 'out_of_stock', 'substituted']).optional(),
-  substituteMedication: z.string().max(200).optional(),
-  notes: z.string().max(500).optional()
-});
+interface UpdatePharmacyRequest {
+  medications?: any[];
+  totalAmount?: number;
+  paymentMethod?: string;
+  dispensedBy?: string;
+  dispensedTime?: string;
+  notes?: string;
+  status?: string;
+}
 
 /**
- * สร้างใบสั่งยา
- * POST /api/medical/prescriptions
+ * Create pharmacy dispensing record
  */
-export const createPrescription = async (req: Request, res: Response) => {
-  try {
-    // Validate input
-    const validatedData = createPrescriptionSchema.parse(req.body);
-    
-    // Check if visit exists and get patient_id
-    const visitCheck = await db.query('SELECT id, patient_id FROM visits WHERE id = $1', [validatedData.visitId]);
-    if (visitCheck.rows.length === 0) {
-      return res.status(400).json(
-        errorResponse('ไม่พบข้อมูลการมาพบแพทย์', 400)
-      );
-    }
+export const createPharmacyDispensing = asyncHandler(async (req: Request, res: Response) => {
+  const {
+    patientId,
+    visitId,
+    prescriptionId,
+    medications,
+    totalAmount,
+    paymentMethod,
+    dispensedBy,
+    dispensedTime,
+    notes
+  }: CreatePharmacyRequest = req.body;
 
-    const patientId = visitCheck.rows[0].patient_id;
-
-    // Generate prescription number
-    const prescriptionNumberResult = await db.query(`
-      SELECT COALESCE(MAX(CAST(SUBSTRING(prescription_number FROM 4) AS INTEGER)), 0) + 1 as next_number
-      FROM prescriptions
-      WHERE prescription_number LIKE 'RX%'
-    `);
-    const nextNumber = prescriptionNumberResult.rows[0].next_number;
-    const prescriptionNumber = `RX${nextNumber.toString().padStart(6, '0')}`;
-
-    // Calculate total amount from items if not provided
-    let totalAmount = validatedData.totalAmount || 0;
-    if (!validatedData.totalAmount) {
-      totalAmount = validatedData.items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
-    }
-
-    // Start transaction
-    await db.query('BEGIN');
-
-    try {
-      // Insert prescription
-      const prescriptionResult = await db.query(`
-        INSERT INTO prescriptions (
-          visit_id, patient_id, prescription_number, diagnosis_for_prescription, total_cost, prescribed_by
-        ) VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING *
-      `, [
-        validatedData.visitId,
-        patientId,
-        prescriptionNumber,
-        validatedData.diagnosis,
-        totalAmount,
-        (req as any).user?.id
-      ]);
-
-      const prescriptionId = prescriptionResult.rows[0].id;
-
-      // Insert prescription items
-      const prescriptionItems = [];
-      for (const item of validatedData.items) {
-        const itemResult = await db.query(`
-          INSERT INTO prescription_items (
-            prescription_id, medication_name, dosage_instructions, 
-            quantity_prescribed, unit_cost, total_cost
-          ) VALUES ($1, $2, $3, $4, $5, $6)
-          RETURNING *
-        `, [
-          prescriptionId,
-          item.medicationName,
-          `${item.dosage} ${item.frequency} ${item.duration} ${item.instructions}`.trim(),
-          item.quantity,
-          item.unitPrice,
-          item.totalPrice
-        ]);
-
-        prescriptionItems.push({
-          id: itemResult.rows[0].id,
-          prescriptionId: itemResult.rows[0].prescription_id,
-          medicationName: itemResult.rows[0].medication_name,
-          dosageInstructions: itemResult.rows[0].dosage_instructions,
-          quantityPrescribed: itemResult.rows[0].quantity_prescribed,
-          quantityDispensed: itemResult.rows[0].quantity_dispensed,
-          unitCost: itemResult.rows[0].unit_cost,
-          totalCost: itemResult.rows[0].total_cost,
-          itemStatus: itemResult.rows[0].item_status,
-          createdAt: itemResult.rows[0].created_at,
-          updatedAt: itemResult.rows[0].updated_at
-        });
+  // Validate required fields
+  if (!patientId || !medications || medications.length === 0 || !dispensedBy) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: 'Missing required fields: patientId, medications, dispensedBy',
+      data: null,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Required fields are missing'
       }
-
-      // Commit transaction
-      await db.query('COMMIT');
-
-      // Map to camelCase response
-      const prescription = {
-        id: prescriptionResult.rows[0].id,
-        visitId: prescriptionResult.rows[0].visit_id,
-        patientId: prescriptionResult.rows[0].patient_id,
-        prescriptionNumber: prescriptionResult.rows[0].prescription_number,
-        diagnosisForPrescription: prescriptionResult.rows[0].diagnosis_for_prescription,
-        totalCost: prescriptionResult.rows[0].total_cost,
-        status: prescriptionResult.rows[0].status,
-        prescribedBy: prescriptionResult.rows[0].prescribed_by,
-        prescriptionDate: prescriptionResult.rows[0].prescription_date,
-        dispensedBy: prescriptionResult.rows[0].dispensed_by,
-        dispensedAt: prescriptionResult.rows[0].dispensed_at,
-        createdAt: prescriptionResult.rows[0].created_at,
-        updatedAt: prescriptionResult.rows[0].updated_at,
-        items: prescriptionItems
-      };
-
-      res.status(201).json(
-        successResponse('สร้างใบสั่งยาสำเร็จ', prescription)
-      );
-
-    } catch (error) {
-      // Rollback transaction on error
-      await db.query('ROLLBACK');
-      throw error;
-    }
-
-  } catch (error) {
-    console.error('Create prescription error:', error);
-    
-    if (error instanceof z.ZodError) {
-      return res.status(400).json(
-        errorResponse('ข้อมูลไม่ถูกต้อง', 400, error.errors)
-      );
-    }
-    
-    res.status(500).json(
-      errorResponse('เกิดข้อผิดพลาดในระบบ', 500)
-    );
+    });
   }
-};
 
-/**
- * ดึงข้อมูลใบสั่งยา
- * GET /api/medical/prescriptions/:id
- */
-export const getPrescription = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const client = await databaseManager.getClient();
     
-    // Validate UUID
-    if (!id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
-      return res.status(400).json(
-        errorResponse('รูปแบบ ID ไม่ถูกต้อง', 400)
-      );
-    }
-
-    // Get prescription with doctor information
-    const prescriptionResult = await db.query(`
-      SELECT p.*, 
-             u_prescribed.first_name as prescribed_by_first_name,
-             u_prescribed.last_name as prescribed_by_last_name,
-             u_dispensed.first_name as dispensed_by_first_name,
-             u_dispensed.last_name as dispensed_by_last_name
-      FROM prescriptions p
-      LEFT JOIN users u_prescribed ON p.prescribed_by = u_prescribed.id
-      LEFT JOIN users u_dispensed ON p.dispensed_by = u_dispensed.id
-      WHERE p.id = $1
-    `, [id]);
-
-    if (prescriptionResult.rows.length === 0) {
-      return res.status(404).json(
-        errorResponse('ไม่พบข้อมูลใบสั่งยา', 404)
-      );
-    }
-
-    // Get prescription items
-    const itemsResult = await db.query(`
-      SELECT * FROM prescription_items 
-      WHERE prescription_id = $1 
-      ORDER BY created_at ASC
-    `, [id]);
-
-    const prescriptionRow = prescriptionResult.rows[0];
+    // Check if patient exists
+    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM users WHERE id = $1 AND role = $2';
+    const patientResult = await client.query(patientQuery, [patientId, 'patient']);
     
-    // Map to camelCase response
-    const prescription = {
-      id: prescriptionRow.id,
-      visitId: prescriptionRow.visit_id,
-      prescriptionNumber: prescriptionRow.prescription_number,
-      diagnosis: prescriptionRow.diagnosis,
-      totalAmount: prescriptionRow.total_amount,
-      notes: prescriptionRow.notes,
-      status: prescriptionRow.status,
-      prescribedBy: prescriptionRow.prescribed_by_first_name && prescriptionRow.prescribed_by_last_name ? {
-        firstName: prescriptionRow.prescribed_by_first_name,
-        lastName: prescriptionRow.prescribed_by_last_name
-      } : null,
-      dispensedBy: prescriptionRow.dispensed_by_first_name && prescriptionRow.dispensed_by_last_name ? {
-        firstName: prescriptionRow.dispensed_by_first_name,
-        lastName: prescriptionRow.dispensed_by_last_name
-      } : null,
-      prescribedAt: prescriptionRow.prescribed_at,
-      dispensedAt: prescriptionRow.dispensed_at,
-      createdAt: prescriptionRow.created_at,
-      updatedAt: prescriptionRow.updated_at,
-      items: itemsResult.rows.map(item => ({
-        id: item.id,
-        prescriptionId: item.prescription_id,
-        medicationName: item.medication_name,
-        dosage: item.dosage,
-        frequency: item.frequency,
-        duration: item.duration,
-        quantity: item.quantity,
-        dispensedQuantity: item.dispensed_quantity,
-        unitPrice: item.unit_price,
-        totalPrice: item.total_price,
-        instructions: item.instructions,
-        status: item.status,
-        substituteMedication: item.substitute_medication,
-        notes: item.notes,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at
-      }))
-    };
-
-    res.json(
-      successResponse('ดึงข้อมูลใบสั่งยาสำเร็จ', prescription)
-    );
-
-  } catch (error) {
-    console.error('Get prescription error:', error);
-    res.status(500).json(
-      errorResponse('เกิดข้อผิดพลาดในระบบ', 500)
-    );
-  }
-};
-
-/**
- * อัปเดตใบสั่งยา
- * PUT /api/medical/prescriptions/:id
- */
-export const updatePrescription = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    
-    // Validate UUID
-    if (!id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
-      return res.status(400).json(
-        errorResponse('รูปแบบ ID ไม่ถูกต้อง', 400)
-      );
+    if (patientResult.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'Patient not found',
+        data: null,
+        error: {
+          code: 'PATIENT_NOT_FOUND',
+          message: 'Patient with the specified ID does not exist'
+        }
+      });
     }
 
-    // Validate input
-    const validatedData = updatePrescriptionSchema.parse(req.body);
-    
-    // Check if prescription exists
-    const existingPrescription = await db.query('SELECT id FROM prescriptions WHERE id = $1', [id]);
-    if (existingPrescription.rows.length === 0) {
-      return res.status(404).json(
-        errorResponse('ไม่พบข้อมูลใบสั่งยา', 404)
-      );
-    }
+    const patient = patientResult.rows[0];
 
-    // Build update query dynamically
-    const updates = [];
-    const values = [];
-    let paramIndex = 1;
-
-    const fieldMappings = {
-      status: 'status',
-      dispensedAt: 'dispensed_at',
-      totalAmount: 'total_amount',
-      notes: 'notes'
-    };
-
-    for (const [key, dbField] of Object.entries(fieldMappings)) {
-      if (validatedData[key as keyof typeof validatedData] !== undefined) {
-        updates.push(`${dbField} = $${paramIndex}`);
-        values.push(validatedData[key as keyof typeof validatedData]);
-        paramIndex++;
-      }
-    }
-
-    if (updates.length === 0) {
-      return res.status(400).json(
-        errorResponse('ไม่มีข้อมูลที่ต้องอัปเดต', 400)
-      );
-    }
-
-    // Add dispensed_by if status is dispensed
-    if (validatedData.status === 'dispensed') {
-      updates.push(`dispensed_by = $${paramIndex}`);
-      values.push((req as any).user?.userId);
-      paramIndex++;
-    }
-
-    // Add updated_at
-    updates.push(`updated_at = CURRENT_TIMESTAMP`);
-    values.push(id);
-
-    const updateQuery = `
-      UPDATE prescriptions 
-      SET ${updates.join(', ')} 
-      WHERE id = $${paramIndex}
+    // Create pharmacy dispensing record
+    const insertQuery = `
+      INSERT INTO medical_records (
+        patient_id,
+        visit_id,
+        record_type,
+        prescription_id,
+        medications,
+        total_amount,
+        payment_method,
+        notes,
+        recorded_by,
+        recorded_time,
+        created_at,
+        updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
       RETURNING *
     `;
 
-    const result = await db.query(updateQuery, values);
+    const values = [
+      patientId,
+      visitId || null,
+      'pharmacy_dispensing',
+      prescriptionId || null,
+      JSON.stringify(medications),
+      totalAmount || 0,
+      paymentMethod || 'cash',
+      notes || null,
+      dispensedBy,
+      dispensedTime || new Date().toISOString()
+    ];
 
-    // Map to camelCase response
-    const prescription = {
-      id: result.rows[0].id,
-      visitId: result.rows[0].visit_id,
-      prescriptionNumber: result.rows[0].prescription_number,
-      diagnosis: result.rows[0].diagnosis,
-      totalAmount: result.rows[0].total_amount,
-      notes: result.rows[0].notes,
-      status: result.rows[0].status,
-      prescribedBy: result.rows[0].prescribed_by,
-      dispensedBy: result.rows[0].dispensed_by,
-      prescribedAt: result.rows[0].prescribed_at,
-      dispensedAt: result.rows[0].dispensed_at,
-      createdAt: result.rows[0].created_at,
-      updatedAt: result.rows[0].updated_at
-    };
+    const result = await client.query(insertQuery, values);
+    const dispensingRecord = result.rows[0];
 
-    res.json(
-      successResponse('อัปเดตใบสั่งยาสำเร็จ', prescription)
-    );
+    logger.info('Pharmacy dispensing created successfully', {
+      patientId,
+      recordId: dispensingRecord.id,
+      dispensedBy
+    });
+
+    res.status(201).json({
+      statusCode: 201,
+      message: 'Pharmacy dispensing created successfully',
+      data: {
+        id: dispensingRecord.id,
+        patientId: dispensingRecord.patient_id,
+        visitId: dispensingRecord.visit_id,
+        prescriptionId: dispensingRecord.prescription_id,
+        recordType: dispensingRecord.record_type,
+        medications: JSON.parse(dispensingRecord.medications || '[]'),
+        totalAmount: dispensingRecord.total_amount,
+        paymentMethod: dispensingRecord.payment_method,
+        notes: dispensingRecord.notes,
+        dispensedBy: dispensingRecord.recorded_by,
+        dispensedTime: dispensingRecord.recorded_time,
+        createdAt: dispensingRecord.created_at,
+        updatedAt: dispensingRecord.updated_at
+      },
+      meta: {
+        patient: {
+          id: patient.id,
+          thaiName: patient.thai_name,
+          nationalId: patient.national_id,
+          hospitalNumber: patient.hospital_number
+        }
+      }
+    });
 
   } catch (error) {
-    console.error('Update prescription error:', error);
-    
-    if (error instanceof z.ZodError) {
-      return res.status(400).json(
-        errorResponse('ข้อมูลไม่ถูกต้อง', 400, error.errors)
-      );
-    }
-    
-    res.status(500).json(
-      errorResponse('เกิดข้อผิดพลาดในระบบ', 500)
-    );
+    logger.error('Error creating pharmacy dispensing:', error);
+    res.status(500).json({
+      statusCode: 500,
+      message: 'Internal server error',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to create pharmacy dispensing record'
+      }
+    });
   }
-};
+});
 
 /**
- * อัปเดตรายการยาในใบสั่งยา
- * PUT /api/medical/prescription-items/:id
+ * Get pharmacy dispensings by patient ID
  */
-export const updatePrescriptionItem = async (req: Request, res: Response) => {
+export const getPharmacyDispensingsByPatient = asyncHandler(async (req: Request, res: Response) => {
+  const { patientId } = req.params;
+
   try {
-    const { id } = req.params;
+    const client = await databaseManager.getClient();
     
-    // Validate UUID
-    if (!id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
-      return res.status(400).json(
-        errorResponse('รูปแบบ ID ไม่ถูกต้อง', 400)
-      );
-    }
-
-    // Validate input
-    const validatedData = updatePrescriptionItemSchema.parse(req.body);
-    
-    // Check if prescription item exists
-    const existingItem = await db.query('SELECT id FROM prescription_items WHERE id = $1', [id]);
-    if (existingItem.rows.length === 0) {
-      return res.status(404).json(
-        errorResponse('ไม่พบข้อมูลรายการยา', 404)
-      );
-    }
-
-    // Build update query dynamically
-    const updates = [];
-    const values = [];
-    let paramIndex = 1;
-
-    const fieldMappings = {
-      dispensedQuantity: 'dispensed_quantity',
-      status: 'status',
-      substituteMedication: 'substitute_medication',
-      notes: 'notes'
-    };
-
-    for (const [key, dbField] of Object.entries(fieldMappings)) {
-      if (validatedData[key as keyof typeof validatedData] !== undefined) {
-        updates.push(`${dbField} = $${paramIndex}`);
-        values.push(validatedData[key as keyof typeof validatedData]);
-        paramIndex++;
-      }
-    }
-
-    if (updates.length === 0) {
-      return res.status(400).json(
-        errorResponse('ไม่มีข้อมูลที่ต้องอัปเดต', 400)
-      );
-    }
-
-    // Add updated_at
-    updates.push(`updated_at = CURRENT_TIMESTAMP`);
-    values.push(id);
-
-    const updateQuery = `
-      UPDATE prescription_items 
-      SET ${updates.join(', ')} 
-      WHERE id = $${paramIndex}
-      RETURNING *
+    const query = `
+      SELECT mr.*, u.thai_name, u.national_id, u.hospital_number
+      FROM medical_records mr
+      JOIN users u ON mr.patient_id = u.id
+      WHERE mr.patient_id = $1 AND mr.record_type = 'pharmacy_dispensing'
+      ORDER BY mr.recorded_time DESC
     `;
 
-    const result = await db.query(updateQuery, values);
+    const result = await client.query(query, [patientId]);
 
-    // Map to camelCase response
-    const prescriptionItem = {
-      id: result.rows[0].id,
-      prescriptionId: result.rows[0].prescription_id,
-      medicationName: result.rows[0].medication_name,
-      dosage: result.rows[0].dosage,
-      frequency: result.rows[0].frequency,
-      duration: result.rows[0].duration,
-      quantity: result.rows[0].quantity,
-      dispensedQuantity: result.rows[0].dispensed_quantity,
-      unitPrice: result.rows[0].unit_price,
-      totalPrice: result.rows[0].total_price,
-      instructions: result.rows[0].instructions,
-      status: result.rows[0].status,
-      substituteMedication: result.rows[0].substitute_medication,
-      notes: result.rows[0].notes,
-      createdAt: result.rows[0].created_at,
-      updatedAt: result.rows[0].updated_at
-    };
-
-    res.json(
-      successResponse('อัปเดตรายการยาสำเร็จ', prescriptionItem)
-    );
-
-  } catch (error) {
-    console.error('Update prescription item error:', error);
-    
-    if (error instanceof z.ZodError) {
-      return res.status(400).json(
-        errorResponse('ข้อมูลไม่ถูกต้อง', 400, error.errors)
-      );
-    }
-    
-    res.status(500).json(
-      errorResponse('เกิดข้อผิดพลาดในระบบ', 500)
-    );
-  }
-};
-
-/**
- * ดึงข้อมูลใบสั่งยาของการมาพบแพทย์
- * GET /api/medical/visits/:visitId/prescriptions
- */
-export const getPrescriptionsByVisit = async (req: Request, res: Response) => {
-  try {
-    const { visitId } = req.params;
-    
-    // Validate UUID
-    if (!visitId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
-      return res.status(400).json(
-        errorResponse('รูปแบบ Visit ID ไม่ถูกต้อง', 400)
-      );
-    }
-
-    const result = await db.query(`
-      SELECT p.*, 
-             u_prescribed.first_name as prescribed_by_first_name,
-             u_prescribed.last_name as prescribed_by_last_name
-      FROM prescriptions p
-      LEFT JOIN users u_prescribed ON p.prescribed_by = u_prescribed.id
-      WHERE p.visit_id = $1
-      ORDER BY p.created_at DESC
-    `, [visitId]);
-
-    // Map to camelCase response
-    const prescriptions = result.rows.map(row => ({
-      id: row.id,
-      visitId: row.visit_id,
-      patientId: row.patient_id,
-      prescriptionNumber: row.prescription_number,
-      diagnosisForPrescription: row.diagnosis_for_prescription,
-      totalCost: row.total_cost,
-      status: row.status,
-      prescribedBy: row.prescribed_by_first_name && row.prescribed_by_last_name ? {
-        firstName: row.prescribed_by_first_name,
-        lastName: row.prescribed_by_last_name
-      } : null,
-      prescriptionDate: row.prescription_date,
-      dispensedAt: row.dispensed_at,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
+    const dispensingRecords = result.rows.map(record => ({
+      id: record.id,
+      patientId: record.patient_id,
+      visitId: record.visit_id,
+      prescriptionId: record.prescription_id,
+      recordType: record.record_type,
+      medications: JSON.parse(record.medications || '[]'),
+      totalAmount: record.total_amount,
+      paymentMethod: record.payment_method,
+      notes: record.notes,
+      dispensedBy: record.recorded_by,
+      dispensedTime: record.recorded_time,
+      createdAt: record.created_at,
+      updatedAt: record.updated_at,
+      patient: {
+        thaiName: record.thai_name,
+        nationalId: record.national_id,
+        hospitalNumber: record.hospital_number
+      }
     }));
 
-    res.json(
-      successResponse('ดึงข้อมูลใบสั่งยาสำเร็จ', prescriptions)
-    );
+    res.status(200).json({
+      statusCode: 200,
+      message: 'Pharmacy dispensings retrieved successfully',
+      data: dispensingRecords,
+      meta: {
+        total: dispensingRecords.length
+      }
+    });
 
   } catch (error) {
-    console.error('Get prescriptions by visit error:', error);
-    res.status(500).json(
-      errorResponse('เกิดข้อผิดพลาดในระบบ', 500)
-    );
+    logger.error('Error retrieving pharmacy dispensings:', error);
+    res.status(500).json({
+      statusCode: 500,
+      message: 'Internal server error',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to retrieve pharmacy dispensings'
+      }
+    });
   }
-};
+});
+
+/**
+ * Get pharmacy dispensing by ID
+ */
+export const getPharmacyDispensingById = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    const client = await databaseManager.getClient();
+    
+    const query = `
+      SELECT mr.*, u.thai_name, u.national_id, u.hospital_number
+      FROM medical_records mr
+      JOIN users u ON mr.patient_id = u.id
+      WHERE mr.id = $1 AND mr.record_type = 'pharmacy_dispensing'
+    `;
+
+    const result = await client.query(query, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'Pharmacy dispensing record not found',
+        data: null,
+        error: {
+          code: 'RECORD_NOT_FOUND',
+          message: 'Pharmacy dispensing record with the specified ID does not exist'
+        }
+      });
+    }
+
+    const record = result.rows[0];
+
+    res.status(200).json({
+      statusCode: 200,
+      message: 'Pharmacy dispensing retrieved successfully',
+      data: {
+        id: record.id,
+        patientId: record.patient_id,
+        visitId: record.visit_id,
+        prescriptionId: record.prescription_id,
+        recordType: record.record_type,
+        medications: JSON.parse(record.medications || '[]'),
+        totalAmount: record.total_amount,
+        paymentMethod: record.payment_method,
+        notes: record.notes,
+        dispensedBy: record.recorded_by,
+        dispensedTime: record.recorded_time,
+        createdAt: record.created_at,
+        updatedAt: record.updated_at,
+        patient: {
+          thaiName: record.thai_name,
+          nationalId: record.national_id,
+          hospitalNumber: record.hospital_number
+        }
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error retrieving pharmacy dispensing:', error);
+    res.status(500).json({
+      statusCode: 500,
+      message: 'Internal server error',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to retrieve pharmacy dispensing'
+      }
+    });
+  }
+});
+
+/**
+ * Update pharmacy dispensing record
+ */
+export const updatePharmacyDispensing = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const updateData: UpdatePharmacyRequest = req.body;
+
+  try {
+    const client = await databaseManager.getClient();
+    
+    // Check if record exists
+    const checkQuery = 'SELECT id FROM medical_records WHERE id = $1 AND record_type = $2';
+    const checkResult = await client.query(checkQuery, [id, 'pharmacy_dispensing']);
+    
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'Pharmacy dispensing record not found',
+        data: null,
+        error: {
+          code: 'RECORD_NOT_FOUND',
+          message: 'Pharmacy dispensing record with the specified ID does not exist'
+        }
+      });
+    }
+
+    // Build dynamic update query
+    const updateFields = [];
+    const values = [];
+    let paramCount = 1;
+
+    Object.entries(updateData).forEach(([key, value]) => {
+      if (value !== undefined) {
+        const dbField = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+        if (typeof value === 'object') {
+          updateFields.push(`${dbField} = $${paramCount}`);
+          values.push(JSON.stringify(value));
+        } else {
+          updateFields.push(`${dbField} = $${paramCount}`);
+          values.push(value);
+        }
+        paramCount++;
+      }
+    });
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: 'No fields to update',
+        data: null,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'At least one field must be provided for update'
+        }
+      });
+    }
+
+    updateFields.push(`updated_at = NOW()`);
+    values.push(id);
+
+    const updateQuery = `
+      UPDATE medical_records 
+      SET ${updateFields.join(', ')}
+      WHERE id = $${paramCount} AND record_type = 'pharmacy_dispensing'
+      RETURNING *
+    `;
+
+    const result = await client.query(updateQuery, values);
+    const updatedRecord = result.rows[0];
+
+    logger.info('Pharmacy dispensing updated successfully', {
+      recordId: id,
+      updatedFields: Object.keys(updateData)
+    });
+
+    res.status(200).json({
+      statusCode: 200,
+      message: 'Pharmacy dispensing updated successfully',
+      data: {
+        id: updatedRecord.id,
+        patientId: updatedRecord.patient_id,
+        visitId: updatedRecord.visit_id,
+        prescriptionId: updatedRecord.prescription_id,
+        recordType: updatedRecord.record_type,
+        medications: JSON.parse(updatedRecord.medications || '[]'),
+        totalAmount: updatedRecord.total_amount,
+        paymentMethod: updatedRecord.payment_method,
+        notes: updatedRecord.notes,
+        dispensedBy: updatedRecord.recorded_by,
+        dispensedTime: updatedRecord.recorded_time,
+        createdAt: updatedRecord.created_at,
+        updatedAt: updatedRecord.updated_at
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error updating pharmacy dispensing:', error);
+    res.status(500).json({
+      statusCode: 500,
+      message: 'Internal server error',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to update pharmacy dispensing record'
+      }
+    });
+  }
+});
+
+/**
+ * Delete pharmacy dispensing record
+ */
+export const deletePharmacyDispensing = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    const client = await databaseManager.getClient();
+    
+    const deleteQuery = 'DELETE FROM medical_records WHERE id = $1 AND record_type = $2 RETURNING id';
+    const result = await client.query(deleteQuery, [id, 'pharmacy_dispensing']);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        statusCode: 404,
+        message: 'Pharmacy dispensing record not found',
+        data: null,
+        error: {
+          code: 'RECORD_NOT_FOUND',
+          message: 'Pharmacy dispensing record with the specified ID does not exist'
+        }
+      });
+    }
+
+    logger.info('Pharmacy dispensing deleted successfully', { recordId: id });
+
+    res.status(200).json({
+      statusCode: 200,
+      message: 'Pharmacy dispensing deleted successfully',
+      data: { id: result.rows[0].id }
+    });
+
+  } catch (error) {
+    logger.error('Error deleting pharmacy dispensing:', error);
+    res.status(500).json({
+      statusCode: 500,
+      message: 'Internal server error',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to delete pharmacy dispensing record'
+      }
+    });
+  }
+});

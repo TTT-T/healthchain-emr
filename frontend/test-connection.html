@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Backend Connection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background-color: #10b981;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #059669;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            background-color: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        .error {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+        .info {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Backend Connection Test</h1>
+    
+    <div class="test-section">
+        <h3>1. Test Backend Health Check</h3>
+        <button onclick="testBackendHealth()">Test Backend Health</button>
+        <div id="healthResult" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. Test Backend Registration Endpoint</h3>
+        <button onclick="testBackendRegistration()">Test Backend Registration</button>
+        <div id="registrationResult" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. Test Frontend API Route</h3>
+        <button onclick="testFrontendAPI()">Test Frontend API Route</button>
+        <div id="frontendResult" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. Test Full Registration Flow</h3>
+        <button onclick="testFullRegistration()">Test Full Registration</button>
+        <div id="fullResult" class="result"></div>
+    </div>
+
+    <script>
+        async function testBackendHealth() {
+            const resultDiv = document.getElementById('healthResult');
+            resultDiv.textContent = 'Testing...';
+            resultDiv.className = 'result info';
+            
+            try {
+                const response = await fetch('http://localhost:3001/health');
+                const result = await response.text();
+                
+                resultDiv.textContent = `Status: ${response.status}\nResponse: ${result}`;
+                resultDiv.className = response.ok ? 'result success' : 'result error';
+            } catch (error) {
+                resultDiv.textContent = `Error: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testBackendRegistration() {
+            const resultDiv = document.getElementById('registrationResult');
+            resultDiv.textContent = 'Testing...';
+            resultDiv.className = 'result info';
+            
+            const testData = {
+                titlePrefix: 'นาย',
+                firstName: 'ทดสอบ',
+                lastName: 'ระบบ',
+                email: 'test@example.com',
+                phone: '0812345678',
+                nationalId: '1234567890123',
+                birthDate: '1990-01-01',
+                gender: 'male',
+                username: 'testuser',
+                password: 'testpass123',
+                role: 'doctor',
+                medicalLicenseNumber: 'MD123456',
+                specialization: 'อายุรกรรม',
+                department: 'internal_medicine',
+                experience: '0'
+            };
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData),
+                });
+                
+                const result = await response.json();
+                
+                resultDiv.textContent = `Status: ${response.status}\nResponse: ${JSON.stringify(result, null, 2)}`;
+                resultDiv.className = response.ok ? 'result success' : 'result error';
+            } catch (error) {
+                resultDiv.textContent = `Error: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testFrontendAPI() {
+            const resultDiv = document.getElementById('frontendResult');
+            resultDiv.textContent = 'Testing...';
+            resultDiv.className = 'result info';
+            
+            const testData = {
+                titlePrefix: 'นาย',
+                firstName: 'ทดสอบ',
+                lastName: 'ระบบ',
+                email: 'test2@example.com',
+                confirmEmail: 'test2@example.com',
+                phone: '0812345679',
+                nationalId: '1234567890124',
+                birthDate: '1990-01-01',
+                gender: 'male',
+                profession: 'doctor',
+                medicalLicenseNumber: 'MD123457',
+                specialization: 'อายุรกรรม',
+                department: 'internal_medicine',
+                username: 'testuser2',
+                password: 'testpass123',
+                confirmPassword: 'testpass123',
+                birthDay: '1',
+                birthMonth: '1',
+                birthYear: '2533',
+                experience: '0',
+                acceptTerms: true,
+                acceptPrivacy: true
+            };
+            
+            try {
+                const response = await fetch('/api/medical-staff/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData),
+                });
+                
+                const result = await response.json();
+                
+                resultDiv.textContent = `Status: ${response.status}\nResponse: ${JSON.stringify(result, null, 2)}`;
+                resultDiv.className = response.ok ? 'result success' : 'result error';
+            } catch (error) {
+                resultDiv.textContent = `Error: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testFullRegistration() {
+            const resultDiv = document.getElementById('fullResult');
+            resultDiv.textContent = 'Testing...';
+            resultDiv.className = 'result info';
+            
+            const testData = {
+                titlePrefix: 'นาย',
+                firstName: 'สมชาย',
+                lastName: 'ใจดี',
+                email: 'somchai@hospital.com',
+                confirmEmail: 'somchai@hospital.com',
+                phone: '0812345678',
+                nationalId: '1234567890123',
+                birthDate: '1990-02-15',
+                gender: 'male',
+                profession: 'doctor',
+                medicalLicenseNumber: 'MD123456',
+                specialization: 'อายุรกรรม',
+                department: 'internal_medicine',
+                username: 'dr_somchai',
+                password: 'SecurePass123!',
+                confirmPassword: 'SecurePass123!',
+                birthDay: '15',
+                birthMonth: '2',
+                birthYear: '2533',
+                experience: '5',
+                acceptTerms: true,
+                acceptPrivacy: true
+            };
+            
+            try {
+                console.log('Testing full registration with data:', testData);
+                
+                const response = await fetch('/api/medical-staff/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData),
+                });
+                
+                const result = await response.json();
+                
+                resultDiv.textContent = `Status: ${response.status}\nResponse: ${JSON.stringify(result, null, 2)}`;
+                resultDiv.className = response.ok ? 'result success' : 'result error';
+                
+                console.log('Full registration result:', { status: response.status, result });
+            } catch (error) {
+                resultDiv.textContent = `Error: ${error.message}`;
+                resultDiv.className = 'result error';
+                console.error('Full registration error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

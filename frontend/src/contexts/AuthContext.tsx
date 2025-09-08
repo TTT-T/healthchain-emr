@@ -86,12 +86,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
             // Check if it's a network error vs auth error
             const apiError = error as { statusCode?: number; message?: string };
             if (apiError?.statusCode === 401 || apiError?.message?.includes('Authentication')) {
-              // Auth error - clear everything
-              console.log('🔍 AuthContext - Auth error, clearing tokens');
-              apiClient.clearTokens();
-              // FormDataCleaner.clearAllFormData(); // Disabled to prevent refresh
-              setUser(null);
-              setError(null);
+              // Auth error - dispatch token expiry event instead of clearing immediately
+              console.log('🔍 AuthContext - Auth error, dispatching token expiry event');
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('tokenExpired', {
+                  detail: {
+                    message: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่',
+                    statusCode: 401
+                  }
+                }));
+              }
             } else {
               // Network or other error - keep token but don't set user
               console.log('🔍 AuthContext - Network error, keeping token');
@@ -322,8 +326,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (error) {
       logger.error('Refresh user error:', error);
       console.log('🔍 AuthContext - Error refreshing user:', error);
-      setUser(null);
-      setError('Failed to refresh user data');
+      
+      // Check if it's an auth error
+      const apiError = error as { statusCode?: number; message?: string };
+      if (apiError?.statusCode === 401 || apiError?.message?.includes('Authentication')) {
+        // Dispatch token expiry event instead of setting error
+        console.log('🔍 AuthContext - Auth error during refresh, dispatching token expiry event');
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('tokenExpired', {
+            detail: {
+              message: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่',
+              statusCode: 401
+            }
+          }));
+        }
+      } else {
+        setUser(null);
+        setError('Failed to refresh user data');
+      }
     }
   };
 

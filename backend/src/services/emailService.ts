@@ -1542,6 +1542,494 @@ class EmailService {
 
     return await this.sendEmail(emailData);
   }
+
+  /**
+   * Send user approval notification
+   */
+  async sendUserApprovalNotification(
+    email: string,
+    firstName: string,
+    role: string,
+    approvalNotes?: string
+  ): Promise<boolean> {
+    try {
+      const subject = `🎉 บัญชีของคุณได้รับการอนุมัติแล้ว - HealthChain EMR`;
+      const htmlContent = this.generateUserApprovalTemplate(firstName, role, approvalNotes);
+      
+      return await this.sendEmail(email, subject, htmlContent);
+    } catch (error) {
+      console.error('Error sending user approval notification:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send user rejection notification
+   */
+  async sendUserRejectionNotification(
+    email: string,
+    firstName: string,
+    role: string,
+    rejectionReason: string
+  ): Promise<boolean> {
+    try {
+      const subject = `❌ บัญชีของคุณไม่ได้รับการอนุมัติ - HealthChain EMR`;
+      const htmlContent = this.generateUserRejectionTemplate(firstName, role, rejectionReason);
+      
+      return await this.sendEmail(email, subject, htmlContent);
+    } catch (error) {
+      console.error('Error sending user rejection notification:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Generate user approval HTML template
+   */
+  generateUserApprovalTemplate(
+    firstName: string,
+    role: string,
+    approvalNotes?: string
+  ): string {
+    const roleLabels = {
+      doctor: 'แพทย์',
+      nurse: 'พยาบาล',
+      staff: 'เจ้าหน้าที่'
+    };
+
+    return `
+      <!DOCTYPE html>
+      <html lang="th">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>บัญชีได้รับการอนุมัติ - HealthChain EMR</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #2d3748;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            min-height: 100vh;
+            padding: 20px;
+          }
+          .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+          }
+          .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+          }
+          .header p {
+            font-size: 16px;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+          }
+          .content {
+            padding: 40px 30px;
+          }
+          .success-icon {
+            text-align: center;
+            margin-bottom: 30px;
+          }
+          .success-icon .icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            color: white;
+            margin-bottom: 20px;
+          }
+          .greeting {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 20px;
+            text-align: center;
+          }
+          .message {
+            font-size: 16px;
+            color: #4b5563;
+            margin-bottom: 30px;
+            line-height: 1.8;
+          }
+          .role-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 10px 0;
+          }
+          .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 16px 32px;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            margin: 20px 0;
+            transition: transform 0.2s ease;
+          }
+          .cta-button:hover {
+            transform: translateY(-2px);
+          }
+          .notes {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 30px 0;
+          }
+          .notes h3 {
+            color: #166534;
+            font-size: 16px;
+            margin-bottom: 10px;
+          }
+          .notes p {
+            color: #15803d;
+            font-size: 14px;
+            line-height: 1.6;
+          }
+          .footer {
+            background: #f9fafb;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+          }
+          .footer p {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 10px;
+          }
+          .footer a {
+            color: #10b981;
+            text-decoration: none;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <h1>🎉 บัญชีได้รับการอนุมัติแล้ว</h1>
+            <p>HealthChain EMR System</p>
+          </div>
+          
+          <div class="content">
+            <div class="success-icon">
+              <div class="icon">✅</div>
+            </div>
+            
+            <div class="greeting">สวัสดี ${firstName}</div>
+            
+            <div class="message">
+              <p>ยินดีด้วย! บัญชีของคุณในฐานะ<span class="role-badge">${roleLabels[role as keyof typeof roleLabels] || role}</span>ได้รับการอนุมัติจากผู้ดูแลระบบแล้ว</p>
+              
+              <p>ตอนนี้คุณสามารถเข้าสู่ระบบและใช้งานฟีเจอร์ต่างๆ ของ HealthChain EMR ได้แล้ว</p>
+            </div>
+            
+            ${approvalNotes ? `
+            <div class="notes">
+              <h3>📝 หมายเหตุจากผู้ดูแลระบบ</h3>
+              <p>${approvalNotes}</p>
+            </div>
+            ` : ''}
+            
+            <div style="text-align: center;">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" class="cta-button">
+                เข้าสู่ระบบ
+              </a>
+            </div>
+            
+            <div class="message">
+              <p><strong>สิ่งที่คุณสามารถทำได้:</strong></p>
+              <ul style="margin: 20px 0; padding-left: 20px;">
+                <li>เข้าสู่ระบบด้วยอีเมลและรหัสผ่านที่สมัครไว้</li>
+                <li>เข้าถึงระบบ EMR และฟีเจอร์ต่างๆ</li>
+                <li>จัดการข้อมูลผู้ป่วยและบันทึกการรักษา</li>
+                <li>ใช้งานระบบตามสิทธิ์ที่ได้รับ</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div class="footer">
+            <p>หากคุณมีคำถามหรือต้องการความช่วยเหลือ กรุณาติดต่อทีมสนับสนุน</p>
+            <p>
+              <a href="mailto:support@healthchain.com">support@healthchain.com</a> | 
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}">HealthChain EMR</a>
+            </p>
+            <p style="margin-top: 20px; font-size: 12px; color: #9ca3af;">
+              อีเมลนี้ถูกส่งโดยอัตโนมัติ กรุณาอย่าตอบกลับ
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  /**
+   * Generate user rejection HTML template
+   */
+  generateUserRejectionTemplate(
+    firstName: string,
+    role: string,
+    rejectionReason: string
+  ): string {
+    const roleLabels = {
+      doctor: 'แพทย์',
+      nurse: 'พยาบาล',
+      staff: 'เจ้าหน้าที่'
+    };
+
+    return `
+      <!DOCTYPE html>
+      <html lang="th">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>บัญชีไม่ได้รับการอนุมัติ - HealthChain EMR</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #2d3748;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            min-height: 100vh;
+            padding: 20px;
+          }
+          .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+          }
+          .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+          }
+          .header p {
+            font-size: 16px;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+          }
+          .content {
+            padding: 40px 30px;
+          }
+          .rejection-icon {
+            text-align: center;
+            margin-bottom: 30px;
+          }
+          .rejection-icon .icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            color: white;
+            margin-bottom: 20px;
+          }
+          .greeting {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 20px;
+            text-align: center;
+          }
+          .message {
+            font-size: 16px;
+            color: #4b5563;
+            margin-bottom: 30px;
+            line-height: 1.8;
+          }
+          .role-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 10px 0;
+          }
+          .rejection-reason {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 30px 0;
+          }
+          .rejection-reason h3 {
+            color: #dc2626;
+            font-size: 16px;
+            margin-bottom: 10px;
+          }
+          .rejection-reason p {
+            color: #b91c1c;
+            font-size: 14px;
+            line-height: 1.6;
+          }
+          .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            padding: 16px 32px;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            margin: 20px 0;
+            transition: transform 0.2s ease;
+          }
+          .cta-button:hover {
+            transform: translateY(-2px);
+          }
+          .footer {
+            background: #f9fafb;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+          }
+          .footer p {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 10px;
+          }
+          .footer a {
+            color: #3b82f6;
+            text-decoration: none;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <h1>❌ บัญชีไม่ได้รับการอนุมัติ</h1>
+            <p>HealthChain EMR System</p>
+          </div>
+          
+          <div class="content">
+            <div class="rejection-icon">
+              <div class="icon">❌</div>
+            </div>
+            
+            <div class="greeting">สวัสดี ${firstName}</div>
+            
+            <div class="message">
+              <p>ขออภัย บัญชีของคุณในฐานะ<span class="role-badge">${roleLabels[role as keyof typeof roleLabels] || role}</span>ไม่ได้รับการอนุมัติจากผู้ดูแลระบบ</p>
+              
+              <p>กรุณาติดต่อทีมสนับสนุนหากคุณต้องการข้อมูลเพิ่มเติมหรือต้องการสมัครใหม่</p>
+            </div>
+            
+            <div class="rejection-reason">
+              <h3>📝 เหตุผลที่ไม่ได้รับการอนุมัติ</h3>
+              <p>${rejectionReason}</p>
+            </div>
+            
+            <div style="text-align: center;">
+              <a href="mailto:support@healthchain.com" class="cta-button">
+                ติดต่อทีมสนับสนุน
+              </a>
+            </div>
+            
+            <div class="message">
+              <p><strong>หากคุณต้องการสมัครใหม่:</strong></p>
+              <ul style="margin: 20px 0; padding-left: 20px;">
+                <li>ตรวจสอบข้อมูลที่กรอกให้ถูกต้องและครบถ้วน</li>
+                <li>แนบเอกสารประกอบที่จำเป็น</li>
+                <li>ติดต่อทีมสนับสนุนเพื่อขอคำแนะนำ</li>
+                <li>รอการพิจารณาจากผู้ดูแลระบบ</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div class="footer">
+            <p>หากคุณมีคำถามหรือต้องการความช่วยเหลือ กรุณาติดต่อทีมสนับสนุน</p>
+            <p>
+              <a href="mailto:support@healthchain.com">support@healthchain.com</a> | 
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}">HealthChain EMR</a>
+            </p>
+            <p style="margin-top: 20px; font-size: 12px; color: #9ca3af;">
+              อีเมลนี้ถูกส่งโดยอัตโนมัติ กรุณาอย่าตอบกลับ
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
 }
 
 export const emailService = new EmailService();

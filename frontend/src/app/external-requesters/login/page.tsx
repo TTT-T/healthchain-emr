@@ -105,12 +105,23 @@ export default function ExternalRequesterLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <Link 
+              href="/" 
+              className="inline-flex items-center gap-2 text-gray-600 hover:text-amber-600 transition-colors"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              กลับไปหน้าแรก
+            </Link>
+          </div>
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-3xl flex items-center justify-center shadow-xl">
+            <div className="w-20 h-20 bg-gradient-to-r from-amber-500 to-orange-600 rounded-3xl flex items-center justify-center shadow-xl">
               <Building2 className="h-10 w-10 text-white" />
             </div>
           </div>
@@ -126,7 +137,7 @@ export default function ExternalRequesterLogin() {
         <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm rounded-3xl">
           <CardHeader className="text-center pb-6">
             <CardTitle className="text-2xl font-semibold text-gray-900 flex items-center justify-center gap-2">
-              <Building2 className="h-6 w-6 text-emerald-600" />
+              <Building2 className="h-6 w-6 text-amber-600" />
               เข้าสู่ระบบ
             </CardTitle>
             <CardDescription className="text-gray-600">
@@ -145,7 +156,7 @@ export default function ExternalRequesterLogin() {
                   </div>
                   <input
                     type="email"
-                    className="w-full pl-12 pr-4 py-4 text-gray-900 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 bg-white hover:border-gray-300"
+                    className="w-full pl-12 pr-4 py-4 text-gray-900 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200 bg-white hover:border-gray-300"
                     placeholder="your-email@organization.com"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
@@ -164,7 +175,7 @@ export default function ExternalRequesterLogin() {
                   </div>
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    className="w-full pl-12 pr-12 py-4 text-gray-900 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 bg-white hover:border-gray-300"
+                    className="w-full pl-12 pr-12 py-4 text-gray-900 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200 bg-white hover:border-gray-300"
                     placeholder="••••••••"
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
@@ -204,7 +215,7 @@ export default function ExternalRequesterLogin() {
                 className={`w-full flex justify-center items-center py-4 px-6 border border-transparent text-lg font-semibold rounded-2xl text-white transition-all duration-200 transform ${
                   isLoading || loginResult?.success === true
                     ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-emerald-200'
+                    : 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-amber-200'
                 }`}
               >
                 {isLoading ? (
@@ -228,7 +239,7 @@ export default function ExternalRequesterLogin() {
 
             <div className="text-center space-y-6">
               <div className="text-sm text-gray-600">
-                <Link href="/external-requesters/forgot-password" className="text-emerald-600 hover:text-emerald-800 font-medium">
+                <Link href="/external-requesters/forgot-password" className="text-amber-600 hover:text-amber-800 font-medium">
                   ลืมรหัสผ่าน?
                 </Link>
               </div>
@@ -239,11 +250,24 @@ export default function ExternalRequesterLogin() {
                 </p>
                 <div className="space-y-3">
                   <Link href="/external-requesters/register">
-                    <button className="w-full py-3 px-4 border-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50 rounded-2xl font-medium transition-all duration-200">
+                    <button className="w-full py-3 px-4 border-2 border-amber-300 text-amber-700 hover:bg-amber-50 rounded-2xl font-medium transition-all duration-200">
                       ลงทะเบียนองค์กร
                     </button>
                   </Link>
-                  <p className="text-sm text-gray-600 mb-4"></p>
+                  <div className="text-xs text-gray-500 text-center">
+                    หรือเข้าสู่ระบบสำหรับ{' '}
+                    <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
+                      ผู้ป่วย
+                    </Link>
+                    {' '}|{' '}
+                    <Link href="/doctor/login" className="font-medium text-emerald-600 hover:text-emerald-500 transition-colors">
+                      บุคลากรทางการแพทย์
+                    </Link>
+                    {' '}|{' '}
+                    <Link href="/admin/login" className="font-medium text-purple-600 hover:text-purple-500 transition-colors">
+                      ผู้ดูแลระบบ
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>

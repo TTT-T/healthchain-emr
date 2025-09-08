@@ -6,6 +6,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
 import { AlertProvider } from "@/components/ui/alert-system";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ToastProvider } from "@/components/Toast";
 
 
 const geistSans = Geist({
@@ -38,15 +40,19 @@ export default function RootLayout({
   return (
     <html lang="th" className={`${geistSans.variable} ${geistMono.variable} ${sarabun.variable}`}>
       <body>
-        <ReactQueryProvider>
-          <AuthProvider>
-            <NotificationProvider>
-              <AlertProvider>
-                {children}
-              </AlertProvider>
-            </NotificationProvider>
-          </AuthProvider>
-        </ReactQueryProvider>
+        <ErrorBoundary>
+          <ReactQueryProvider>
+            <AuthProvider>
+              <NotificationProvider>
+                <AlertProvider>
+                  <ToastProvider>
+                    {children}
+                  </ToastProvider>
+                </AlertProvider>
+              </NotificationProvider>
+            </AuthProvider>
+          </ReactQueryProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

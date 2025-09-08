@@ -112,6 +112,17 @@ export default function AdminLogin() {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <Link 
+              href="/" 
+              className="inline-flex items-center gap-2 text-gray-600 hover:text-purple-600 transition-colors"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              กลับไปหน้าแรก
+            </Link>
+          </div>
           <div className="flex justify-center mb-6">
             <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-3xl flex items-center justify-center shadow-xl">
               <Crown className="h-10 w-10 text-white" />
@@ -237,7 +248,21 @@ export default function AdminLogin() {
             <Shield className="h-4 w-4" />
             <span>การเชื่อมต่อที่ปลอดภัยด้วย SSL</span>
           </div>
-          <div className="space-y-2 text-xs text-gray-500">
+          <div className="space-y-3 text-xs text-gray-500">
+            <div>
+              หรือเข้าสู่ระบบสำหรับ{' '}
+              <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
+                ผู้ป่วย
+              </Link>
+              {' '}|{' '}
+              <Link href="/doctor/login" className="font-medium text-emerald-600 hover:text-emerald-500 transition-colors">
+                บุคลากรทางการแพทย์
+              </Link>
+              {' '}|{' '}
+              <Link href="/external-requesters/login" className="font-medium text-amber-600 hover:text-amber-500 transition-colors">
+                องค์กรภายนอก
+              </Link>
+            </div>
             <p>ต้องการความช่วยเหลือ? ติดต่อ admin@healthchain.com</p>
             <p>หรือโทร 02-123-4567 (วันจันทร์-ศุกร์ 8:00-17:00)</p>
           </div>

@@ -82,78 +82,80 @@ export default function EMRDashboard() {
       // Fetch real data from API
       const promises = [
         apiClient.getPatients({ page: 1, limit: 100 }),
-        apiClient.getSystemHealth(),
-        // Add more API calls as needed
+        // TODO: Add more real API calls when available:
+        // apiClient.getAppointments({ page: 1, limit: 10 }),
+        // apiClient.getLabResults({ page: 1, limit: 10 }),
+        // apiClient.getMedications({ page: 1, limit: 10 }),
       ];
 
       const [patientsResponse] = await Promise.all(promises);
 
       // Calculate stats from real data
-      const patientsData = (patientsResponse.data as any[]) || [];
+      const patientsData = (patientsResponse.data?.patients as any[]) || [];
       const todayPatientsCount = patientsData.length;
       
-      // Set calculated stats
+      // Set real stats from actual data
       setStats({
         todayPatients: todayPatientsCount,
-        todayRegistrations: Math.floor(todayPatientsCount * 0.2), // 20% of patients are new registrations
-        activeQueues: Math.floor(todayPatientsCount * 0.1), // 10% are in queue
-        completedVisits: Math.floor(todayPatientsCount * 0.7), // 70% completed
-        pendingLabs: Math.floor(todayPatientsCount * 0.15), // 15% pending labs
-        upcomingAppointments: Math.floor(todayPatientsCount * 0.25), // 25% upcoming appointments
-        activeMedications: Math.floor(todayPatientsCount * 1.2), // 120% active medications
-        criticalAlerts: Math.floor(todayPatientsCount * 0.02) // 2% critical alerts
+        todayRegistrations: todayPatientsCount, // All patients are registrations for now
+        activeQueues: Math.min(todayPatientsCount, 5), // Show up to 5 patients in queue
+        completedVisits: 0, // Will be calculated from real visit data when available
+        pendingLabs: 0, // Will be calculated from real lab data when available
+        upcomingAppointments: 0, // Will be calculated from real appointment data when available
+        activeMedications: 0, // Will be calculated from real medication data when available
+        criticalAlerts: 0 // Will be calculated from real alert data when available
       });
 
-      // Generate queue data from patients
+      // Generate queue data from patients - use real data structure
       const queueData: QueueItem[] = patientsData.slice(0, 5).map((patient: any, index: number) => ({
         id: patient.id,
-        queueNumber: `Q${String(index + 1).padStart(3, '0')}`,
-        patientName: patient.thai_name || patient.name || `${patient.first_name || ''} ${patient.last_name || ''}`.trim(),
-        status: ['waiting', 'in_progress', 'completed'][index % 3] as any,
-        department: ['อายุรกรรม', 'ศัลยกรรม', 'กุมารเวชกรรม', 'สูตินรีเวชกรรม'][index % 4],
-        waitTime: Math.floor(Math.random() * 60) + 5,
-        priority: ['normal', 'urgent', 'emergency'][index % 3] as any
+        queueNumber: patient.personal_info?.hospital_number || `HN${String(index + 1).padStart(3, '0')}`,
+        patientName: patient.personal_info?.thai_name || `${patient.personal_info?.first_name || ''} ${patient.personal_info?.last_name || ''}`.trim() || 'ไม่ระบุชื่อ',
+        status: 'waiting' as any, // Real status - all patients are waiting for now
+        department: patient.department || 'ไม่ระบุแผนก',
+        waitTime: 0, // Real wait time - will be calculated from appointment data when available
+        priority: 'normal' as any // Real priority - default to normal for now
       }));
       setQueues(queueData);
 
-      // Generate recent activities from patients
+      // Generate recent activities from patients - use real data
       const activities: RecentActivity[] = patientsData.slice(0, 3).map((patient: any, index: number) => ({
         id: patient.id,
-        type: ['registration', 'visit', 'lab', 'prescription'][index % 4] as any,
-        description: `${['ลงทะเบียนผู้ป่วยใหม่', 'เข้ารับการรักษา', 'ส่งตรวจแลบ', 'สั่งจ่ายยา'][index % 4]}: ${patient.thaiName || patient.name || 'ไม่ระบุชื่อ'}`,
-        timestamp: new Date(Date.now() - Math.random() * 3600000).toISOString(),
+        type: 'registration' as any, // Real activity type - patient registration
+        description: `ลงทะเบียนผู้ป่วย: ${patient.personal_info?.thai_name || `${patient.personal_info?.first_name || ''} ${patient.personal_info?.last_name || ''}`.trim() || 'ไม่ระบุชื่อ'}`,
+        timestamp: patient.created_at || new Date().toISOString(),
         user: user?.thaiName || user?.firstName || 'เจ้าหน้าที่',
-        status: ['success', 'warning', 'error'][index % 3] as any
+        status: 'success' as any // Real status - registration is successful
       }));
       setRecentActivities(activities);
 
-      // Generate alerts
-      const alertsData: Alert[] = [
-        {
+      // Generate alerts from real data - show actual system status
+      const alertsData: Alert[] = [];
+      
+      // Add info alert if there are patients
+      if (todayPatientsCount > 0) {
+        alertsData.push({
           id: '1',
-          type: 'critical',
-          title: 'ผลตรวจวิกฤต',
-          message: 'มีผู้ป่วยที่ต้องติดตามเร่งด่วน',
-          timestamp: new Date(Date.now() - 1800000).toISOString(),
+          type: 'info',
+          title: 'ข้อมูลผู้ป่วย',
+          message: `พบผู้ป่วยทั้งหมด ${todayPatientsCount} รายในระบบ`,
+          timestamp: new Date().toISOString(),
           isRead: false
-        },
-        {
+        });
+      }
+      
+      // Add warning if no patients
+      if (todayPatientsCount === 0) {
+        alertsData.push({
           id: '2',
           type: 'warning',
-          title: 'ระบบแจ้งเตือน',
-          message: 'มีการนัดหมายที่ต้องยืนยัน',
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
+          title: 'ไม่มีข้อมูลผู้ป่วย',
+          message: 'ยังไม่มีผู้ป่วยในระบบ กรุณาลงทะเบียนผู้ป่วยใหม่',
+          timestamp: new Date().toISOString(),
           isRead: false
-        },
-        {
-          id: '3',
-          type: 'info',
-          title: 'การอัพเดทระบบ',
-          message: 'ระบบทำงานปกติ',
-          timestamp: new Date(Date.now() - 7200000).toISOString(),
-          isRead: true
-        }
-      ];
+        });
+      }
+      
       setAlerts(alertsData);
 
       logger.debug('✅ Dashboard data loaded successfully');
@@ -352,7 +354,6 @@ export default function EMRDashboard() {
             <StatCard
               title="ผู้ป่วยวันนี้"
               value={stats.todayPatients}
-              change={12}
               icon={Users}
               color="border-blue-500"
               link="/emr/patient-summary"
@@ -360,7 +361,6 @@ export default function EMRDashboard() {
             <StatCard
               title="ลงทะเบียนใหม่"
               value={stats.todayRegistrations}
-              change={8}
               icon={UserPlus}
               color="border-green-500"
               link="/emr/register-patient"
@@ -368,7 +368,6 @@ export default function EMRDashboard() {
             <StatCard
               title="คิวรอตรวจ"
               value={stats.activeQueues}
-              change={-5}
               icon={Clock}
               color="border-yellow-500"
               link="/emr/checkin"
@@ -376,7 +375,6 @@ export default function EMRDashboard() {
             <StatCard
               title="เสร็จสิ้นแล้ว"
               value={stats.completedVisits}
-              change={15}
               icon={CheckCircle}
               color="border-purple-500"
               link="/emr/doctor-visit"
