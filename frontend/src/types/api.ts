@@ -100,7 +100,15 @@ export interface RegisterRequest {
   password: string;
   firstName: string;
   lastName: string;
+  thaiFirstName?: string;
+  thaiLastName?: string;
   phoneNumber?: string;
+  nationalId?: string;
+  birthDate?: string;
+  gender?: string;
+  address?: string;
+  idCardAddress?: string;
+  bloodType?: string;
   role?: UserRole;
 }
 
@@ -251,6 +259,18 @@ export interface Patient {
   allergies?: string[];
   created_at: Date;
   updated_at: Date;
+  // Add birth fields for age calculation
+  birth_year?: number;
+  birth_month?: number;
+  birth_day?: number;
+  // Add other fields for EMR system
+  thaiName?: string;
+  nationalId?: string;
+  queueNumber?: string;
+  treatmentType?: string;
+  assignedDoctor?: string;
+  visitDate?: string;
+  visitTime?: string;
 }
 
 export interface MedicalRecord {
@@ -470,6 +490,7 @@ export interface MedicalVisit {
 export interface CreateVisitRequest {
   patientId: string;
   visitType?: 'walk_in' | 'appointment' | 'emergency' | 'follow_up' | 'referral';
+  visitTime?: string; // ISO datetime string for visit start time
   chiefComplaint: string;
   presentIllness?: string;
   priority?: 'low' | 'normal' | 'high' | 'urgent';

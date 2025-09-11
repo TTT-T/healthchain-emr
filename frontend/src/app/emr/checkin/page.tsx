@@ -1,10 +1,12 @@
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { ClipboardList, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
 import { VisitService } from '@/services/visitService';
 import { PDFService } from '@/services/pdfService';
+import { NotificationService } from '@/services/notificationService';
+import { DoctorService, Doctor } from '@/services/doctorService';
 import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
 import { addTokenExpiryTestButton } from '@/utils/tokenExpiryTest';
@@ -21,15 +23,7 @@ interface Patient {
   rh_factor: string;
 }
 
-interface Doctor {
-  id: string;
-  name: string;
-  department: string;
-  specialization: string;
-  currentQueue: number;
-  estimatedWaitTime: number;
-  isAvailable: boolean;
-}
+// Doctor interface is now imported from DoctorService
 
 interface CheckInData {
   patientHn: string;
@@ -41,8 +35,36 @@ interface CheckInData {
   notes: string;
 }
 
+// Helper function to format date to Buddhist Era
+const formatToBuddhistEra = (date: Date): string => {
+  const buddhistYear = date.getFullYear() + 543;
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${day}/${month}/${buddhistYear} ${hours}:${minutes}`;
+};
+
 export default function CheckIn() {
   const { isAuthenticated, user } = useAuth();
+  
+  // Debug logging for user data
+  useEffect(() => {
+    if (user) {
+      console.log('🔍 User data in checkin page:', {
+        id: user.id,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        thaiFirstName: user.thaiFirstName,
+        thaiLastName: user.thaiLastName,
+        position: user.position,
+        role: user.role,
+        departmentId: user.departmentId,
+        allFields: Object.keys(user)
+      });
+    }
+  }, [user]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<"hn" | "nationalId">("hn");
   const [isSearching, setIsSearching] = useState(false);
@@ -57,9 +79,17 @@ export default function CheckIn() {
     patientNationalId: "",
     treatmentType: "",
     assignedDoctor: "",
-    visitTime: new Date().toISOString().slice(0, 16),
+    visitTime: new Date().toISOString().slice(0, 16), // เวลาปัจจุบันเสมอ
     symptoms: "",
     notes: ""
+  });
+
+  // Modal calendar state
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date()); // วันที่ปัจจุบัน
+  const [selectedTime, setSelectedTime] = useState(() => {
+    const now = new Date();
+    return { hours: now.getHours(), minutes: now.getMinutes() };
   });
 
   const [errors, setErrors] = useState<Partial<CheckInData>>({});
@@ -75,12 +105,25 @@ export default function CheckIn() {
     { value: "followup", label: "นัดติดตามผล", icon: "📋", color: "orange" }
   ];
 
-  // Load real doctors data
+  // Load real doctors data from API
   const loadDoctors = async () => {
     try {
-      // For now, use sample data to avoid authentication issues
-      // TODO: Implement proper authentication flow
-      const sampleDoctors = [
+      logger.debug('🔄 Loading doctors from API...');
+      const response = await DoctorService.getAvailableDoctors();
+      
+      if (response.statusCode === 200 && response.data) {
+        logger.debug('✅ Doctors loaded successfully:', response.data);
+        setDoctors(response.data);
+        return;
+      } else {
+        throw new Error('Failed to load doctors');
+      }
+    } catch (error) {
+      logger.error('❌ Error loading doctors from API:', error);
+      
+      // Fallback to sample data if API fails
+      logger.debug('🔄 Using fallback sample doctors data...');
+      const sampleDoctors: Doctor[] = [
         {
           id: 'doc-001',
           name: 'นพ. สมชาย ใจดี',
@@ -88,7 +131,11 @@ export default function CheckIn() {
           specialization: 'โรคหัวใจ',
           isAvailable: true,
           currentQueue: 3,
-          estimatedWaitTime: 15
+          estimatedWaitTime: 15,
+          medicalLicenseNumber: 'MD001',
+          yearsOfExperience: 10,
+          position: 'แพทย์ผู้เชี่ยวชาญ',
+          consultationFee: 500
         },
         {
           id: 'doc-002', 
@@ -97,7 +144,11 @@ export default function CheckIn() {
           specialization: 'โรคติดเชื้อ',
           isAvailable: true,
           currentQueue: 1,
-          estimatedWaitTime: 5
+          estimatedWaitTime: 5,
+          medicalLicenseNumber: 'MD002',
+          yearsOfExperience: 8,
+          position: 'แพทย์ผู้เชี่ยวชาญ',
+          consultationFee: 450
         },
         {
           id: 'doc-003',
@@ -106,7 +157,11 @@ export default function CheckIn() {
           specialization: 'ศัลยกรรมทั่วไป',
           isAvailable: true,
           currentQueue: 2,
-          estimatedWaitTime: 10
+          estimatedWaitTime: 10,
+          medicalLicenseNumber: 'MD003',
+          yearsOfExperience: 15,
+          position: 'แพทย์ผู้เชี่ยวชาญ',
+          consultationFee: 600
         },
         {
           id: 'doc-004',
@@ -115,34 +170,14 @@ export default function CheckIn() {
           specialization: 'สูติกรรม',
           isAvailable: true,
           currentQueue: 0,
-          estimatedWaitTime: 0
+          estimatedWaitTime: 0,
+          medicalLicenseNumber: 'MD004',
+          yearsOfExperience: 12,
+          position: 'แพทย์ผู้เชี่ยวชาญ',
+          consultationFee: 550
         }
       ];
       
-      setDoctors(sampleDoctors);
-    } catch (error) {
-      console.error('Error loading doctors:', error);
-      // Set sample data as fallback
-      const sampleDoctors = [
-        {
-          id: 'doc-001',
-          name: 'นพ. สมชาย ใจดี',
-          department: 'อายุรกรรม',
-          specialization: 'โรคหัวใจ',
-          isAvailable: true,
-          currentQueue: 3,
-          estimatedWaitTime: 15
-        },
-        {
-          id: 'doc-002', 
-          name: 'นพ. สมหญิง รักสุขภาพ',
-          department: 'กุมารเวชกรรม',
-          specialization: 'โรคติดเชื้อ',
-          isAvailable: true,
-          currentQueue: 1,
-          estimatedWaitTime: 5
-        }
-      ];
       setDoctors(sampleDoctors);
     }
   };
@@ -154,6 +189,17 @@ export default function CheckIn() {
     
     // Add test button for development
     addTokenExpiryTestButton();
+  }, [isAuthenticated]);
+
+  // Update visit time to current time when component mounts or when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const currentTime = new Date().toISOString().slice(0, 16);
+      setCheckInData(prev => ({
+        ...prev,
+        visitTime: currentTime
+      }));
+    }
   }, [isAuthenticated]);
 
   const handleSearch = async () => {
@@ -177,26 +223,64 @@ export default function CheckIn() {
     setSelectedPatient(null);
     
     try {
-      // Search by name if nationalId, otherwise by hn
-      const searchBy = searchType === "nationalId" ? "name" : "hn";
+      // Search by hn for HN search, by name for national ID search
+      const searchBy = searchType === "hn" ? "hn" : "name";
       const response = await PatientService.searchPatients(searchQuery, searchBy);
       
       if (response.statusCode === 200 && response.data && response.data.length > 0) {
         // Find exact match
         const exactMatch = response.data.find(p => {
           if (searchType === "hn") {
-            return (p as any).hn === searchQuery || (p as any).hospital_number === searchQuery;
+            // Check both hn and hospital_number fields, and also check if the search query matches
+            const hnMatch = (p as any).hn === searchQuery;
+            const hospitalNumberMatch = (p as any).hospital_number === searchQuery;
+            const hospitalNumberUpperMatch = (p as any).hospital_number === searchQuery.toUpperCase();
+            
+            console.log(`Checking patient ${p.id}:`, {
+              searchQuery,
+              hn: (p as any).hn,
+              hospital_number: (p as any).hospital_number,
+              hnMatch,
+              hospitalNumberMatch,
+              hospitalNumberUpperMatch,
+              finalMatch: hnMatch || hospitalNumberMatch || hospitalNumberUpperMatch
+            });
+            
+            return hnMatch || hospitalNumberMatch || hospitalNumberUpperMatch;
           } else {
             return (p as any).national_id === searchQuery;
           }
         });
         
+        console.log('Search response:', response);
+        console.log('Search query:', searchQuery);
+        console.log('Search type:', searchType);
+        console.log('Found patients:', response.data);
+        console.log('Number of patients found:', response.data.length);
+        
+        // Debug each patient's fields
+        response.data.forEach((patient, index) => {
+          console.log(`Patient ${index}:`, {
+            id: patient.id,
+            hn: patient.hn,
+            hospital_number: patient.hospital_number,
+            national_id: patient.national_id,
+            thai_name: patient.thai_name,
+            allFields: Object.keys(patient)
+          });
+        });
+        
+        console.log('Exact match:', exactMatch);
+        
         if (exactMatch) {
           setSelectedPatient(exactMatch);
+          // อัปเดตเวลาปัจจุบันเมื่อเลือกผู้ป่วย
+          const currentTime = new Date().toISOString().slice(0, 16);
           setCheckInData(prev => ({
             ...prev,
             patientHn: exactMatch.hn || exactMatch.hospital_number || '',
-            patientNationalId: exactMatch.national_id || ''
+            patientNationalId: exactMatch.national_id || '',
+            visitTime: currentTime // อัปเดตเวลาปัจจุบัน
           }));
           setSuccess("พบข้อมูลผู้ป่วยแล้ว");
         } else {
@@ -221,6 +305,236 @@ export default function CheckIn() {
     }
   };
 
+  // Calendar modal functions
+  const openCalendarModal = () => {
+    const currentDateTime = checkInData.visitTime ? new Date(checkInData.visitTime) : new Date();
+    setSelectedDate(currentDateTime);
+    setSelectedTime({ 
+      hours: currentDateTime.getHours(), 
+      minutes: currentDateTime.getMinutes() 
+    });
+    setShowCalendarModal(true);
+  };
+
+  const closeCalendarModal = () => {
+    setShowCalendarModal(false);
+  };
+
+  const confirmDateTime = () => {
+    const newDateTime = new Date(selectedDate);
+    newDateTime.setHours(selectedTime.hours, selectedTime.minutes, 0, 0);
+    const now = new Date();
+    
+    // Check if the selected date and time is in the past (with 1 minute buffer)
+    const oneMinuteAgo = new Date(now.getTime() - 60000); // 1 minute ago
+    if (newDateTime < oneMinuteAgo) {
+      setErrors(prev => ({
+        ...prev,
+        visitTime: "ไม่สามารถเลือกวันที่และเวลาในอดีตได้ กรุณาเลือกเวลาปัจจุบันหรืออนาคต"
+      }));
+      return; // Don't close modal if time is in the past
+    }
+    
+    // Clear error if time is valid
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.visitTime;
+      return newErrors;
+    });
+    
+    const dateTimeString = newDateTime.toISOString().slice(0, 16);
+    handleInputChange("visitTime", dateTimeString);
+    setShowCalendarModal(false);
+  };
+
+  const setCurrentDateTime = () => {
+    // Set to current time
+    const now = new Date();
+    
+    setSelectedDate(now);
+    setSelectedTime({ hours: now.getHours(), minutes: now.getMinutes() });
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setSelectedDate(prev => {
+      const newDate = new Date(prev);
+      if (direction === 'prev') {
+        newDate.setMonth(newDate.getMonth() - 1);
+      } else {
+        newDate.setMonth(newDate.getMonth() + 1);
+      }
+      
+      // Check if the new month is in the past
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const selectedDateOnly = new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate());
+      
+      if (selectedDateOnly < today) {
+        // If month is in the past, show error and don't allow navigation
+        setErrors(prev => ({
+          ...prev,
+          visitTime: "ไม่สามารถเลือกเดือนในอดีตได้ กรุณาเลือกเดือนปัจจุบันหรืออนาคต"
+        }));
+        return prev; // Return previous date
+      } else {
+        // Clear error if month is valid
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.visitTime;
+          return newErrors;
+        });
+        return newDate;
+      }
+    });
+  };
+
+  const navigateYear = (direction: 'prev' | 'next') => {
+    setSelectedDate(prev => {
+      const newDate = new Date(prev);
+      if (direction === 'prev') {
+        newDate.setFullYear(newDate.getFullYear() - 1);
+      } else {
+        newDate.setFullYear(newDate.getFullYear() + 1);
+      }
+      
+      // Check if the new year is in the past
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const selectedDateOnly = new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate());
+      
+      if (selectedDateOnly < today) {
+        // If year is in the past, show error and don't allow navigation
+        setErrors(prev => ({
+          ...prev,
+          visitTime: "ไม่สามารถเลือกปีในอดีตได้ กรุณาเลือกปีปัจจุบันหรืออนาคต"
+        }));
+        return prev; // Return previous date
+      } else {
+        // Clear error if year is valid
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.visitTime;
+          return newErrors;
+        });
+        return newDate;
+      }
+    });
+  };
+
+  const selectDate = (day: number) => {
+    setSelectedDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setDate(day);
+      
+      // Check if the selected date is in the past
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const selectedDateOnly = new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate());
+      
+      if (selectedDateOnly < today) {
+        // If date is in the past, show error and don't update
+        setErrors(prev => ({
+          ...prev,
+          visitTime: "ไม่สามารถเลือกวันที่ในอดีตได้ กรุณาเลือกวันปัจจุบันหรืออนาคต"
+        }));
+        return prev; // Return previous date
+      } else {
+        // Clear error if date is valid
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.visitTime;
+          return newErrors;
+        });
+        return newDate;
+      }
+    });
+  };
+
+  const adjustTime = (type: 'hours' | 'minutes', direction: 'up' | 'down') => {
+    setSelectedTime(prev => {
+      const newTime = { ...prev };
+      if (type === 'hours') {
+        if (direction === 'up') {
+          newTime.hours = (newTime.hours + 1) % 24;
+        } else {
+          newTime.hours = newTime.hours === 0 ? 23 : newTime.hours - 1;
+        }
+      } else {
+        if (direction === 'up') {
+          newTime.minutes = (newTime.minutes + 1) % 60;
+        } else {
+          newTime.minutes = newTime.minutes === 0 ? 59 : newTime.minutes - 1;
+        }
+      }
+      
+      // Check if the new time is in the past (with 1 minute buffer)
+      const newDateTime = new Date(selectedDate);
+      newDateTime.setHours(newTime.hours, newTime.minutes, 0, 0);
+      const now = new Date();
+      const oneMinuteAgo = new Date(now.getTime() - 60000); // 1 minute ago
+      
+      if (newDateTime < oneMinuteAgo) {
+        // If time is in the past, show error and don't update
+        setErrors(prev => ({
+          ...prev,
+          visitTime: "ไม่สามารถเลือกเวลาในอดีตได้ กรุณาเลือกเวลาปัจจุบันหรืออนาคต"
+        }));
+        return prev; // Return previous time
+      } else {
+        // Clear error if time is valid
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.visitTime;
+          return newErrors;
+        });
+        return newTime;
+      }
+    });
+  };
+
+  // Handle direct time input
+  const handleTimeInput = (type: 'hours' | 'minutes', value: string) => {
+    const numValue = parseInt(value);
+    if (isNaN(numValue)) return;
+    
+    setSelectedTime(prev => {
+      const newTime = { ...prev };
+      if (type === 'hours') {
+        if (numValue >= 0 && numValue <= 23) {
+          newTime.hours = numValue;
+        }
+      } else {
+        if (numValue >= 0 && numValue <= 59) {
+          newTime.minutes = numValue;
+        }
+      }
+      
+      // Check if the new time is in the past (with 1 minute buffer)
+      const newDateTime = new Date(selectedDate);
+      newDateTime.setHours(newTime.hours, newTime.minutes, 0, 0);
+      const now = new Date();
+      const oneMinuteAgo = new Date(now.getTime() - 60000); // 1 minute ago
+      
+      if (newDateTime < oneMinuteAgo) {
+        // If time is in the past, show error and don't update
+        setErrors(prev => ({
+          ...prev,
+          visitTime: "ไม่สามารถเลือกเวลาในอดีตได้ กรุณาเลือกเวลาปัจจุบันหรืออนาคต"
+        }));
+        return prev; // Return previous time
+      } else {
+        // Clear error if time is valid
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.visitTime;
+          return newErrors;
+        });
+        return newTime;
+      }
+    });
+  };
+
+
   const validateForm = (): boolean => {
     const newErrors: Partial<CheckInData> = {};
 
@@ -228,6 +542,17 @@ export default function CheckIn() {
     if (!checkInData.treatmentType) newErrors.treatmentType = "กรุณาเลือกประเภทการรักษา";
     if (!checkInData.assignedDoctor) newErrors.assignedDoctor = "กรุณาเลือกแพทย์ผู้ตรวจ";
     if (!checkInData.visitTime) newErrors.visitTime = "กรุณาเลือกเวลาเริ่ม visit";
+    
+    // Check if visit time is in the past
+    if (checkInData.visitTime) {
+      const visitDateTime = new Date(checkInData.visitTime);
+      const now = new Date();
+      const oneMinuteAgo = new Date(now.getTime() - 60000); // 1 minute ago
+      
+      if (visitDateTime < oneMinuteAgo) {
+        newErrors.visitTime = "ไม่สามารถเลือกเวลาในอดีตได้ กรุณาเลือกเวลาปัจจุบันหรืออนาคต";
+      }
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -240,19 +565,70 @@ export default function CheckIn() {
     setError(null);
     
     try {
+      // Debug selectedPatient data
+      console.log('🔍 Selected Patient Data:', {
+        id: selectedPatient?.id,
+        hn: selectedPatient?.hn,
+        hospital_number: selectedPatient?.hospital_number,
+        fullData: selectedPatient
+      });
+
+      // Check for duplicate visit before creating
+      const visitDate = new Date(checkInData.visitTime);
+      const formattedDate = visitDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+      
+      try {
+        const duplicateCheckResponse = await fetch('/api/medical/visits', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (duplicateCheckResponse.ok) {
+          const visitsData = await duplicateCheckResponse.json();
+          const existingVisits = visitsData.data?.visits || [];
+          
+          const duplicateVisit = existingVisits.find((visit: any) => 
+            visit.patient_id === selectedPatient!.id &&
+            visit.visit_date === formattedDate &&
+            (visit.status === 'in_progress' || visit.status === 'pending' || visit.status === 'checked_in')
+          );
+          
+          if (duplicateVisit) {
+            setError(`❌ ผู้ป่วยนี้ได้เช็คอินแล้วในวันนี้\n\nหมายเลขคิวเดิม: ${duplicateVisit.visit_number}\nสถานะ: ${duplicateVisit.status}\nวันที่: ${formattedDate}`);
+            setIsSubmitting(false);
+            return;
+          }
+        }
+      } catch (duplicateError) {
+        console.warn('Could not check for duplicate visits:', duplicateError);
+        // Continue with creation if duplicate check fails
+      }
+      
       // Create visit record using VisitService
       const visitData = {
         patientId: selectedPatient!.id,
-        visitType: checkInData.treatmentType as any,
+        visitType: 'walk_in', // Use valid visit type from database constraint
+        visitTime: checkInData.visitTime, // Current timestamp
         chiefComplaint: checkInData.symptoms || 'ไม่ระบุอาการ',
         presentIllness: checkInData.notes,
         priority: 'normal' as const,
         attendingDoctorId: checkInData.assignedDoctor,
       };
       
+      console.log('🔍 Visit Data being sent:', visitData);
+      
       const response = await VisitService.createVisit(visitData);
       
-      if (response.statusCode === 200) {
+      console.log('🔍 Visit creation response:', {
+        statusCode: response.statusCode,
+        data: response.data,
+        success: response.success
+      });
+      
+      if (response.statusCode === 200 || response.statusCode === 201) {
         // Generate queue number (this would come from the API in real implementation)
         const queueNumber = `Q${String(Math.floor(Math.random() * 999) + 1).padStart(3, '0')}`;
         const selectedDoc = doctors.find(d => d.id === checkInData.assignedDoctor);
@@ -260,8 +636,26 @@ export default function CheckIn() {
         // Send notification to patient
         await sendPatientNotification(selectedPatient!, queueNumber, selectedDoc!, checkInData);
         
+        // Format visit time for display
+        const visitDateTime = new Date(checkInData.visitTime);
+        const formattedDateTime = formatToBuddhistEra(visitDateTime);
+        
+            // Get queue information from API response
+            const queueInfo = response.data?.queueInfo;
+            const currentQueue = queueInfo?.currentQueue || selectedDoc?.currentQueue || 0;
+            const estimatedWaitTime = queueInfo?.estimatedWaitTime || (currentQueue * 15);
+            const queuePosition = queueInfo?.queuePosition || currentQueue;
+
+            // Calculate actual wait time based on selected time vs current time
+            const currentTime = new Date();
+            const timeDifference = visitDateTime.getTime() - currentTime.getTime();
+            const waitMinutes = Math.max(0, Math.round(timeDifference / (1000 * 60))); // Convert to minutes
+        
         setGeneratedQueueNumber(queueNumber);
-        setSuccess(`เช็คอินสำเร็จ!\n\nหมายเลขคิว: ${queueNumber}\nแพทย์: ${selectedDoc?.name}\nคิวที่รอ: ${selectedDoc?.currentQueue} คิว\nเวลารอโดยประมาณ: ${selectedDoc?.estimatedWaitTime} นาที\n\n✅ ระบบได้ส่งการแจ้งเตือนให้ผู้ป่วยแล้ว\n📄 PDF รายงานถูกเก็บในระบบแล้ว`);
+        setSuccess(`เช็คอินสำเร็จ!\n\nหมายเลขคิว: ${queueNumber}\nแพทย์: ${selectedDoc?.name}\nวันที่และเวลา: ${formattedDateTime}\nคิวที่รอ: ${queuePosition} คิว\nเวลารอโดยประมาณ: ${waitMinutes} นาที\n\n✅ ระบบได้ส่งการแจ้งเตือนให้ผู้ป่วยแล้ว\n📄 PDF รายงานถูกเก็บในระบบแล้ว`);
+        
+        // Reload doctors data to update queue information
+        await loadDoctors();
         
         // Don't reset form immediately - let user generate PDF first
         // setSelectedPatient(null);
@@ -275,6 +669,11 @@ export default function CheckIn() {
         //   symptoms: "",
         //   notes: ""
         // });
+      } else if (response.statusCode === 409) {
+        // Handle duplicate visit error
+        const errorMessage = response.error?.message || "ผู้ป่วยนี้ได้เช็คอินแล้วในวันนี้";
+        const existingVisit = response.error?.existingVisit;
+        setError(`❌ ${errorMessage}${existingVisit ? `\n\nหมายเลขคิวเดิม: ${existingVisit.visit_number}\nสถานะ: ${existingVisit.status}\nวันที่: ${existingVisit.visit_date}` : ''}`);
       } else {
         setError("เกิดข้อผิดพลาดในการสร้างข้อมูล visit");
       }
@@ -287,17 +686,57 @@ export default function CheckIn() {
     }
   };
 
-  const calculateAge = (birthDate: string): number => {
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
+  const calculateAge = (patient: any): number => {
+    console.log('🔍 Calculating age for patient:', {
+      id: patient.id,
+      birth_date: patient.birth_date,
+      birth_year: patient.birth_year,
+      birth_month: patient.birth_month,
+      birth_day: patient.birth_day,
+      age: patient.age,
+      allFields: Object.keys(patient)
+    });
     
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
+    // Try to calculate from birth_date first
+    if (patient.birth_date) {
+      const today = new Date();
+      const birth = new Date(patient.birth_date);
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      
+      console.log('📅 Calculated age from birth_date:', age);
+      return age;
     }
     
-    return age;
+    // Calculate from separate birth fields (Buddhist Era)
+    if (patient.birth_year && patient.birth_month && patient.birth_day) {
+      const today = new Date();
+      // Convert Buddhist Era to Christian Era
+      const christianYear = patient.birth_year - 543;
+      const birth = new Date(christianYear, patient.birth_month - 1, patient.birth_day);
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      
+      console.log('📅 Calculated age from separate fields:', age, 'Buddhist year:', patient.birth_year, 'Christian year:', christianYear);
+      return age;
+    }
+    
+    // If patient already has age calculated, use it
+    if (patient.age && patient.age > 0) {
+      console.log('📅 Using existing age:', patient.age);
+      return patient.age;
+    }
+    
+    console.log('❌ No birth date information available, returning 0');
+    return 0; // Return 0 if no birth date information
   };
 
   const getAvailableDoctors = () => {
@@ -342,7 +781,7 @@ export default function CheckIn() {
       patientNationalId: "",
       treatmentType: "",
       assignedDoctor: "",
-      visitTime: new Date().toISOString().slice(0, 16),
+      visitTime: new Date().toISOString().slice(0, 16), // Reset to current time
       symptoms: "",
       notes: ""
     });
@@ -537,7 +976,7 @@ export default function CheckIn() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="text-slate-600">HN:</span>
-                  <span className="ml-2 font-medium text-slate-800">{selectedPatient.hn}</span>
+                  <span className="ml-2 font-medium text-slate-800">{selectedPatient.hn || selectedPatient.hospital_number}</span>
                 </div>
                 <div>
                   <span className="text-slate-600">ชื่อ:</span>
@@ -545,7 +984,7 @@ export default function CheckIn() {
                 </div>
                 <div>
                   <span className="text-slate-600">อายุ:</span>
-                  <span className="ml-2 font-medium text-slate-800">{selectedPatient.birth_date ? calculateAge(selectedPatient.birth_date) : 'ไม่ระบุ'} ปี</span>
+                  <span className="ml-2 font-medium text-slate-800">{selectedPatient ? calculateAge(selectedPatient) : 'ไม่ระบุ'} ปี</span>
                 </div>
                 <div>
                   <span className="text-slate-600">เพศ:</span>
@@ -574,13 +1013,16 @@ export default function CheckIn() {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-blue-800">
-                        ผู้สร้างคิว: {user.thaiName || `${user.firstName} ${user.lastName}`}
+                        ผู้สร้างคิว: {user.thaiFirstName && user.thaiLastName ? 
+                          `${user.thaiFirstName} ${user.thaiLastName}` : 
+                          `${user.firstName} ${user.lastName}`}
                       </p>
                       <p className="text-xs text-blue-600">
-                        {user.role === 'doctor' ? 'แพทย์' : 
-                         user.role === 'nurse' ? 'พยาบาล' : 
-                         user.role === 'staff' ? 'เจ้าหน้าที่' : 
-                         user.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน'} 
+                        {user.position || 
+                         (user.role === 'doctor' ? 'แพทย์' : 
+                          user.role === 'nurse' ? 'พยาบาล' : 
+                          user.role === 'staff' ? 'เจ้าหน้าที่' : 
+                          user.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน')} 
                         {user.departmentId && ` - ${user.departmentId}`}
                       </p>
                     </div>
@@ -719,14 +1161,33 @@ export default function CheckIn() {
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                       เวลาเริ่ม Visit <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="datetime-local"
-                      value={checkInData.visitTime}
-                      onChange={(e) => handleInputChange("visitTime", e.target.value)}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
-                        errors.visitTime ? 'border-red-500' : 'border-slate-300'
-                      }`}
-                    />
+                    
+                    {/* Input field with calendar icon - like in image 2 */}
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={checkInData.visitTime ? 
+                          formatToBuddhistEra(new Date(checkInData.visitTime)) : 
+                          ''
+                        }
+                        readOnly
+                        onClick={openCalendarModal}
+                        className={`w-full px-4 py-3 pr-12 border rounded-lg cursor-pointer focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
+                          errors.visitTime ? 'border-red-500' : 'border-slate-300'
+                        }`}
+                        placeholder="YYYY-MM-DD hh:mm"
+                      />
+                      <button
+                        type="button"
+                        onClick={openCalendarModal}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </button>
+                    </div>
+                    
                     {errors.visitTime && <p className="text-red-500 text-sm mt-1">{errors.visitTime}</p>}
                   </div>
 
@@ -838,6 +1299,191 @@ export default function CheckIn() {
           </div>          </div>
         </div>
       </div>
+
+      {/* Calendar Modal - Compact Layout */}
+      {showCalendarModal && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 p-4 w-full max-w-2xl animate-in fade-in-0 zoom-in-95 duration-300">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-slate-800 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                เลือกวันที่และเวลา
+              </h3>
+              <button
+                onClick={closeCalendarModal}
+                className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-all duration-200"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex gap-4">
+              {/* Date Picker - Left Side */}
+              <div className="flex-1">
+                {/* Year Navigation */}
+                <div className="flex items-center justify-between mb-2 p-1.5 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
+                  <button
+                    onClick={() => navigateYear('prev')}
+                    className="p-1.5 hover:bg-white rounded-md transition-all duration-200 hover:scale-110"
+                  >
+                    <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <span className="text-sm font-bold text-slate-800">{selectedDate.getFullYear()}</span>
+                  <button
+                    onClick={() => navigateYear('next')}
+                    className="p-1.5 hover:bg-white rounded-md transition-all duration-200 hover:scale-110"
+                  >
+                    <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Month Navigation */}
+                <div className="flex items-center justify-between mb-3 p-1.5 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg">
+                  <button
+                    onClick={() => navigateMonth('prev')}
+                    className="p-1.5 hover:bg-white rounded-md transition-all duration-200 hover:scale-110"
+                  >
+                    <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <span className="text-sm font-bold text-slate-800">
+                    {selectedDate.toLocaleDateString('th-TH', { month: 'long' })}
+                  </span>
+                  <button
+                    onClick={() => navigateMonth('next')}
+                    className="p-1.5 hover:bg-white rounded-md transition-all duration-200 hover:scale-110"
+                  >
+                    <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Calendar Grid */}
+                <div className="grid grid-cols-7 gap-0.5 mb-2">
+                  {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map(day => (
+                    <div key={day} className="text-center text-xs font-semibold text-slate-600 p-1 bg-slate-100 rounded">
+                      {day}
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-0.5">
+                  {Array.from({ length: new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate() }, (_, i) => i + 1).map(day => (
+                    <button
+                      key={day}
+                      onClick={() => selectDate(day)}
+                      className={`p-2 text-xs rounded-lg transition-all duration-200 hover:scale-110 ${
+                        selectedDate.getDate() === day
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-500/25'
+                          : 'text-slate-700 hover:bg-blue-100 hover:text-blue-700'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Time Picker - Right Side - Compact Layout */}
+              <div className="flex-1">
+                <div className="text-center mb-3">
+                  <div className="text-2xl font-mono bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-bold">
+                    {String(selectedTime.hours).padStart(2, '0')}:{String(selectedTime.minutes).padStart(2, '0')}
+                  </div>
+                </div>
+                
+                {/* Compact Time Controls */}
+                <div className="flex justify-center items-center gap-4">
+                  {/* Hours - Compact */}
+                  <div className="flex flex-col items-center">
+                    <div className="text-xs font-semibold text-slate-600 mb-2 bg-slate-100 rounded py-1 px-2">ชั่วโมง</div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => adjustTime('hours', 'down')}
+                        className="p-2 hover:bg-blue-100 rounded-lg transition-all duration-200 hover:scale-110"
+                      >
+                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      <div className="text-xl font-bold text-slate-800 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg py-2 px-3 w-12 text-center shadow-sm">
+                        {String(selectedTime.hours).padStart(2, '0')}
+                      </div>
+                      <button
+                        onClick={() => adjustTime('hours', 'up')}
+                        className="p-2 hover:bg-blue-100 rounded-lg transition-all duration-200 hover:scale-110"
+                      >
+                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Separator */}
+                  <div className="text-2xl font-bold text-slate-400 mt-6">:</div>
+
+                  {/* Minutes - Compact */}
+                  <div className="flex flex-col items-center">
+                    <div className="text-xs font-semibold text-slate-600 mb-2 bg-slate-100 rounded py-1 px-2">นาที</div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => adjustTime('minutes', 'down')}
+                        className="p-2 hover:bg-purple-100 rounded-lg transition-all duration-200 hover:scale-110"
+                      >
+                        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      <div className="text-xl font-bold text-slate-800 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg py-2 px-3 w-12 text-center shadow-sm">
+                        {String(selectedTime.minutes).padStart(2, '0')}
+                      </div>
+                      <button
+                        onClick={() => adjustTime('minutes', 'up')}
+                        className="p-2 hover:bg-purple-100 rounded-lg transition-all duration-200 hover:scale-110"
+                      >
+                        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-200/50">
+              <button
+                onClick={setCurrentDateTime}
+                className="px-4 py-2 text-xs font-semibold bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 rounded-lg hover:from-green-200 hover:to-emerald-200 transition-all duration-200 hover:scale-105"
+              >
+                📅 วันนี้
+              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={closeCalendarModal}
+                  className="px-4 py-2 text-xs font-semibold bg-gradient-to-r from-slate-100 to-gray-100 text-slate-700 rounded-lg hover:from-slate-200 hover:to-gray-200 transition-all duration-200 hover:scale-105"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  onClick={confirmDateTime}
+                  className="px-4 py-2 text-xs font-semibold bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all duration-200 hover:scale-105 shadow-blue-500/25"
+                >
+                  ✅ ตกลง
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

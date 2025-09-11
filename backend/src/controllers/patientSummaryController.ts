@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { databaseManager } from '../database';
+import databaseManager from '../database';
 import { asyncHandler } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 
@@ -12,13 +12,17 @@ export const getPatientSummary = asyncHandler(async (req: Request, res: Response
   try {
     const client = await databaseManager.getClient();
     
-    // Get patient basic information
+    // Get patient basic information from patients table with user data
     const patientQuery = `
-      SELECT id, thai_name, first_name, last_name, national_id, hospital_number, 
-             age, gender, phone, email, address, emergency_contact, 
-             created_at, updated_at
-      FROM users 
-      WHERE id = $1 AND role = 'patient'
+      SELECT p.id, p.thai_name, p.first_name, p.last_name, p.national_id, p.hospital_number, 
+             p.gender, p.phone, p.email, p.address, p.emergency_contact, 
+             p.created_at, p.updated_at,
+             u.birth_day, u.birth_month, u.birth_year, u.insurance_type,
+             u.drug_allergies, u.food_allergies, u.environment_allergies,
+             u.weight, u.height, u.religion, u.race, u.occupation, u.education, u.marital_status
+      FROM patients p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.id = $1
     `;
     const patientResult = await client.query(patientQuery, [patientId]);
 
@@ -35,6 +39,22 @@ export const getPatientSummary = asyncHandler(async (req: Request, res: Response
     }
 
     const patient = patientResult.rows[0];
+    
+    // Calculate age from birth date (Buddhist Era)
+    let age = null;
+    if (patient.birth_year && patient.birth_month && patient.birth_day) {
+      // Convert Buddhist Era to Christian Era
+      const christianYear = patient.birth_year - 543;
+      const birthDate = new Date(christianYear, patient.birth_month - 1, patient.birth_day);
+      const today = new Date();
+      age = today.getFullYear() - birthDate.getFullYear();
+      
+      // Adjust if birthday hasn't occurred this year
+      if (today.getMonth() < birthDate.getMonth() || 
+          (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+    }
 
     // Get all medical records for the patient
     const recordsQuery = `
@@ -211,12 +231,26 @@ export const getPatientSummary = asyncHandler(async (req: Request, res: Response
           lastName: patient.last_name,
           nationalId: patient.national_id,
           hospitalNumber: patient.hospital_number,
-          age: patient.age,
+          age: age,
           gender: patient.gender,
           phone: patient.phone,
           email: patient.email,
           address: patient.address,
           emergencyContact: patient.emergency_contact,
+          birthDay: patient.birth_day,
+          birthMonth: patient.birth_month,
+          birthYear: patient.birth_year,
+          insuranceType: patient.insurance_type,
+          drugAllergies: patient.drug_allergies,
+          foodAllergies: patient.food_allergies,
+          environmentAllergies: patient.environment_allergies,
+          weight: patient.weight,
+          height: patient.height,
+          religion: patient.religion,
+          race: patient.race,
+          occupation: patient.occupation,
+          education: patient.education,
+          maritalStatus: patient.marital_status,
           createdAt: patient.created_at,
           updatedAt: patient.updated_at
         },

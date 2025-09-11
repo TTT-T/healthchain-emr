@@ -32,11 +32,14 @@ interface RegisterData {
   password: string;
   firstName: string;
   lastName: string;
+  thaiFirstName?: string;
+  thaiLastName?: string;
   phoneNumber?: string;
   nationalId?: string;
   birthDate?: string;
   gender?: string;
   address?: string;
+  idCardAddress?: string;
   bloodType?: string;
 }
 

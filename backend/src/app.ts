@@ -20,6 +20,7 @@ import securityRoutes from './routes/security';
 import externalRequestersRoutes from './routes/external-requesters';
 import healthRoutes from './routes/health';
 import emailTestRoutes from './routes/email-test';
+import patientRegistrationRoutes from './routes/patientRegistration';
 
 // Middleware
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
@@ -162,6 +163,7 @@ class Application {
     this.app.use('/api/security', securityRoutes);   // Security Settings     // Profile management
     this.app.use('/api/external-requesters', externalRequestersRoutes); // External Requesters
     this.app.use('/api/email-test', emailTestRoutes); // Email Testing
+    this.app.use('/api/patient-registration', patientRegistrationRoutes); // Patient EMR Registration
 
     // 404 handler
     this.app.use('*', (req: Request, res: Response) => {

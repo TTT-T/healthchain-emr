@@ -40,17 +40,17 @@ const db = {
       INSERT INTO users (
         username, email, password_hash, first_name, last_name, 
         thai_name, thai_last_name, phone, role, is_active, email_verified, profile_completed,
-        national_id, birth_date, gender, address, blood_type
+        national_id, birth_date, gender, address, id_card_address, blood_type
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, $12, $13, $14, $15, $16)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, $12, $13, $14, $15, $16, $17)
       RETURNING id, username, email, first_name, last_name, thai_name, thai_last_name, role, is_active, email_verified, profile_completed
     `;
     const result = await db.query(query, [
       userData.username, userData.email, userData.password,
-      userData.firstName, userData.lastName, userData.firstName, userData.lastName, // Thai names
+      userData.firstName, userData.lastName, userData.thaiFirstName, userData.thaiLastName, // Thai names
       userData.phoneNumber, userData.role, userData.isActive, userData.isEmailVerified,
       userData.nationalId, userData.birthDate, userData.gender, 
-      userData.address, userData.bloodType
+      userData.address, userData.idCardAddress, userData.bloodType
     ]);
     return result.rows[0];
   },
@@ -82,6 +82,7 @@ const db = {
   getUserById: async (userId: string) => {
     const query = `
       SELECT id, username, email, first_name, last_name,
+             thai_name, thai_last_name, position, department_id,
              role, is_active, profile_completed, email_verified,
              created_at, updated_at
       FROM users WHERE id = $1
@@ -106,7 +107,18 @@ const db = {
       WHERE s.session_token = $1 AND u.is_active = true
     `;
     const result = await db.query(query, [refreshToken]);
-    return result.rows[0] || null;
+    const session = result.rows[0] || null;
+    if (session) {
+      // Ensure user_id is properly mapped
+      session.userId = session.user_id;
+      console.log('🔍 Session mapping result:', {
+        id: session.id,
+        user_id: session.user_id,
+        userId: session.userId,
+        userIdType: typeof session.userId
+      });
+    }
+    return session;
   },
   updateSession: async (sessionId: string, updateData: any) => {
     const query = `
@@ -227,6 +239,8 @@ export const register = async (req: Request, res: Response) => {
         password: hashedPassword,
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
+        thaiFirstName: validatedData.thaiFirstName,
+        thaiLastName: validatedData.thaiLastName,
         phoneNumber: validatedData.phoneNumber,
         role: validatedData.role || 'patient',
         isActive: validatedData.role === 'patient' ? true : false, // Only patients are active by default
@@ -235,6 +249,7 @@ export const register = async (req: Request, res: Response) => {
         birthDate: validatedData.birthDate,
         gender: validatedData.gender,
         address: validatedData.address,
+        idCardAddress: validatedData.idCardAddress,
         bloodType: validatedData.bloodType
       });
     } catch (error: any) {
@@ -258,36 +273,7 @@ export const register = async (req: Request, res: Response) => {
     }
     
     // Create role-specific records
-    if (newUser.role === 'patient') {
-      try {
-        // Generate hospital number
-        const hospitalNumber = `HN${new Date().getFullYear()}${String(Date.now()).slice(-6)}`;
-        
-        // Create patient record linked to user
-        await db.query(`
-          INSERT INTO patients (
-            user_id, hospital_number, first_name, last_name, 
-            date_of_birth, gender, email, phone, 
-            created_by
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        `, [
-          newUser.id,
-          hospitalNumber,
-          validatedData.firstName,
-          validatedData.lastName,
-          validatedData.birthDate || null,
-          validatedData.gender || null,
-          validatedData.email,
-          validatedData.phoneNumber || null,
-          newUser.id
-        ]);
-        
-        console.log('👤 Patient record created for user:', newUser.id);
-      } catch (patientError) {
-        console.error('❌ Failed to create patient record:', patientError);
-        // Don't fail registration if patient creation fails
-      }
-    } else if (newUser.role === 'doctor') {
+    if (newUser.role === 'doctor') {
       try {
         // Import DoctorDB
         const { DoctorDB } = await import('../database/doctors');
@@ -358,7 +344,6 @@ export const register = async (req: Request, res: Response) => {
     // Create session
     await db.createSession({
       userId: newUser.id,
-      accessToken,
       refreshToken,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       ipAddress: req.ip || 'unknown',
@@ -592,7 +577,6 @@ export const login = async (req: Request, res: Response) => {
     // Create session
     await db.createSession({
       userId: user.id,
-      accessToken,
       refreshToken,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       ipAddress: req.ip || 'unknown',
@@ -692,7 +676,7 @@ export const refreshToken = async (req: Request, res: Response) => {
     
     console.log('🔍 User lookup result:', { user: user ? 'found' : 'not found', userId: session.userId });
     
-    if (!user || !user.isActive) {
+    if (!user || !user.is_active) {
       return res.status(401).json(
         errorResponse('User not found or inactive', 401)
       );
@@ -802,12 +786,24 @@ export const getProfile = async (req: Request, res: Response) => {
       );
     }
     
-    // Remove password from response
+    // Remove password from response and map field names
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = currentUser;
     
+    // Map snake_case to camelCase for frontend compatibility
+    const mappedUser = {
+      ...userWithoutPassword,
+      thaiFirstName: userWithoutPassword.thai_name, // Use thai_name (combined) as first name
+      thaiLastName: userWithoutPassword.thai_last_name,
+      departmentId: userWithoutPassword.department_id,
+      // Remove snake_case fields
+      thai_name: undefined,
+      thai_last_name: undefined,
+      department_id: undefined
+    };
+    
     res.json(
-      successResponse('Profile retrieved successfully', userWithoutPassword)
+      successResponse('Profile retrieved successfully', mappedUser)
     );
     
   } catch (error) {

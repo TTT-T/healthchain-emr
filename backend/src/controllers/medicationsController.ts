@@ -43,40 +43,17 @@ export const getPatientMedications = async (req: Request, res: Response) => {
         patientResult = await databaseManager.query(patientQuery, [user.id]);
       }
       
-      // If still no patient found, create one
+      // If still no patient found, do not create one automatically
       if (patientResult.rows.length === 0) {
-        try {
-          // Generate hospital number
-          const hospitalNumber = `HN${new Date().getFullYear()}${String(Date.now()).slice(-6)}`;
-          
-          // Create patient record
-          const createPatientQuery = `
-            INSERT INTO patients (
-              user_id, hospital_number, first_name, last_name, 
-              email, created_by
-            ) VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING *
-          `;
-          const createResult = await databaseManager.query(createPatientQuery, [
-            user.id,
-            hospitalNumber,
-            user.first_name,
-            user.last_name,
-            user.email,
-            user.id
-          ]);
-          
-          patient = createResult.rows[0];
-          console.log('👤 Created patient record for user:', user.id);
-        } catch (createError) {
-          console.error('❌ Failed to create patient record:', createError);
-          return res.status(404).json({
-            data: null,
-            meta: null,
-            error: { message: 'Patient record not found and could not be created' },
-            statusCode: 404
-          });
-        }
+        return res.status(404).json({
+          data: null,
+          meta: null,
+          error: { 
+            message: 'Patient record not found. Please register through EMR system at /emr/register-patient',
+            code: 'PATIENT_NOT_REGISTERED'
+          },
+          statusCode: 404
+        });
       } else {
         patient = patientResult.rows[0];
       }

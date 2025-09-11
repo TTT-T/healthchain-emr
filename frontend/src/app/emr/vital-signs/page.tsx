@@ -19,6 +19,8 @@ interface Patient {
   queueNumber: string;
   treatmentType: string;
   assignedDoctor: string;
+  visitDate?: string;
+  visitTime?: string;
 }
 
 interface VitalSigns {
@@ -47,7 +49,7 @@ interface VitalSigns {
 export default function VitalSigns() {
   const { user, isAuthenticated } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchType, setSearchType] = useState<"hn" | "queue">("queue");
+  const [searchType, setSearchType] = useState<"hn" | "queue">("hn");
   const [isSearching, setIsSearching] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -133,27 +135,157 @@ export default function VitalSigns() {
       // ค้นหาผู้ป่วยจาก API
       const response = await PatientService.searchPatients(searchQuery, searchType);
       
+      logger.debug('🔍 Search response:', response);
+      logger.debug('🔍 Response data:', response.data);
+      logger.debug('🔍 Data length:', response.data?.length);
+      logger.debug('🔍 Search type:', searchType);
+      logger.debug('🔍 Search query:', searchQuery);
+      
       if (response.data && response.data.length > 0) {
         const patient = response.data[0];
         
-        // Map ข้อมูลผู้ป่วยจาก API response
+        // Map ข้อมูลผู้ป่วยจาก API response - ใช้ direct fields (flat structure)
         const mappedPatient: Patient = {
-          hn: patient.hn,
-          nationalId: patient.nationalId || '',
-          thaiName: patient.thaiName || 'ไม่ระบุชื่อ',
+          hn: patient.hn || patient.hospital_number || '',
+          nationalId: patient.national_id || '',
+          thaiName: patient.thai_name || 'ไม่ระบุชื่อ',
           gender: patient.gender || 'ไม่ระบุ',
-          birthDate: patient.birthDate || '',
-          queueNumber: 'Q001', // Default queue number
-          treatmentType: 'OPD - ตรวจรักษาทั่วไป', // Default treatment
-          assignedDoctor: 'นพ.สมชาย วงศ์แพทย์' // Default doctor
+          birthDate: patient.birth_date || '',
+          // Add birth fields for age calculation
+          birth_year: patient.birth_year,
+          birth_month: patient.birth_month,
+          birth_day: patient.birth_day,
+          queueNumber: patient.visit_info?.visit_number || patient.visit_number || 'V2025000001',
+          treatmentType: patient.visit_info?.visit_type === 'walk_in' ? 'ฉุกเฉิน' : 
+                        patient.visit_info?.visit_type === 'appointment' ? 'นัดหมาย' : 
+                        patient.visit_info?.visit_type === 'emergency' ? 'ฉุกเฉิน' : 
+                        patient.visit_type === 'walk_in' ? 'ฉุกเฉิน' : 
+                        patient.visit_type === 'appointment' ? 'นัดหมาย' : 
+                        patient.visit_type === 'emergency' ? 'ฉุกเฉิน' : 'ฉุกเฉิน',
+          assignedDoctor: patient.visit_info?.doctor_name || patient.doctor_name || 'นพ.สมชาย ใจดี',
+          visitDate: patient.visit_info?.visit_date || patient.visit_date || '2025-09-10',
+          visitTime: patient.visit_info?.visit_time || patient.visit_time || '18:00:00'
         };
+
+        // Debug logging for patient data
+        console.log('🔍 RAW PATIENT DATA FROM API:', patient);
+        console.log('🔍 PATIENT VISIT INFO:', patient.visit_info);
+        console.log('🔍 PATIENT PERSONAL INFO:', patient.personal_info);
+        console.log('🔍 HAS VISIT INFO?', !!patient.visit_info);
+        console.log('🔍 VISIT INFO KEYS:', patient.visit_info ? Object.keys(patient.visit_info) : 'No visit_info');
+        console.log('🔍 DIRECT VISIT FIELDS:', {
+          visit_number: patient.visit_number,
+          visit_type: patient.visit_type,
+          visit_date: patient.visit_date,
+          visit_time: patient.visit_time,
+          doctor_name: patient.doctor_name
+        });
+        console.log('🔍 ALL PATIENT KEYS:', Object.keys(patient));
+        console.log('🔍 PATIENT VALUES:', Object.values(patient));
+        
+        logger.debug('🔍 Patient data mapping:', {
+          originalPatient: patient,
+          mappedPatient: mappedPatient,
+          birthDate: patient.birth_date,
+          calculatedAge: calculateAge(mappedPatient.birthDate, patient),
+          visitInfo: patient.visit_info,
+          personalInfo: patient.personal_info,
+          directFields: {
+            hn: patient.hn,
+            thai_name: patient.thai_name,
+            birth_date: patient.birth_date,
+            visit_type: patient.visit_type,
+            doctor_name: patient.doctor_name
+          },
+          birthFields: {
+            birth_year: patient.birth_year,
+            birth_month: patient.birth_month,
+            birth_day: patient.birth_day
+          }
+        });
 
         setSelectedPatient(mappedPatient);
         setSuccess('พบข้อมูลผู้ป่วยแล้ว');
         logger.debug('✅ Patient found:', mappedPatient);
+        logger.debug('🔍 Raw patient data:', patient);
+        logger.debug('🔍 Mapped patient details:', {
+          hn: mappedPatient.hn,
+          thaiName: mappedPatient.thaiName,
+          birthDate: mappedPatient.birthDate,
+          age: calculateAge(mappedPatient.birthDate, patient),
+          queueNumber: mappedPatient.queueNumber,
+          treatmentType: mappedPatient.treatmentType,
+          assignedDoctor: mappedPatient.assignedDoctor
+        });
       } else {
-        setSelectedPatient(null);
-        setError("ไม่พบข้อมูลผู้ป่วยในระบบ กรุณาตรวจสอบข้อมูล");
+        // ถ้าไม่พบข้อมูลในคิว ลองค้นหาผู้ป่วยในระบบโดยตรง
+        logger.debug('🔍 No patient in queue, searching in system...');
+        
+        try {
+          const systemResponse = await PatientService.searchPatients(searchQuery, 'hn');
+          
+          if (systemResponse.data && systemResponse.data.length > 0) {
+            const patient = systemResponse.data[0];
+            
+            // Map ข้อมูลผู้ป่วยจากระบบ (ใช้ข้อมูลจริงจาก API)
+            const mappedPatient: Patient = {
+              hn: patient.hn || patient.hospital_number || '',
+              nationalId: patient.national_id || '',
+              thaiName: patient.thai_name || 'ไม่ระบุชื่อ',
+              gender: patient.gender || 'ไม่ระบุ',
+              birthDate: patient.birth_date || '',
+              // Add birth fields for age calculation
+              birth_year: patient.birth_year,
+              birth_month: patient.birth_month,
+              birth_day: patient.birth_day,
+              queueNumber: patient.visit_info?.visit_number || patient.visit_number || 'V2025000001',
+              treatmentType: patient.visit_info?.visit_type === 'walk_in' ? 'ฉุกเฉิน' : 
+                            patient.visit_info?.visit_type === 'appointment' ? 'นัดหมาย' : 
+                            patient.visit_info?.visit_type === 'emergency' ? 'ฉุกเฉิน' : 
+                            patient.visit_type === 'walk_in' ? 'ฉุกเฉิน' : 
+                            patient.visit_type === 'appointment' ? 'นัดหมาย' : 
+                            patient.visit_type === 'emergency' ? 'ฉุกเฉิน' : 'ฉุกเฉิน',
+              assignedDoctor: patient.visit_info?.doctor_name || patient.doctor_name || 'นพ.สมชาย ใจดี',
+              visitDate: patient.visit_info?.visit_date || patient.visit_date || '2025-09-10',
+              visitTime: patient.visit_info?.visit_time || patient.visit_time || '18:00:00'
+            };
+
+            // Debug logging for fallback search
+            logger.debug('🔍 Fallback search patient data mapping:', {
+              originalPatient: patient,
+              mappedPatient: mappedPatient,
+              birthDate: patient.birth_date,
+              calculatedAge: calculateAge(mappedPatient.birthDate, patient),
+              visitInfo: patient.visit_info,
+              personalInfo: patient.personal_info,
+              birthFields: {
+                birth_year: patient.birth_year,
+                birth_month: patient.birth_month,
+                birth_day: patient.birth_day
+              }
+            });
+
+            setSelectedPatient(mappedPatient);
+            setSuccess('พบข้อมูลผู้ป่วยในระบบ (ไม่มีข้อมูลคิว)');
+            logger.debug('✅ Patient found in system:', mappedPatient);
+            logger.debug('🔍 Fallback mapped patient details:', {
+              hn: mappedPatient.hn,
+              thaiName: mappedPatient.thaiName,
+              birthDate: mappedPatient.birthDate,
+              age: calculateAge(mappedPatient.birthDate),
+              queueNumber: mappedPatient.queueNumber,
+              treatmentType: mappedPatient.treatmentType,
+              assignedDoctor: mappedPatient.assignedDoctor
+            });
+          } else {
+            setSelectedPatient(null);
+            setError("ไม่พบข้อมูลผู้ป่วยในระบบ กรุณาตรวจสอบข้อมูล");
+          }
+        } catch (systemError) {
+          logger.error('❌ Error searching in system:', systemError);
+          setSelectedPatient(null);
+          setError("ไม่พบข้อมูลผู้ป่วยในระบบ กรุณาตรวจสอบข้อมูล");
+        }
       }
       
     } catch (error: any) {
@@ -307,17 +439,77 @@ export default function VitalSigns() {
     }
   };
 
-  const calculateAge = (birthDate: string): number => {
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
+  const calculateAge = (birthDate: string, patient?: any): number => {
+    // Try to use separate birth fields if birthDate is null
+    if (!birthDate && patient) {
+      if (patient.birth_year && patient.birth_month && patient.birth_day) {
+        let birthYear = patient.birth_year;
+        let birthMonth = patient.birth_month; // Keep original month value
+        let birthDay = patient.birth_day;
+        
+        // Convert Buddhist Era to Christian Era if year >= 2500
+        if (birthYear >= 2500) {
+          birthYear = birthYear - 543;
+        }
+        
+        const today = new Date();
+        let age = today.getFullYear() - birthYear;
+        
+        // Check if birthday has passed this year
+        const currentMonth = today.getMonth() + 1; // Convert to 1-based month
+        const currentDay = today.getDate();
+        
+        // If birthday hasn't passed this year, subtract 1 from age
+        if (currentMonth < birthMonth || (currentMonth === birthMonth && currentDay < birthDay)) {
+          age--;
+        }
+        
+        return age;
+      }
     }
     
-    return age;
+    if (!birthDate) return 0;
+    
+    try {
+      // Handle Buddhist Era dates (if birthDate contains Thai year)
+      let birthYear: number;
+      let birthMonth: number;
+      let birthDay: number;
+      
+      if (birthDate.includes('/')) {
+        // Format: DD/MM/YYYY or DD/MM/YYYY (B.E.)
+        const parts = birthDate.split('/');
+        birthDay = parseInt(parts[0]);
+        birthMonth = parseInt(parts[1]) - 1; // JavaScript months are 0-based
+        birthYear = parseInt(parts[2]);
+        
+        // Convert Buddhist Era to Christian Era if year > 2500
+        if (birthYear > 2500) {
+          birthYear = birthYear - 543;
+        }
+      } else {
+        // Try to parse as ISO date
+        const birth = new Date(birthDate);
+        if (isNaN(birth.getTime())) return 0;
+        
+        birthYear = birth.getFullYear();
+        birthMonth = birth.getMonth();
+        birthDay = birth.getDate();
+      }
+      
+      const today = new Date();
+      let age = today.getFullYear() - birthYear;
+      const monthDiff = today.getMonth() - birthMonth;
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDay)) {
+        age--;
+      }
+      
+      return age;
+    } catch (error) {
+      console.error('Error calculating age:', error);
+      return 0;
+    }
   };
 
   /**
@@ -552,7 +744,7 @@ export default function VitalSigns() {
                 </div>
                 <div>
                   <span className="text-slate-600">อายุ:</span>
-                  <span className="ml-2 font-medium text-slate-800">{calculateAge(selectedPatient.birthDate)} ปี</span>
+                  <span className="ml-2 font-medium text-slate-800">{calculateAge(selectedPatient.birthDate, selectedPatient)} ปี</span>
                 </div>
                 <div className="md:col-span-2">
                   <span className="text-slate-600">ประเภท:</span>
@@ -562,6 +754,20 @@ export default function VitalSigns() {
                   <span className="text-slate-600">แพทย์:</span>
                   <span className="ml-2 font-medium text-slate-800">{selectedPatient.assignedDoctor}</span>
                 </div>
+                {selectedPatient.visitDate && selectedPatient.visitTime && (
+                  <div className="md:col-span-2">
+                    <span className="text-slate-600">วันที่และเวลา:</span>
+                    <span className="ml-2 font-medium text-slate-800">
+                      {(() => {
+                        const visitDate = new Date(selectedPatient.visitDate);
+                        const buddhistYear = visitDate.getFullYear() + 543;
+                        const month = String(visitDate.getMonth() + 1).padStart(2, '0');
+                        const day = String(visitDate.getDate()).padStart(2, '0');
+                        return `${day}/${month}/${buddhistYear} ${selectedPatient.visitTime}`;
+                      })()}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}

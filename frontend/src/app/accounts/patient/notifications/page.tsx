@@ -44,13 +44,27 @@ export default function Notifications() {
             setNotifications([]);
             logger.warn('Notifications data is not an array:', notificationsData);
           }
+        } else if (response.statusCode === 404) {
+          // Patient record not found - this is expected for users who haven't registered in EMR yet
+          setNotifications([]);
+          setError("คุณยังไม่ได้ลงทะเบียนในระบบ EMR กรุณาติดต่อเจ้าหน้าที่เพื่อลงทะเบียน");
         } else {
           setError(response.error?.message || "ไม่สามารถดึงข้อมูลการแจ้งเตือนได้");
         }
       }
-    } catch (err) {
-      logger.error("Error fetching notifications:", err);
-      setError("เกิดข้อผิดพลาดในการดึงข้อมูลการแจ้งเตือน");
+    } catch (err: any) {
+      // Check if it's a 404 error (patient not found)
+      if (err?.response?.status === 404 || err?.statusCode === 404) {
+        // Patient record not found - this is expected for users who haven't registered in EMR yet
+        setNotifications([]);
+        setError("คุณยังไม่ได้ลงทะเบียนในระบบ EMR กรุณาติดต่อเจ้าหน้าที่เพื่อลงทะเบียน");
+      } else {
+        // Don't log 404 errors as they are expected for users not yet registered in EMR
+        if (err?.response?.status !== 404 && err?.statusCode !== 404) {
+          logger.error("Error fetching notifications:", err);
+        }
+        setError("เกิดข้อผิดพลาดในการดึงข้อมูลการแจ้งเตือน");
+      }
     } finally {
       setIsLoading(false);
     }

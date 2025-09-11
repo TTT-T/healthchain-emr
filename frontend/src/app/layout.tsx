@@ -8,6 +8,7 @@ import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
 import { AlertProvider } from "@/components/ui/alert-system";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ToastProvider } from "@/components/Toast";
+import TokenExpiredNotification from "@/components/TokenExpiredNotification";
 
 
 const geistSans = Geist({
@@ -47,6 +48,7 @@ export default function RootLayout({
                 <AlertProvider>
                   <ToastProvider>
                     {children}
+                    <TokenExpiredNotification />
                   </ToastProvider>
                 </AlertProvider>
               </NotificationProvider>

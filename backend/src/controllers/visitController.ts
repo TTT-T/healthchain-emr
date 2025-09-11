@@ -69,8 +69,12 @@ const visitSearchSchema = z.object({
  */
 export const createVisit = async (req: Request, res: Response) => {
   try {
+    console.log('🔍 Create visit request body:', req.body);
+    console.log('🔍 User from request:', req.user);
+    
     // Validate input
     const validatedData = createVisitSchema.parse(req.body);
+    console.log('✅ Validated data:', validatedData);
     
     // Verify patient exists
     const patientResult = await db.query(
@@ -159,9 +163,10 @@ export const createVisit = async (req: Request, res: Response) => {
     );
 
   } catch (error) {
-    console.error('Create visit error:', error);
+    console.error('❌ Create visit error:', error);
     
     if (error instanceof z.ZodError) {
+      console.error('❌ Zod validation errors:', error.errors);
       return res.status(400).json(
         errorResponse('ข้อมูลไม่ถูกต้อง', 400, error.errors)
       );

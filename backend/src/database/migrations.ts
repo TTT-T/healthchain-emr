@@ -143,6 +143,20 @@ export class MigrationManager {
         up: async () => {
           await this.runSqlMigration('012_add_user_approval_fields.sql');
         }
+      },
+      {
+        name: '013_add_separate_birth_date_fields',
+        description: 'Add separate birth date fields for better date handling',
+        up: async () => {
+          await this.runSqlMigration('013_add_separate_birth_date_fields.sql');
+        }
+      },
+      {
+        name: '014_add_hospital_number_sequence',
+        description: 'Add hospital number sequence for HR number generation',
+        up: async () => {
+          await this.runSqlMigration('014_add_hospital_number_sequence.sql');
+        }
       }
     ];
 

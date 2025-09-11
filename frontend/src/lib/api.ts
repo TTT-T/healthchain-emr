@@ -135,11 +135,22 @@ class APIClient {
               throw new Error('No refresh token');
             }
           } catch (refreshError) {
+            logger.error('🔄 Token refresh failed:', refreshError);
             this.processQueue(refreshError, null);
             this.clearTokens();
-            // Redirect to login
+            // Show user-friendly message
             if (typeof window !== 'undefined') {
-              window.location.href = '/login';
+              // Dispatch custom event for token expiry
+              window.dispatchEvent(new CustomEvent('tokenExpired', {
+                detail: {
+                  message: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่',
+                  statusCode: 401
+                }
+              }));
+              // Redirect to login after a short delay
+              setTimeout(() => {
+                window.location.href = '/login';
+              }, 1000);
             }
           } finally {
             this.isRefreshing = false;
@@ -313,6 +324,23 @@ class APIClient {
       return null;
     }
     
+    // Check if token is expired (basic JWT check)
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const currentTime = Math.floor(Date.now() / 1000);
+        if (payload.exp && payload.exp < currentTime) {
+          logger.warn('⚠️ Token expired, clearing...');
+          this.clearTokens();
+          return null;
+        }
+      } catch (error) {
+        logger.warn('⚠️ Token validation failed, clearing...');
+        this.clearTokens();
+        return null;
+      }
+    }
+    
     return token || null;
   }
 
@@ -465,11 +493,15 @@ class APIClient {
     Cookies.remove(REFRESH_TOKEN_KEY);
     Cookies.remove(TOKEN_KEY, { path: '/' });
     Cookies.remove(REFRESH_TOKEN_KEY, { path: '/' });
+    Cookies.remove(TOKEN_KEY, { path: '/', domain: window.location.hostname });
+    Cookies.remove(REFRESH_TOKEN_KEY, { path: '/', domain: window.location.hostname });
     
     // Clear localStorage fallback
     try {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(REFRESH_TOKEN_KEY);
+      localStorage.removeItem('rememberMe');
+      localStorage.removeItem('user');
       logger.debug('💾 Tokens cleared from localStorage');
     } catch (error) {
       logger.error('❌ LocalStorage cleanup failed:', error);
@@ -479,6 +511,7 @@ class APIClient {
     try {
       sessionStorage.removeItem(TOKEN_KEY);
       sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+      sessionStorage.removeItem('user');
       logger.debug('💾 Tokens cleared from sessionStorage');
     } catch (error) {
       logger.error('❌ SessionStorage cleanup failed:', error);
@@ -486,11 +519,23 @@ class APIClient {
     
     // Clear any other auth-related data
     try {
-      localStorage.removeItem('user');
-      sessionStorage.removeItem('user');
+      // Clear all possible auth-related keys
+      const authKeys = ['user', 'auth', 'session', 'login', 'profile'];
+      authKeys.forEach(key => {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      });
       logger.debug('🧹 User data cleared from storage');
     } catch (error) {
       logger.error('❌ User data cleanup failed:', error);
+    }
+    
+    // Force reload to clear any cached state
+    if (typeof window !== 'undefined') {
+      logger.debug('🔄 Forcing page reload to clear cached state...');
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 100);
     }
     
     logger.debug('✅ All tokens and session data cleared');
@@ -527,8 +572,13 @@ class APIClient {
       };
       
       return transformedResponse;
-    } catch (error) {
-      logger.error('💥 API request failed:', error);
+    } catch (error: any) {
+      // Don't log 404 errors for notifications as they are expected for users not yet registered in EMR
+      if (error?.response?.status === 404 && config.url?.includes('/notifications')) {
+        logger.debug('🔍 Expected 404 for notifications (user not registered in EMR):', config.url);
+      } else {
+        logger.error('💥 API request failed:', error);
+      }
       throw error; // Will be handled by interceptor
     }
   }
@@ -1215,7 +1265,7 @@ class APIClient {
   /**
    * Get patients list
    */
-  async getPatients(params?: { page?: number; limit?: number; search?: string; hn?: string }): Promise<APIResponse<MedicalPatient[]>> {
+  async getPatients(params?: { page?: number; limit?: number; search?: string; hn?: string; queue?: string }): Promise<APIResponse<MedicalPatient[]>> {
     return this.request<MedicalPatient[]>({
       method: 'GET',
       url: '/medical/patients',

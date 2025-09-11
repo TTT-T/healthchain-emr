@@ -43,6 +43,8 @@ export const CreateUserSchema = z.object({
   password: z.string().min(8).max(128),
   firstName: FieldValidators.firstName,
   lastName: FieldValidators.lastName,
+  thaiFirstName: z.string().max(200).optional(),
+  thaiLastName: z.string().max(200).optional(),
   phoneNumber: FieldValidators.phone,
   role: FieldValidators.role.optional(),
   
@@ -51,6 +53,7 @@ export const CreateUserSchema = z.object({
   birthDate: z.string().date().optional(),
   gender: FieldValidators.gender,
   address: z.string().max(500).optional(),
+  idCardAddress: z.string().max(500).optional(),
   bloodType: FieldValidators.bloodType,
   
   // Emergency contact

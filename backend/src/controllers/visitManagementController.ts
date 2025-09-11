@@ -207,37 +207,89 @@ export const getAllVisits = async (req: Request, res: Response) => {
  */
 export const createVisit = async (req: Request, res: Response) => {
   try {
+    console.log('🔍 Create visit request body:', req.body);
+    console.log('🔍 User from request:', req.user);
+    
     const {
       patient_id,
+      patientId, // Support camelCase from frontend
       doctor_id,
+      attendingDoctorId, // Support camelCase from frontend
       department_id,
+      departmentId, // Support camelCase from frontend
       visit_type,
+      visitType, // Support camelCase from frontend
+      visit_time,
+      visitTime, // Support camelCase from frontend
       chief_complaint,
+      chiefComplaint, // Support camelCase from frontend
       present_illness,
+      presentIllness, // Support camelCase from frontend
       physical_examination,
+      physicalExamination, // Support camelCase from frontend
       diagnosis,
       treatment_plan,
+      treatmentPlan, // Support camelCase from frontend
       doctor_notes,
+      doctorNotes, // Support camelCase from frontend
       priority = 'normal'
     } = req.body;
+    
+    // Normalize field names (prefer snake_case from database, fallback to camelCase from frontend)
+    const normalizedData = {
+      patient_id: patient_id || patientId,
+      doctor_id: doctor_id || attendingDoctorId,
+      department_id: department_id || departmentId,
+      visit_type: visit_type || visitType,
+      visit_time: visit_time || visitTime,
+      chief_complaint: chief_complaint || chiefComplaint,
+      present_illness: present_illness || presentIllness,
+      physical_examination: physical_examination || physicalExamination,
+      diagnosis: diagnosis,
+      treatment_plan: treatment_plan || treatmentPlan,
+      doctor_notes: doctor_notes || doctorNotes,
+      priority: priority
+    };
+    
+    console.log('✅ Normalized data:', normalizedData);
 
     const userId = (req as any).user.id;
 
-    // Validate required fields
-    if (!patient_id || !doctor_id || !department_id || !visit_type) {
+    // Validate required fields using normalized data
+    if (!normalizedData.patient_id || !normalizedData.doctor_id || !normalizedData.visit_type) {
+      console.log('❌ Missing required fields:', {
+        patient_id: normalizedData.patient_id,
+        doctor_id: normalizedData.doctor_id,
+        visit_type: normalizedData.visit_type,
+        department_id: normalizedData.department_id
+      });
       return res.status(400).json({
         data: null,
         meta: null,
-        error: { message: 'Missing required fields: patient_id, doctor_id, department_id, visit_type' },
+        error: { message: 'Missing required fields: patient_id, doctor_id, visit_type' },
         statusCode: 400
       });
     }
 
     // Get a valid user ID if not provided
-    let validUserId = doctor_id || userId;
+    let validUserId = normalizedData.doctor_id || userId;
     if (!validUserId || validUserId === '1') {
       const userResult = await databaseManager.query('SELECT id FROM users WHERE role = $1 LIMIT 1', ['doctor']);
       validUserId = userResult.rows[0]?.id;
+    }
+    
+    // If validUserId is a doctor_id, get the corresponding user_id
+    if (validUserId && validUserId !== userId) {
+      try {
+        const doctorUserQuery = 'SELECT user_id FROM doctors WHERE id = $1';
+        const doctorUserResult = await databaseManager.query(doctorUserQuery, [validUserId]);
+        if (doctorUserResult.rows.length > 0) {
+          validUserId = doctorUserResult.rows[0].user_id;
+          console.log(`🔄 Converted doctor_id to user_id: ${validUserId}`);
+        }
+      } catch (error) {
+        console.error('Error converting doctor_id to user_id:', error);
+      }
     }
     
     // Validate user ID exists
@@ -250,7 +302,7 @@ export const createVisit = async (req: Request, res: Response) => {
     }
 
     // Get a valid department ID if not provided
-    let validDepartmentId = department_id;
+    let validDepartmentId = normalizedData.department_id;
     if (!validDepartmentId) {
       const deptResult = await databaseManager.query('SELECT id FROM departments LIMIT 1');
       validDepartmentId = deptResult.rows[0]?.id;
@@ -263,26 +315,125 @@ export const createVisit = async (req: Request, res: Response) => {
     const visitId = uuidv4();
     const createVisitQuery = `
       INSERT INTO visits (
-        id, patient_id, doctor_id, department_id, visit_number,
+        id, patient_id, attending_doctor_id, department_id, visit_number,
         visit_date, visit_time, visit_type, chief_complaint,
         present_illness, physical_examination, diagnosis,
-        treatment_plan, doctor_notes, status, priority
+        treatment_plan, doctor_notes, status, priority, created_by, updated_by
       )
       VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
       )
       RETURNING *
     `;
 
-    const now = new Date();
+    // Parse visit time from frontend or use current time as fallback
+    let visitDate, visitTimeStr;
+    if (normalizedData.visit_time) {
+      const visitDateTime = new Date(normalizedData.visit_time);
+      
+      // Handle timezone issues - use local date and time
+      const year = visitDateTime.getFullYear();
+      const month = String(visitDateTime.getMonth() + 1).padStart(2, '0');
+      const day = String(visitDateTime.getDate()).padStart(2, '0');
+      const hours = String(visitDateTime.getHours()).padStart(2, '0');
+      const minutes = String(visitDateTime.getMinutes()).padStart(2, '0');
+      const seconds = String(visitDateTime.getSeconds()).padStart(2, '0');
+      
+      visitDate = `${year}-${month}-${day}`;
+      visitTimeStr = `${hours}:${minutes}:${seconds}`;
+    } else {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      
+      visitDate = `${year}-${month}-${day}`;
+      visitTimeStr = `${hours}:${minutes}:${seconds}`;
+    }
+    
+    console.log('🕐 Visit time processing:', {
+      input: normalizedData.visit_time,
+      parsedDate: visitDate,
+      parsedTime: visitTimeStr
+    });
+
+    // Check for duplicate visit (same patient, same day) - ห้ามเช็คอินผู้ป่วยซ้ำ
+    try {
+      const duplicateCheckQuery = `
+        SELECT id, visit_number, status, attending_doctor_id, visit_date
+        FROM visits v
+        WHERE v.patient_id = $1
+          AND DATE(v.visit_date) = $2
+          AND v.status IN ('in_progress', 'pending', 'checked_in')
+      `;
+      const duplicateResult = await databaseManager.query(duplicateCheckQuery, [
+        normalizedData.patient_id, 
+        visitDate
+      ]);
+      
+      if (duplicateResult.rows.length > 0) {
+        const existingVisit = duplicateResult.rows[0];
+        console.log('❌ Duplicate visit found:', existingVisit);
+        return res.status(409).json({
+          data: null,
+          meta: null,
+          error: { 
+            message: `ผู้ป่วยนี้ได้เช็คอินแล้วในวันนี้ (หมายเลขคิว: ${existingVisit.visit_number})`,
+            code: 'DUPLICATE_VISIT',
+            existingVisit: existingVisit
+          },
+          statusCode: 409
+        });
+      }
+    } catch (error) {
+      console.error('Error checking for duplicate visit:', error);
+    }
+
+    // Log queue information before creating visit
+    try {
+      const queueCheckQuery = `
+        SELECT COUNT(*) as current_queue
+        FROM visits v
+        WHERE v.attending_doctor_id = $1
+          AND v.status = 'in_progress'
+          AND DATE(v.visit_date) = CURRENT_DATE
+      `;
+      const queueResult = await databaseManager.query(queueCheckQuery, [validUserId]);
+      const currentQueue = parseInt(queueResult.rows[0]?.current_queue || '0');
+      console.log(`📊 Current queue for doctor ${validUserId}: ${currentQueue} patients`);
+    } catch (error) {
+      console.error('Error checking current queue:', error);
+    }
+    
     const visitResult = await databaseManager.query(createVisitQuery, [
-      visitId, patient_id, validUserId, validDepartmentId, visitNumber,
-      now.toISOString().split('T')[0], now.toTimeString().split(' ')[0], visit_type, chief_complaint,
-      present_illness, physical_examination, diagnosis,
-      treatment_plan, doctor_notes, 'in_progress', priority
+      visitId, normalizedData.patient_id, validUserId, validDepartmentId, visitNumber,
+      visitDate, visitTimeStr, normalizedData.visit_type, normalizedData.chief_complaint,
+      normalizedData.present_illness, normalizedData.physical_examination, normalizedData.diagnosis,
+      normalizedData.treatment_plan, normalizedData.doctor_notes, 'in_progress', normalizedData.priority,
+      validUserId, validUserId // created_by, updated_by
     ]);
 
     const newVisit = visitResult.rows[0];
+
+    // Get updated queue count after creating visit
+    let updatedQueueCount = 0;
+    try {
+      const updatedQueueQuery = `
+        SELECT COUNT(*) as updated_queue
+        FROM visits v
+        WHERE v.attending_doctor_id = $1
+          AND v.status = 'in_progress'
+          AND DATE(v.visit_date) = CURRENT_DATE
+      `;
+      const updatedQueueResult = await databaseManager.query(updatedQueueQuery, [validUserId]);
+      updatedQueueCount = parseInt(updatedQueueResult.rows[0]?.updated_queue || '0');
+      console.log(`📊 Updated queue for doctor ${validUserId}: ${updatedQueueCount} patients`);
+    } catch (error) {
+      console.error('Error checking updated queue:', error);
+    }
 
     res.status(201).json({
       data: {
@@ -295,6 +446,11 @@ export const createVisit = async (req: Request, res: Response) => {
           visit_type: newVisit.visit_type,
           status: newVisit.status,
           created_at: newVisit.created_at
+        },
+        queueInfo: {
+          currentQueue: updatedQueueCount,
+          estimatedWaitTime: updatedQueueCount * 15, // 15 minutes per patient
+          queuePosition: updatedQueueCount
         }
       },
       meta: {
@@ -306,7 +462,12 @@ export const createVisit = async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    console.error('Error creating visit:', error);
+    console.error('❌ Error creating visit:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code
+    });
     res.status(500).json({
       data: null,
       meta: null,

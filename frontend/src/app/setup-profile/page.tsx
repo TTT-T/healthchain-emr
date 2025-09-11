@@ -104,7 +104,7 @@ const FormField: React.FC<FormFieldProps> = ({
           >
             <option value="">เลือก{label}</option>
             {options?.map(option => (
-              <option key={option.value} value={option.value}>
+              <option key={option.value} value={option.value.toString()}>
                 {option.label}
               </option>
             ))}
@@ -323,6 +323,15 @@ export default function SetupProfile() {
         insuranceExpiryMonth: profile.insuranceExpiryMonth,
         insuranceExpiryYear: profile.insuranceExpiryYear,
       });
+      console.log('🔍 Medical Info from API:', {
+        allergies: profile.allergies,
+        drugAllergies: profile.drugAllergies,
+        foodAllergies: profile.foodAllergies,
+        environmentAllergies: profile.environmentAllergies,
+        medicalHistory: profile.medicalHistory,
+        currentMedications: profile.currentMedications,
+        chronicDiseases: profile.chronicDiseases,
+      });
           
           // Map existing data to form fields (using correct field names from API)
           setFormData({
@@ -380,6 +389,17 @@ export default function SetupProfile() {
             insuranceExpiryMonth: profile.insuranceExpiryMonth ? profile.insuranceExpiryMonth.toString() : '',
             insuranceExpiryYear: profile.insuranceExpiryYear ? profile.insuranceExpiryYear.toString() : ''
           });
+          
+          console.log('🔍 Form Data after setting:', {
+            allergies: formData.allergies,
+            drugAllergies: formData.drugAllergies,
+            foodAllergies: formData.foodAllergies,
+            environmentAllergies: formData.environmentAllergies,
+            medicalHistory: formData.medicalHistory,
+            currentMedications: formData.currentMedications,
+            chronicDiseases: formData.chronicDiseases,
+          });
+          
         }
       } catch (error) {
         console.error('Error loading profile data:', error);
@@ -665,6 +685,7 @@ export default function SetupProfile() {
       setIsSubmitting(false);
     }
   };
+
 
   if (isLoading || isLoadingProfile) {
     return (
@@ -1168,6 +1189,10 @@ export default function SetupProfile() {
                   rows={2}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500"
                 />
+                {/* Debug info */}
+                <div className="mt-1 text-xs text-gray-500">
+                  Debug: allergies value = "{formData.allergies}" (type: {typeof formData.allergies})
+                </div>
               </div>
 
               <div>
@@ -1413,6 +1438,14 @@ export default function SetupProfile() {
                 <MapPin size={20} className="text-purple-600" />
               </div>
               <h2 className="text-xl font-semibold text-gray-900">ข้อมูลประกัน</h2>
+            </div>
+
+            {/* Optional message */}
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center gap-2 text-blue-800">
+                <AlertTriangle size={16} />
+                <span className="text-sm font-medium">ถ้าไม่มีประกันก็ไม่ต้องใส่</span>
+              </div>
             </div>
 
             <div className="space-y-6">

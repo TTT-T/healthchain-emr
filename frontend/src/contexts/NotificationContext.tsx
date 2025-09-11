@@ -52,14 +52,26 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           ).length;
           
           setNotificationCount(unreadCount);
+        } else if (response.statusCode === 404) {
+          // Patient record not found - this is expected for users who haven't registered in EMR yet
+          setNotificationCount(0);
         } else {
           // No notifications found
           setNotificationCount(0);
         }
-      } catch (error) {
-        console.error('Error fetching notification count:', error);
-        // Set to 0 on error instead of using mock data
-        setNotificationCount(0);
+      } catch (error: any) {
+        // Check if it's a 404 error (patient not found)
+        if (error?.response?.status === 404 || error?.statusCode === 404) {
+          // Patient record not found - this is expected for users who haven't registered in EMR yet
+          setNotificationCount(0);
+        } else {
+          // Don't log error for expected 404s, only log unexpected errors
+          if (error?.response?.status !== 404 && error?.statusCode !== 404) {
+            console.error('Error fetching notification count:', error);
+          }
+          // Set to 0 on other errors
+          setNotificationCount(0);
+        }
       }
     } else {
       // For other roles, no notifications

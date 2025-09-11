@@ -1,9 +1,11 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { PatientDocumentService, PatientDocument, DocumentSearchQuery } from '@/services/patientDocumentService';
+import { PatientDocument, DocumentSearchQuery } from '@/services/patientDocumentService';
 import { FileText, Download, Eye, Search, Filter, Calendar, User, Stethoscope, Tag, Clock, File } from 'lucide-react';
 import { logger } from '@/lib/logger';
+import { apiClient } from '@/lib/api';
+import AppLayout from '@/components/AppLayout';
 
 export default function PatientDocuments() {
   const { user } = useAuth();
@@ -23,7 +25,7 @@ export default function PatientDocuments() {
   const [selectedDocument, setSelectedDocument] = useState<PatientDocument | null>(null);
 
   useEffect(() => {
-    if (user?.hn || user?.nationalId) {
+    if (user?.id) {
       loadDocuments();
     }
   }, [user, filters]);
@@ -31,13 +33,41 @@ export default function PatientDocuments() {
   const loadDocuments = async () => {
     try {
       setIsLoading(true);
-      const patientId = user?.hn || user?.nationalId || '';
       
-      const response = await PatientDocumentService.getPatientDocuments(patientId, filters);
-      setDocuments(response.documents);
-      setTotalDocuments(response.total);
-    } catch (error) {
+      if (!user?.id) {
+        setDocuments([]);
+        setTotalDocuments(0);
+        return;
+      }
+
+      // ใช้ apiClient method ที่มีอยู่แล้ว
+      const response = await apiClient.getPatientDocuments(user.id);
+
+      if (response.statusCode === 200 && response.data) {
+        // response.data เป็น array ของ documents
+        const documents = Array.isArray(response.data) ? response.data : [];
+        setDocuments(documents as any);
+        setTotalDocuments(documents.length);
+      } else if (response.statusCode === 404) {
+        // ไม่พบข้อมูล patient - ยังไม่ได้ลงทะเบียนในระบบ EMR
+        setDocuments([]);
+        setTotalDocuments(0);
+      } else {
+        setDocuments([]);
+        setTotalDocuments(0);
+      }
+    } catch (error: any) {
       logger.error('Error loading patient documents:', error);
+      
+      // ตรวจสอบว่าเป็น error 404 หรือไม่
+      if (error?.response?.status === 404 || error?.statusCode === 404) {
+        // ไม่พบข้อมูล patient - ยังไม่ได้ลงทะเบียนในระบบ EMR
+        setDocuments([]);
+        setTotalDocuments(0);
+      } else {
+        setDocuments([]);
+        setTotalDocuments(0);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -54,20 +84,29 @@ export default function PatientDocuments() {
 
   const handleDownload = async (document: PatientDocument) => {
     try {
-      const blob = await PatientDocumentService.downloadDocument(document.id);
-      
-      // สร้าง download link
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = document.fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
-      // รีเฟรชข้อมูล
-      loadDocuments();
+      // ใช้ apiClient สำหรับการดาวน์โหลด
+      const response = await apiClient.request({
+        method: 'GET',
+        url: `/patients/${user?.id}/documents/${document.id}/download`,
+        responseType: 'blob'
+      });
+
+      if (response.statusCode === 200 && response.data) {
+        // สร้าง download link
+        const url = window.URL.createObjectURL(response.data);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = document.fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        // รีเฟรชข้อมูล
+        loadDocuments();
+      } else {
+        throw new Error('ไม่สามารถดาวน์โหลดเอกสารได้');
+      }
     } catch (error) {
       logger.error('Error downloading document:', error);
       alert('ไม่สามารถดาวน์โหลดเอกสารได้');
@@ -76,11 +115,20 @@ export default function PatientDocuments() {
 
   const handleViewOnline = async (document: PatientDocument) => {
     try {
-      const fileUrl = await PatientDocumentService.viewDocumentOnline(document.id);
-      window.open(fileUrl, '_blank');
-      
-      // รีเฟรชข้อมูล
-      loadDocuments();
+      // ใช้ apiClient สำหรับการดูเอกสารออนไลน์
+      const response = await apiClient.request({
+        method: 'GET',
+        url: `/patients/${user?.id}/documents/${document.id}/view`
+      });
+
+      if (response.statusCode === 200 && response.data?.fileUrl) {
+        window.open(response.data.fileUrl, '_blank');
+        
+        // รีเฟรชข้อมูล
+        loadDocuments();
+      } else {
+        throw new Error('ไม่พบ URL ของเอกสาร');
+      }
     } catch (error) {
       logger.error('Error viewing document online:', error);
       alert('ไม่สามารถเปิดเอกสารได้');
@@ -138,22 +186,23 @@ export default function PatientDocuments() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <FileText className="h-6 w-6 text-blue-600" />
-                เอกสารทางการแพทย์ของฉัน
-              </h1>
-              <p className="text-gray-600 mt-1">
-                เอกสารทั้งหมดที่เกี่ยวข้องกับการรักษาของคุณ ({totalDocuments} เอกสาร)
-              </p>
+    <AppLayout title="เอกสารทางการแพทย์" userType="patient">
+      <div className="p-4 md:p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                  <FileText className="h-6 w-6 text-blue-600" />
+                  เอกสารทางการแพทย์ของฉัน
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  เอกสารทั้งหมดที่เกี่ยวข้องกับการรักษาของคุณ ({totalDocuments} เอกสาร)
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
         {/* Search and Filters */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -359,7 +408,8 @@ export default function PatientDocuments() {
             </div>
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }

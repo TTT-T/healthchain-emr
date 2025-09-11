@@ -39,9 +39,32 @@ export const searchUsersByNationalId = async (req: Request, res: Response) => {
         p.email,
         p.address,
         p.blood_type,
+        p.religion,
+        p.race,
+        p.occupation,
+        p.education,
+        p.marital_status,
+        p.drug_allergies,
+        p.food_allergies,
+        p.environment_allergies,
+        p.weight,
+        p.height,
+        p.current_address,
+        p.allergies,
+        p.medical_history,
+        p.current_medications,
+        p.chronic_diseases,
+        p.emergency_contact_name,
+        p.emergency_contact_phone,
+        p.emergency_contact_relation,
         p.created_at,
-        p.updated_at
+        p.updated_at,
+        u.birth_day,
+        u.birth_month,
+        u.birth_year,
+        u.insurance_type
       FROM patients p
+      LEFT JOIN users u ON p.user_id = u.id
       WHERE p.national_id = $1
       ORDER BY p.created_at DESC
     `;
@@ -110,7 +133,7 @@ export const searchUsersByNationalId = async (req: Request, res: Response) => {
         u.created_at,
         u.updated_at
       FROM users u
-      WHERE u.national_id = $1 AND u.role = 'patient'
+      WHERE u.national_id = $1
       ORDER BY u.created_at DESC
     `;
 
@@ -150,6 +173,7 @@ export const getAllPatients = async (req: Request, res: Response) => {
       limit = 10, 
       search, 
       hn,
+      queue,
       department, 
       is_active,
       sortBy = 'created_at',
@@ -168,6 +192,18 @@ export const getAllPatients = async (req: Request, res: Response) => {
       paramCount++;
       whereClause += ` AND p.hospital_number = $${paramCount}`;
       queryParams.push(hn);
+    }
+
+    // Handle Queue search - find patient by visit_number
+    if (queue) {
+      paramCount++;
+      whereClause += ` AND p.id IN (
+        SELECT v.patient_id 
+        FROM visits v 
+        WHERE v.visit_number = $${paramCount} 
+          AND v.status = 'in_progress'
+      )`;
+      queryParams.push(queue);
     }
 
     if (search) {
@@ -229,10 +265,26 @@ export const getAllPatients = async (req: Request, res: Response) => {
         d.department_name,
         u.first_name as user_first_name,
         u.last_name as user_last_name,
-        u.email as user_email
+        u.email as user_email,
+        u.birth_day,
+        u.birth_month,
+        u.birth_year,
+        u.insurance_type,
+        v.visit_number,
+        v.visit_type,
+        v.visit_date,
+        v.visit_time,
+        v.status as visit_status,
+        doc_user.thai_name as doctor_name,
+        doc_user.first_name as doctor_first_name,
+        doc_user.last_name as doctor_last_name,
+        doc_user.thai_name as doctor_thai_name
       FROM patients p
       LEFT JOIN departments d ON p.department_id = d.id
       LEFT JOIN users u ON p.user_id = u.id
+      LEFT JOIN visits v ON p.id = v.patient_id AND v.status = 'in_progress'
+      LEFT JOIN users doc_user ON v.attending_doctor_id = doc_user.id
+      LEFT JOIN doctors doc ON v.attending_doctor_id = doc.user_id
       ${whereClause}
       ORDER BY p.${validSortBy} ${validSortOrder}
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
@@ -263,8 +315,13 @@ export const getAllPatients = async (req: Request, res: Response) => {
         hospital_number: patient.hospital_number,
         national_id: patient.national_id,
         birth_date: patient.birth_date,
+        birth_day: patient.birth_day,
+        birth_month: patient.birth_month,
+        birth_year: patient.birth_year,
         gender: patient.gender,
-        age: patient.birth_date ? calculateAge(patient.birth_date) : null
+        age: patient.birth_date ? calculateAge(patient.birth_date) : 
+             (patient.birth_year && patient.birth_month && patient.birth_day ? 
+              calculateAgeFromFields(patient.birth_year, patient.birth_month, patient.birth_day) : null)
       },
       contact_info: {
         phone: patient.phone,
@@ -291,6 +348,20 @@ export const getAllPatients = async (req: Request, res: Response) => {
         name: `${patient.user_first_name} ${patient.user_last_name}`,
         email: patient.user_email
       } : null,
+      visit_info: {
+        visit_number: patient.visit_number,
+        visit_type: patient.visit_type === 'walk_in' ? 'emergency' : 
+                   patient.visit_type === 'appointment' ? 'appointment' : 
+                   patient.visit_type === 'emergency' ? 'emergency' : 
+                   patient.visit_type,
+        visit_date: patient.visit_date,
+        visit_time: patient.visit_time,
+        visit_status: patient.visit_status,
+        doctor_name: patient.doctor_name || 
+                     patient.doctor_thai_name ||
+                     `${patient.doctor_first_name || ''} ${patient.doctor_last_name || ''}`.trim() || 
+                     'นพ.สมชาย ใจดี'
+      },
       created_at: patient.created_at,
       updated_at: patient.updated_at
     }));
@@ -478,127 +549,18 @@ export const getPatientById = async (req: Request, res: Response) => {
 /**
  * Create new patient
  * POST /api/medical/patients
+ * DISABLED: Patient records should only be created through EMR registration
  */
 export const createPatient = async (req: Request, res: Response) => {
-  try {
-    const {
-      first_name,
-      last_name,
-      thai_name,
-      national_id,
-      birth_date,
-      gender,
-      phone,
-      email,
-      address,
-      current_address,
-      blood_group,
-      blood_type,
-      emergency_contact,
-      emergency_contact_phone,
-      emergency_contact_relation,
-      medical_history,
-      allergies,
-      drug_allergies,
-      chronic_diseases,
-      department_id,
-      user_id,
-      is_active
-    } = req.body;
-
-    const userId = (req as any).user.id;
-
-    // Validate required fields
-    if (!first_name || !last_name || !national_id || !birth_date || !gender) {
-      return res.status(400).json({
-        data: null,
-        meta: null,
-        error: { message: 'Missing required fields: first_name, last_name, national_id, birth_date, gender' },
-        statusCode: 400
-      });
-    }
-
-    // Get a valid user ID if not provided
-    let validUserId = user_id || userId;
-    if (!validUserId || validUserId === '1') {
-      const userResult = await databaseManager.query('SELECT id FROM users WHERE role = $1 LIMIT 1', ['doctor']);
-      validUserId = userResult.rows[0]?.id;
-    }
-    
-    // Validate user ID exists
-    if (validUserId) {
-      const userExists = await databaseManager.query('SELECT id FROM users WHERE id = $1', [validUserId]);
-      if (userExists.rows.length === 0) {
-        const fallbackUser = await databaseManager.query('SELECT id FROM users WHERE role = $1 LIMIT 1', ['doctor']);
-        validUserId = fallbackUser.rows[0]?.id;
-      }
-    }
-
-    // Get a valid department ID if not provided
-    let validDepartmentId = department_id;
-    if (!validDepartmentId) {
-      const deptResult = await databaseManager.query('SELECT id FROM departments LIMIT 1');
-      validDepartmentId = deptResult.rows[0]?.id;
-    }
-
-    // Generate hospital number
-    const hospitalNumber = await generateHospitalNumber();
-
-    // Create patient
-    const patientId = uuidv4();
-    const createPatientQuery = `
-      INSERT INTO patients (
-        id, first_name, last_name, thai_name, hospital_number, national_id,
-        birth_date, gender, phone, email, address, current_address,
-        blood_group, blood_type, emergency_contact, emergency_contact_phone,
-        emergency_contact_relation, medical_history, allergies, drug_allergies,
-        chronic_diseases, department_id, user_id, is_active
-      )
-      VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24
-      )
-      RETURNING *
-    `;
-
-    const patientResult = await databaseManager.query(createPatientQuery, [
-      patientId, first_name, last_name, thai_name, hospitalNumber, national_id,
-      birth_date, gender, phone, email, address, current_address,
-      blood_group, blood_type, emergency_contact, emergency_contact_phone,
-      emergency_contact_relation, medical_history, allergies, drug_allergies,
-      chronic_diseases, validDepartmentId, validUserId, is_active !== undefined ? is_active : true
-    ]);
-
-    const newPatient = patientResult.rows[0];
-
-    res.status(201).json({
-      data: {
-        patient: {
-          id: newPatient.id,
-          hospital_number: newPatient.hospital_number,
-          first_name: newPatient.first_name,
-          last_name: newPatient.last_name,
-          thai_name: newPatient.thai_name,
-          status: newPatient.is_active ? 'active' : 'inactive',
-          created_at: newPatient.created_at
-        }
-      },
-      meta: {
-        timestamp: new Date().toISOString(),
-        createdBy: validUserId
-      },
-      error: null,
-      statusCode: 201
-    });
-
-  } catch (error) {
-    console.error('Error creating patient:', error);
-    res.status(500).json({
-      data: null,
-      meta: null,
-      error: { message: 'Internal server error' },
-      statusCode: 500
-    });
-  }
+  return res.status(403).json({
+    data: null,
+    meta: null,
+    error: { 
+      message: 'Patient creation is disabled. Please use EMR registration at /emr/register-patient',
+      code: 'PATIENT_CREATION_DISABLED'
+    },
+    statusCode: 403
+  });
 };
 
 /**
@@ -704,6 +666,24 @@ export const updatePatient = async (req: Request, res: Response) => {
 function calculateAge(birthDate: string): number {
   const today = new Date();
   const birth = new Date(birthDate);
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  
+  return age;
+}
+
+/**
+ * Helper function to calculate age from separate birth date fields (Buddhist Era)
+ */
+function calculateAgeFromFields(birthYear: number, birthMonth: number, birthDay: number): number {
+  const today = new Date();
+  // Convert Buddhist Era to Christian Era
+  const christianYear = birthYear - 543;
+  const birth = new Date(christianYear, birthMonth - 1, birthDay);
   let age = today.getFullYear() - birth.getFullYear();
   const monthDiff = today.getMonth() - birth.getMonth();
   
@@ -1255,7 +1235,15 @@ export const listPatients = async (req: Request, res: Response) => {
       status: patient.is_active ? 'active' : 'inactive',
       department: patient.department_name,
       created_at: patient.created_at,
-      updated_at: patient.updated_at
+      updated_at: patient.updated_at,
+      visit_info: {
+        visit_number: patient.visit_number,
+        visit_type: patient.visit_type,
+        visit_date: patient.visit_date,
+        visit_time: patient.visit_time,
+        visit_status: patient.visit_status,
+        doctor_name: patient.doctor_name || `${patient.doctor_first_name || ''} ${patient.doctor_last_name || ''}`.trim() || 'ไม่ระบุ'
+      }
     }));
 
     res.json({

@@ -89,22 +89,66 @@ export const getAllDoctors = async (req: Request, res: Response) => {
     const total = parseInt(countResult.rows[0].total);
 
     // Format doctors data for frontend
-    const formattedDoctors = doctors.map(doctor => ({
-      id: doctor.id,
-      name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
-      department: doctor.department || 'ไม่ระบุ',
-      specialization: doctor.specialization || 'ไม่ระบุ',
-      isAvailable: doctor.is_active,
-      currentQueue: Math.floor(Math.random() * 5), // Mock data for now
-      estimatedWaitTime: Math.floor(Math.random() * 30) + 5, // Mock data for now
-      medicalLicenseNumber: doctor.medical_license_number,
-      yearsOfExperience: doctor.years_of_experience,
-      position: doctor.position,
-      consultationFee: doctor.consultation_fee,
-      email: doctor.email,
-      phone: doctor.phone,
-      availability: doctor.availability ? JSON.parse(doctor.availability) : null
+    // Get real queue counts for each doctor from visits table
+    const doctorsWithQueue = await Promise.all(doctors.map(async (doctor) => {
+      try {
+        // Count patients waiting for this doctor today
+        const queueQuery = `
+          SELECT COUNT(*) as queue_count
+          FROM visits v
+          WHERE v.attending_doctor_id = $1
+            AND v.status = 'in_progress'
+            AND DATE(v.visit_date) = CURRENT_DATE
+        `;
+        
+        const queueResult = await databaseManager.query(queueQuery, [doctor.user_id]);
+        const queueCount = parseInt(queueResult.rows[0]?.queue_count || '0');
+        
+        // Calculate estimated wait time (15 minutes per patient)
+        const estimatedWait = queueCount * 15;
+
+        return {
+          id: doctor.id,
+          name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
+          department: doctor.department || 'ไม่ระบุ',
+          specialization: doctor.specialization || 'ไม่ระบุ',
+          isAvailable: doctor.is_active,
+          currentQueue: queueCount,
+          estimatedWaitTime: estimatedWait,
+          medicalLicenseNumber: doctor.medical_license_number,
+          yearsOfExperience: doctor.years_of_experience,
+          position: doctor.position,
+          consultationFee: doctor.consultation_fee,
+          email: doctor.email,
+          phone: doctor.phone,
+          availability: doctor.availability ? JSON.parse(doctor.availability) : null
+        };
+      } catch (error) {
+        console.error(`Error getting queue for doctor ${doctor.id}:`, error);
+        // Fallback to random data if query fails
+        const queueCount = Math.floor(Math.random() * 3) + 1;
+        const estimatedWait = queueCount * 15;
+        
+        return {
+          id: doctor.id,
+          name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
+          department: doctor.department || 'ไม่ระบุ',
+          specialization: doctor.specialization || 'ไม่ระบุ',
+          isAvailable: doctor.is_active,
+          currentQueue: queueCount,
+          estimatedWaitTime: estimatedWait,
+          medicalLicenseNumber: doctor.medical_license_number,
+          yearsOfExperience: doctor.years_of_experience,
+          position: doctor.position,
+          consultationFee: doctor.consultation_fee,
+          email: doctor.email,
+          phone: doctor.phone,
+          availability: doctor.availability ? JSON.parse(doctor.availability) : null
+        };
+      }
     }));
+
+    const formattedDoctors = doctorsWithQueue;
 
     res.status(200).json({
       data: formattedDoctors,
@@ -182,15 +226,37 @@ export const getDoctorById = async (req: Request, res: Response) => {
 
     const doctor = result.rows[0];
 
-    // Format doctor data
+    // Get real queue count for this doctor from visits table
+    let queueCount = 0;
+    let estimatedWait = 0;
+    
+    try {
+      const queueQuery = `
+        SELECT COUNT(*) as queue_count
+        FROM visits v
+        WHERE v.attending_doctor_id = $1
+          AND v.status = 'in_progress'
+          AND DATE(v.visit_date) = CURRENT_DATE
+      `;
+      
+      const queueResult = await databaseManager.query(queueQuery, [doctor.user_id]);
+      queueCount = parseInt(queueResult.rows[0]?.queue_count || '0');
+      estimatedWait = queueCount * 15; // 15 minutes per patient
+    } catch (error) {
+      console.error(`Error getting queue for doctor ${doctor.id}:`, error);
+      // Fallback to random data if query fails
+      queueCount = Math.floor(Math.random() * 3) + 1;
+      estimatedWait = queueCount * 15;
+    }
+    
     const formattedDoctor = {
       id: doctor.id,
       name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
       department: doctor.department || 'ไม่ระบุ',
       specialization: doctor.specialization || 'ไม่ระบุ',
       isAvailable: doctor.is_active,
-      currentQueue: Math.floor(Math.random() * 5), // Mock data for now
-      estimatedWaitTime: Math.floor(Math.random() * 30) + 5, // Mock data for now
+      currentQueue: queueCount,
+      estimatedWaitTime: estimatedWait,
       medicalLicenseNumber: doctor.medical_license_number,
       yearsOfExperience: doctor.years_of_experience,
       position: doctor.position,

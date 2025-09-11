@@ -51,6 +51,7 @@ export async function getPatientIdForUser(
 
 /**
  * Helper function to create patient record for a user if it doesn't exist
+ * DISABLED: Patient records should only be created through EMR registration
  */
 export async function ensurePatientRecordExists(user: any): Promise<{ patientId: string; patient: any }> {
   const userEmail = user?.email;
@@ -73,30 +74,7 @@ export async function ensurePatientRecordExists(user: any): Promise<{ patientId:
     };
   }
 
-  // Create patient record from user data
-  const patientResult = await databaseManager.query(`
-    INSERT INTO patients (
-      hospital_number, first_name, last_name, email, 
-      phone, gender, date_of_birth, address,
-      created_by
-    ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9
-    )
-    RETURNING id, first_name, last_name, email
-  `, [
-    `HN${Date.now()}`, // Generate temporary HN
-    user.first_name,
-    user.last_name,
-    user.email,
-    user.phone || null,
-    user.gender || null,
-    user.birth_date || null,
-    user.address || null,
-    user.id
-  ]);
-
-  return {
-    patientId: patientResult.rows[0].id,
-    patient: patientResult.rows[0]
-  };
+  // DISABLED: Do not create patient records automatically
+  // Patient records should only be created through EMR registration at /emr/register-patient
+  throw new Error('Patient record not found. Please register through EMR system at /emr/register-patient');
 }

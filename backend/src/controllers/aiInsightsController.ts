@@ -254,31 +254,16 @@ export const calculatePatientAIInsights = async (req: Request, res: Response) =>
         );
         
         if (patientQuery.rows.length === 0) {
-          // Auto-create patient record if not found
-          const insertPatientQuery = `
-            INSERT INTO patients (
-              id, user_id, first_name, last_name, email, patient_number,
-              date_of_birth, gender, nationality, phone, is_active, created_at, updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            RETURNING id, first_name, last_name, user_id, email
-          `;
-          
-          const newPatientId = require('uuid').v4();
-          const patientNumber = `P${new Date().getFullYear()}${String(Date.now()).slice(-6)}`;
-          
-          patientQuery = await databaseManager.query(insertPatientQuery, [
-            newPatientId,
-            user.id,
-            user.first_name || 'Unknown',
-            user.last_name || 'User',
-            user.email,
-            patientNumber,
-            '1990-01-01', // Default birth date
-            'other',      // Default gender
-            'Thai',       // Default nationality
-            user.phone || null,
-            true
-          ]);
+          // Do not auto-create patient record
+          return res.status(404).json({
+            data: null,
+            meta: null,
+            error: { 
+              message: 'Patient record not found. Please register through EMR system at /emr/register-patient',
+              code: 'PATIENT_NOT_REGISTERED'
+            },
+            statusCode: 404
+          });
         }
       }
       

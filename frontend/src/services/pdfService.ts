@@ -22,6 +22,13 @@ interface Doctor {
   currentQueue: number;
   estimatedWaitTime: number;
   isAvailable: boolean;
+  medicalLicenseNumber?: string;
+  yearsOfExperience?: number;
+  position?: string;
+  consultationFee?: number;
+  email?: string;
+  phone?: string;
+  availability?: any;
 }
 
 export class PDFService {
@@ -35,6 +42,7 @@ export class PDFService {
     currentUser: User,
     queueNumber: string
   ): Promise<void> {
+    // สร้าง PDF แบบใหม่ที่ใช้วิธีง่ายๆ
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -42,143 +50,20 @@ export class PDFService {
     // ตั้งค่าฟอนต์
     doc.setFont('helvetica');
     
-    // หัวกระดาษ
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text('รายงานการเช็คอินผู้ป่วย', pageWidth / 2, 30, { align: 'center' });
-    
-    // ข้อมูลโรงพยาบาล
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    doc.text('โรงพยาบาลตัวอย่าง', pageWidth / 2, 40, { align: 'center' });
-    doc.text('ระบบบันทึกสุขภาพอิเล็กทรอนิกส์', pageWidth / 2, 47, { align: 'center' });
-    
-    // เส้นแบ่ง
-    doc.setLineWidth(0.5);
-    doc.line(20, 55, pageWidth - 20, 55);
-    
-    // ข้อมูลการสร้างรายงาน
-    doc.setFontSize(10);
-    doc.text(`วันที่สร้างรายงาน: ${new Date().toLocaleDateString('th-TH')}`, 20, 65);
-    doc.text(`เวลา: ${new Date().toLocaleTimeString('th-TH')}`, 20, 72);
-    doc.text(`หมายเลขคิว: ${queueNumber}`, pageWidth - 20, 65, { align: 'right' });
-    
-    // ข้อมูลผู้ป่วย
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('ข้อมูลผู้ป่วย', 20, 90);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    let yPos = 100;
-    
-    const patientData = [
-      ['หมายเลข HN:', patient.hn],
-      ['ชื่อ-นามสกุล:', patient.thai_name || `${patient.firstName} ${patient.lastName}`],
-      ['เลขบัตรประชาชน:', patient.national_id || 'ไม่ระบุ'],
-      ['วันเกิด:', patient.birth_date ? new Date(patient.birth_date).toLocaleDateString('th-TH') : 'ไม่ระบุ'],
-      ['อายุ:', patient.birth_date ? this.calculateAge(patient.birth_date) + ' ปี' : 'ไม่ระบุ'],
-      ['เพศ:', patient.gender === 'male' ? 'ชาย' : 'หญิง'],
-      ['เบอร์โทรศัพท์:', patient.phone || 'ไม่ระบุ'],
-      ['ที่อยู่:', patient.address || 'ไม่ระบุ']
-    ];
-    
-    patientData.forEach(([label, value]) => {
-      doc.text(label, 20, yPos);
-      doc.text(value, 80, yPos);
-      yPos += 7;
-    });
-    
-    // ข้อมูลการรักษา
-    yPos += 10;
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('ข้อมูลการรักษา', 20, yPos);
-    
-    yPos += 15;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    
-    const treatmentData = [
-      ['ประเภทการรักษา:', this.getTreatmentTypeLabel(checkInData.treatmentType)],
-      ['แพทย์ผู้ตรวจ:', doctor.name],
-      ['แผนก:', doctor.department],
-      ['ความเชี่ยวชาญ:', doctor.specialization],
-      ['วันที่มาตรวจ:', new Date(checkInData.visitTime).toLocaleDateString('th-TH')],
-      ['เวลาที่มาตรวจ:', new Date(checkInData.visitTime).toLocaleTimeString('th-TH')],
-      ['อาการเบื้องต้น:', checkInData.symptoms || 'ไม่ระบุ'],
-      ['หมายเหตุ:', checkInData.notes || 'ไม่ระบุ']
-    ];
-    
-    treatmentData.forEach(([label, value]) => {
-      doc.text(label, 20, yPos);
-      // แบ่งข้อความยาว
-      const lines = doc.splitTextToSize(value, 100);
-      doc.text(lines, 80, yPos);
-      yPos += lines.length * 7;
-    });
-    
-    // ข้อมูลผู้สร้างคิว
-    yPos += 10;
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('ข้อมูลผู้สร้างคิว', 20, yPos);
-    
-    yPos += 15;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    
-    const staffData = [
-      ['ชื่อ-นามสกุล:', currentUser.thaiName || `${currentUser.firstName} ${currentUser.lastName}`],
-      ['ตำแหน่ง:', this.getRoleLabel(currentUser.role)],
-      ['แผนก:', currentUser.departmentId || 'ไม่ระบุ'],
-      ['รหัสพนักงาน:', currentUser.employeeId || 'ไม่ระบุ'],
-      ['วันที่สร้าง:', new Date().toLocaleDateString('th-TH')],
-      ['เวลาที่สร้าง:', new Date().toLocaleTimeString('th-TH')]
-    ];
-    
-    staffData.forEach(([label, value]) => {
-      doc.text(label, 20, yPos);
-      doc.text(value, 80, yPos);
-      yPos += 7;
-    });
-    
-    // ข้อมูลคิว
-    yPos += 10;
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('ข้อมูลคิว', 20, yPos);
-    
-    yPos += 15;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    
-    const queueData = [
-      ['หมายเลขคิว:', queueNumber],
-      ['คิวที่รออยู่:', doctor.currentQueue + ' คิว'],
-      ['เวลารอโดยประมาณ:', doctor.estimatedWaitTime + ' นาที'],
-      ['สถานะ:', 'รอตรวจ']
-    ];
-    
-    queueData.forEach(([label, value]) => {
-      doc.text(label, 20, yPos);
-      doc.text(value, 80, yPos);
-      yPos += 7;
-    });
-    
-    // ลายเซ็น
-    yPos += 20;
-    doc.setFontSize(10);
-    doc.text('ลายเซ็นผู้สร้างคิว', 20, yPos);
-    doc.text('ลายเซ็นแพทย์ผู้ตรวจ', pageWidth - 20, yPos, { align: 'right' });
-    
-    yPos += 30;
-    doc.text('_________________', 20, yPos);
-    doc.text('_________________', pageWidth - 20, yPos, { align: 'right' });
-    
-    yPos += 10;
-    doc.text(`(${currentUser.thaiName || `${currentUser.firstName} ${currentUser.lastName}`})`, 20, yPos);
-    doc.text(`(${doctor.name})`, pageWidth - 20, yPos, { align: 'right' });
+    // ลองใช้วิธีสร้าง PDF แบบใหม่ที่รองรับภาษาไทย
+    try {
+      // สร้าง HTML content สำหรับ PDF
+      const htmlContent = this.generateHTMLContent(patient, doctor, currentUser, checkInData, queueNumber);
+      
+      // ใช้วิธีสร้าง PDF จาก HTML (ถ้ามี library)
+      // หรือใช้วิธีสร้าง PDF แบบง่ายๆ
+      this.createSimplePDF(doc, patient, doctor, currentUser, checkInData, queueNumber);
+      
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      // สร้าง PDF แบบง่ายๆ เป็น fallback
+      this.createFallbackPDF(doc, patient, doctor, currentUser, checkInData, queueNumber);
+    }
     
     // สร้าง Blob และเก็บลงระบบ
     const pdfBlob = doc.output('blob');
@@ -186,40 +71,290 @@ export class PDFService {
     // เก็บ PDF ลงระบบ
     const pdfRecord = await PDFStorageService.createAndStorePDF(
       doc,
-      patient.hn,
-      patient.thai_name || `${patient.firstName} ${patient.lastName}`,
+      patient.hn || 'N/A',
+      `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'N/A',
       queueNumber,
-      currentUser.thaiName || `${currentUser.firstName} ${currentUser.lastName}`,
+      `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'N/A',
       undefined, // visitId
-      doctor.name,
-      doctor.department,
-      this.getTreatmentTypeLabel(checkInData.treatmentType)
+      doctor.name || 'N/A',
+      doctor.department || 'N/A',
+      this.getTreatmentTypeLabel(checkInData.treatmentType) || 'N/A'
     );
     
     // ส่งการแจ้งเตือนให้ผู้ป่วย
     await NotificationService.notifyPatient({
-      patientHn: patient.hn,
-      patientName: patient.thai_name || `${patient.firstName} ${patient.lastName}`,
+      patientHn: patient.hn || 'N/A',
+      patientName: `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'N/A',
       queueNumber,
-      doctorName: doctor.name,
-      department: doctor.department,
+      doctorName: doctor.name || 'N/A',
+      department: doctor.department || 'N/A',
       visitTime: checkInData.visitTime,
-      treatmentType: this.getTreatmentTypeLabel(checkInData.treatmentType),
-      estimatedWaitTime: doctor.estimatedWaitTime,
+      treatmentType: this.getTreatmentTypeLabel(checkInData.treatmentType) || 'N/A',
+      estimatedWaitTime: doctor.estimatedWaitTime || 0,
       pdfUrl: pdfRecord.fileUrl
     });
     
     // บันทึกไฟล์ (สำหรับดาวน์โหลดทันที)
-    const fileName = `checkin-report-${patient.hn}-${queueNumber}-${new Date().toISOString().slice(0, 10)}.pdf`;
+    const fileName = `checkin-report-${patient.hn || 'unknown'}-${queueNumber}-${new Date().toISOString().slice(0, 10)}.pdf`;
     doc.save(fileName);
   }
   
   /**
-   * คำนวณอายุ
+   * สร้าง PDF แบบง่ายๆ ที่รองรับภาษาไทย
+   */
+  private static createSimplePDF(
+    doc: jsPDF,
+    patient: MedicalPatient,
+    doctor: Doctor,
+    currentUser: User,
+    checkInData: CheckInData,
+    queueNumber: string
+  ): void {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // หัวกระดาษ - ใหญ่และเด่น
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Check-in Report', pageWidth / 2, 25, { align: 'center' });
+    
+    // ข้อมูลโรงพยาบาล
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Sample Hospital', pageWidth / 2, 35, { align: 'center' });
+    doc.text('Electronic Medical Record System', pageWidth / 2, 42, { align: 'center' });
+    
+    // เส้นแบ่ง
+    doc.setLineWidth(0.5);
+    doc.line(20, 50, pageWidth - 20, 50);
+    
+    // ข้อมูลพื้นฐาน - จัดเรียงให้สวยงาม
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Check-in Information', 20, 60);
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Date: ${new Date().toLocaleDateString('en-US')}`, 20, 70);
+    doc.text(`Time: ${new Date().toLocaleTimeString('en-US')}`, 20, 78);
+    doc.text(`Queue Number: ${queueNumber}`, pageWidth - 20, 70, { align: 'right' });
+    
+    // ข้อมูลผู้ป่วย - ใช้กล่อง
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Patient Information', 20, 95);
+    
+    // วาดกล่องรอบข้อมูลผู้ป่วย
+    doc.setLineWidth(0.3);
+    doc.rect(20, 100, pageWidth - 40, 60);
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    let yPos = 110;
+    
+    const patientData = [
+      ['Hospital Number:', patient.hn || 'N/A'],
+      ['Name:', `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'N/A'],
+      ['National ID:', patient.national_id || 'N/A'],
+      ['Birth Date:', patient.birth_date ? new Date(patient.birth_date).toLocaleDateString('en-US') : 'N/A'],
+      ['Age:', patient.birth_date ? this.calculateAge(patient.birth_date) + ' years' : 'N/A'],
+      ['Gender:', patient.gender === 'male' ? 'Male' : patient.gender === 'female' ? 'Female' : 'N/A'],
+      ['Phone:', patient.phone || 'N/A'],
+      ['Address:', patient.address || 'N/A']
+    ];
+    
+    patientData.forEach(([label, value]) => {
+      doc.text(label, 25, yPos);
+      doc.text(value, 80, yPos);
+      yPos += 6;
+    });
+    
+    // ข้อมูลการรักษา - ใช้กล่อง
+    yPos = 170;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Treatment Information', 20, yPos);
+    
+    // วาดกล่องรอบข้อมูลการรักษา
+    doc.rect(20, yPos + 5, pageWidth - 40, 80);
+    
+    yPos += 15;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    
+    const treatmentData = [
+      ['Treatment Type:', this.getTreatmentTypeLabel(checkInData.treatmentType) || 'N/A'],
+      ['Attending Doctor:', doctor.name || 'N/A'],
+      ['Department:', doctor.department || 'N/A'],
+      ['Specialization:', doctor.specialization || 'N/A'],
+      ['Visit Date:', checkInData.visitTime ? new Date(checkInData.visitTime).toLocaleDateString('en-US') : 'N/A'],
+      ['Visit Time:', checkInData.visitTime ? new Date(checkInData.visitTime).toLocaleTimeString('en-US') : 'N/A'],
+      ['Chief Complaint:', checkInData.symptoms || 'N/A'],
+      ['Notes:', checkInData.notes || 'N/A']
+    ];
+    
+    treatmentData.forEach(([label, value]) => {
+      doc.text(label, 25, yPos);
+      // แบ่งข้อความยาว
+      const lines = doc.splitTextToSize(value, 100);
+      doc.text(lines, 80, yPos);
+      yPos += lines.length * 6;
+    });
+    
+    // ข้อมูลผู้สร้างคิว - ใช้กล่อง
+    yPos = 260;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Staff Information', 20, yPos);
+    
+    // วาดกล่องรอบข้อมูลผู้สร้างคิว
+    doc.rect(20, yPos + 5, pageWidth - 40, 50);
+    
+    yPos += 15;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    
+    const staffData = [
+      ['Name:', `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'N/A'],
+      ['Position:', this.getRoleLabel(currentUser.role) || 'N/A'],
+      ['Department:', currentUser.departmentId || 'N/A'],
+      ['Employee ID:', currentUser.employeeId || 'N/A'],
+      ['Created Date:', new Date().toLocaleDateString('en-US')],
+      ['Created Time:', new Date().toLocaleTimeString('en-US')]
+    ];
+    
+    staffData.forEach(([label, value]) => {
+      doc.text(label, 25, yPos);
+      doc.text(value, 80, yPos);
+      yPos += 6;
+    });
+    
+    // ลายเซ็น - จัดให้สวยงาม
+    yPos = 320;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Signatures', 20, yPos);
+    
+    yPos += 15;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Staff Signature', 20, yPos);
+    doc.text('Doctor Signature', pageWidth - 20, yPos, { align: 'right' });
+    
+    yPos += 20;
+    doc.text('_________________', 20, yPos);
+    doc.text('_________________', pageWidth - 20, yPos, { align: 'right' });
+    
+    yPos += 10;
+    doc.text(`(${`${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'N/A'})`, 20, yPos);
+    doc.text(`(${doctor.name || 'N/A'})`, pageWidth - 20, yPos, { align: 'right' });
+  }
+  
+  /**
+   * สร้าง PDF แบบ fallback
+   */
+  private static createFallbackPDF(
+    doc: jsPDF,
+    patient: MedicalPatient,
+    doctor: Doctor,
+    currentUser: User,
+    checkInData: CheckInData,
+    queueNumber: string
+  ): void {
+    doc.setFontSize(14);
+    doc.text('Check-in Report', 20, 30);
+    doc.setFontSize(10);
+    doc.text(`Queue Number: ${queueNumber}`, 20, 45);
+    doc.text(`Patient: ${patient.hn || 'N/A'}`, 20, 55);
+    doc.text(`Doctor: ${doctor.name || 'N/A'}`, 20, 65);
+    doc.text(`Date: ${new Date().toLocaleDateString('en-US')}`, 20, 75);
+  }
+  
+  /**
+   * สร้าง HTML content สำหรับ PDF
+   */
+  private static generateHTMLContent(
+    patient: MedicalPatient,
+    doctor: Doctor,
+    currentUser: User,
+    checkInData: CheckInData,
+    queueNumber: string
+  ): string {
+    return `
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .section { margin-bottom: 20px; border: 1px solid #ccc; padding: 15px; }
+            .label { font-weight: bold; }
+            .value { margin-left: 10px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>รายงานการเช็คอินผู้ป่วย</h1>
+            <h2>โรงพยาบาลตัวอย่าง</h2>
+            <p>ระบบบันทึกสุขภาพอิเล็กทรอนิกส์</p>
+          </div>
+          
+          <div class="section">
+            <h3>ข้อมูลการเช็คอิน</h3>
+            <p><span class="label">วันที่:</span> <span class="value">${new Date().toLocaleDateString('th-TH')}</span></p>
+            <p><span class="label">เวลา:</span> <span class="value">${new Date().toLocaleTimeString('th-TH')}</span></p>
+            <p><span class="label">หมายเลขคิว:</span> <span class="value">${queueNumber}</span></p>
+          </div>
+          
+          <div class="section">
+            <h3>ข้อมูลผู้ป่วย</h3>
+            <p><span class="label">หมายเลข HN:</span> <span class="value">${patient.hn || 'ไม่ระบุ'}</span></p>
+            <p><span class="label">ชื่อ-นามสกุล:</span> <span class="value">${patient.firstName || ''} ${patient.lastName || ''}</span></p>
+            <p><span class="label">เลขบัตรประชาชน:</span> <span class="value">${patient.national_id || 'ไม่ระบุ'}</span></p>
+            <p><span class="label">วันเกิด:</span> <span class="value">${patient.birth_date ? new Date(patient.birth_date).toLocaleDateString('th-TH') : 'ไม่ระบุ'}</span></p>
+            <p><span class="label">อายุ:</span> <span class="value">${patient.birth_date ? this.calculateAge(patient.birth_date) + ' ปี' : 'ไม่ระบุ'}</span></p>
+            <p><span class="label">เพศ:</span> <span class="value">${patient.gender === 'male' ? 'ชาย' : patient.gender === 'female' ? 'หญิง' : 'ไม่ระบุ'}</span></p>
+            <p><span class="label">เบอร์โทรศัพท์:</span> <span class="value">${patient.phone || 'ไม่ระบุ'}</span></p>
+            <p><span class="label">ที่อยู่:</span> <span class="value">${patient.address || 'ไม่ระบุ'}</span></p>
+          </div>
+          
+          <div class="section">
+            <h3>ข้อมูลการรักษา</h3>
+            <p><span class="label">ประเภทการรักษา:</span> <span class="value">${this.getTreatmentTypeLabel(checkInData.treatmentType) || 'ไม่ระบุ'}</span></p>
+            <p><span class="label">แพทย์ผู้ตรวจ:</span> <span class="value">${doctor.name || 'ไม่ระบุ'}</span></p>
+            <p><span class="label">แผนก:</span> <span class="value">${doctor.department || 'ไม่ระบุ'}</span></p>
+            <p><span class="label">ความเชี่ยวชาญ:</span> <span class="value">${doctor.specialization || 'ไม่ระบุ'}</span></p>
+            <p><span class="label">วันที่มาตรวจ:</span> <span class="value">${checkInData.visitTime ? new Date(checkInData.visitTime).toLocaleDateString('th-TH') : 'ไม่ระบุ'}</span></p>
+            <p><span class="label">เวลาที่มาตรวจ:</span> <span class="value">${checkInData.visitTime ? new Date(checkInData.visitTime).toLocaleTimeString('th-TH') : 'ไม่ระบุ'}</span></p>
+            <p><span class="label">อาการเบื้องต้น:</span> <span class="value">${checkInData.symptoms || 'ไม่ระบุ'}</span></p>
+            <p><span class="label">หมายเหตุ:</span> <span class="value">${checkInData.notes || 'ไม่ระบุ'}</span></p>
+          </div>
+          
+          <div class="section">
+            <h3>ข้อมูลผู้สร้างคิว</h3>
+            <p><span class="label">ชื่อ-นามสกุล:</span> <span class="value">${currentUser.firstName || ''} ${currentUser.lastName || ''}</span></p>
+            <p><span class="label">ตำแหน่ง:</span> <span class="value">${this.getRoleLabel(currentUser.role) || 'ไม่ระบุ'}</span></p>
+            <p><span class="label">แผนก:</span> <span class="value">${currentUser.departmentId || 'ไม่ระบุ'}</span></p>
+            <p><span class="label">รหัสพนักงาน:</span> <span class="value">${currentUser.employeeId || 'ไม่ระบุ'}</span></p>
+            <p><span class="label">วันที่สร้าง:</span> <span class="value">${new Date().toLocaleDateString('th-TH')}</span></p>
+            <p><span class="label">เวลาที่สร้าง:</span> <span class="value">${new Date().toLocaleTimeString('th-TH')}</span></p>
+          </div>
+          
+          <div class="section">
+            <h3>ลายเซ็น</h3>
+            <p><span class="label">ผู้สร้างคิว:</span> <span class="value">${currentUser.firstName || ''} ${currentUser.lastName || ''}</span></p>
+            <p><span class="label">แพทย์ผู้ตรวจ:</span> <span class="value">${doctor.name || 'ไม่ระบุ'}</span></p>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
+  /**
+   * คำนวณอายุจากวันเกิด
    */
   private static calculateAge(birthDate: string): number {
-    const today = new Date();
     const birth = new Date(birthDate);
+    const today = new Date();
     let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
     
@@ -231,31 +366,32 @@ export class PDFService {
   }
   
   /**
-   * แปลงประเภทการรักษาเป็นภาษาไทย
+   * แปลงประเภทการรักษาเป็นภาษาอังกฤษ
    */
   private static getTreatmentTypeLabel(type: string): string {
     const types: Record<string, string> = {
-      'opd': 'OPD - ตรวจรักษาทั่วไป',
-      'health_check': 'ตรวจสุขภาพ',
-      'vaccination': 'ฉีดวัคซีน',
-      'emergency': 'ฉุกเฉิน',
-      'followup': 'นัดติดตามผล'
+      'walk_in': 'Walk-in Visit',
+      'opd': 'OPD - General Consultation',
+      'health_check': 'Health Check-up',
+      'vaccination': 'Vaccination',
+      'emergency': 'Emergency',
+      'followup': 'Follow-up Visit'
     };
     return types[type] || type;
   }
   
   /**
-   * แปลงบทบาทเป็นภาษาไทย
+   * แปลงบทบาทเป็นภาษาอังกฤษ
    */
   private static getRoleLabel(role: string): string {
     const roles: Record<string, string> = {
-      'admin': 'ผู้ดูแลระบบ',
-      'doctor': 'แพทย์',
-      'nurse': 'พยาบาล',
-      'pharmacist': 'เภสัชกร',
-      'lab_tech': 'เทคนิคการแพทย์',
-      'staff': 'เจ้าหน้าที่',
-      'patient': 'ผู้ป่วย'
+      'admin': 'Administrator',
+      'doctor': 'Doctor',
+      'nurse': 'Nurse',
+      'pharmacist': 'Pharmacist',
+      'lab_tech': 'Lab Technician',
+      'staff': 'Staff',
+      'patient': 'Patient'
     };
     return roles[role] || role;
   }

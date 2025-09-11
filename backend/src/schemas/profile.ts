@@ -209,58 +209,58 @@ export const ProfileTransformers = {
     first_name: data.firstName,
     last_name: data.lastName,
     email: data.email,
-    phone: data.phone,
-    thai_name: data.thaiName,
-    thai_last_name: data.thaiLastName,
+    phone: data.phone && data.phone !== '' ? data.phone : null,
+    thai_name: data.thaiName && data.thaiName !== '' ? data.thaiName : null,
+    thai_last_name: data.thaiLastName && data.thaiLastName !== '' ? data.thaiLastName : null,
     
     // Personal Info
-    national_id: data.nationalId,
-    birth_date: data.birthDate,
-    birth_day: data.birthDay,
-    birth_month: data.birthMonth,
-    birth_year: data.birthYear,
-    gender: data.gender,
-    blood_type: data.bloodType,
+    national_id: data.nationalId && data.nationalId !== '' ? data.nationalId : null,
+    birth_date: data.birthDate && data.birthDate !== '' ? data.birthDate : null,
+    birth_day: data.birthDay && data.birthDay !== '' ? data.birthDay : null,
+    birth_month: data.birthMonth && data.birthMonth !== '' ? data.birthMonth : null,
+    birth_year: data.birthYear && data.birthYear !== '' ? data.birthYear : null,
+    gender: data.gender && data.gender !== '' ? data.gender : null,
+    blood_type: data.bloodType && data.bloodType !== '' ? data.bloodType : null,
     
     // Address Info
-    address: data.address,
-    id_card_address: data.idCardAddress,
+    address: data.address && data.address !== '' ? data.address : null,
+    id_card_address: data.idCardAddress && data.idCardAddress !== '' ? data.idCardAddress : null,
     
     // Contact Info
-    emergency_contact_name: data.emergencyContactName,
-    emergency_contact_phone: data.emergencyContactPhone,
-    emergency_contact_relation: data.emergencyContactRelation,
+    emergency_contact_name: data.emergencyContactName && data.emergencyContactName !== '' ? data.emergencyContactName : null,
+    emergency_contact_phone: data.emergencyContactPhone && data.emergencyContactPhone !== '' ? data.emergencyContactPhone : null,
+    emergency_contact_relation: data.emergencyContactRelation && data.emergencyContactRelation !== '' ? data.emergencyContactRelation : null,
     
     // Medical Info
-    allergies: data.allergies,
-    drug_allergies: data.drugAllergies,
-    food_allergies: data.foodAllergies,
-    environment_allergies: data.environmentAllergies,
-    medical_history: data.medicalHistory,
-    current_medications: data.currentMedications,
-    chronic_diseases: data.chronicDiseases,
+    allergies: data.allergies && data.allergies !== '' ? data.allergies : null,
+    drug_allergies: data.drugAllergies && data.drugAllergies !== '' ? data.drugAllergies : null,
+    food_allergies: data.foodAllergies && data.foodAllergies !== '' ? data.foodAllergies : null,
+    environment_allergies: data.environmentAllergies && data.environmentAllergies !== '' ? data.environmentAllergies : null,
+    medical_history: data.medicalHistory && data.medicalHistory !== '' ? data.medicalHistory : null,
+    current_medications: data.currentMedications && data.currentMedications !== '' ? data.currentMedications : null,
+    chronic_diseases: data.chronicDiseases && data.chronicDiseases !== '' ? data.chronicDiseases : null,
     
     // Physical Info
-    weight: data.weight,
-    height: data.height,
+    weight: data.weight && data.weight !== '' ? data.weight : null,
+    height: data.height && data.height !== '' ? data.height : null,
     
     // Additional Info
-    occupation: data.occupation,
-    education: data.education,
-    marital_status: data.maritalStatus,
-    religion: data.religion,
-    race: data.race,
+    occupation: data.occupation && data.occupation !== '' ? data.occupation : null,
+    education: data.education && data.education !== '' ? data.education : null,
+    marital_status: data.maritalStatus && data.maritalStatus !== '' ? data.maritalStatus : null,
+    religion: data.religion && data.religion !== '' ? data.religion : null,
+    race: data.race && data.race !== '' ? data.race : null,
     
     // Insurance Info
-    insurance_type: data.insuranceType,
-    insurance_number: data.insuranceNumber,
-    insurance_expiry_date: data.insuranceExpiryDate,
-    insurance_expiry_day: data.insuranceExpiryDay,
-    insurance_expiry_month: data.insuranceExpiryMonth,
-    insurance_expiry_year: data.insuranceExpiryYear,
+    insurance_type: data.insuranceType && data.insuranceType !== '' ? data.insuranceType : null,
+    insurance_number: data.insuranceNumber && data.insuranceNumber !== '' ? data.insuranceNumber : null,
+    insurance_expiry_date: data.insuranceExpiryDate && data.insuranceExpiryDate !== '' ? data.insuranceExpiryDate : null,
+    insurance_expiry_day: data.insuranceExpiryDay && data.insuranceExpiryDay !== '' ? data.insuranceExpiryDay : null,
+    insurance_expiry_month: data.insuranceExpiryMonth && data.insuranceExpiryMonth !== '' ? data.insuranceExpiryMonth : null,
+    insurance_expiry_year: data.insuranceExpiryYear && data.insuranceExpiryYear !== '' ? data.insuranceExpiryYear : null,
     
     // System Info
-    profile_image: data.profileImage,
+    profile_image: data.profileImage && data.profileImage !== '' ? data.profileImage : null,
     profile_completed: data.profileCompleted
   }),
 
@@ -280,9 +280,9 @@ export const ProfileTransformers = {
     // Personal Info
     nationalId: data.national_id,
     birthDate: data.birth_date,
-    birthDay: data.birth_day,
-    birthMonth: data.birth_month,
-    birthYear: data.birth_year,
+    birthDay: data.birth_day || (data.birth_date ? new Date(data.birth_date).getDate() : null),
+    birthMonth: data.birth_month || (data.birth_date ? new Date(data.birth_date).getMonth() + 1 : null),
+    birthYear: data.birth_year || (data.birth_date ? new Date(data.birth_date).getFullYear() + 543 : null), // Convert to Buddhist Era
     gender: data.gender,
     bloodType: data.blood_type,
     
@@ -319,9 +319,9 @@ export const ProfileTransformers = {
     insuranceType: data.insurance_type,
     insuranceNumber: data.insurance_number,
     insuranceExpiryDate: data.insurance_expiry_date,
-    insuranceExpiryDay: data.insurance_expiry_day,
-    insuranceExpiryMonth: data.insurance_expiry_month,
-    insuranceExpiryYear: data.insurance_expiry_year,
+    insuranceExpiryDay: data.insurance_expiry_day || (data.insurance_expiry_date ? new Date(data.insurance_expiry_date).getDate() : null),
+    insuranceExpiryMonth: data.insurance_expiry_month || (data.insurance_expiry_date ? new Date(data.insurance_expiry_date).getMonth() + 1 : null),
+    insuranceExpiryYear: data.insurance_expiry_year || (data.insurance_expiry_date ? new Date(data.insurance_expiry_date).getFullYear() + 543 : null), // Convert to Buddhist Era
     
     // System Info
     profileImage: data.profile_image,

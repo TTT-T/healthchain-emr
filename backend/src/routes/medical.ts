@@ -196,7 +196,8 @@ router.use(authenticate);
 // Patient Management
 router.get('/patients', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAllPatients));
 router.get('/patients/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getPatientById));
-router.post('/patients', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createPatient));
+// DISABLED: Use /api/patient-registration/register instead
+// router.post('/patients', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createPatient));
 router.put('/patients/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(updatePatient));
 
 // User Search for Patient Registration

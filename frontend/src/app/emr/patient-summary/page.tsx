@@ -11,7 +11,7 @@ import { logger } from '@/lib/logger';
 export default function PatientSummary() {
   const { isAuthenticated, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchType, setSearchType] = useState<"hn" | "queue">("queue");
+  const [searchType, setSearchType] = useState<"hn" | "queue">("hn");
   const [isSearching, setIsSearching] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<MedicalPatient | null>(null);
   const [patientSummary, setPatientSummary] = useState<any>(null);
@@ -30,11 +30,46 @@ export default function PatientSummary() {
     try {
       const response = await PatientService.searchPatients(searchQuery, searchType);
       
+      console.log('Patient search response:', response);
+      console.log('Search type:', searchType);
+      console.log('Search query:', searchQuery);
+      
       if (response.statusCode === 200 && response.data && response.data.length > 0) {
-        setSelectedPatient(response.data[0]);
-        await loadPatientSummary(response.data[0].id);
+        console.log('Patient found:', response.data[0]);
+        
+        // Backend sends data in nested format, extract the patient data
+        const patientData = response.data[0];
+        const formattedPatient = {
+          id: patientData.id,
+          hn: patientData.personal_info?.hospital_number || patientData.hospital_number,
+          hospital_number: patientData.personal_info?.hospital_number || patientData.hospital_number,
+          thai_name: patientData.personal_info?.thai_name || patientData.thai_name,
+          first_name: patientData.personal_info?.first_name || patientData.first_name,
+          last_name: patientData.personal_info?.last_name || patientData.last_name,
+          national_id: patientData.personal_info?.national_id || patientData.national_id,
+          birth_date: patientData.personal_info?.birth_date || patientData.birth_date,
+          gender: patientData.personal_info?.gender || patientData.gender,
+          age: patientData.personal_info?.age || patientData.age,
+          phone: patientData.contact_info?.phone || patientData.phone,
+          email: patientData.contact_info?.email || patientData.email,
+          address: patientData.contact_info?.address || patientData.address,
+          current_address: patientData.contact_info?.current_address || patientData.current_address,
+          blood_type: patientData.medical_info?.blood_type || patientData.blood_type,
+          medical_history: patientData.medical_info?.medical_history || patientData.medical_history,
+          allergies: patientData.medical_info?.allergies || patientData.allergies,
+          drug_allergies: patientData.medical_info?.drug_allergies || patientData.drug_allergies,
+          chronic_diseases: patientData.medical_info?.chronic_diseases || patientData.chronic_diseases,
+          status: patientData.status,
+          department: patientData.department,
+          created_at: patientData.created_at,
+          updated_at: patientData.updated_at
+        };
+        
+        setSelectedPatient(formattedPatient);
+        await loadPatientSummary(formattedPatient.id);
         setError(null);
       } else {
+        console.log('No patient found or empty data');
         setError("ไม่พบข้อมูลผู้ป่วย");
         setSelectedPatient(null);
         setPatientSummary(null);
@@ -60,6 +95,8 @@ export default function PatientSummary() {
       ]);
 
       if (summaryResponse.statusCode === 200 && summaryResponse.data) {
+        console.log('Patient summary data:', summaryResponse.data);
+        console.log('Patient age from summary:', summaryResponse.data.patient?.age);
         setPatientSummary(summaryResponse.data);
       }
 
@@ -169,11 +206,38 @@ export default function PatientSummary() {
           {/* Search Patient */}
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">ค้นหาผู้ป่วย</h3>
+            
+            {/* Search Type Selection */}
+            <div className="flex gap-4 mb-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="searchType"
+                  value="hn"
+                  checked={searchType === "hn"}
+                  onChange={(e) => setSearchType(e.target.value as "hn" | "queue")}
+                  className="text-teal-600 focus:ring-teal-500"
+                />
+                <span className="text-sm font-medium text-gray-700">ค้นหาด้วย HN</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="searchType"
+                  value="queue"
+                  checked={searchType === "queue"}
+                  onChange={(e) => setSearchType(e.target.value as "hn" | "queue")}
+                  className="text-teal-600 focus:ring-teal-500"
+                />
+                <span className="text-sm font-medium text-gray-700">ค้นหาด้วยหมายเลขคิว</span>
+              </label>
+            </div>
+            
             <div className="flex gap-4 mb-4">
               <div className="flex-1">
                 <input
                   type="text"
-                  placeholder="กรอก HN หรือหมายเลขคิว"
+                  placeholder={searchType === "hn" ? "กรอกหมายเลข HN (เช่น HN250001)" : "กรอกหมายเลขคิว"}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
@@ -202,16 +266,16 @@ export default function PatientSummary() {
                   <span className="font-medium">ชื่อ:</span> {selectedPatient.thai_name || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
                 </div>
                 <div>
-                  <span className="font-medium">อายุ:</span> {selectedPatient.age || 'ไม่ระบุ'}
+                  <span className="font-medium">อายุ:</span> {patientSummary?.patient?.age || selectedPatient.age || 'ไม่ระบุ'}
                 </div>
                 <div>
-                  <span className="font-medium">เพศ:</span> {selectedPatient.gender || 'ไม่ระบุ'}
+                  <span className="font-medium">เพศ:</span> {patientSummary?.patient?.gender || selectedPatient.gender || 'ไม่ระบุ'}
                 </div>
                 <div>
-                  <span className="font-medium">โทรศัพท์:</span> {selectedPatient.phone || 'ไม่ระบุ'}
+                  <span className="font-medium">โทรศัพท์:</span> {patientSummary?.patient?.phone || selectedPatient.phone || 'ไม่ระบุ'}
                 </div>
                 <div>
-                  <span className="font-medium">อีเมล:</span> {selectedPatient.email || 'ไม่ระบุ'}
+                  <span className="font-medium">อีเมล:</span> {patientSummary?.patient?.email || selectedPatient.email || 'ไม่ระบุ'}
                 </div>
               </div>
             </div>

@@ -114,6 +114,16 @@ class DatabaseSeeder {
         role: 'patient',
         isActive: true,
         emailVerified: true
+      },
+      {
+        username: 'dr_somchai',
+        email: 'dr.somchai@healthchain.co.th',
+        password: await bcrypt.hash('doctor123', 12),
+        firstName: 'นพ.สมชาย',
+        lastName: 'ใจดี',
+        role: 'doctor',
+        isActive: true,
+        emailVerified: true
       }
     ];
 
@@ -159,16 +169,13 @@ class DatabaseSeeder {
         phone: '081-234-5678',
         email: 'john.doe@email.com',
         address: '123 Sukhumvit Road, Bangkok 10110',
-        district: 'Watthana',
-        province: 'Bangkok',
-        postalCode: '10110',
         emergencyContactName: 'Jane Doe',
         emergencyContactPhone: '082-345-6789',
         emergencyContactRelationship: 'Wife',
         bloodType: 'O+',
-        allergies: JSON.stringify(['Penicillin', 'Shellfish']),
-        chronicConditions: JSON.stringify(['Hypertension']),
-        currentMedications: JSON.stringify(['Amlodipine 5mg daily']),
+        allergies: 'Penicillin, Shellfish',
+        chronicConditions: ['Hypertension'],
+        currentMedications: 'Amlodipine 5mg daily',
         insuranceProvider: 'Social Security',
         insurancePolicyNumber: 'SS-123456789'
       },
@@ -183,16 +190,13 @@ class DatabaseSeeder {
         phone: '081-234-5679',
         email: 'somchai@email.com',
         address: '456 ถนนสุขุมวิท กรุงเทพฯ 10110',
-        district: 'วัฒนา',
-        province: 'กรุงเทพฯ',
-        postalCode: '10110',
         emergencyContactName: 'นางสมใจ ใจดี',
         emergencyContactPhone: '082-345-6790',
         emergencyContactRelationship: 'ภรรยา',
         bloodType: 'A+',
-        allergies: JSON.stringify([]),
-        chronicConditions: JSON.stringify(['Diabetes Type 2']),
-        currentMedications: JSON.stringify(['Metformin 500mg twice daily']),
+        allergies: '',
+        chronicConditions: ['Diabetes Type 2'],
+        currentMedications: 'Metformin 500mg twice daily',
         insuranceProvider: 'ประกันสังคม',
         insurancePolicyNumber: 'PS-234567890'
       },
@@ -207,35 +211,52 @@ class DatabaseSeeder {
         phone: '081-234-5680',
         email: 'jane.smith@email.com',
         address: '789 Silom Road, Bangkok 10500',
-        district: 'Bang Rak',
-        province: 'Bangkok',
-        postalCode: '10500',
         emergencyContactName: 'Robert Smith',
         emergencyContactPhone: '082-345-6791',
         emergencyContactRelationship: 'Husband',
         bloodType: 'B+',
-        allergies: JSON.stringify(['Latex']),
-        chronicConditions: JSON.stringify([]),
-        currentMedications: JSON.stringify([]),
+        allergies: 'Latex',
+        chronicConditions: [],
+        currentMedications: '',
         insuranceProvider: 'Private Insurance',
         insurancePolicyNumber: 'PI-345678901'
+      },
+      {
+        hospitalNumber: 'HN250001',
+        nationalId: '1234567890123',
+        firstName: 'น้ำ',
+        lastName: 'หัวควย',
+        thaiName: 'น้ำ หัวควย',
+        gender: 'male',
+        birthDate: '1956-05-15', // 68 years old
+        phone: '081-234-5681',
+        email: 'nam.huakuay@email.com',
+        address: '123 ถนนสุขุมวิท กรุงเทพฯ 10110',
+        emergencyContactName: 'นางสมใจ หัวควย',
+        emergencyContactPhone: '082-345-6792',
+        emergencyContactRelationship: 'ภรรยา',
+        bloodType: 'A+',
+        allergies: '',
+        chronicConditions: ['Hypertension'],
+        currentMedications: 'Amlodipine 5mg daily',
+        insuranceProvider: 'ประกันสังคม',
+        insurancePolicyNumber: 'PS-123456789'
       }
     ];
 
     for (const patient of patients) {
       await databaseManager.query(`
         INSERT INTO patients (
-          hospital_number, national_id, first_name, last_name, thai_name,
-          gender, date_of_birth, phone, email, address, district, province,
-          postal_code, emergency_contact_name, emergency_contact_phone,
+          hospital_number, first_name, last_name, thai_name,
+          gender, date_of_birth, phone, email, address,
+          emergency_contact_name, emergency_contact_phone,
           emergency_contact_relationship, blood_type, allergies, chronic_conditions,
-          current_medications, insurance_provider, insurance_policy_number
+          current_medications
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         ON CONFLICT (hospital_number) DO NOTHING
       `, [
         patient.hospitalNumber,
-        patient.nationalId,
         patient.firstName,
         patient.lastName,
         patient.thaiName,
@@ -244,18 +265,13 @@ class DatabaseSeeder {
         patient.phone,
         patient.email,
         patient.address,
-        patient.district,
-        patient.province,
-        patient.postalCode,
         patient.emergencyContactName,
         patient.emergencyContactPhone,
         patient.emergencyContactRelationship,
         patient.bloodType,
         patient.allergies,
         patient.chronicConditions,
-        patient.currentMedications,
-        patient.insuranceProvider,
-        patient.insurancePolicyNumber
+        patient.currentMedications
       ]);
     }
 
@@ -340,6 +356,28 @@ class DatabaseSeeder {
         assignedNurseId: nurses.rows[0].id
       }
     ];
+
+    // Add visit for HN250001 patient if exists
+    const hn250001Patient = patients.rows.find(p => p.hospital_number === 'HN250001');
+    const drSomchai = doctors.rows.find(d => d.first_name === 'นพ.สมชาย' && d.last_name === 'ใจดี');
+    if (hn250001Patient && drSomchai) {
+      visits.push({
+        patientId: hn250001Patient.id,
+        visitNumber: 'Q001',
+        visitDate: '2025-09-11',
+        visitTime: '18:00',
+        visitType: 'emergency',
+        chiefComplaint: 'Emergency visit',
+        presentIllness: 'Patient came for emergency treatment',
+        physicalExamination: 'BP: 140/90, HR: 85, RR: 18, Temp: 36.5°C',
+        diagnosis: 'Emergency visit',
+        treatmentPlan: 'Emergency treatment',
+        status: 'in_progress',
+        priority: 'high',
+        attendingDoctorId: drSomchai.id,
+        assignedNurseId: nurses.rows[0].id
+      });
+    }
 
     for (const visit of visits) {
       await databaseManager.query(`

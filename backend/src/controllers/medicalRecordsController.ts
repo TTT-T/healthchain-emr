@@ -38,36 +38,16 @@ export const getPatientRecords = async (req: Request, res: Response) => {
       }
       
       if (patientQuery.rows.length === 0) {
-        // If still no patient found, create one
-        const newPatientId = uuidv4();
-        await databaseManager.query(
-          `INSERT INTO patients (
-            id, user_id, email, first_name, last_name, 
-            date_of_birth, phone, emergency_contact, 
-            created_at, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-          [
-            newPatientId,
-            user.id,
-            user.email,
-            user.first_name || 'Patient',
-            user.last_name || 'User',
-            '1990-01-01', // Default date
-            user.phone || '',
-            '{}', // Empty JSON object for emergency contact
-            new Date(),
-            new Date()
-          ]
-        );
-        
-        patient = {
-          id: newPatientId,
-          first_name: user.first_name || 'Patient',
-          last_name: user.last_name || 'User',
-          user_id: user.id,
-          email: user.email
-        };
-        actualPatientId = newPatientId;
+        // If still no patient found, do not create one automatically
+        return res.status(404).json({
+          data: null,
+          meta: null,
+          error: { 
+            message: 'Patient record not found. Please register through EMR system at /emr/register-patient',
+            code: 'PATIENT_NOT_REGISTERED'
+          },
+          statusCode: 404
+        });
       } else {
         patient = patientQuery.rows[0];
         actualPatientId = patient.id;

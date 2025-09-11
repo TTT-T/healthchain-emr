@@ -94,24 +94,41 @@ export default function EMRDashboard() {
       const patientsData = (patientsResponse.data?.patients as any[]) || [];
       const todayPatientsCount = patientsData.length;
       
+      // Count patients with active visits (in_progress status)
+      const activeQueueCount = patientsData.filter((patient: any) => 
+        patient.visit_info?.visit_status === 'in_progress' || 
+        patient.visit_status === 'in_progress'
+      ).length;
+      
+      // Count completed visits
+      const completedVisitsCount = patientsData.filter((patient: any) => 
+        patient.visit_info?.visit_status === 'completed' || 
+        patient.visit_status === 'completed'
+      ).length;
+      
       // Set real stats from actual data
       setStats({
         todayPatients: todayPatientsCount,
         todayRegistrations: todayPatientsCount, // All patients are registrations for now
-        activeQueues: Math.min(todayPatientsCount, 5), // Show up to 5 patients in queue
-        completedVisits: 0, // Will be calculated from real visit data when available
+        activeQueues: activeQueueCount, // Count only patients with in_progress visits
+        completedVisits: completedVisitsCount, // Count completed visits
         pendingLabs: 0, // Will be calculated from real lab data when available
         upcomingAppointments: 0, // Will be calculated from real appointment data when available
         activeMedications: 0, // Will be calculated from real medication data when available
         criticalAlerts: 0 // Will be calculated from real alert data when available
       });
 
-      // Generate queue data from patients - use real data structure
-      const queueData: QueueItem[] = patientsData.slice(0, 5).map((patient: any, index: number) => ({
-        id: patient.id,
-        queueNumber: patient.personal_info?.hospital_number || `HN${String(index + 1).padStart(3, '0')}`,
+      // Generate queue data from patients with active visits only
+      const activePatients = patientsData.filter((patient: any) => 
+        patient.visit_info?.visit_status === 'in_progress' || 
+        patient.visit_status === 'in_progress'
+      );
+      
+      const queueData: QueueItem[] = activePatients.slice(0, 5).map((patient: any, index: number) => ({
+        id: `${patient.id}-queue-${index}`, // Make unique key by adding index
+        queueNumber: patient.visit_info?.visit_number || patient.personal_info?.hospital_number || `HN${String(index + 1).padStart(3, '0')}`,
         patientName: patient.personal_info?.thai_name || `${patient.personal_info?.first_name || ''} ${patient.personal_info?.last_name || ''}`.trim() || 'ไม่ระบุชื่อ',
-        status: 'waiting' as any, // Real status - all patients are waiting for now
+        status: 'waiting' as any, // Real status - patients with in_progress visits are waiting
         department: patient.department || 'ไม่ระบุแผนก',
         waitTime: 0, // Real wait time - will be calculated from appointment data when available
         priority: 'normal' as any // Real priority - default to normal for now
@@ -120,7 +137,7 @@ export default function EMRDashboard() {
 
       // Generate recent activities from patients - use real data
       const activities: RecentActivity[] = patientsData.slice(0, 3).map((patient: any, index: number) => ({
-        id: patient.id,
+        id: `${patient.id}-activity-${index}`, // Make unique key by adding index
         type: 'registration' as any, // Real activity type - patient registration
         description: `ลงทะเบียนผู้ป่วย: ${patient.personal_info?.thai_name || `${patient.personal_info?.first_name || ''} ${patient.personal_info?.last_name || ''}`.trim() || 'ไม่ระบุชื่อ'}`,
         timestamp: patient.created_at || new Date().toISOString(),

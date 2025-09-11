@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 import { 
   Home, Users, UserPlus, Activity, Heart, Stethoscope, 
   Pill, FileText, Calendar, ClipboardList, Search, 
@@ -147,7 +149,17 @@ export default function EMRSidebar({
   onClose 
 }: EMRSidebarProps) {
   const pathname = usePathname();
+  const { logout } = useAuth();
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['main', 'clinical']);
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      logger.error('Logout error:', error);
+    }
+  };
 
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => 
@@ -288,6 +300,7 @@ export default function EMRSidebar({
         {/* Footer */}
         <div className="border-t border-gray-200 p-4">
           <button
+            onClick={handleLogout}
             className={`flex items-center w-full p-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors ${
               (isCollapsed && !isMobile) ? 'justify-center' : ''
             }`}

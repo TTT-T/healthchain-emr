@@ -1,0 +1,216 @@
+import { apiClient } from '@/lib/api';
+import { logger } from '@/lib/logger';
+
+export interface Doctor {
+  id: string;
+  name: string;
+  department: string;
+  specialization: string;
+  currentQueue: number;
+  estimatedWaitTime: number;
+  isAvailable: boolean;
+  medicalLicenseNumber?: string;
+  yearsOfExperience?: number;
+  position?: string;
+  consultationFee?: number;
+  email?: string;
+  phone?: string;
+  availability?: any;
+}
+
+export interface CreateDoctorRequest {
+  userId: string;
+  medicalLicenseNumber: string;
+  specialization: string;
+  department: string;
+  position?: string;
+  yearsOfExperience?: number;
+  consultationFee?: number;
+  availability?: any;
+}
+
+export interface UpdateDoctorRequest {
+  medicalLicenseNumber?: string;
+  specialization?: string;
+  department?: string;
+  position?: string;
+  yearsOfExperience?: number;
+  consultationFee?: number;
+  availability?: any;
+}
+
+/**
+ * Doctor Service
+ * จัดการข้อมูลแพทย์ในระบบ EMR
+ */
+export class DoctorService {
+  /**
+   * ดึงรายชื่อแพทย์ทั้งหมด
+   */
+  static async getDoctors(params?: {
+    page?: number;
+    limit?: number;
+    department?: string;
+    specialization?: string;
+    isAvailable?: boolean;
+  }) {
+    try {
+      logger.debug('📱 DoctorService.getDoctors called', params);
+      
+      const response = await apiClient.request({
+        method: 'GET',
+        url: '/medical/doctors',
+        params
+      });
+      
+      logger.debug('✅ DoctorService.getDoctors success:', response);
+      return response;
+    } catch (error) {
+      logger.error('❌ DoctorService.getDoctors error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * ดึงข้อมูลแพทย์ตาม ID
+   */
+  static async getDoctorById(id: string) {
+    try {
+      logger.debug('📱 DoctorService.getDoctorById called', { id });
+      
+      const response = await apiClient.request({
+        method: 'GET',
+        url: `/medical/doctors/${id}`
+      });
+      
+      logger.debug('✅ DoctorService.getDoctorById success:', response);
+      return response;
+    } catch (error) {
+      logger.error('❌ DoctorService.getDoctorById error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * สร้างแพทย์ใหม่
+   */
+  static async createDoctor(data: CreateDoctorRequest) {
+    try {
+      logger.debug('📱 DoctorService.createDoctor called', data);
+      
+      const response = await apiClient.request({
+        method: 'POST',
+        url: '/medical/doctors',
+        data
+      });
+      
+      logger.debug('✅ DoctorService.createDoctor success:', response);
+      return response;
+    } catch (error) {
+      logger.error('❌ DoctorService.createDoctor error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * อัปเดตข้อมูลแพทย์
+   */
+  static async updateDoctor(id: string, data: UpdateDoctorRequest) {
+    try {
+      logger.debug('📱 DoctorService.updateDoctor called', { id, data });
+      
+      const response = await apiClient.request({
+        method: 'PUT',
+        url: `/medical/doctors/${id}`,
+        data
+      });
+      
+      logger.debug('✅ DoctorService.updateDoctor success:', response);
+      return response;
+    } catch (error) {
+      logger.error('❌ DoctorService.updateDoctor error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * ลบแพทย์
+   */
+  static async deleteDoctor(id: string) {
+    try {
+      logger.debug('📱 DoctorService.deleteDoctor called', { id });
+      
+      const response = await apiClient.request({
+        method: 'DELETE',
+        url: `/medical/doctors/${id}`
+      });
+      
+      logger.debug('✅ DoctorService.deleteDoctor success:', response);
+      return response;
+    } catch (error) {
+      logger.error('❌ DoctorService.deleteDoctor error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * อัปเดตสถานะพร้อมตรวจ
+   */
+  static async updateAvailability(id: string, isAvailable: boolean) {
+    try {
+      logger.debug('📱 DoctorService.updateAvailability called', { id, isAvailable });
+      
+      const response = await apiClient.request({
+        method: 'PATCH',
+        url: `/medical/doctors/${id}/availability`,
+        data: { isAvailable }
+      });
+      
+      logger.debug('✅ DoctorService.updateAvailability success:', response);
+      return response;
+    } catch (error) {
+      logger.error('❌ DoctorService.updateAvailability error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * ดึงคิวปัจจุบันของแพทย์
+   */
+  static async getCurrentQueue(id: string) {
+    try {
+      logger.debug('📱 DoctorService.getCurrentQueue called', { id });
+      
+      const response = await apiClient.request({
+        method: 'GET',
+        url: `/medical/doctors/${id}/queue`
+      });
+      
+      logger.debug('✅ DoctorService.getCurrentQueue success:', response);
+      return response;
+    } catch (error) {
+      logger.error('❌ DoctorService.getCurrentQueue error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * ดึงแพทย์ที่พร้อมตรวจ (สำหรับ Check-in)
+   */
+  static async getAvailableDoctors() {
+    try {
+      logger.debug('📱 DoctorService.getAvailableDoctors called');
+      
+      const response = await this.getDoctors({
+        isAvailable: true,
+        limit: 100 // ดึงทั้งหมด
+      });
+      
+      logger.debug('✅ DoctorService.getAvailableDoctors success:', response);
+      return response;
+    } catch (error) {
+      logger.error('❌ DoctorService.getAvailableDoctors error:', error);
+      throw error;
+    }
+  }
+}

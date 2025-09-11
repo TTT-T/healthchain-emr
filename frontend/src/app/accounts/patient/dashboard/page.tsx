@@ -131,6 +131,13 @@ const PatientDashboard = () => {
           logger.debug('🔍 Patient Dashboard - Loading patient data for user:', user.id);
           const response = await apiClient.getCompleteProfile();
           if (response.statusCode === 200 && response.data) {
+            console.log('🔍 Patient Dashboard - Profile data:', response.data);
+            console.log('🔍 Patient Dashboard - Birth date info:', {
+              birthDate: response.data.birthDate,
+              birthDay: response.data.birthDay,
+              birthMonth: response.data.birthMonth,
+              birthYear: response.data.birthYear,
+            });
             setPatient(response.data as any);
             // โหลดเอกสารล่าสุด
             loadRecentDocuments();
@@ -208,7 +215,37 @@ const PatientDashboard = () => {
     return age;
   };
 
-  const age = patient?.birth_date ? calculateAge(patient.birth_date) : 0;
+  const calculateAgeFromParts = (day: number, month: number, year: number) => {
+    if (!day || !month || !year) return 0;
+    
+    // Convert Buddhist Era to Christian Era
+    const christianYear = year - 543;
+    const today = new Date();
+    const birth = new Date(christianYear, month - 1, day);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  // Calculate age from available data
+  const age = patient?.birthDate 
+    ? calculateAge(patient.birthDate)
+    : (patient?.birthDay && patient?.birthMonth && patient?.birthYear)
+    ? calculateAgeFromParts(patient.birthDay, patient.birthMonth, patient.birthYear)
+    : 0;
+
+  // Debug age calculation
+  console.log('🔍 Patient Dashboard - Age calculation:', {
+    patient: !!patient,
+    birthDate: patient?.birthDate,
+    birthDay: patient?.birthDay,
+    birthMonth: patient?.birthMonth,
+    birthYear: patient?.birthYear,
+    calculatedAge: age
+  });
 
   return (
     <AppLayout title="แดชบอร์ด" userType="patient">

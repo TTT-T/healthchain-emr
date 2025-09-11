@@ -23,6 +23,7 @@ interface FormData {
   confirmEmail: string;
   phone: string;
   address: string;
+  idCardAddress: string;
   bloodType: string;
   password: string;
   confirmPassword: string;
@@ -50,6 +51,7 @@ export default function Register() {
     confirmEmail: '',
     phone: '',
     address: '',
+    idCardAddress: '',
     bloodType: '',
     password: '',
     confirmPassword: '',
@@ -146,7 +148,7 @@ export default function Register() {
     if (!formData.email) newErrors.email = 'กรุณากรอกอีเมล';
     if (!formData.confirmEmail) newErrors.confirmEmail = 'กรุณายืนยันอีเมล';
     if (!formData.phone) newErrors.phone = 'กรุณากรอกเบอร์โทรศัพท์';
-    if (!formData.address) newErrors.address = 'กรุณากรอกที่อยู่';
+    if (!formData.idCardAddress) newErrors.idCardAddress = 'กรุณากรอกที่อยู่ตามบัตรประชาชน';
     if (!formData.bloodType) newErrors.bloodType = 'กรุณาเลือกหมู่เลือด';
     if (!formData.password) newErrors.password = 'กรุณากรอกรหัสผ่าน';
     if (!formData.confirmPassword) newErrors.confirmPassword = 'กรุณายืนยันรหัสผ่าน';
@@ -244,13 +246,16 @@ export default function Register() {
         username: formData.username,
         email: formData.email,
         password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+        firstName: formData.firstNameEn, // ใช้ชื่ออังกฤษเป็น firstName
+        lastName: formData.lastNameEn,   // ใช้นามสกุลอังกฤษเป็น lastName
+        thaiFirstName: formData.firstName, // เพิ่มชื่อไทย
+        thaiLastName: formData.lastName,   // เพิ่มนามสกุลไทย
         phoneNumber: formData.phone,
         nationalId: formData.nationalId,
         birthDate: `${parseInt(formData.birthYear) - 543}-${formData.birthMonth.padStart(2, '0')}-${formData.birthDay.padStart(2, '0')}`,
         gender: formData.gender,
         address: formData.address,
+        idCardAddress: formData.idCardAddress,
         bloodType: formData.bloodType,
       }) as { requiresEmailVerification?: boolean } | void;
       
@@ -594,15 +599,33 @@ export default function Register() {
 
               {/* Address */}
               <div>
+                <label htmlFor="idCardAddress" className="block text-sm font-medium text-gray-700 mb-2">
+                  ที่อยู่ตามบัตรประชาชน *
+                </label>
+                <textarea
+                  id="idCardAddress"
+                  name="idCardAddress"
+                  value={formData.idCardAddress}
+                  onChange={handleInputChange}
+                  placeholder="กรอกที่อยู่ตามบัตรประชาชน"
+                  rows={3}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                    errors.idCardAddress ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
+                />
+                {errors.idCardAddress && <p className="text-red-500 text-sm mt-1">{errors.idCardAddress}</p>}
+              </div>
+
+              <div>
                 <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
-                  ที่อยู่ *
+                  ที่อยู่ปัจจุบัน (ถ้าแตกต่างจากบัตรประชาชน)
                 </label>
                 <textarea
                   id="address"
                   name="address"
                   value={formData.address}
                   onChange={handleInputChange}
-                  placeholder="กรอกที่อยู่ที่สามารถติดต่อได้"
+                  placeholder="กรอกที่อยู่ปัจจุบัน (ถ้าแตกต่างจากบัตรประชาชน)"
                   rows={3}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
                     errors.address ? 'border-red-500 bg-red-50' : 'border-gray-300'
