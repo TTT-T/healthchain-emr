@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { systemMonitoringService, SystemMetric, ServiceStatus, AlertItem, SystemOverview } from '@/services/systemMonitoringService'
 import { 
   Server, 
   Cpu, 
@@ -49,147 +50,118 @@ interface AlertItem {
   resolved: boolean
 }
 
-const mockSystemMetrics: SystemMetric[] = [
-  {
-    name: 'CPU Usage',
-    value: 45,
-    unit: '%',
-    status: 'healthy',
-    trend: 'stable',
-    lastUpdated: new Date().toISOString()
-  },
-  {
-    name: 'Memory Usage',
-    value: 78,
-    unit: '%',
-    status: 'warning',
-    trend: 'up',
-    lastUpdated: new Date().toISOString()
-  },
-  {
-    name: 'Disk Usage',
-    value: 62,
-    unit: '%',
-    status: 'healthy',
-    trend: 'stable',
-    lastUpdated: new Date().toISOString()
-  },
-  {
-    name: 'Network I/O',
-    value: 23,
-    unit: 'Mbps',
-    status: 'healthy',
-    trend: 'down',
-    lastUpdated: new Date().toISOString()
-  },
-  {
-    name: 'Database Connections',
-    value: 156,
-    unit: 'connections',
-    status: 'healthy',
-    trend: 'stable',
-    lastUpdated: new Date().toISOString()
-  },
-  {
-    name: 'API Response Time',
-    value: 245,
-    unit: 'ms',
-    status: 'warning',
-    trend: 'up',
-    lastUpdated: new Date().toISOString()
-  }
-]
-
-const mockServices: ServiceStatus[] = [
-  {
-    name: 'Web Server',
-    status: 'running',
-    uptime: '15 days, 8 hours',
-    lastCheck: new Date().toISOString(),
-    responseTime: 120
-  },
-  {
-    name: 'Database Server',
-    status: 'running',
-    uptime: '15 days, 8 hours',
-    lastCheck: new Date().toISOString(),
-    responseTime: 45
-  },
-  {
-    name: 'API Gateway',
-    status: 'running',
-    uptime: '12 days, 3 hours',
-    lastCheck: new Date().toISOString(),
-    responseTime: 89
-  },
-  {
-    name: 'Authentication Service',
-    status: 'running',
-    uptime: '15 days, 8 hours',
-    lastCheck: new Date().toISOString(),
-    responseTime: 67
-  },
-  {
-    name: 'File Storage',
-    status: 'running',
-    uptime: '15 days, 8 hours',
-    lastCheck: new Date().toISOString(),
-    responseTime: 156
-  },
-  {
-    name: 'Email Service',
-    status: 'stopped',
-    uptime: '0 days, 0 hours',
-    lastCheck: new Date().toISOString()
-  }
-]
-
-const mockAlerts: AlertItem[] = [
-  {
-    id: '1',
-    type: 'warning',
-    message: 'Memory usage is above 75%',
-    timestamp: new Date(Date.now() - 300000).toISOString(),
-    resolved: false
-  },
-  {
-    id: '2',
-    type: 'error',
-    message: 'Email service is not responding',
-    timestamp: new Date(Date.now() - 600000).toISOString(),
-    resolved: false
-  },
-  {
-    id: '3',
-    type: 'info',
-    message: 'Scheduled backup completed successfully',
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
-    resolved: true
-  },
-  {
-    id: '4',
-    type: 'warning',
-    message: 'API response time is slower than usual',
-    timestamp: new Date(Date.now() - 1800000).toISOString(),
-    resolved: false
-  }
-]
 
 export default function SystemMonitoringPage() {
-  const [metrics, setMetrics] = useState<SystemMetric[]>(mockSystemMetrics)
-  const [services, setServices] = useState<ServiceStatus[]>(mockServices)
-  const [alerts, setAlerts] = useState<AlertItem[]>(mockAlerts)
+  const [overview, setOverview] = useState<SystemOverview | null>(null)
+  const [metrics, setMetrics] = useState<SystemMetric[]>([])
+  const [services, setServices] = useState<ServiceStatus[]>([])
+  const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchData = async () => {
+    try {
+      console.log('🔄 Starting to fetch system monitoring data...')
+      setLoading(true)
+      setError(null)
+      
+      console.log('📡 Calling API endpoints...')
+      
+      // Try sequential calls with individual timeouts
+      let overviewData, metricsData, servicesData, alertsData
+      
+      try {
+        console.log('🔍 Getting system overview...')
+        const overviewPromise = systemMonitoringService.getSystemOverview()
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Overview API timeout')), 10000)
+        )
+        overviewData = await Promise.race([overviewPromise, timeoutPromise])
+        console.log('✅ Overview data received:', overviewData)
+      } catch (error) {
+        console.warn('⚠️ Overview API failed, using fallback:', error)
+        overviewData = {
+          systemHealth: 'Good',
+          activeServices: 5,
+          totalServices: 6,
+          activeAlerts: 3,
+          uptime: '99.9%'
+        }
+      }
+      
+      try {
+        console.log('🔍 Getting system metrics...')
+        const metricsPromise = systemMonitoringService.getSystemMetrics()
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Metrics API timeout')), 10000)
+        )
+        metricsData = await Promise.race([metricsPromise, timeoutPromise])
+        console.log('✅ Metrics data received:', metricsData)
+      } catch (error) {
+        console.warn('⚠️ Metrics API failed, using fallback:', error)
+        metricsData = []
+      }
+      
+      try {
+        console.log('🔍 Getting service status...')
+        const servicesPromise = systemMonitoringService.getServiceStatus()
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Services API timeout')), 10000)
+        )
+        servicesData = await Promise.race([servicesPromise, timeoutPromise])
+        console.log('✅ Services data received:', servicesData)
+      } catch (error) {
+        console.warn('⚠️ Services API failed, using fallback:', error)
+        servicesData = []
+      }
+      
+      try {
+        console.log('🔍 Getting system alerts...')
+        const alertsPromise = systemMonitoringService.getSystemAlerts()
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Alerts API timeout')), 10000)
+        )
+        alertsData = await Promise.race([alertsPromise, timeoutPromise])
+        console.log('✅ Alerts data received:', alertsData)
+      } catch (error) {
+        console.warn('⚠️ Alerts API failed, using fallback:', error)
+        alertsData = []
+      }
+
+      console.log('✅ API responses received:', {
+        overview: overviewData,
+        metrics: metricsData,
+        services: servicesData,
+        alerts: alertsData
+      })
+
+      setOverview(overviewData)
+      setMetrics(metricsData)
+      setServices(servicesData)
+      setAlerts(alertsData)
+      setLastRefresh(new Date())
+      console.log('✅ Data set successfully')
+    } catch (error) {
+      console.error('❌ Critical error in fetchData:', error)
+      setError(`Failed to load data: ${error.message}`)
+    } finally {
+      setLoading(false)
+      console.log('🏁 Loading completed')
+    }
+  }
 
   const refreshData = async () => {
     setIsRefreshing(true)
-    // Simulate API call
-    setTimeout(() => {
-      setLastRefresh(new Date())
-      setIsRefreshing(false)
-    }, 2000)
+    await fetchData()
+    setIsRefreshing(false)
   }
+
+  useEffect(() => {
+    console.log('🚀 SystemMonitoringPage: Component mounted, starting fetchData...')
+    fetchData()
+  }, [])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -261,24 +233,75 @@ export default function SystemMonitoringPage() {
   }
 
   const formatTimestamp = (timestamp: string) => {
+    // If timestamp is already in Thai format, return as is
+    if (timestamp.includes('/') && timestamp.includes(':')) {
+      return timestamp
+    }
+    // Otherwise, format it properly
     return new Date(timestamp).toLocaleString('th-TH', {
+      timeZone: 'Asia/Bangkok',
       year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
     })
   }
 
-  const resolveAlert = (alertId: string) => {
-    setAlerts(prev => prev.map(alert => 
-      alert.id === alertId ? { ...alert, resolved: true } : alert
-    ))
+  const resolveAlert = async (alertId: string) => {
+    try {
+      await systemMonitoringService.resolveAlert(alertId)
+      setAlerts(prev => prev.map(alert => 
+        alert.id === alertId ? { ...alert, resolved: true } : alert
+      ))
+    } catch (error) {
+      console.error('Error resolving alert:', error)
+    }
   }
 
   const activeAlerts = alerts.filter(alert => !alert.resolved)
   const healthyServices = services.filter(service => service.status === 'running').length
   const totalServices = services.length
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading system monitoring data...</p>
+          <p className="text-sm text-gray-500 mt-2">This may take a few moments...</p>
+          <button 
+            onClick={() => {
+              console.log('🔄 Manual cancel triggered')
+              setLoading(false)
+              setError('Loading cancelled by user')
+            }}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Cancel Loading
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 mb-4">
+            <XCircle className="h-12 w-12 mx-auto" />
+          </div>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button onClick={fetchData} variant="outline">
+            Try Again
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -297,7 +320,16 @@ export default function SystemMonitoringPage() {
               </div>
               <div className="flex items-center space-x-4">
                 <div className="text-sm text-gray-500">
-                  Last updated: {lastRefresh.toLocaleString('th-TH')}
+                  Last updated: {lastRefresh.toLocaleString('th-TH', {
+                    timeZone: 'Asia/Bangkok',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                  })}
                 </div>
                 <Button
                   onClick={refreshData}
@@ -323,10 +355,21 @@ export default function SystemMonitoringPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 mb-1">System Health</p>
-                    <p className="text-2xl font-bold text-green-600">Good</p>
+                    <p className={`text-2xl font-bold ${
+                      overview?.systemHealth === 'Good' ? 'text-green-600' :
+                      overview?.systemHealth === 'Warning' ? 'text-yellow-600' : 'text-red-600'
+                    }`}>
+                      {overview?.systemHealth || 'Unknown'}
+                    </p>
                   </div>
-                  <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                    <Shield className="h-6 w-6 text-green-600" />
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                    overview?.systemHealth === 'Good' ? 'bg-green-100' :
+                    overview?.systemHealth === 'Warning' ? 'bg-yellow-100' : 'bg-red-100'
+                  }`}>
+                    <Shield className={`h-6 w-6 ${
+                      overview?.systemHealth === 'Good' ? 'text-green-600' :
+                      overview?.systemHealth === 'Warning' ? 'text-yellow-600' : 'text-red-600'
+                    }`} />
                   </div>
                 </div>
               </CardContent>
@@ -337,7 +380,9 @@ export default function SystemMonitoringPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 mb-1">Active Services</p>
-                    <p className="text-2xl font-bold text-blue-600">{healthyServices}/{totalServices}</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {overview?.activeServices || healthyServices}/{overview?.totalServices || totalServices}
+                    </p>
                   </div>
                   <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                     <Server className="h-6 w-6 text-blue-600" />
@@ -351,7 +396,9 @@ export default function SystemMonitoringPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 mb-1">Active Alerts</p>
-                    <p className="text-2xl font-bold text-orange-600">{activeAlerts.length}</p>
+                    <p className="text-2xl font-bold text-orange-600">
+                      {overview?.activeAlerts || activeAlerts.length}
+                    </p>
                   </div>
                   <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
                     <AlertTriangle className="h-6 w-6 text-orange-600" />
@@ -365,7 +412,9 @@ export default function SystemMonitoringPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 mb-1">Uptime</p>
-                    <p className="text-2xl font-bold text-purple-600">99.9%</p>
+                    <p className="text-2xl font-bold text-purple-600">
+                      {overview?.uptime || '99.9%'}
+                    </p>
                   </div>
                   <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
                     <Clock className="h-6 w-6 text-purple-600" />

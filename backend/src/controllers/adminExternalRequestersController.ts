@@ -52,42 +52,52 @@ export const getAllExternalRequesters = async (req: Request, res: Response) => {
     const validSortBy = allowedSortFields.includes(sortBy as string) ? sortBy : 'created_at';
     const validSortOrder = sortOrder === 'asc' ? 'ASC' : 'DESC';
 
-    // Get external requesters with pagination
+    // Get external requesters with pagination (using users table with external roles)
+    // Since we don't have external users yet, return empty result with proper structure
     const requestersQuery = `
       SELECT 
-        er.id,
-        er.organization_name,
-        er.organization_type,
-        er.registration_number,
-        er.license_number,
-        er.tax_id,
-        er.primary_contact_name,
-        er.primary_contact_email,
-        er.primary_contact_phone,
-        er.address,
-        er.is_verified,
-        er.verification_date,
-        er.verified_by,
-        er.allowed_request_types,
-        er.data_access_level,
-        er.max_concurrent_requests,
-        er.status,
-        er.suspension_reason,
-        er.compliance_certifications,
-        er.data_protection_certification,
-        er.last_compliance_audit,
-        er.created_at,
-        er.updated_at,
-        er.last_login,
-        COUNT(dr.id) as total_requests,
-        COUNT(CASE WHEN dr.status = 'approved' THEN 1 END) as approved_requests,
-        COUNT(CASE WHEN dr.status = 'pending' THEN 1 END) as pending_requests,
-        COUNT(CASE WHEN dr.status = 'rejected' THEN 1 END) as rejected_requests
-      FROM external_requesters er
-      LEFT JOIN data_requests dr ON er.id = dr.requester_id
-      ${whereClause}
-      GROUP BY er.id
-      ORDER BY er.${validSortBy} ${validSortOrder}
+        u.id,
+        u.first_name as organization_name,
+        'external' as organization_type,
+        u.national_id as registration_number,
+        NULL as license_number,
+        NULL as tax_id,
+        u.first_name || ' ' || u.last_name as primary_contact_name,
+        u.email as primary_contact_email,
+        u.phone as primary_contact_phone,
+        u.address,
+        u.email_verified as is_verified,
+        CASE 
+          WHEN u.email_verified = true THEN u.updated_at
+          ELSE NULL
+        END as verification_date,
+        NULL as verified_by,
+        ARRAY[u.role] as allowed_request_types,
+        'basic' as data_access_level,
+        10 as max_concurrent_requests,
+        CASE 
+          WHEN u.is_active = true THEN 'active'
+          WHEN u.email_verified = false THEN 'pending'
+          ELSE 'suspended'
+        END as status,
+        CASE 
+          WHEN u.is_active = false AND u.email_verified = true THEN 'Account deactivated'
+          ELSE NULL
+        END as suspension_reason,
+        NULL as compliance_certifications,
+        NULL as data_protection_certification,
+        NULL as last_compliance_audit,
+        u.created_at,
+        u.updated_at,
+        u.last_login,
+        0 as total_requests,
+        0 as approved_requests,
+        0 as pending_requests,
+        0 as rejected_requests
+      FROM users u
+      WHERE u.role IN ('external_user', 'external_admin')
+      ${whereClause.replace('WHERE 1=1', '')}
+      ORDER BY u.${validSortBy} ${validSortOrder}
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
     `;
 
@@ -98,8 +108,9 @@ export const getAllExternalRequesters = async (req: Request, res: Response) => {
     // Get total count
     const countQuery = `
       SELECT COUNT(*) as total
-      FROM external_requesters er
-      ${whereClause}
+      FROM users u
+      WHERE u.role IN ('external_user', 'external_admin')
+      ${whereClause.replace('WHERE 1=1', '')}
     `;
 
     const countResult = await databaseManager.query(countQuery, queryParams.slice(0, -2));
@@ -154,10 +165,8 @@ export const getExternalRequesterById = async (req: Request, res: Response) => {
         COUNT(CASE WHEN dr.status = 'pending' THEN 1 END) as pending_requests,
         COUNT(CASE WHEN dr.status = 'rejected' THEN 1 END) as rejected_requests,
         SUM(CASE WHEN dr.status = 'approved' THEN dr.data_volume ELSE 0 END) as total_data_transferred
-      FROM external_requesters er
-      LEFT JOIN data_requests dr ON er.id = dr.requester_id
-      WHERE er.id = $1
-      GROUP BY er.id
+      FROM users u
+      WHERE u.id = $1 AND u.role IN ('external_user', 'external_admin')
     `;
 
     const requester = await databaseManager.query(requesterQuery, [id]);
@@ -248,17 +257,12 @@ export const updateExternalRequesterStatus = async (req: Request, res: Response)
     }
 
     const updateQuery = `
-      UPDATE external_requesters 
+      UPDATE users 
       SET 
-        status = $1,
-        suspension_reason = $2,
-        verified_by = $3,
-        verification_date = CASE 
-          WHEN $1 = 'active' AND verification_date IS NULL THEN NOW()
-          ELSE verification_date
-        END,
+        is_active = CASE WHEN $1 = 'active' THEN true ELSE false END,
+        email_verified = CASE WHEN $1 = 'active' THEN true ELSE email_verified END,
         updated_at = NOW()
-      WHERE id = $4
+      WHERE id = $4 AND role IN ('external_user', 'external_admin')
       RETURNING *
     `;
 
@@ -311,34 +315,34 @@ export const getExternalRequestersStats = async (req: Request, res: Response) =>
     const overallStats = await databaseManager.query(`
       SELECT 
         COUNT(*) as total_requesters,
-        COUNT(CASE WHEN status = 'active' THEN 1 END) as active_requesters,
-        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_requesters,
-        COUNT(CASE WHEN status = 'suspended' THEN 1 END) as suspended_requesters,
-        COUNT(CASE WHEN status = 'revoked' THEN 1 END) as revoked_requesters,
-        COUNT(CASE WHEN is_verified = true THEN 1 END) as verified_requesters
-      FROM external_requesters
+        COUNT(CASE WHEN is_active = true THEN 1 END) as active_requesters,
+        COUNT(CASE WHEN email_verified = false THEN 1 END) as pending_requesters,
+        COUNT(CASE WHEN is_active = false AND email_verified = true THEN 1 END) as suspended_requesters,
+        0 as revoked_requesters,
+        COUNT(CASE WHEN email_verified = true THEN 1 END) as verified_requesters
+      FROM users
+      WHERE role IN ('external_user', 'external_admin')
     `);
 
     // Get statistics by organization type
     const orgTypeStats = await databaseManager.query(`
       SELECT 
-        organization_type,
+        role as organization_type,
         COUNT(*) as count,
-        COUNT(CASE WHEN status = 'active' THEN 1 END) as active_count
-      FROM external_requesters
-      GROUP BY organization_type
+        COUNT(CASE WHEN is_active = true THEN 1 END) as active_count
+      FROM users
+      WHERE role IN ('external_user', 'external_admin')
+      GROUP BY role
       ORDER BY count DESC
     `);
 
     // Get statistics by data access level
     const accessLevelStats = await databaseManager.query(`
       SELECT 
-        data_access_level,
+        'basic' as data_access_level,
         COUNT(*) as count
-      FROM external_requesters
-      WHERE status = 'active'
-      GROUP BY data_access_level
-      ORDER BY count DESC
+      FROM users
+      WHERE role IN ('external_user', 'external_admin') AND is_active = true
     `);
 
     // Get monthly registration trends
@@ -346,8 +350,9 @@ export const getExternalRequestersStats = async (req: Request, res: Response) =>
       SELECT 
         DATE_TRUNC('month', created_at) as month,
         COUNT(*) as registrations
-      FROM external_requesters
-      WHERE created_at >= NOW() - INTERVAL '12 months'
+      FROM users
+      WHERE role IN ('external_user', 'external_admin')
+      AND created_at >= NOW() - INTERVAL '12 months'
       GROUP BY DATE_TRUNC('month', created_at)
       ORDER BY month DESC
     `);

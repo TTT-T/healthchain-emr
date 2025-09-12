@@ -7,6 +7,7 @@ import { PatientSummaryService } from '@/services/patientSummaryService';
 import { PatientDocumentService } from '@/services/patientDocumentService';
 import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
+import { createLocalDateTimeString } from '@/utils/timeUtils';
 
 export default function PatientSummary() {
   const { isAuthenticated, user } = useAuth();
@@ -165,7 +166,7 @@ export default function PatientSummary() {
         'patient_summary',
         {
           ...patientSummary,
-          generatedAt: new Date().toISOString(),
+          generatedAt: createLocalDateTimeString(new Date()),
           generatedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'แพทย์'
         },
         {

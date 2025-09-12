@@ -21,7 +21,7 @@ import {
 
 export default function AdminLogin() {
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: ''
   })
   const [showPassword, setShowPassword] = useState(false)
@@ -45,49 +45,68 @@ export default function AdminLogin() {
 
     try {
       // Client-side validation
-      if (!formData.email.trim() || !formData.password.trim()) {
+      if (!formData.username.trim() || !formData.password.trim()) {
         setLoginResult({
           success: false,
-          message: 'กรุณากรอกอีเมลและรหัสผ่าน'
+          message: 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน'
         })
         return
       }
 
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(formData.email)) {
-        setLoginResult({
-          success: false,
-          message: 'รูปแบบอีเมลไม่ถูกต้อง'
-        })
-        return
-      }
-
-      // Submit to API
-      const response = await fetch('/api/admin/login', {
+      // Submit to backend auth API directly (like doctor/patient login)
+      const response = await fetch('http://localhost:3001/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password
+        })
       })
 
       const result = await response.json()
+      
+      // Debug logging
+      console.log('🔍 Admin login response:', result)
+      console.log('🔍 Response status:', response.status)
+      console.log('🔍 Result statusCode:', result.statusCode)
+      console.log('🔍 Result data:', result.data)
 
-      if (result.statusCode === 200) {
+      // Check for successful login - backend returns { data: {...}, statusCode: 200 }
+      if (response.status === 200 && result.statusCode === 200 && result.data) {
+        console.log('✅ Admin login successful, setting success message')
         setLoginResult({
           success: true,
           message: 'เข้าสู่ระบบสำเร็จ! กำลังนำไปยังหน้าหลัก...'
         })
         
-        // Store token/session and redirect
-        if (result.token) {
-          localStorage.setItem('admin-token', result.token)
+        // Store access_token (same as normal user login)
+        if (result.data?.accessToken) {
+          console.log('🔑 Storing access token:', result.data.accessToken.substring(0, 20) + '...')
+          localStorage.setItem('access_token', result.data.accessToken)
+          
+          // Also set cookie for middleware compatibility
+          document.cookie = `access_token=${result.data.accessToken}; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`
+          console.log('🍪 Access token cookie set')
+        } else {
+          console.log('❌ No access token in response data')
         }
         
-        // Redirect to dashboard after 2 seconds
-        setTimeout(() => {
-          window.location.href = '/admin/dashboard'
-        }, 2000)
+        // Redirect to admin dashboard
+        console.log('🚀 Redirecting to /admin')
+        console.log('🔍 Current URL:', window.location.href)
+        console.log('🔍 Target URL: /admin')
+        
+        // Try multiple redirect methods
+        try {
+          window.location.href = '/admin'
+          console.log('✅ window.location.href set successfully')
+        } catch (error) {
+          console.error('❌ Error setting window.location.href:', error)
+          // Fallback redirect
+          window.location.replace('/admin')
+        }
         
       } else {
         setLoginResult({
@@ -151,18 +170,18 @@ export default function AdminLogin() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  อีเมลผู้ดูแลระบบ
+                  ชื่อผู้ใช้
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <Mail className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
-                    type="email"
+                    type="text"
                     className="w-full pl-12 pr-4 py-4 text-gray-900 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-white hover:border-gray-300"
-                    placeholder="admin@healthchain.com"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    placeholder="admin"
+                    value={formData.username}
+                    onChange={(e) => handleInputChange('username', e.target.value)}
                     required
                   />
                 </div>

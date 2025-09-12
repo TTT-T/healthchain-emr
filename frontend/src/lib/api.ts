@@ -577,7 +577,20 @@ class APIClient {
       if (error?.response?.status === 404 && config.url?.includes('/notifications')) {
         logger.debug('🔍 Expected 404 for notifications (user not registered in EMR):', config.url);
       } else {
-        logger.error('💥 API request failed:', error);
+        // Better error logging with proper serialization
+        const errorInfo = {
+          message: error?.message || 'Unknown error',
+          status: error?.response?.status,
+          statusText: error?.response?.statusText,
+          url: config.url,
+          method: config.method,
+          data: error?.response?.data,
+          config: {
+            baseURL: config.baseURL,
+            timeout: config.timeout
+          }
+        };
+        logger.error('💥 API request failed:', errorInfo);
       }
       throw error; // Will be handled by interceptor
     }
@@ -1492,7 +1505,7 @@ class APIClient {
   }): Promise<APIResponse<MedicalVisit[]>> {
     return this.request<MedicalVisit[]>({
       method: 'GET',
-      url: '/medical/visits/search',
+      url: '/medical/search-visits',
       params
     });
   }

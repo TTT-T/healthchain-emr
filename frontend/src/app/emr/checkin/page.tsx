@@ -10,6 +10,7 @@ import { DoctorService, Doctor } from '@/services/doctorService';
 import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
 import { addTokenExpiryTestButton } from '@/utils/tokenExpiryTest';
+import { createLocalDateTimeString, formatToBuddhistEra, debugTimeInfo } from '@/utils/timeUtils';
 
 interface Patient {
   hn: string;
@@ -35,15 +36,7 @@ interface CheckInData {
   notes: string;
 }
 
-// Helper function to format date to Buddhist Era
-const formatToBuddhistEra = (date: Date): string => {
-  const buddhistYear = date.getFullYear() + 543;
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${day}/${month}/${buddhistYear} ${hours}:${minutes}`;
-};
+// Time utility functions are now imported from @/utils/timeUtils
 
 export default function CheckIn() {
   const { isAuthenticated, user } = useAuth();
@@ -65,6 +58,38 @@ export default function CheckIn() {
       });
     }
   }, [user]);
+
+  // Update time to current time when page loads
+  useEffect(() => {
+    const updateCurrentTime = () => {
+      const now = new Date();
+      
+      // Debug time information
+      debugTimeInfo(now);
+      
+      // Create local datetime string in YYYY-MM-DDTHH:MM format
+      const currentTimeString = createLocalDateTimeString(now);
+      
+      setCheckInData(prev => ({
+        ...prev,
+        visitTime: currentTimeString
+      }));
+      
+      setSelectedDate(now);
+      setSelectedTime({
+        hours: now.getHours(),
+        minutes: now.getMinutes()
+      });
+    };
+
+    // Update immediately
+    updateCurrentTime();
+    
+    // Update every minute to keep time current
+    const interval = setInterval(updateCurrentTime, 60000);
+    
+    return () => clearInterval(interval);
+  }, []);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<"hn" | "nationalId">("hn");
   const [isSearching, setIsSearching] = useState(false);
@@ -79,7 +104,7 @@ export default function CheckIn() {
     patientNationalId: "",
     treatmentType: "",
     assignedDoctor: "",
-    visitTime: new Date().toISOString().slice(0, 16), // เวลาปัจจุบันเสมอ
+    visitTime: createLocalDateTimeString(new Date()), // เวลาปัจจุบันเสมอ
     symptoms: "",
     notes: ""
   });
@@ -194,7 +219,7 @@ export default function CheckIn() {
   // Update visit time to current time when component mounts or when user is authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      const currentTime = new Date().toISOString().slice(0, 16);
+      const currentTime = createLocalDateTimeString(new Date());
       setCheckInData(prev => ({
         ...prev,
         visitTime: currentTime
@@ -275,7 +300,7 @@ export default function CheckIn() {
         if (exactMatch) {
           setSelectedPatient(exactMatch);
           // อัปเดตเวลาปัจจุบันเมื่อเลือกผู้ป่วย
-          const currentTime = new Date().toISOString().slice(0, 16);
+          const currentTime = createLocalDateTimeString(new Date());
           setCheckInData(prev => ({
             ...prev,
             patientHn: exactMatch.hn || exactMatch.hospital_number || '',
@@ -342,7 +367,9 @@ export default function CheckIn() {
       return newErrors;
     });
     
-    const dateTimeString = newDateTime.toISOString().slice(0, 16);
+    // Create local datetime string in YYYY-MM-DDTHH:MM format
+    const dateTimeString = createLocalDateTimeString(newDateTime);
+    
     handleInputChange("visitTime", dateTimeString);
     setShowCalendarModal(false);
   };
@@ -351,8 +378,24 @@ export default function CheckIn() {
     // Set to current time
     const now = new Date();
     
+    // Create local datetime string in YYYY-MM-DDTHH:MM format
+    const currentTimeString = createLocalDateTimeString(now);
+    
     setSelectedDate(now);
     setSelectedTime({ hours: now.getHours(), minutes: now.getMinutes() });
+    
+    // Update form data
+    setCheckInData(prev => ({
+      ...prev,
+      visitTime: currentTimeString
+    }));
+    
+    // Clear any time errors
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.visitTime;
+      return newErrors;
+    });
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -487,6 +530,15 @@ export default function CheckIn() {
           delete newErrors.visitTime;
           return newErrors;
         });
+        
+        // Update the form data with the new time
+        const dateTimeString = createLocalDateTimeString(newDateTime);
+        
+        setCheckInData(prev => ({
+          ...prev,
+          visitTime: dateTimeString
+        }));
+        
         return newTime;
       }
     });
@@ -529,6 +581,15 @@ export default function CheckIn() {
           delete newErrors.visitTime;
           return newErrors;
         });
+        
+        // Update the form data with the new time
+        const dateTimeString = createLocalDateTimeString(newDateTime);
+        
+        setCheckInData(prev => ({
+          ...prev,
+          visitTime: dateTimeString
+        }));
+        
         return newTime;
       }
     });
@@ -575,7 +636,7 @@ export default function CheckIn() {
 
       // Check for duplicate visit before creating
       const visitDate = new Date(checkInData.visitTime);
-      const formattedDate = visitDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+      const formattedDate = visitDate.toISOString().split('T')[0]; // YYYY-MM-DD format (keep UTC for API)
       
       try {
         const duplicateCheckResponse = await fetch('/api/medical/visits', {
@@ -781,7 +842,7 @@ export default function CheckIn() {
       patientNationalId: "",
       treatmentType: "",
       assignedDoctor: "",
-      visitTime: new Date().toISOString().slice(0, 16), // Reset to current time
+      visitTime: createLocalDateTimeString(new Date()), // Reset to current time
       symptoms: "",
       notes: ""
     });
@@ -1160,6 +1221,9 @@ export default function CheckIn() {
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                       เวลาเริ่ม Visit <span className="text-red-500">*</span>
+                      <span className="ml-2 text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                        🔄 อัปเดตอัตโนมัติ
+                      </span>
                     </label>
                     
                     {/* Input field with calendar icon - like in image 2 */}

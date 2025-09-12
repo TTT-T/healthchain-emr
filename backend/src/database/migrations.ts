@@ -157,6 +157,27 @@ export class MigrationManager {
         up: async () => {
           await this.runSqlMigration('014_add_hospital_number_sequence.sql');
         }
+      },
+      {
+        name: '015_add_title_columns',
+        description: 'Add title columns to users and patients tables',
+        up: async () => {
+          await this.runSqlMigration('015_add_title_columns.sql');
+        }
+      },
+      {
+        name: '016_create_medical_records_table',
+        description: 'Create medical records table for patient summary functionality',
+        up: async () => {
+          await this.runSqlMigration('016_create_medical_records_table.sql');
+        }
+      },
+      {
+        name: '017_create_consent_requests_table',
+        description: 'Create consent requests table for consent dashboard functionality',
+        up: async () => {
+          await this.runSqlMigration('017_create_consent_requests_table.sql');
+        }
       }
     ];
 

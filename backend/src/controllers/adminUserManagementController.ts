@@ -72,8 +72,8 @@ export const getAllUsers = async (req: Request, res: Response) => {
         COUNT(a.id) as appointment_count
       FROM users u
       LEFT JOIN departments d ON u.department_id = d.id
-      LEFT JOIN visits v ON u.id = v.doctor_id
-      LEFT JOIN appointments a ON u.id = a.doctor_id
+      LEFT JOIN visits v ON u.id = v.attending_doctor_id
+      LEFT JOIN appointments a ON u.id = a.physician_id
       ${whereClause}
       GROUP BY u.id, d.department_name
       ORDER BY u.${validSortBy} ${validSortOrder}
@@ -169,8 +169,8 @@ export const getUserById = async (req: Request, res: Response) => {
         COUNT(DISTINCT p.id) as patient_count
       FROM users u
       LEFT JOIN departments d ON u.department_id = d.id
-      LEFT JOIN visits v ON u.id = v.doctor_id
-      LEFT JOIN appointments a ON u.id = a.doctor_id
+      LEFT JOIN visits v ON u.id = v.attending_doctor_id
+      LEFT JOIN appointments a ON u.id = a.physician_id
       LEFT JOIN patients p ON u.id = p.user_id
       WHERE u.id = $1
       GROUP BY u.id, d.department_name
@@ -193,7 +193,7 @@ export const getUserById = async (req: Request, res: Response) => {
     const recentVisits = await databaseManager.query(`
       SELECT id, visit_number, visit_date, patient_id
       FROM visits 
-      WHERE doctor_id = $1 
+      WHERE attending_doctor_id = $1 
       ORDER BY visit_date DESC 
       LIMIT 5
     `, [id]);
@@ -201,7 +201,7 @@ export const getUserById = async (req: Request, res: Response) => {
     const recentAppointments = await databaseManager.query(`
       SELECT id, appointment_date, patient_id, status
       FROM appointments 
-      WHERE doctor_id = $1 
+      WHERE physician_id = $1 
       ORDER BY appointment_date DESC 
       LIMIT 5
     `, [id]);
@@ -313,10 +313,10 @@ export const createUser = async (req: Request, res: Response) => {
     const createUserQuery = `
       INSERT INTO users (
         id, first_name, last_name, email, password, role, 
-        department_id, phone, is_active, created_by
+        department_id, phone, is_active
       )
       VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+        $1, $2, $3, $4, $5, $6, $7, $8, $9
       )
       RETURNING *
     `;
@@ -324,7 +324,7 @@ export const createUser = async (req: Request, res: Response) => {
     const newUserId = uuidv4();
     const userResult = await databaseManager.query(createUserQuery, [
       newUserId, first_name, last_name, email, hashedPassword, role,
-      validDepartmentId, phone, is_active, userId
+      validDepartmentId, phone, is_active
     ]);
 
     const newUser = userResult.rows[0];
@@ -341,8 +341,7 @@ export const createUser = async (req: Request, res: Response) => {
         }
       },
       meta: {
-        timestamp: new Date().toISOString(),
-        created_by: userId
+        timestamp: new Date().toISOString()
       },
       error: null,
       statusCode: 201
@@ -419,14 +418,10 @@ export const updateUser = async (req: Request, res: Response) => {
       });
     }
 
-    // Add updated_at and updated_by
+    // Add updated_at
     paramCount++;
     updateFields.push(`updated_at = $${paramCount}`);
     updateValues.push(new Date());
-    
-    paramCount++;
-    updateFields.push(`updated_by = $${paramCount}`);
-    updateValues.push((req as any).user.id);
 
     // Add user ID for WHERE clause
     paramCount++;
@@ -454,8 +449,7 @@ export const updateUser = async (req: Request, res: Response) => {
         }
       },
       meta: {
-        timestamp: new Date().toISOString(),
-        updated_by: (req as any).user.id
+        timestamp: new Date().toISOString()
       },
       error: null,
       statusCode: 200
@@ -517,12 +511,12 @@ export const deleteUser = async (req: Request, res: Response) => {
     // Soft delete by setting is_active to false
     const deleteQuery = `
       UPDATE users 
-      SET is_active = false, updated_at = $1, updated_by = $2
-      WHERE id = $3
+      SET is_active = false, updated_at = $1
+      WHERE id = $2
       RETURNING *
     `;
 
-    const deleteResult = await databaseManager.query(deleteQuery, [new Date(), userId, id]);
+    const deleteResult = await databaseManager.query(deleteQuery, [new Date(), id]);
     const deletedUser = deleteResult.rows[0];
 
     res.status(200).json({
@@ -537,8 +531,7 @@ export const deleteUser = async (req: Request, res: Response) => {
         }
       },
       meta: {
-        timestamp: new Date().toISOString(),
-        deleted_by: userId
+        timestamp: new Date().toISOString()
       },
       error: null,
       statusCode: 200

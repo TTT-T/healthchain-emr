@@ -58,7 +58,17 @@ const visitSearchSchema = z.object({
   doctorId: z.string().uuid().optional(),
   dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  status: z.enum(['scheduled', 'checked_in', 'in_progress', 'completed', 'cancelled', 'no_show']).optional(),
+  status: z.string().optional().transform((val) => {
+    if (!val) return undefined;
+    // Handle comma-separated status values
+    const statusArray = val.split(',').map(s => s.trim());
+    const validStatuses = ['scheduled', 'checked_in', 'in_progress', 'completed', 'cancelled', 'no_show'];
+    const invalidStatuses = statusArray.filter(s => !validStatuses.includes(s));
+    if (invalidStatuses.length > 0) {
+      throw new Error(`Invalid status values: ${invalidStatuses.join(', ')}`);
+    }
+    return statusArray;
+  }),
   page: z.string().transform(val => parseInt(val) || 1).pipe(z.number().min(1)).default("1"),
   limit: z.string().transform(val => parseInt(val) || 20).pipe(z.number().min(1).max(100)).default("20")
 });
@@ -86,6 +96,21 @@ export const createVisit = async (req: Request, res: Response) => {
       return res.status(404).json(
         errorResponse('ไม่พบข้อมูลผู้ป่วย', 404)
       );
+    }
+
+    // Verify doctor exists if provided
+    if (validatedData.attendingDoctorId) {
+      const doctorResult = await db.query(
+        'SELECT id FROM users WHERE id = $1 AND role = $2 AND is_active = true',
+        [validatedData.attendingDoctorId, 'doctor']
+      );
+      
+      if (doctorResult.rows.length === 0) {
+        console.log('❌ Doctor not found:', validatedData.attendingDoctorId);
+        return res.status(404).json(
+          errorResponse('ไม่พบข้อมูลแพทย์ที่ระบุ', 404)
+        );
+      }
     }
 
     // Generate visit number using database function
@@ -555,9 +580,16 @@ export const searchVisits = async (req: Request, res: Response) => {
     }
 
     if (validatedQuery.status) {
-      query += ` AND v.status = $${paramIndex}`;
-      queryParams.push(validatedQuery.status);
-      paramIndex++;
+      // validatedQuery.status is now an array from the schema transform
+      if (validatedQuery.status.length === 1) {
+        query += ` AND v.status = $${paramIndex}`;
+        queryParams.push(validatedQuery.status[0]);
+        paramIndex++;
+      } else {
+        const placeholders = validatedQuery.status.map(() => `$${paramIndex++}`).join(',');
+        query += ` AND v.status IN (${placeholders})`;
+        queryParams.push(...validatedQuery.status);
+      }
     }
 
     query += ` ORDER BY v.visit_date DESC, v.visit_time DESC`;
@@ -567,7 +599,7 @@ export const searchVisits = async (req: Request, res: Response) => {
     query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     queryParams.push(validatedQuery.limit, offset);
 
-    const result = await db.query(query, queryParams);
+    const result = await databaseManager.query(query, queryParams);
 
     // Format response data
     const visits = result.rows.map(visit => ({

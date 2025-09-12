@@ -15,7 +15,7 @@ interface AdminAuthContextType {
   user: AdminUser | null;
   isLoading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
   isAuthenticated: boolean;
@@ -36,23 +36,36 @@ export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
 
   const clearError = () => setError(null);
 
-  const login = async (email: string, password: string): Promise<void> => {
+  const login = async (username: string, password: string): Promise<void> => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch('/api/admin/login', {
+      const response = await fetch('http://localhost:3001/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
 
       const result = await response.json();
 
-      if (result.statusCode === 200) {
-        setUser(result.user);
+      if (result.statusCode === 200 && result.data) {
+        // Store access token
+        if (result.data.accessToken) {
+          localStorage.setItem('access_token', result.data.accessToken);
+          document.cookie = `access_token=${result.data.accessToken}; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`;
+        }
+        
+        // Set user from response
+        setUser({
+          id: result.data.user?.id || 'admin-user',
+          email: result.data.user?.email || 'admin@hospital.com',
+          role: result.data.user?.role || 'admin',
+          permissions: ['admin'],
+          organizationId: 'hospital',
+        });
       } else {
         throw new Error(result.message || 'Login failed');
       }
@@ -80,29 +93,65 @@ export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        // In a real app, you would verify the token with the backend
-        const token = document.cookie
+        console.log('🔍 AdminAuthContext: Checking session...');
+        
+        // Check for access token in localStorage or cookies (same as normal user login)
+        const localStorageToken = localStorage.getItem('access_token');
+        const cookieToken = document.cookie
           .split('; ')
-          .find(row => row.startsWith('admin-token='))
+          .find(row => row.startsWith('access_token='))
           ?.split('=')[1];
+        
+        const token = localStorageToken || cookieToken;
+
+        console.log('🔍 AdminAuthContext: localStorage access_token:', !!localStorageToken);
+        console.log('🔍 AdminAuthContext: cookie access_token:', !!cookieToken);
+        console.log('🔍 AdminAuthContext: final token:', !!token);
+        console.log('🔍 AdminAuthContext: Token value:', token ? token.substring(0, 20) + '...' : 'null');
+        console.log('🔍 AdminAuthContext: localStorage keys:', Object.keys(localStorage));
+        console.log('🔍 AdminAuthContext: document.cookie:', document.cookie);
 
         if (token) {
-          // Decode token to get user info (in production, verify with backend)
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          setUser({
-            id: payload.userId,
-            email: payload.email,
-            role: payload.role,
-            permissions: payload.permissions || [],
-            organizationId: payload.organizationId,
-          });
+          console.log('✅ AdminAuthContext: Setting admin user from access_token');
+          // Decode JWT token to get user info
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            console.log('🔍 AdminAuthContext: JWT payload:', payload);
+            
+            // Only set admin user if role is admin
+            if (payload.role === 'admin') {
+              setUser({
+                id: payload.id || 'admin-user',
+                email: payload.email || 'admin@hospital.com',
+                role: payload.role || 'admin',
+                permissions: ['admin'],
+                organizationId: 'hospital',
+              });
+              console.log('✅ AdminAuthContext: Admin user set from JWT');
+            } else {
+              console.log('❌ AdminAuthContext: Token found but user is not admin, role:', payload.role);
+            }
+          } catch (error) {
+            console.error('❌ AdminAuthContext: Error decoding JWT:', error);
+          }
+        } else {
+          console.log('❌ AdminAuthContext: No access_token found');
         }
+        
+        // Always set loading to false after session check
+        setIsLoading(false);
+        console.log('🔍 AdminAuthContext: Session check completed, isLoading set to false');
       } catch (error) {
         logger.error('Session check error:', error);
+        setIsLoading(false);
       }
     };
 
-    checkSession();
+    // Start with loading true
+    setIsLoading(true);
+    
+    // Add a longer delay to ensure localStorage is available
+    setTimeout(checkSession, 500);
   }, []);
 
   const value: AdminAuthContextType = {

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import { 
   LayoutDashboard, 
   Users, 
@@ -81,6 +82,13 @@ const menuItems: MenuItem[] = [
     label: 'Consent Contracts',
     description: 'สัญญาการยินยอม',
     category: 'management'
+  },
+  {
+    href: '/admin/consent-compliance',
+    icon: Shield,
+    label: 'Consent Compliance',
+    description: 'การปฏิบัติตามกฎเกณฑ์',
+    category: 'monitoring'
   },
   {
     href: '/admin/consent-audit',
@@ -162,6 +170,7 @@ export default function AdminSidebar({
   const handleClose = onClose || (() => {});
   const pathname = usePathname();
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['main', 'management']);
+  const { logout } = useAdminAuth();
 
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => 
@@ -169,6 +178,29 @@ export default function AdminSidebar({
         ? prev.filter(cat => cat !== category)
         : [...prev, category]
     );
+  };
+
+  const handleLogout = async () => {
+    try {
+      console.log('🔍 AdminSidebar: Logging out...');
+      await logout();
+      console.log('✅ AdminSidebar: Logout successful');
+      
+      // Clear localStorage
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      
+      // Clear cookies
+      document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      document.cookie = 'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      
+      // Redirect to login page
+      window.location.href = '/admin/login';
+    } catch (error) {
+      console.error('❌ AdminSidebar: Logout error:', error);
+      // Still redirect even if logout fails
+      window.location.href = '/admin/login';
+    }
   };
 
   const categorizedItems = menuItems.reduce((acc, item) => {
@@ -302,7 +334,8 @@ export default function AdminSidebar({
         {/* Footer */}
         <div className="border-t border-gray-200 p-4">
           <button
-            className={`flex items-center w-full p-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors ${
+            onClick={handleLogout}
+            className={`flex items-center w-full p-3 text-gray-700 hover:bg-red-50 hover:text-red-700 rounded-lg transition-colors ${
               (sidebarIsCollapsed && !sidebarIsOpen) ? 'justify-center' : ''
             }`}
             title="ออกจากระบบ"

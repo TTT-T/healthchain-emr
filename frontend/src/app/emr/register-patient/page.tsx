@@ -9,6 +9,7 @@ import { PatientDocumentService } from '@/services/patientDocumentService';
 import { CreatePatientRequest } from '@/types/api';
 import { logger } from '@/lib/logger';
 import { apiClient } from '@/lib/api';
+import { createLocalDateTimeString, formatLocalDateTime, formatLocalTime } from '@/utils/timeUtils';
 
 interface PatientData {
   // ข้อมูลชื่อ-นามสกุล (5 ฟิลด์)
@@ -134,6 +135,8 @@ export default function RegisterPatient() {
   const [selectedUserData, setSelectedUserData] = useState<any>(null);
   const [isCheckingNationalId, setIsCheckingNationalId] = useState(false);
   const [nationalIdStatus, setNationalIdStatus] = useState<'available' | 'taken' | null>(null);
+  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [successData, setSuccessData] = useState<{hn: string, patientName: string} | null>(null);
 
   // Load user data from sessionStorage if available
   useEffect(() => {
@@ -165,6 +168,17 @@ export default function RegisterPatient() {
       }
     }
   }, []);
+
+  // Auto-close notification after 10 seconds
+  useEffect(() => {
+    if (showSuccessNotification) {
+      const timer = setTimeout(() => {
+        handleCloseSuccessNotification();
+      }, 10000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessNotification]);
 
   // Show loading state while authentication is being checked
   if (isLoading) {
@@ -620,6 +634,11 @@ export default function RegisterPatient() {
     setNationalIdStatus(null);
   };
 
+  const handleCloseSuccessNotification = () => {
+    setShowSuccessNotification(false);
+    setSuccessData(null);
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) return;
     
@@ -697,7 +716,13 @@ export default function RegisterPatient() {
       // Backend ส่งกลับ response format: { data: { patient: {...} }, statusCode: 201 }
       if (responseData && (responseData as any).data && (responseData as any).data.patient) {
         const patient = (responseData as any).data.patient;
-        alert(`ลงทะเบียนสำเร็จ! หมายเลข HN: ${patient.hospitalNumber}`);
+        
+        // แสดงการแจ้งเตือนที่สวยงาม
+        setSuccessData({
+          hn: patient.hospitalNumber,
+          patientName: `${formData.thaiFirstName} ${formData.thaiLastName}`
+        });
+        setShowSuccessNotification(true);
         
         // ส่งการแจ้งเตือนให้ผู้ป่วย
         await sendPatientNotification(patient);
@@ -749,14 +774,14 @@ export default function RegisterPatient() {
         recordDetails: {
           hospitalNumber: patient.hn || patient.hospital_number,
           patientName: patient.thai_name || `${formData.thaiFirstName} ${formData.thaiLastName}`,
-          registrationDate: new Date().toLocaleDateString('th-TH'),
+          registrationDate: formatLocalDateTime(new Date()),
           nextSteps: 'คุณสามารถใช้หมายเลข HN นี้เพื่อเช็คอินและรับบริการทางการแพทย์'
         },
         createdBy: user?.id || '',
         createdByName: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่',
-        createdAt: new Date().toISOString(),
+        createdAt: createLocalDateTimeString(new Date()),
         recordedBy: user?.id || '',
-        recordedTime: new Date().toISOString(),
+        recordedTime: createLocalDateTimeString(new Date()),
         message: `ยินดีต้อนรับ! คุณได้ลงทะเบียนเป็นผู้ป่วยของโรงพยาบาลเรียบร้อยแล้ว หมายเลข HN: ${patient.hn || patient.hospital_number}`,
         severity: 'info'
       };
@@ -787,7 +812,7 @@ export default function RegisterPatient() {
         {
           hospitalNumber: patient.hn || patient.hospital_number,
           patientName: patient.thai_name || `${formData.thaiFirstName} ${formData.thaiLastName}`,
-          registrationDate: new Date().toISOString(),
+          registrationDate: createLocalDateTimeString(new Date()),
           personalInfo: {
             thaiName: patient.thai_name || `${formData.thaiFirstName} ${formData.thaiLastName}`,
             englishName: patient.english_name || `${formData.englishFirstName} ${formData.englishLastName}`,
@@ -819,6 +844,75 @@ export default function RegisterPatient() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+      {/* Success Notification Modal */}
+      {showSuccessNotification && successData && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-100">
+            {/* Header with gradient background */}
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-t-2xl p-6 text-white">
+              <div className="flex items-center justify-center">
+                <div className="bg-white bg-opacity-20 rounded-full p-3 mr-4">
+                  <CheckCircle size={32} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">ลงทะเบียนสำเร็จ!</h3>
+                  <p className="text-green-100 text-sm">ยินดีต้อนรับสู่ระบบ EMR</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Content */}
+            <div className="p-6">
+              <div className="text-center mb-6">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-4">
+                  <div className="text-2xl font-bold text-blue-600 mb-2">หมายเลข HN</div>
+                  <div className="text-3xl font-black text-blue-800 tracking-wider">
+                    {successData.hn}
+                  </div>
+                </div>
+                
+                <div className="text-gray-600 mb-4">
+                  <p className="font-medium text-gray-800">ผู้ป่วย: {successData.patientName}</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    วันที่ลงทะเบียน: {formatLocalDateTime(new Date())}
+                  </p>
+                </div>
+                
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                  <div className="flex items-start">
+                    <AlertCircle size={20} className="text-yellow-600 mr-2 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-yellow-800">
+                      <p className="font-medium">หมายเหตุสำคัญ:</p>
+                      <p>กรุณาจดจำหมายเลข HN นี้ไว้เพื่อใช้ในการรับบริการทางการแพทย์</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCloseSuccessNotification}
+                  className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  เข้าใจแล้ว
+                </button>
+                <button
+                  onClick={() => {
+                    handleCloseSuccessNotification();
+                    // Scroll to top of form
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                >
+                  ลงทะเบียนใหม่
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">

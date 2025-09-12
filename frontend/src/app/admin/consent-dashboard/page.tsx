@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   Shield, 
@@ -13,197 +13,57 @@ import {
   FileText,
   Activity,
   Bell,
-  Zap
+  Zap,
+  Loader2
 } from 'lucide-react';
-
-interface ConsentStats {
-  totalRequests: number;
-  pendingRequests: number;
-  approvedRequests: number;
-  rejectedRequests: number;
-  activeContracts: number;
-  expiredContracts: number;
-  violationAlerts: number;
-  dailyAccess: number;
-}
-
-interface ConsentRequest {
-  id: string;
-  requestId: string;
-  requesterName: string;
-  requesterType: 'hospital' | 'clinic' | 'insurance' | 'research' | 'government';
-  patientName: string;
-  patientHN: string;
-  requestType: 'hospital_transfer' | 'insurance_claim' | 'research' | 'legal' | 'emergency';
-  requestedDataTypes: string[];
-  purpose: string;
-  urgencyLevel: 'emergency' | 'urgent' | 'normal';
-  status: 'pending' | 'sent_to_patient' | 'patient_reviewing' | 'approved' | 'rejected' | 'expired';
-  createdAt: string;
-  expiresAt: string;
-  isCompliant: boolean;
-  complianceNotes?: string;
-}
-
-interface ConsentContract {
-  id: string;
-  contractId: string;
-  patientName: string;
-  patientHN: string;
-  requesterName: string;
-  contractType: string;
-  allowedDataTypes: string[];
-  validFrom: string;
-  validUntil: string;
-  accessCount: number;
-  maxAccessCount?: number;
-  status: 'active' | 'expired' | 'revoked' | 'suspended';
-  lastAccessed?: string;
-}
-
-interface ComplianceAlert {
-  id: string;
-  type: 'violation' | 'warning' | 'info';
-  title: string;
-  description: string;
-  contractId?: string;
-  severity: 'high' | 'medium' | 'low';
-  createdAt: string;
-  isRead: boolean;
-}
-
-const mockStats: ConsentStats = {
-  totalRequests: 156,
-  pendingRequests: 8,
-  approvedRequests: 128,
-  rejectedRequests: 20,
-  activeContracts: 89,
-  expiredContracts: 67,
-  violationAlerts: 3,
-  dailyAccess: 234
-};
-
-const mockRecentRequests: ConsentRequest[] = [
-  {
-    id: '1',
-    requestId: 'CR-2025-001',
-    requesterName: 'โรงพยาบาลศิริราช',
-    requesterType: 'hospital',
-    patientName: 'นายสมชาย ใจดี',
-    patientHN: 'HN2024001',
-    requestType: 'hospital_transfer',
-    requestedDataTypes: ['medical_history', 'lab_results', 'vital_signs'],
-    purpose: 'ส่งต่อผู้ป่วยเพื่อรักษาต่อเนื่อง - โรคหัวใจ',
-    urgencyLevel: 'urgent',
-    status: 'patient_reviewing',
-    createdAt: '2025-07-03T09:30:00Z',
-    expiresAt: '2025-07-10T09:30:00Z',
-    isCompliant: true
-  },
-  {
-    id: '2',
-    requestId: 'CR-2025-002',
-    requesterName: 'บริษัท ไทยประกันชีวิต จำกัด',
-    requesterType: 'insurance',
-    patientName: 'นางสาวมาลี สุขใส',
-    patientHN: 'HN2024002',
-    requestType: 'insurance_claim',
-    requestedDataTypes: ['diagnosis', 'treatment_cost', 'discharge_summary'],
-    purpose: 'ประกันสุขภาพ - เคลมค่ารักษา',
-    urgencyLevel: 'normal',
-    status: 'pending',
-    createdAt: '2025-07-03T14:15:00Z',
-    expiresAt: '2025-07-17T14:15:00Z',
-    isCompliant: true
-  },
-  {
-    id: '3',
-    requestId: 'CR-2025-003',
-    requesterName: 'โรงพยาบาลธรรมศาสตร์',
-    requesterType: 'hospital',
-    patientName: 'นายประยุทธ์ สุขสันต์',
-    patientHN: 'HN2024003',
-    requestType: 'emergency',
-    requestedDataTypes: ['medical_history', 'current_medications', 'allergies'],
-    purpose: 'อุบัติเหตุ - ต้องการข้อมูลเร่งด่วน',
-    urgencyLevel: 'emergency',
-    status: 'approved',
-    createdAt: '2025-07-03T16:45:00Z',
-    expiresAt: '2025-07-04T16:45:00Z',
-    isCompliant: true
-  }
-];
-
-const mockActiveContracts: ConsentContract[] = [
-  {
-    id: '1',
-    contractId: 'CC-2025-001',
-    patientName: 'นายสมชาย ใจดี',
-    patientHN: 'HN2024001',
-    requesterName: 'โรงพยาบาลศิริราช',
-    contractType: 'hospital_transfer',
-    allowedDataTypes: ['medical_history', 'lab_results'],
-    validFrom: '2025-06-20T09:00:00Z',
-    validUntil: '2025-07-20T09:00:00Z',
-    accessCount: 8,
-    maxAccessCount: 15,
-    status: 'active',
-    lastAccessed: '2025-07-02T14:30:00Z'
-  },
-  {
-    id: '2',
-    contractId: 'CC-2025-002',
-    patientName: 'นางสาวมาลี สุขใส',
-    patientHN: 'HN2024002',
-    requesterName: 'บริษัท ไทยประกันชีวิต',
-    contractType: 'insurance_claim',
-    allowedDataTypes: ['diagnosis', 'billing'],
-    validFrom: '2025-06-15T10:00:00Z',
-    validUntil: '2025-07-15T10:00:00Z',
-    accessCount: 3,
-    maxAccessCount: 5,
-    status: 'active',
-    lastAccessed: '2025-07-01T11:20:00Z'
-  }
-];
-
-const mockComplianceAlerts: ComplianceAlert[] = [
-  {
-    id: '1',
-    type: 'violation',
-    title: 'การเข้าถึงข้อมูลเกินขอบเขต',
-    description: 'โรงพยาบาลภายนอกพยายามเข้าถึงข้อมูล lab results ที่ไม่ได้รับอনุญาต',
-    contractId: 'CC-2025-001',
-    severity: 'high',
-    createdAt: '2025-07-03T10:15:00Z',
-    isRead: false
-  },
-  {
-    id: '2',
-    type: 'warning',
-    title: 'Consent ใกล้หมดอายุ',
-    description: 'มี 5 consent contracts ที่จะหมดอายุในอีก 3 วัน',
-    severity: 'medium',
-    createdAt: '2025-07-03T08:30:00Z',
-    isRead: false
-  },
-  {
-    id: '3',
-    type: 'info',
-    title: 'การอัปเดต Compliance Template',
-    description: 'มีการอัปเดต PDPA template สำหรับ consent forms',
-    severity: 'low',
-    createdAt: '2025-07-02T16:00:00Z',
-    isRead: true
-  }
-];
+import { 
+  consentDashboardService, 
+  ConsentStats, 
+  ConsentRequest, 
+  ConsentContract, 
+  ComplianceAlert,
+  ConsentDashboardOverview 
+} from '@/services/consentDashboardService';
 
 export default function ConsentDashboardPage() {
-  const [stats] = useState<ConsentStats>(mockStats);
-  const [recentRequests] = useState<ConsentRequest[]>(mockRecentRequests);
-  const [activeContracts] = useState<ConsentContract[]>(mockActiveContracts);
-  const [complianceAlerts] = useState<ComplianceAlert[]>(mockComplianceAlerts);
-  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState<ConsentStats>({
+    totalRequests: 0,
+    pendingRequests: 0,
+    approvedRequests: 0,
+    rejectedRequests: 0,
+    activeContracts: 0,
+    expiredContracts: 0,
+    dailyAccess: 0,
+    violationAlerts: 0
+  });
+  const [recentRequests, setRecentRequests] = useState<ConsentRequest[]>([]);
+  const [activeContracts, setActiveContracts] = useState<ConsentContract[]>([]);
+  const [complianceAlerts, setComplianceAlerts] = useState<ComplianceAlert[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const overview = await consentDashboardService.getOverview();
+      setStats(overview.stats);
+      setRecentRequests(overview.recentRequests);
+      setActiveContracts(overview.activeContracts);
+      setComplianceAlerts(overview.complianceAlerts);
+    } catch (err: any) {
+      console.error('Error fetching consent dashboard data:', err);
+      setError('ไม่สามารถโหลดข้อมูลได้');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -262,14 +122,39 @@ export default function ConsentDashboardPage() {
     return 'text-blue-600 bg-blue-50 border-blue-200';
   };
 
-  const handleRefresh = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
+  const handleRefresh = async () => {
+    await fetchData();
   };
 
-  const unreadAlerts = complianceAlerts.filter(alert => !alert.isRead).length;
+  const unreadAlerts = complianceAlerts.filter(alert => !alert.is_read).length;
+
+  if (loading) {
+    return (
+      <div className="w-full h-full bg-gray-50 p-2 lg:p-4 overflow-auto flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <p className="text-gray-600">กำลังโหลดข้อมูล...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full h-full bg-gray-50 p-2 lg:p-4 overflow-auto flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 mb-4">{error}</p>
+          <button 
+            onClick={handleRefresh}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            ลองใหม่
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full bg-gray-50 p-2 lg:p-4 overflow-auto">
@@ -410,8 +295,8 @@ export default function ConsentDashboardPage() {
               <div key={request.id} className="border border-gray-200 rounded-lg p-3">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-900 truncate">{request.requesterName}</div>
-                    <div className="text-sm text-gray-500">ผู้ป่วย: {request.patientName}</div>
+                    <div className="font-medium text-gray-900 truncate">{request.requester_name}</div>
+                    <div className="text-sm text-gray-500">ผู้ป่วย: {request.patient_name}</div>
                   </div>
                   <div className="flex items-center gap-1 ml-2">
                     {getStatusIcon(request.status)}
@@ -423,13 +308,13 @@ export default function ConsentDashboardPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2 py-1 rounded-full border ${getUrgencyColor(request.urgencyLevel)}`}>
-                    {request.urgencyLevel === 'emergency' && 'ฉุกเฉิน'}
-                    {request.urgencyLevel === 'urgent' && 'เร่งด่วน'}
-                    {request.urgencyLevel === 'normal' && 'ปกติ'}
+                  <span className={`text-xs px-2 py-1 rounded-full border ${getUrgencyColor(request.urgency_level)}`}>
+                    {request.urgency_level === 'emergency' && 'ฉุกเฉิน'}
+                    {request.urgency_level === 'urgent' && 'เร่งด่วน'}
+                    {request.urgency_level === 'normal' && 'ปกติ'}
                   </span>
                   <span className="text-xs text-gray-500">
-                    {new Date(request.createdAt).toLocaleDateString('th-TH')}
+                    {new Date(request.created_at).toLocaleDateString('th-TH')}
                   </span>
                 </div>
               </div>
@@ -455,7 +340,7 @@ export default function ConsentDashboardPage() {
           </div>
           <div className="space-y-3">
             {complianceAlerts.slice(0, 3).map((alert) => (
-              <div key={alert.id} className={`border rounded-lg p-3 ${!alert.isRead ? 'bg-red-50 border-red-200' : 'border-gray-200'}`}>
+              <div key={alert.id} className={`border rounded-lg p-3 ${!alert.is_read ? 'bg-red-50 border-red-200' : 'border-gray-200'}`}>
                 <div className="flex items-start gap-2">
                   <div className="flex-shrink-0 mt-1">
                     {alert.type === 'violation' && <AlertTriangle className="text-red-600" size={16} />}
@@ -472,7 +357,7 @@ export default function ConsentDashboardPage() {
                         {alert.severity === 'low' && 'ต่ำ'}
                       </span>
                       <span className="text-xs text-gray-500">
-                        {new Date(alert.createdAt).toLocaleDateString('th-TH')}
+                        {new Date(alert.created_at).toLocaleDateString('th-TH')}
                       </span>
                     </div>
                   </div>
@@ -509,31 +394,31 @@ export default function ConsentDashboardPage() {
             <tbody className="divide-y divide-gray-200">
               {activeContracts.map((contract) => (
                 <tr key={contract.id} className="hover:bg-gray-50">
-                  <td className="py-3 px-3 text-sm font-medium text-blue-600">{contract.contractId}</td>
+                  <td className="py-3 px-3 text-sm font-medium text-blue-600">{contract.contract_id}</td>
                   <td className="py-3 px-3 text-sm text-gray-900">
-                    <div>{contract.patientName}</div>
-                    <div className="text-xs text-gray-500">{contract.patientHN}</div>
+                    <div>{contract.patient_name}</div>
+                    <div className="text-xs text-gray-500">{contract.patient_hn}</div>
                   </td>
-                  <td className="py-3 px-3 text-sm text-gray-900">{contract.requesterName}</td>
+                  <td className="py-3 px-3 text-sm text-gray-900">{contract.requester_name}</td>
                   <td className="py-3 px-3 text-sm text-gray-900">
                     <div className="flex items-center gap-2">
                       <div className="flex-1 bg-gray-200 rounded-full h-2">
                         <div 
                           className="bg-blue-600 h-2 rounded-full" 
                           style={{ 
-                            width: contract.maxAccessCount 
-                              ? `${(contract.accessCount / contract.maxAccessCount) * 100}%` 
+                            width: contract.max_access_count 
+                              ? `${(contract.access_count / contract.max_access_count) * 100}%` 
                               : '0%' 
                           }}
                         ></div>
                       </div>
                       <span className="text-xs text-gray-600">
-                        {contract.accessCount}/{contract.maxAccessCount || '∞'}
+                        {contract.access_count}/{contract.max_access_count || '∞'}
                       </span>
                     </div>
                   </td>
                   <td className="py-3 px-3 text-sm text-gray-900">
-                    {new Date(contract.validUntil).toLocaleDateString('th-TH')}
+                    {new Date(contract.valid_until).toLocaleDateString('th-TH')}
                   </td>
                   <td className="py-3 px-3">
                     <div className="flex items-center gap-1">

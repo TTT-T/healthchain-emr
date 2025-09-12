@@ -237,7 +237,8 @@ export default function EMRDashboard() {
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString('th-TH', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
     });
   };
 
@@ -554,7 +555,9 @@ export default function EMRDashboard() {
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm text-gray-500">
-          <p>อัปเดตล่าสุด: {new Date().toLocaleString('th-TH')}</p>
+          <p>อัปเดตล่าสุด: {new Date().toLocaleString('th-TH', { 
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone 
+          })}</p>
         </div>
         
         </div>

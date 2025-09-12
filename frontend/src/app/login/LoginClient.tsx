@@ -136,10 +136,15 @@ function LoginClientContent() {
       if ((result.success === true || result.statusCode === 200) && result.data) {
         // Login successful
         
+        // Get user role first
+        const userRole = result.data.user?.role;
+        console.log('🔍 User role:', userRole);
+        
         // Store tokens in both localStorage and cookies for compatibility
         if (result.data.accessToken) {
           localStorage.setItem('access_token', result.data.accessToken);
-          // Also set cookie for middleware compatibility
+          
+          // Set access_token cookie for all users (including admin)
           document.cookie = `access_token=${result.data.accessToken}; path=/; max-age=${60 * 60}; SameSite=Lax`;
         }
         if (result.data.refreshToken) {
@@ -166,9 +171,27 @@ function LoginClientContent() {
           }));
         }
         
-        // Redirect to patient dashboard only (for patient login)
-        console.log('🔍 Redirecting to patient dashboard');
-        window.location.href = '/accounts/patient/dashboard';
+        // Role-based redirect
+        let redirectPath = '/accounts/patient/dashboard'; // Default for patients
+        
+        switch (userRole) {
+          case 'admin':
+            redirectPath = '/admin';
+            break;
+          case 'doctor':
+            redirectPath = '/emr/dashboard';
+            break;
+          case 'nurse':
+            redirectPath = '/emr/dashboard';
+            break;
+          case 'patient':
+          default:
+            redirectPath = '/accounts/patient/dashboard';
+            break;
+        }
+        
+        console.log('🔍 Redirecting to:', redirectPath);
+        window.location.href = redirectPath;
         
       } else {
         // Login failed - Enhanced error handling

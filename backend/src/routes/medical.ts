@@ -19,15 +19,19 @@ import {
 } from '../controllers/doctorsController';
 import {
   getAllVisits,
-  createVisit,
   getVisitById,
   updateVisit,
   completeVisit
 } from '../controllers/visitManagementController';
 import {
+  createVisit,
+  searchVisits
+} from '../controllers/visitController';
+import {
   recordVitalSigns,
   getVitalSigns,
-  updateVitalSigns
+  updateVitalSigns,
+  createVitalSignsWithVisitId
 } from '../controllers/vitalSignsController';
 import {
   createLabOrder,
@@ -242,16 +246,11 @@ router.get('/patients/:patientId/prescriptions', authorize(['doctor', 'nurse', '
 // Patient management routes
 router.use('/patients', patientRoutes);
 
-// Visit management routes
-router.post('/visits', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createVisit));
-router.get('/visits/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getVisitById));
-router.put('/visits/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(updateVisit));
-router.patch('/visits/:id/complete', authorize(['doctor', 'nurse', 'admin']), asyncHandler(completeVisit));
-router.get('/visits/search', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAllVisits));
-router.get('/patients/:patientId/visits', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAllVisits));
+// Visit management routes (using visitController for consistency)
+router.get('/search-visits', authorize(['doctor', 'nurse', 'admin']), asyncHandler(searchVisits));
 
 // Vital Signs routes
-router.post('/vital-signs', authorize(['doctor', 'nurse', 'admin']), asyncHandler(recordVitalSigns));
+router.post('/vital-signs', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createVitalSignsWithVisitId));
 router.get('/visits/:visitId/vital-signs', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getVitalSigns));
 router.put('/vital-signs/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(updateVitalSigns));
 

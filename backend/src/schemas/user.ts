@@ -78,12 +78,8 @@ export const UpdateUserProfileSchema = z.object({
 });
 
 export const LoginSchema = z.object({
-  username: z.string().min(1).optional(),
-  email: FieldValidators.email.optional(),
+  username: z.string().min(1),
   password: z.string().min(1)
-}).refine(data => data.username || data.email, {
-  message: "Either username or email must be provided",
-  path: ["username"]
 });
 
 // Transform functions for camelCase <-> snake_case

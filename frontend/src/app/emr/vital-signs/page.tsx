@@ -9,8 +9,10 @@ import { NotificationService } from '@/services/notificationService';
 import { PatientDocumentService } from '@/services/patientDocumentService';
 import { CreateVitalSignsRequest } from '@/types/api';
 import { logger } from '@/lib/logger';
+import { createLocalDateTimeString, formatLocalDateTime } from '@/utils/timeUtils';
 
 interface Patient {
+  id: string;
   hn: string;
   nationalId: string;
   thaiName: string;
@@ -21,6 +23,10 @@ interface Patient {
   assignedDoctor: string;
   visitDate?: string;
   visitTime?: string;
+  // Additional fields for age calculation
+  birth_year?: number;
+  birth_month?: number;
+  birth_day?: number;
 }
 
 interface VitalSigns {
@@ -75,7 +81,7 @@ export default function VitalSigns() {
     painLevel: "",
     generalCondition: "",
     notes: "",
-    measurementTime: new Date().toISOString().slice(0, 16),
+    measurementTime: createLocalDateTimeString(new Date()),
     measuredBy: "พยาบาลสมหญิง"
   });
 
@@ -144,8 +150,13 @@ export default function VitalSigns() {
       if (response.data && response.data.length > 0) {
         const patient = response.data[0];
         
+        // Debug: Log the raw patient data
+        logger.debug('🔍 Raw patient data from API:', patient);
+        logger.debug('🔍 Patient ID from API:', patient.id);
+        
         // Map ข้อมูลผู้ป่วยจาก API response - ใช้ direct fields (flat structure)
         const mappedPatient: Patient = {
+          id: patient.id || '',
           hn: patient.hn || patient.hospital_number || '',
           nationalId: patient.national_id || '',
           thaiName: patient.thai_name || 'ไม่ระบุชื่อ',
@@ -227,8 +238,13 @@ export default function VitalSigns() {
           if (systemResponse.data && systemResponse.data.length > 0) {
             const patient = systemResponse.data[0];
             
+            // Debug: Log the fallback patient data
+            logger.debug('🔍 Fallback patient data from API:', patient);
+            logger.debug('🔍 Fallback Patient ID from API:', patient.id);
+            
             // Map ข้อมูลผู้ป่วยจากระบบ (ใช้ข้อมูลจริงจาก API)
             const mappedPatient: Patient = {
+              id: patient.id || '',
               hn: patient.hn || patient.hospital_number || '',
               nationalId: patient.national_id || '',
               thaiName: patient.thai_name || 'ไม่ระบุชื่อ',
@@ -351,27 +367,100 @@ export default function VitalSigns() {
     
     setIsSubmitting(true);
     try {
-      // สร้าง visit ก่อน (ถ้าไม่มี)
-      const visitData = {
-        patientId: selectedPatient.hn, // จะใช้ HN หา patient ID
-        visitType: 'walk_in' as const,
-        chiefComplaint: 'ตรวจสัญญาณชีพ',
-        priority: 'normal' as const
-      };
+      let visit;
       
-      // สร้าง visit
-      const visitResponse = await VisitService.createVisit(visitData);
-      
-      if (visitResponse.statusCode !== 200 || !visitResponse.data) {
-        throw new Error('ไม่สามารถสร้าง visit ได้');
+      // ลองสร้าง visit ใหม่ก่อน
+      try {
+        const visitData = {
+          patientId: selectedPatient.id, // ใช้ patient ID (UUID) แทน HN
+          visitType: 'walk_in' as const,
+          chiefComplaint: 'ตรวจสัญญาณชีพ',
+          priority: 'normal' as const,
+          attendingDoctorId: user?.id // เพิ่ม doctor ID
+        };
+        
+        logger.debug('🔍 Creating visit with data:', visitData);
+        logger.debug('🔍 Selected patient details:', {
+          id: selectedPatient.id,
+          hn: selectedPatient.hn,
+          thaiName: selectedPatient.thaiName
+        });
+        logger.debug('🔍 User details:', {
+          id: user?.id,
+          role: user?.role
+        });
+        
+        // Validate patient ID
+        if (!selectedPatient.id || selectedPatient.id === '') {
+          throw new Error('ไม่พบ Patient ID ที่ถูกต้อง กรุณาค้นหาผู้ป่วยใหม่');
+        }
+        
+        // Validate UUID format
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(selectedPatient.id)) {
+          throw new Error(`Patient ID ไม่ถูกต้อง: ${selectedPatient.id}`);
+        }
+        
+        // สร้าง visit
+        const visitResponse = await VisitService.createVisit(visitData);
+        
+        logger.debug('🔍 Visit creation response:', visitResponse);
+        
+        if (visitResponse.statusCode !== 200 && visitResponse.statusCode !== 201 || !visitResponse.data) {
+          throw new Error(`ไม่สามารถสร้าง visit ได้: ${visitResponse.error?.message || 'Unknown error'}`);
+        }
+        
+        visit = visitResponse.data;
+        logger.debug('🔍 Visit data after creation:', visit);
+      } catch (createError: any) {
+        logger.error('❌ Error creating visit:', createError);
+        
+        // ถ้าสร้าง visit ไม่ได้ (อาจเป็น duplicate) ให้ค้นหา visit ที่มีอยู่แล้ว
+        if (createError.message?.includes('409') || createError.message?.includes('Duplicate') || createError.response?.status === 409) {
+          logger.info('Visit already exists, searching for existing visit for patient:', selectedPatient.hn);
+          
+          try {
+            // ค้นหา visit ที่มีอยู่แล้วสำหรับผู้ป่วยนี้
+            const existingVisitsResponse = await VisitService.searchVisits({
+              patientId: selectedPatient.id,
+              status: 'in_progress,pending,checked_in'
+            });
+            
+            if (existingVisitsResponse.statusCode === 200 && existingVisitsResponse.data) {
+              const existingVisits = existingVisitsResponse.data;
+              
+              // หา visit ล่าสุดสำหรับผู้ป่วยนี้
+              const patientVisit = existingVisits.find((v: any) => 
+                v.patient_id === selectedPatient.id && 
+                (v.status === 'in_progress' || v.status === 'pending' || v.status === 'checked_in')
+              );
+              
+              if (patientVisit) {
+                visit = {
+                  id: patientVisit.id,
+                  visit_number: patientVisit.visit_number,
+                  status: patientVisit.status
+                };
+                logger.info('Found existing visit:', visit);
+              } else {
+                throw new Error('ไม่พบ visit ที่มีอยู่แล้วสำหรับผู้ป่วยนี้');
+              }
+            } else {
+              throw new Error('ไม่สามารถค้นหา visit ที่มีอยู่แล้วได้');
+            }
+          } catch (searchError) {
+            logger.error('Error searching for existing visit:', searchError);
+            throw new Error('ไม่สามารถสร้างหรือค้นหา visit ได้');
+          }
+        } else {
+          throw createError;
+        }
       }
-      
-      const visit = visitResponse.data;
       
       // เตรียมข้อมูล vital signs สำหรับ API
       const vitalSignsData: CreateVitalSignsRequest = {
         visitId: visit.id,
-        patientId: selectedPatient.hn,
+        patientId: selectedPatient.id,
         weight: vitalSigns.weight ? parseFloat(vitalSigns.weight) : undefined,
         height: vitalSigns.height ? parseFloat(vitalSigns.height) : undefined,
         waistCircumference: vitalSigns.waistCircumference ? parseFloat(vitalSigns.waistCircumference) : undefined,
@@ -391,11 +480,33 @@ export default function VitalSigns() {
         measuredBy: vitalSigns.measuredBy || undefined
       };
       
-      // บันทึก vital signs
+      // บันทึก vital signs ใช้ endpoint ที่ถูกต้อง
+      logger.debug('🔍 Creating vital signs with data:', vitalSignsData);
       const vitalResponse = await VitalSignsService.createVitalSigns(vitalSignsData);
       
-      if (vitalResponse.statusCode === 200 && vitalResponse.data) {
-        alert(`บันทึกสัญญาณชีพสำเร็จ! Visit Number: ${visit.visit_number} | BMI: ${vitalResponse.data.bmi || 'N/A'}`);
+      logger.debug('🔍 Vital signs response:', {
+        statusCode: vitalResponse.statusCode,
+        hasData: !!vitalResponse.data,
+        error: vitalResponse.error
+      });
+      
+      if ((vitalResponse.statusCode === 200 || vitalResponse.statusCode === 201) && vitalResponse.data) {
+        // แสดงการแจ้งเตือนที่สวยงาม
+        const visitNumber = visit.visit_number || visit.visitNumber || visit.id || 'N/A';
+        const bmiValue = vitalResponse.data.bmi || 'N/A';
+        const bmiCategory = vitalResponse.data.bmiCategory || '';
+        
+        setSuccess(`✅ บันทึกสัญญาณชีพสำเร็จ!
+        
+📋 Visit Number: ${visitNumber}
+📊 BMI: ${bmiValue} ${bmiCategory ? `(${bmiCategory})` : ''}
+👤 ผู้ป่วย: ${selectedPatient.thaiName} (${selectedPatient.hn})
+⏰ เวลา: ${formatLocalDateTime(new Date())}`);
+
+        // Auto-hide success message after 8 seconds
+        setTimeout(() => {
+          setSuccess(null);
+        }, 8000);
         
         // ส่งการแจ้งเตือนให้ผู้ป่วย
         await sendPatientNotification(selectedPatient, vitalResponse.data);
@@ -422,18 +533,53 @@ export default function VitalSigns() {
           painLevel: "",
           generalCondition: "",
           notes: "",
-          measurementTime: new Date().toISOString().slice(0, 16),
+          measurementTime: createLocalDateTimeString(new Date()),
           measuredBy: "พยาบาลสมหญิง"
         });
         
         logger.debug('Vital signs saved:', vitalResponse.data);
       } else {
-        throw new Error(vitalResponse.error?.message || 'ไม่สามารถบันทึกสัญญาณชีพได้');
+        logger.error('❌ Vital signs creation failed:', {
+          statusCode: vitalResponse.statusCode,
+          error: vitalResponse.error,
+          response: vitalResponse
+        });
+        throw new Error(vitalResponse.error?.message || `ไม่สามารถบันทึกสัญญาณชีพได้ (Status: ${vitalResponse.statusCode})`);
       }
       
     } catch (error: any) {
-      logger.error("Error saving vital signs:", error);
-      alert(error.message || "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง");
+      logger.error("❌ Error saving vital signs:", error);
+      
+      // Provide more specific error messages
+      let errorMessage = "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง";
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.status) {
+        switch (error.response.status) {
+          case 400:
+            errorMessage = "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบข้อมูลที่กรอก";
+            break;
+          case 401:
+            errorMessage = "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่";
+            break;
+          case 403:
+            errorMessage = "คุณไม่มีสิทธิ์ในการดำเนินการนี้";
+            break;
+          case 404:
+            errorMessage = "ไม่พบข้อมูลที่ต้องการ";
+            break;
+          case 500:
+            errorMessage = "เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง";
+            break;
+          default:
+            errorMessage = `เกิดข้อผิดพลาด (${error.response.status}) กรุณาลองใหม่อีกครั้ง`;
+        }
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -539,7 +685,7 @@ export default function VitalSigns() {
         },
         createdBy: user?.id || '',
         createdByName: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่',
-        createdAt: new Date().toISOString()
+        createdAt: createLocalDateTimeString(new Date())
       };
 
       // ส่งการแจ้งเตือนผ่าน NotificationService
@@ -1167,22 +1313,83 @@ export default function VitalSigns() {
           </div>
         )}
 
-        {/* Help Text */}
-        <div className="mt-6 bg-pink-50 border border-pink-200 rounded-lg p-4">
-          <div className="flex items-start">
-            <svg className="w-5 h-5 text-pink-600 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            <div className="text-sm text-pink-800">
-              <p className="font-medium mb-1">คำแนะนำการวัดสัญญาณชีพ:</p>
-              <ul className="space-y-1 text-pink-700">
-                <li>• วัดน้ำหนักและส่วนสูงเพื่อคำนวณ BMI อัตโนมัติ</li>
-                <li>• ระบบจะแสดงสถานะปกติ/ไม่ปกติของแต่ละค่า</li>
-                <li>• ข้อมูลที่มี (*) เป็นข้อมูลที่จำเป็นต้องกรอก</li>
-                <li>• หลังบันทึกเสร็จผู้ป่วยจะพร้อมเข้าพบแพทย์</li>
-              </ul>
+          {/* Success/Error Messages */}
+          {success && (
+            <div className="mt-6 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 shadow-lg animate-in slide-in-from-top-2 duration-300 relative overflow-hidden">
+              {/* Progress bar */}
+              <div className="absolute top-0 left-0 h-1 bg-green-300 animate-pulse"></div>
+              
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center animate-pulse">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  </div>
+                </div>
+                <div className="ml-4 flex-1">
+                  <div className="text-sm text-green-800">
+                    <pre className="whitespace-pre-wrap font-medium leading-relaxed">{success}</pre>
+                  </div>
+                  <div className="mt-3 flex space-x-3">
+                    <button
+                      onClick={() => setSuccess(null)}
+                      className="inline-flex items-center px-3 py-1.5 border border-green-300 text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 transition-colors"
+                    >
+                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                      ปิด
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>          </div>
+          )}
+
+          {error && (
+            <div className="mt-6 bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 rounded-xl p-6 shadow-lg animate-in slide-in-from-top-2 duration-300">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                    <AlertCircle className="w-5 h-5 text-red-600" />
+                  </div>
+                </div>
+                <div className="ml-4 flex-1">
+                  <div className="text-sm text-red-800">
+                    <p className="font-medium leading-relaxed">{error}</p>
+                  </div>
+                  <div className="mt-3 flex space-x-3">
+                    <button
+                      onClick={() => setError(null)}
+                      className="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 transition-colors"
+                    >
+                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                      ปิด
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Help Text */}
+          <div className="mt-6 bg-pink-50 border border-pink-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-pink-600 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <div className="text-sm text-pink-800">
+                <p className="font-medium mb-1">คำแนะนำการวัดสัญญาณชีพ:</p>
+                <ul className="space-y-1 text-pink-700">
+                  <li>• วัดน้ำหนักและส่วนสูงเพื่อคำนวณ BMI อัตโนมัติ</li>
+                  <li>• ระบบจะแสดงสถานะปกติ/ไม่ปกติของแต่ละค่า</li>
+                  <li>• ข้อมูลที่มี (*) เป็นข้อมูลที่จำเป็นต้องกรอก</li>
+                  <li>• หลังบันทึกเสร็จผู้ป่วยจะพร้อมเข้าพบแพทย์</li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

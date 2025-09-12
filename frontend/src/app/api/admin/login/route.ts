@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 
 interface AdminLoginRequest {
-  email: string;
+  username: string;
   password: string;
 }
 
@@ -30,19 +30,10 @@ export async function POST(request: NextRequest) {
     const body: AdminLoginRequest = await request.json();
     
     // Validation
-    if (!body.email || !body.password) {
+    if (!body.username || !body.password) {
       return NextResponse.json({
         success: false,
-        message: 'กรุณาระบุอีเมลและรหัสผ่าน'
-      }, { status: 400 });
-    }
-
-    // Email format validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(body.email)) {
-      return NextResponse.json({
-        success: false,
-        message: 'รูปแบบอีเมลไม่ถูกต้อง'
+        message: 'กรุณาระบุชื่อผู้ใช้และรหัสผ่าน'
       }, { status: 400 });
     }
 
@@ -56,7 +47,7 @@ export async function POST(request: NextRequest) {
         'X-Forwarded-For': request.headers.get('X-Forwarded-For') || '127.0.0.1'
       },
       body: JSON.stringify({
-        email: body.email,
+        username: body.username,
         password: body.password
       })
     });
@@ -79,16 +70,15 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-    // If backend request succeeded, return the data
+    // If backend request succeeded, return the data in backend format
     const response = NextResponse.json({
-      success: true,
-      message: backendData.message || 'เข้าสู่ระบบสำเร็จ',
-      data: backendData.data
+      data: backendData.data,
+      statusCode: 200
     }, { status: 200 });
 
-    // Set cookies if tokens are available
+    // Set cookies if tokens are available (use access_token for consistency)
     if (backendData.data?.accessToken) {
-      response.cookies.set('admin-token', backendData.data.accessToken, {
+      response.cookies.set('access_token', backendData.data.accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -97,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (backendData.data?.refreshToken) {
-      response.cookies.set('admin-refresh-token', backendData.data.refreshToken, {
+      response.cookies.set('refresh_token', backendData.data.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',

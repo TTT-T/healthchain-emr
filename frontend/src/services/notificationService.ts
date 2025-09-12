@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { createLocalDateTimeString, formatLocalDateTime, formatLocalTime } from '@/utils/timeUtils';
 import { emailTemplates } from '@/templates/emailTemplates';
 
 interface NotificationData {
@@ -77,7 +78,7 @@ export class NotificationService {
   private static async sendSMS(data: NotificationData): Promise<void> {
     try {
       // ในระบบจริงจะเชื่อมต่อกับ SMS Gateway
-      const message = `โรงพยาบาลตัวอย่าง: คุณ ${data.patientName} ได้รับหมายเลขคิว ${data.queueNumber} สำหรับตรวจกับ ${data.doctorName} วันที่ ${new Date(data.visitTime).toLocaleDateString('th-TH')} เวลา ${new Date(data.visitTime).toLocaleTimeString('th-TH')} คาดว่าจะรอประมาณ ${data.estimatedWaitTime} นาที`;
+      const message = `โรงพยาบาลตัวอย่าง: คุณ ${data.patientName} ได้รับหมายเลขคิว ${data.queueNumber} สำหรับตรวจกับ ${data.doctorName} วันที่ ${formatLocalDateTime(new Date(data.visitTime))} เวลา ${formatLocalTime(new Date(data.visitTime))} คาดว่าจะรอประมาณ ${data.estimatedWaitTime} นาที`;
       
       console.log('SMS Notification:', message);
       
@@ -199,7 +200,7 @@ export class NotificationService {
         patientHn: data.patientHn,
         queueNumber: data.queueNumber,
         visitTime: data.visitTime,
-        createdAt: new Date().toISOString(),
+        createdAt: createLocalDateTimeString(new Date()),
         read: false
       };
       
@@ -228,7 +229,7 @@ export class NotificationService {
         patientHn: data.patientHn,
         queueNumber: data.queueNumber,
         notificationType: 'queue_assigned',
-        sentAt: new Date().toISOString(),
+        sentAt: createLocalDateTimeString(new Date()),
         methods: ['sms', 'email', 'in_app'],
         status: 'sent'
       };
@@ -277,8 +278,8 @@ export class NotificationService {
               <p><strong>แพทย์ผู้ตรวจ:</strong> ${data.doctorName}</p>
               <p><strong>แผนก:</strong> ${data.department}</p>
               <p><strong>ประเภทการรักษา:</strong> ${data.treatmentType}</p>
-              <p><strong>วันที่:</strong> ${new Date(data.visitTime).toLocaleDateString('th-TH')}</p>
-              <p><strong>เวลา:</strong> ${new Date(data.visitTime).toLocaleTimeString('th-TH')}</p>
+              <p><strong>วันที่:</strong> ${formatLocalDateTime(new Date(data.visitTime))}</p>
+              <p><strong>เวลา:</strong> ${formatLocalTime(new Date(data.visitTime))}</p>
               <p><strong>เวลารอโดยประมาณ:</strong> ${data.estimatedWaitTime} นาที</p>
             </div>
             
@@ -371,11 +372,8 @@ export class NotificationService {
    */
   private static async sendAppointmentSMS(data: PatientAppointmentNotificationData): Promise<void> {
     try {
-      const visitDate = new Date(data.visitTime).toLocaleDateString('th-TH');
-      const visitTime = new Date(data.visitTime).toLocaleTimeString('th-TH', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
+      const visitDate = formatLocalDateTime(new Date(data.visitTime));
+      const visitTime = formatLocalTime(new Date(data.visitTime));
       
       const message = `🏥 โรงพยาบาลตัวอย่าง
 คุณ ${data.patientName} ได้รับหมายเลขคิว ${data.queueNumber}
@@ -431,7 +429,7 @@ export class NotificationService {
         id: `appointment-${Date.now()}`,
         type: 'appointment',
         title: `ได้รับหมายเลขคิว ${data.queueNumber}`,
-        message: `คุณ ${data.patientName} ได้รับหมายเลขคิว ${data.queueNumber} สำหรับตรวจกับ ${data.doctorName} วันที่ ${new Date(data.visitTime).toLocaleDateString('th-TH')} เวลา ${new Date(data.visitTime).toLocaleTimeString('th-TH')}`,
+        message: `คุณ ${data.patientName} ได้รับหมายเลขคิว ${data.queueNumber} สำหรับตรวจกับ ${data.doctorName} วันที่ ${formatLocalDateTime(new Date(data.visitTime))} เวลา ${formatLocalTime(new Date(data.visitTime))}`,
         patientHn: data.patientHn,
         patientNationalId: data.patientNationalId,
         queueNumber: data.queueNumber,
@@ -447,7 +445,7 @@ export class NotificationService {
         createdByName: data.createdByName,
         priority: 'high',
         actionRequired: false,
-        createdAt: new Date().toISOString(),
+        createdAt: createLocalDateTimeString(new Date()),
         read: false
       };
       
@@ -477,7 +475,7 @@ export class NotificationService {
         patientNationalId: data.patientNationalId,
         queueNumber: data.queueNumber,
         notificationType: 'appointment_created',
-        sentAt: new Date().toISOString(),
+        sentAt: createLocalDateTimeString(new Date()),
         methods: ['sms', 'email', 'in_app'],
         status: 'sent',
         doctorName: data.doctorName,
@@ -499,11 +497,8 @@ export class NotificationService {
    * สร้าง Email Template สำหรับการนัดหมาย
    */
   private static generateAppointmentEmailTemplate(data: PatientAppointmentNotificationData): string {
-    const visitDate = new Date(data.visitTime).toLocaleDateString('th-TH');
-    const visitTime = new Date(data.visitTime).toLocaleTimeString('th-TH', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    const visitDate = formatLocalDateTime(new Date(data.visitTime));
+    const visitTime = formatLocalTime(new Date(data.visitTime));
     
     return `
       <!DOCTYPE html>
@@ -563,7 +558,7 @@ export class NotificationService {
           <div class="footer">
             <p>โรงพยาบาลตัวอย่าง | ระบบบันทึกสุขภาพอิเล็กทรอนิกส์</p>
             <p>หากมีข้อสงสัย กรุณาติดต่อ 02-xxx-xxxx</p>
-            <p>สร้างโดย: ${data.createdByName} | ${new Date().toLocaleString('th-TH')}</p>
+            <p>สร้างโดย: ${data.createdByName} | ${formatLocalDateTime(new Date())}</p>
           </div>
         </div>
       </body>
@@ -701,7 +696,7 @@ export class NotificationService {
       recordType: data.recordType,
       recordId: data.recordId,
       recordedBy: data.recordedBy,
-      timestamp: new Date().toISOString()
+      timestamp: createLocalDateTimeString(new Date())
     });
   }
 
@@ -719,8 +714,8 @@ export class NotificationService {
     };
 
     const recordTypeLabel = recordTypeLabels[data.recordType] || 'ข้อมูลทางการแพทย์';
-    const recordedDate = new Date(data.recordedTime).toLocaleDateString('th-TH');
-    const recordedTime = new Date(data.recordedTime).toLocaleTimeString('th-TH');
+    const recordedDate = formatLocalDateTime(new Date(data.recordedTime));
+    const recordedTime = formatLocalTime(new Date(data.recordedTime));
 
     return `
       <!DOCTYPE html>
@@ -780,7 +775,7 @@ export class NotificationService {
           
           <div class="footer">
             <p>โรงพยาบาลตัวอย่าง | ระบบบันทึกสุขภาพอิเล็กทรอนิกส์</p>
-            <p>อัปเดตโดย: ${data.recordedBy} | ${new Date().toLocaleString('th-TH')}</p>
+            <p>อัปเดตโดย: ${data.recordedBy} | ${formatLocalDateTime(new Date())}</p>
           </div>
         </div>
       </body>

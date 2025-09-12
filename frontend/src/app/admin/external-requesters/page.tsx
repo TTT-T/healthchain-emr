@@ -61,121 +61,8 @@ interface ExternalRequester {
   updatedAt: string;
 }
 
-const mockExternalRequesters: ExternalRequester[] = [
-  {
-    id: '1',
-    organizationName: 'โรงพยาบาลจุฬาลงกรณ์',
-    organizationType: 'hospital',
-    registrationNumber: 'REG-2024-001',
-    licenseNumber: 'LIC-12345',
-    taxId: '0123456789012',
-    primaryContactName: 'นพ. สมชาย ใจดี',
-    primaryContactEmail: 'contact@chula.ac.th',
-    primaryContactPhone: '02-123-4567',
-    address: {
-      streetAddress: '1873 ถนนพระราม 4',
-      subDistrict: 'ปทุมวัน',
-      district: 'ปทุมวัน',
-      province: 'กรุงเทพมหานคร',
-      postalCode: '10330',
-      country: 'Thailand'
-    },
-    status: 'active',
-    dataAccessLevel: 'premium',
-    maxConcurrentRequests: 50,
-    allowedRequestTypes: ['medical_records', 'lab_results', 'imaging', 'prescriptions'],
-    complianceCertifications: ['ISO 27001', 'PDPA'],
-    dataProtectionCertification: 'PDPA-2024-001',
-    isVerified: true,
-    verificationDate: '2024-01-15T00:00:00Z',
-    lastComplianceAudit: '2024-11-15T00:00:00Z',
-    createdAt: '2024-01-10T00:00:00Z',
-    updatedAt: '2024-12-19T10:30:00Z'
-  },
-  {
-    id: '2',
-    organizationName: 'บริษัท เอไอเอ จำกัด (มหาชน)',
-    organizationType: 'insurance',
-    registrationNumber: 'REG-2024-002',
-    taxId: '0123456789013',
-    primaryContactName: 'คุณสมหญิง รักดี',
-    primaryContactEmail: 'contact@aia.co.th',
-    primaryContactPhone: '02-234-5678',
-    address: {
-      streetAddress: '456 ถนนสุขุมวิท',
-      subDistrict: 'คลองตัน',
-      district: 'วัฒนา',
-      province: 'กรุงเทพมหานคร',
-      postalCode: '10110',
-      country: 'Thailand'
-    },
-    status: 'pending',
-    dataAccessLevel: 'standard',
-    maxConcurrentRequests: 20,
-    allowedRequestTypes: ['medical_records', 'lab_results'],
-    complianceCertifications: ['PDPA'],
-    isVerified: false,
-    createdAt: '2024-12-01T00:00:00Z',
-    updatedAt: '2024-12-18T14:20:00Z'
-  },
-  {
-    id: '3',
-    organizationName: 'สถาบันวิจัยจุฬาภรณ์',
-    organizationType: 'research',
-    registrationNumber: 'REG-2024-003',
-    taxId: '0123456789014',
-    primaryContactName: 'รศ.ดร.สมศักดิ์ วิจัยดี',
-    primaryContactEmail: 'research@chulabhorn.org',
-    primaryContactPhone: '02-345-6789',
-    address: {
-      streetAddress: '54 ถนนวิภาวดีรังสิต',
-      subDistrict: 'ลาดยาว',
-      district: 'จตุจักร',
-      province: 'กรุงเทพมหานคร',
-      postalCode: '10900',
-      country: 'Thailand'
-    },
-    status: 'active',
-    dataAccessLevel: 'premium',
-    maxConcurrentRequests: 30,
-    allowedRequestTypes: ['medical_records', 'lab_results', 'imaging', 'prescriptions', 'vital_signs'],
-    complianceCertifications: ['ISO 27001', 'PDPA', 'IRB'],
-    dataProtectionCertification: 'PDPA-2024-002',
-    isVerified: true,
-    verificationDate: '2024-02-20T00:00:00Z',
-    lastComplianceAudit: '2024-10-30T00:00:00Z',
-    createdAt: '2024-02-15T00:00:00Z',
-    updatedAt: '2024-12-19T09:15:00Z'
-  },
-  {
-    id: '4',
-    organizationName: 'คลินิกหมอสมหมาย',
-    organizationType: 'clinic',
-    registrationNumber: 'REG-2024-004',
-    licenseNumber: 'LIC-54321',
-    taxId: '0123456789015',
-    primaryContactName: 'นพ.สมหมาย รักษาดี',
-    primaryContactEmail: 'doctor@sommai-clinic.com',
-    primaryContactPhone: '02-456-7890',
-    address: {
-      streetAddress: '789 ถนนลาดพร้าว',
-      subDistrict: 'จอมพล',
-      district: 'จตุจักร',
-      province: 'กรุงเทพมหานคร',
-      postalCode: '10900',
-      country: 'Thailand'
-    },
-    status: 'suspended',
-    dataAccessLevel: 'basic',
-    maxConcurrentRequests: 5,
-    allowedRequestTypes: ['medical_records'],
-    complianceCertifications: [],
-    isVerified: false,
-    // suspensionReason: 'ไม่ได้ส่งเอกสารการรับรองตามกำหนด',
-    createdAt: '2024-11-28T13:45:00Z',
-    updatedAt: '2024-12-18T10:20:00Z'
-  }
-];
+// Remove mock data - will use real data from API
+const mockExternalRequesters: ExternalRequester[] = [];
 
 export default function ExternalRequestersPage() {
   const [requesters, setRequesters] = useState<ExternalRequester[]>([]);
@@ -257,14 +144,12 @@ export default function ExternalRequestersPage() {
         setRequesters(mappedRequesters);
       } else {
         setError('ไม่สามารถโหลดข้อมูล External Requesters ได้');
-        // Fallback to mock data if API fails
-        setRequesters(mockExternalRequesters);
+        setRequesters([]);
       }
     } catch (error) {
       logger.error('Failed to load external requesters:', error);
       setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
-      // Fallback to mock data if API fails
-      setRequesters(mockExternalRequesters);
+      setRequesters([]);
     } finally {
       setLoading(false);
     }
@@ -326,7 +211,7 @@ export default function ExternalRequestersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="w-full h-full bg-gray-50 p-2 lg:p-4 overflow-auto flex items-center justify-center">
         <div className="text-center">
           <RefreshCw size={48} className="animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-gray-600">กำลังโหลดข้อมูล External Requesters...</p>
@@ -336,9 +221,7 @@ export default function ExternalRequestersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="w-full h-full bg-gray-50 p-2 lg:p-4 overflow-auto">
           {/* Error Message */}
           {error && (
             <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
@@ -355,93 +238,102 @@ export default function ExternalRequestersPage() {
             </div>
           )}
 
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">จัดการ External Requesters</h1>
-                <p className="mt-2 text-gray-600">จัดการและติดตามองค์กรที่ขอเข้าถึงข้อมูล</p>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={refreshData}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
-                </button>
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  เพิ่มองค์กรใหม่
-                </button>
-              </div>
+      {/* Header */}
+      <div className="mb-4 lg:mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-3">
+              <Building2 className="text-blue-600" />
+              จัดการ External Requesters
+            </h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-2">
+              จัดการและติดตามองค์กรที่ขอเข้าถึงข้อมูล
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={refreshData}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+            >
+              <RefreshCw size={16} />
+              รีเฟรช
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            >
+              <Plus size={16} />
+              เพิ่มองค์กรใหม่
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 lg:mb-8">
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">ทั้งหมด</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600">{requesters.length}</p>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1 hidden sm:block">องค์กรทั้งหมด</p>
+            </div>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Building2 className="text-blue-600" size={16} />
             </div>
           </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Building2 className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">ทั้งหมด</p>
-                  <p className="text-2xl font-bold text-gray-900">{requesters.length}</p>
-                </div>
-              </div>
+        </div>
+        
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">อนุมัติแล้ว</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600">
+                {requesters.filter(r => r.status === 'active').length}
+              </p>
+              <p className="text-xs sm:text-sm text-green-600 mt-1 hidden sm:block">สถานะใช้งาน</p>
             </div>
-            
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">อนุมัติแล้ว</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {requesters.filter(r => r.status === 'active').length}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-yellow-100 rounded-lg">
-                  <Clock className="h-6 w-6 text-yellow-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">รอการตรวจสอบ</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {requesters.filter(r => r.status === 'pending').length}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-red-100 rounded-lg">
-                  <XCircle className="h-6 w-6 text-red-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">ถูกระงับ</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {requesters.filter(r => r.status === 'suspended').length}
-                  </p>
-                </div>
-              </div>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <CheckCircle className="text-green-600" size={16} />
             </div>
           </div>
+        </div>
+        
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">รอการตรวจสอบ</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-yellow-600">
+                {requesters.filter(r => r.status === 'pending').length}
+              </p>
+              <p className="text-xs sm:text-sm text-yellow-600 mt-1 hidden sm:block">รอการอนุมัติ</p>
+            </div>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Clock className="text-yellow-600" size={16} />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">ถูกระงับ</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-red-600">
+                {requesters.filter(r => r.status === 'suspended').length}
+              </p>
+              <p className="text-xs sm:text-sm text-red-600 mt-1 hidden sm:block">สถานะระงับ</p>
+            </div>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <XCircle className="text-red-600" size={16} />
+            </div>
+          </div>
+        </div>
+      </div>
 
-          {/* Filters */}
-          <div className="bg-white rounded-lg shadow mb-6">
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Filters */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
+        <div className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     ค้นหา
@@ -511,39 +403,39 @@ export default function ExternalRequestersPage() {
             </div>
           </div>
 
-          {/* Table */}
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      องค์กร
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ผู้ติดต่อ
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ประเภท
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      สถานะ
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ระดับการเข้าถึง
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      วันที่ลงทะเบียน
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      การดำเนินการ
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredRequesters.map((requester) => (
-                    <tr key={requester.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
+      {/* Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  องค์กร
+                </th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ผู้ติดต่อ
+                </th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ประเภท
+                </th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  สถานะ
+                </th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ระดับการเข้าถึง
+                </th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  วันที่ลงทะเบียน
+                </th>
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  การดำเนินการ
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredRequesters.map((requester) => (
+                <tr key={requester.id} className="hover:bg-gray-50">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="p-2 bg-blue-100 rounded-lg">
                             <Building2 className="h-5 w-5 text-blue-600" />
@@ -558,17 +450,17 @@ export default function ExternalRequestersPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{requester.primaryContactName}</div>
                         <div className="text-sm text-gray-500">{requester.primaryContactEmail}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                         {getTypeBadge(requester.organizationType)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(requester.status)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                         {getAccessLevelBadge(requester.dataAccessLevel)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -608,20 +500,18 @@ export default function ExternalRequestersPage() {
                       </td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {filteredRequesters.length === 0 && (
-            <div className="text-center py-12">
-              <Building2 className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">ไม่พบข้อมูล</h3>
-              <p className="mt-1 text-sm text-gray-500">ลองเปลี่ยนเงื่อนไขการค้นหา</p>
-            </div>
-          )}
+            </tbody>
+          </table>
         </div>
       </div>
+
+      {filteredRequesters.length === 0 && (
+        <div className="text-center py-12">
+          <Building2 className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">ไม่พบข้อมูล</h3>
+          <p className="mt-1 text-sm text-gray-500">ลองเปลี่ยนเงื่อนไขการค้นหา</p>
+        </div>
+      )}
     </div>
   );
 }

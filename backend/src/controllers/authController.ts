@@ -481,22 +481,19 @@ export const login = async (req: Request, res: Response) => {
     // Validate input
     const validatedData = loginSchema.parse(req.body);
     
-    // Determine if the input is username or email
-    const usernameOrEmail = validatedData.username || validatedData.email;
+    // Use username only
+    const username = validatedData.username;
     
-    if (!usernameOrEmail) {
+    if (!username) {
       return res.status(400).json(
-        errorResponse('Username or email is required', 400)
+        errorResponse('Username is required', 400)
       );
     }
     
-    console.log('🔍 Login attempt for:', usernameOrEmail);
+    console.log('🔍 Login attempt for username:', username);
     
-    // Find user by username or email
-    const user = await db.getUserByUsernameOrEmail(
-      usernameOrEmail, 
-      usernameOrEmail
-    );
+    // Find user by username only
+    const user = await db.getUserByUsername(username);
     
     console.log('🔍 User found:', user ? user.email : 'Not found');
     

@@ -31,9 +31,18 @@ export function middleware(request: NextRequest) {
   }
 
   // Check for admin routes (but not admin/login)
-  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
-    const adminToken = request.cookies.get('admin-token')?.value
-    if (!adminToken) {
+  if (pathname.startsWith('/admin') && 
+      pathname !== '/admin/login') {
+    const accessToken = request.cookies.get('access_token')?.value
+    console.log('🔍 Middleware - Checking access token for admin path:', pathname, 'Token exists:', !!accessToken)
+    if (!accessToken) {
+      console.log('🔍 Middleware - No access token, redirecting to admin login')
+      return NextResponse.redirect(new URL('/admin/login', request.url))
+    }
+    
+    // Additional validation: check if token is valid JWT format
+    if (accessToken && !accessToken.startsWith('eyJ')) {
+      console.log('🔍 Middleware - Invalid token format, redirecting to admin login')
       return NextResponse.redirect(new URL('/admin/login', request.url))
     }
   }

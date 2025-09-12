@@ -23,155 +23,21 @@ import {
   Mail,
   Phone
 } from 'lucide-react';
+import { consentRequestsService, ConsentRequest, ConsentRequestStats } from '@/services/consentRequestsService';
 
-interface ConsentRequest {
-  id: string;
-  requestId: string;
-  requesterName: string;
-  requesterType: 'hospital' | 'clinic' | 'insurance' | 'research' | 'government' | 'legal';
-  requesterLicense?: string;
-  patientName: string;
-  patientHN: string;
-  requestType: 'hospital_transfer' | 'insurance_claim' | 'research' | 'legal' | 'emergency';
-  requestedDataTypes: string[];
-  purpose: string;
-  urgencyLevel: 'emergency' | 'urgent' | 'normal';
-  status: 'pending' | 'sent_to_patient' | 'patient_reviewing' | 'approved' | 'rejected' | 'expired' | 'cancelled';
-  createdAt: string;
-  expiresAt: string;
-  isCompliant: boolean;
-  complianceNotes?: string;
-  validatedBy?: string;
-  validatedAt?: string;
-  referenceNumber?: string;
-  contactInfo: {
-    email: string;
-    phone: string;
-    address?: string;
-  };
-}
-
-const mockConsentRequests: ConsentRequest[] = [
-  {
-    id: '1',
-    requestId: 'CR-2025-001',
-    requesterName: 'โรงพยาบาลศิริราช',
-    requesterType: 'hospital',
-    requesterLicense: 'MED-LIC-001',
-    patientName: 'นายสมชาย ใจดี',
-    patientHN: 'HN2024001',
-    requestType: 'hospital_transfer',
-    requestedDataTypes: ['medical_history', 'lab_results', 'vital_signs', 'current_medications'],
-    purpose: 'ส่งต่อผู้ป่วยเพื่อรักษาต่อเนื่อง - ผู้ป่วยมีอาการโรคหัวใจที่ซับซ้อน ต้องการการรักษาเฉพาะทางที่โรงพยาบาลศิริราช',
-    urgencyLevel: 'urgent',
-    status: 'patient_reviewing',
-    createdAt: '2025-07-03T09:30:00Z',
-    expiresAt: '2025-07-10T09:30:00Z',
-    isCompliant: true,
-    referenceNumber: 'REF-HOS-001',
-    contactInfo: {
-      email: 'transfer@siriraj.ac.th',
-      phone: '02-419-7000',
-      address: '2 ถนนวังหลัง บางกอกน้อย กรุงเทพฯ 10700'
-    }
-  },
-  {
-    id: '2',
-    requestId: 'CR-2025-002',
-    requesterName: 'บริษัท ไทยประกันชีวิต จำกัด (มหาชน)',
-    requesterType: 'insurance',
-    requesterLicense: 'INS-LIC-002',
-    patientName: 'นางสาวมาลี สุขใส',
-    patientHN: 'HN2024002',
-    requestType: 'insurance_claim',
-    requestedDataTypes: ['diagnosis', 'treatment_cost', 'discharge_summary', 'lab_results'],
-    purpose: 'การเคลมประกันสุขภาพ - ค่ารักษาพยาบาลสำหรับการผ่าตัดไส้ติ่ง ตามกรมธรรม์เลขที่ TL-2024-567890',
-    urgencyLevel: 'normal',
-    status: 'pending',
-    createdAt: '2025-07-03T14:15:00Z',
-    expiresAt: '2025-07-17T14:15:00Z',
-    isCompliant: true,
-    referenceNumber: 'CLM-2025-789123',
-    contactInfo: {
-      email: 'claims@thailife.com',
-      phone: '02-777-8888',
-      address: '999/9 อาคารไทยประกัน ถนนพหลโยธิน กรุงเทพฯ'
-    }
-  },
-  {
-    id: '3',
-    requestId: 'CR-2025-003',
-    requesterName: 'โรงพยาบาลธรรมศาสตร์',
-    requesterType: 'hospital',
-    requesterLicense: 'MED-LIC-003',
-    patientName: 'นายประยุทธ์ สุขสันต์',
-    patientHN: 'HN2024003',
-    requestType: 'emergency',
-    requestedDataTypes: ['medical_history', 'current_medications', 'allergies', 'blood_type'],
-    purpose: 'อุบัติเหตุทางรถยนต์ - ผู้ป่วยสลบไม่ได้สติ ต้องการข้อมูลทางการแพทย์เร่งด่วนเพื่อการรักษา',
-    urgencyLevel: 'emergency',
-    status: 'approved',
-    createdAt: '2025-07-03T16:45:00Z',
-    expiresAt: '2025-07-04T16:45:00Z',
-    isCompliant: true,
-    validatedBy: 'Admin User',
-    validatedAt: '2025-07-03T16:50:00Z',
-    referenceNumber: 'EMG-2025-001',
-    contactInfo: {
-      email: 'emergency@tu.ac.th',
-      phone: '02-564-4440',
-      address: '99 หมู่ 18 ตำบลคลองหนึ่ง อำเภอคลองหลวง ปทุมธานี'
-    }
-  },
-  {
-    id: '4',
-    requestId: 'CR-2025-004',
-    requesterName: 'สถาบันวิจัยระบบสาธารณสุข',
-    requesterType: 'research',
-    patientName: 'นางสมร สมหวัง',
-    patientHN: 'HN2024004',
-    requestType: 'research',
-    requestedDataTypes: ['anonymized_diagnosis', 'age_group', 'treatment_outcome'],
-    purpose: 'โครงการวิจัย: การศึกษาประสิทธิภาพการรักษาโรคเบาหวานในผู้ป่วยไทย - ได้รับอนุมัติจากคณะกรรมการจริยธรรม',
-    urgencyLevel: 'normal',
-    status: 'sent_to_patient',
-    createdAt: '2025-07-02T10:20:00Z',
-    expiresAt: '2025-07-16T10:20:00Z',
-    isCompliant: true,
-    referenceNumber: 'RES-2025-DM-001',
-    contactInfo: {
-      email: 'research@hsri.or.th',
-      phone: '02-590-2999',
-      address: 'สถาบันวิจัยระบบสาธารณสุข นนทบุรี'
-    }
-  },
-  {
-    id: '5',
-    requestId: 'CR-2025-005',
-    requesterName: 'คลินิกการแพทย์แบบบูรณาการ',
-    requesterType: 'clinic',
-    requesterLicense: 'MED-LIC-005',
-    patientName: 'นายสมศักดิ์ ดีใจ',
-    patientHN: 'HN2024005',
-    requestType: 'hospital_transfer',
-    requestedDataTypes: ['medical_history', 'lab_results'],
-    purpose: 'ส่งต่อผู้ป่วยเพื่อตรวจเพิ่มเติม',
-    urgencyLevel: 'normal',
-    status: 'rejected',
-    createdAt: '2025-07-01T11:30:00Z',
-    expiresAt: '2025-07-15T11:30:00Z',
-    isCompliant: false,
-    complianceNotes: 'ไม่มีการระบุเหตุผลที่ชัดเจนและไม่มีเอกสารสนับสนุน',
-    contactInfo: {
-      email: 'admin@integratedclinic.com',
-      phone: '02-123-4567'
-    }
-  }
-];
+// Remove mock data - will use real data from API
 
 export default function ConsentRequestsPage() {
-  const [requests, setRequests] = useState<ConsentRequest[]>(mockConsentRequests);
-  const [filteredRequests, setFilteredRequests] = useState<ConsentRequest[]>(mockConsentRequests);
+  const [requests, setRequests] = useState<ConsentRequest[]>([]);
+  const [filteredRequests, setFilteredRequests] = useState<ConsentRequest[]>([]);
+  const [stats, setStats] = useState<ConsentRequestStats>({
+    totalRequests: 0,
+    pendingRequests: 0,
+    reviewingRequests: 0,
+    emergencyRequests: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -179,16 +45,21 @@ export default function ConsentRequestsPage() {
   const [selectedRequest, setSelectedRequest] = useState<ConsentRequest | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Filter requests when filters change
   useEffect(() => {
     let filtered = requests;
 
     if (searchTerm) {
       filtered = filtered.filter(request =>
-        request.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.patientHN.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.requestId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.referenceNumber?.toLowerCase().includes(searchTerm.toLowerCase())
+        request.requester_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.patient_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.patient_hn.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.request_id.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -197,15 +68,39 @@ export default function ConsentRequestsPage() {
     }
 
     if (typeFilter) {
-      filtered = filtered.filter(request => request.requestType === typeFilter);
+      filtered = filtered.filter(request => request.request_type === typeFilter);
     }
 
     if (urgencyFilter) {
-      filtered = filtered.filter(request => request.urgencyLevel === urgencyFilter);
+      filtered = filtered.filter(request => request.urgency_level === urgencyFilter);
     }
 
     setFilteredRequests(filtered);
   }, [searchTerm, statusFilter, typeFilter, urgencyFilter, requests]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [requestsData, statsData] = await Promise.all([
+        consentRequestsService.getAllRequests(),
+        consentRequestsService.getRequestStats()
+      ]);
+
+      setRequests(requestsData);
+      setStats(statsData);
+    } catch (err) {
+      console.error('Failed to fetch consent requests:', err);
+      setError('ไม่สามารถโหลดข้อมูลได้');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchData();
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -305,30 +200,24 @@ export default function ConsentRequestsPage() {
     return types[type as keyof typeof types] || type;
   };
 
-  const handleApprove = (id: string) => {
-    setRequests(prev => prev.map(req => 
-      req.id === id 
-        ? { 
-            ...req, 
-            status: 'approved' as const,
-            validatedBy: 'Admin User',
-            validatedAt: new Date().toISOString()
-          }
-        : req
-    ));
+  const handleApprove = async (id: string) => {
+    try {
+      await consentRequestsService.approveRequest(id, 'อนุมัติโดย Admin');
+      await fetchData(); // Refresh data
+    } catch (err) {
+      console.error('Failed to approve request:', err);
+      setError('ไม่สามารถอนุมัติคำขอได้');
+    }
   };
 
-  const handleReject = (id: string) => {
-    setRequests(prev => prev.map(req => 
-      req.id === id 
-        ? { 
-            ...req, 
-            status: 'rejected' as const,
-            validatedBy: 'Admin User',
-            validatedAt: new Date().toISOString()
-          }
-        : req
-    ));
+  const handleReject = async (id: string) => {
+    try {
+      await consentRequestsService.rejectRequest(id, 'ปฏิเสธโดย Admin');
+      await fetchData(); // Refresh data
+    } catch (err) {
+      console.error('Failed to reject request:', err);
+      setError('ไม่สามารถปฏิเสธคำขอได้');
+    }
   };
 
   const handleViewDetails = (request: ConsentRequest) => {
@@ -336,10 +225,38 @@ export default function ConsentRequestsPage() {
     setShowDetailsModal(true);
   };
 
-  const totalRequests = requests.length;
-  const pendingRequests = requests.filter(r => r.status === 'pending').length;
-  const reviewingRequests = requests.filter(r => r.status === 'patient_reviewing').length;
-  const emergencyRequests = requests.filter(r => r.urgencyLevel === 'emergency').length;
+  const totalRequests = stats.totalRequests;
+  const pendingRequests = stats.pendingRequests;
+  const reviewingRequests = stats.reviewingRequests;
+  const emergencyRequests = stats.emergencyRequests;
+
+  if (loading && requests.length === 0) {
+    return (
+      <div className="w-full h-full bg-gray-50 p-2 lg:p-4 overflow-auto flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="animate-spin mx-auto mb-4 text-blue-600" size={48} />
+          <p className="text-gray-600">กำลังโหลดข้อมูล...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full h-full bg-gray-50 p-2 lg:p-4 overflow-auto flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="mx-auto mb-4 text-red-600" size={48} />
+          <p className="text-red-600 mb-4">{error}</p>
+          <button 
+            onClick={handleRefresh}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            ลองใหม่
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full bg-gray-50 p-2 lg:p-4 overflow-auto">
@@ -356,8 +273,12 @@ export default function ConsentRequestsPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
-              <RefreshCw size={16} />
+            <button 
+              onClick={handleRefresh}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
               รีเฟรช
             </button>
             <button className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
@@ -497,37 +418,31 @@ export default function ConsentRequestsPage() {
               {filteredRequests.map((request) => (
                 <tr key={request.id} className="hover:bg-gray-50">
                   <td className="py-4 px-4">
-                    <div className="font-medium text-blue-600">{request.requestId}</div>
-                    {request.referenceNumber && (
-                      <div className="text-xs text-gray-500">อ้างอิง: {request.referenceNumber}</div>
-                    )}
+                    <div className="font-medium text-blue-600">{request.request_id}</div>
                   </td>
                   <td className="py-4 px-4">
                     <div>
-                      <div className="font-medium text-gray-900">{request.requesterName}</div>
+                      <div className="font-medium text-gray-900">{request.requester_name}</div>
                       <div className="text-sm text-gray-500 flex items-center gap-1">
                         <Building2 size={12} />
-                        {getRequesterTypeLabel(request.requesterType)}
+                        {getRequesterTypeLabel(request.requester_type)}
                       </div>
-                      {request.requesterLicense && (
-                        <div className="text-xs text-gray-400">ใบอนุญาต: {request.requesterLicense}</div>
-                      )}
                     </div>
                   </td>
                   <td className="py-4 px-4">
                     <div>
-                      <div className="font-medium text-gray-900">{request.patientName}</div>
-                      <div className="text-sm text-gray-500">{request.patientHN}</div>
+                      <div className="font-medium text-gray-900">{request.patient_name}</div>
+                      <div className="text-sm text-gray-500">{request.patient_hn}</div>
                     </div>
                   </td>
                   <td className="py-4 px-4">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-800 border border-blue-200">
-                      {getRequestTypeLabel(request.requestType)}
+                      {getRequestTypeLabel(request.request_type)}
                     </span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getUrgencyColor(request.urgencyLevel)}`}>
-                      {getUrgencyLabel(request.urgencyLevel)}
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getUrgencyColor(request.urgency_level)}`}>
+                      {getUrgencyLabel(request.urgency_level)}
                     </span>
                   </td>
                   <td className="py-4 px-4">
@@ -537,7 +452,7 @@ export default function ConsentRequestsPage() {
                         {getStatusLabel(request.status)}
                       </span>
                     </div>
-                    {!request.isCompliant && (
+                    {!request.is_compliant && (
                       <div className="text-xs text-red-600 flex items-center gap-1 mt-1">
                         <AlertTriangle size={10} />
                         ไม่ผ่าน Compliance
@@ -545,7 +460,7 @@ export default function ConsentRequestsPage() {
                     )}
                   </td>
                   <td className="py-4 px-4 text-sm text-gray-500">
-                    {new Date(request.createdAt).toLocaleDateString('th-TH', {
+                    {new Date(request.created_at).toLocaleDateString('th-TH', {
                       year: 'numeric',
                       month: 'short',
                       day: 'numeric',
@@ -582,7 +497,7 @@ export default function ConsentRequestsPage() {
                         </>
                       )}
                       
-                      {request.urgencyLevel === 'emergency' && request.status !== 'approved' && (
+                      {request.urgency_level === 'emergency' && request.status !== 'approved' && (
                         <button
                           onClick={() => handleApprove(request.id)}
                           className="flex items-center gap-1 px-3 py-1.5 text-sm text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
@@ -607,7 +522,7 @@ export default function ConsentRequestsPage() {
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">
-                  รายละเอียดคำขอ: {selectedRequest.requestId}
+                  รายละเอียดคำขอ: {selectedRequest.request_id}
                 </h3>
                 <button
                   onClick={() => setShowDetailsModal(false)}
@@ -629,25 +544,11 @@ export default function ConsentRequestsPage() {
                   <div className="space-y-3 pl-6">
                     <div>
                       <label className="text-sm font-medium text-gray-600">ชื่อองค์กร</label>
-                      <p className="text-gray-900">{selectedRequest.requesterName}</p>
+                      <p className="text-gray-900">{selectedRequest.requester_name}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-600">ประเภท</label>
-                      <p className="text-gray-900">{getRequesterTypeLabel(selectedRequest.requesterType)}</p>
-                    </div>
-                    {selectedRequest.requesterLicense && (
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">เลขใบอนุญาต</label>
-                        <p className="text-gray-900">{selectedRequest.requesterLicense}</p>
-                      </div>
-                    )}
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">อีเมล</label>
-                      <p className="text-gray-900">{selectedRequest.contactInfo.email}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">โทรศัพท์</label>
-                      <p className="text-gray-900">{selectedRequest.contactInfo.phone}</p>
+                      <p className="text-gray-900">{getRequesterTypeLabel(selectedRequest.requester_type)}</p>
                     </div>
                   </div>
                 </div>
@@ -660,11 +561,11 @@ export default function ConsentRequestsPage() {
                   <div className="space-y-3 pl-6">
                     <div>
                       <label className="text-sm font-medium text-gray-600">ชื่อผู้ป่วย</label>
-                      <p className="text-gray-900">{selectedRequest.patientName}</p>
+                      <p className="text-gray-900">{selectedRequest.patient_name}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-600">เลข HN</label>
-                      <p className="text-gray-900">{selectedRequest.patientHN}</p>
+                      <p className="text-gray-900">{selectedRequest.patient_hn}</p>
                     </div>
                   </div>
                 </div>
@@ -680,12 +581,12 @@ export default function ConsentRequestsPage() {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <div>
                       <label className="text-sm font-medium text-gray-600">ประเภทคำขอ</label>
-                      <p className="text-gray-900">{getRequestTypeLabel(selectedRequest.requestType)}</p>
+                      <p className="text-gray-900">{getRequestTypeLabel(selectedRequest.request_type)}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-600">ความเร่งด่วน</label>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getUrgencyColor(selectedRequest.urgencyLevel)}`}>
-                        {getUrgencyLabel(selectedRequest.urgencyLevel)}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getUrgencyColor(selectedRequest.urgency_level)}`}>
+                        {getUrgencyLabel(selectedRequest.urgency_level)}
                       </span>
                     </div>
                     <div>
@@ -707,20 +608,13 @@ export default function ConsentRequestsPage() {
                   <div>
                     <label className="text-sm font-medium text-gray-600">ข้อมูลที่ขอ</label>
                     <div className="flex flex-wrap gap-2 mt-1">
-                      {selectedRequest.requestedDataTypes.map((type, index) => (
+                      {selectedRequest.requested_data_types.map((type, index) => (
                         <span key={index} className="inline-flex items-center px-2 py-1 rounded text-xs bg-blue-50 text-blue-700 border border-blue-200">
                           {getDataTypeLabel(type)}
                         </span>
                       ))}
                     </div>
                   </div>
-
-                  {selectedRequest.referenceNumber && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">เลขอ้างอิง</label>
-                      <p className="text-gray-900">{selectedRequest.referenceNumber}</p>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -735,7 +629,7 @@ export default function ConsentRequestsPage() {
                     <div>
                       <label className="text-sm font-medium text-gray-600">สถานะ Compliance</label>
                       <div className="flex items-center gap-2 mt-1">
-                        {selectedRequest.isCompliant ? (
+                        {selectedRequest.is_compliant ? (
                           <>
                             <CheckCircle className="text-green-600" size={16} />
                             <span className="text-green-600">ผ่านการตรวจสอบ</span>
@@ -748,11 +642,11 @@ export default function ConsentRequestsPage() {
                         )}
                       </div>
                     </div>
-                    {selectedRequest.complianceNotes && (
+                    {selectedRequest.compliance_notes && (
                       <div>
                         <label className="text-sm font-medium text-gray-600">หมายเหตุ Compliance</label>
                         <p className="text-red-600 bg-red-50 border border-red-200 rounded p-2 mt-1 text-sm">
-                          {selectedRequest.complianceNotes}
+                          {selectedRequest.compliance_notes}
                         </p>
                       </div>
                     )}
@@ -768,7 +662,7 @@ export default function ConsentRequestsPage() {
                     <div>
                       <label className="text-sm font-medium text-gray-600">วันที่สร้างคำขอ</label>
                       <p className="text-gray-900">
-                        {new Date(selectedRequest.createdAt).toLocaleDateString('th-TH', {
+                        {new Date(selectedRequest.created_at).toLocaleDateString('th-TH', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric',
@@ -780,7 +674,7 @@ export default function ConsentRequestsPage() {
                     <div>
                       <label className="text-sm font-medium text-gray-600">วันหมดอายุ</label>
                       <p className="text-gray-900">
-                        {new Date(selectedRequest.expiresAt).toLocaleDateString('th-TH', {
+                        {new Date(selectedRequest.expires_at).toLocaleDateString('th-TH', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric',
@@ -841,7 +735,7 @@ export default function ConsentRequestsPage() {
                     </button>
                   </div>
                 )}
-                {selectedRequest.urgencyLevel === 'emergency' && selectedRequest.status !== 'approved' && (
+                {selectedRequest.urgency_level === 'emergency' && selectedRequest.status !== 'approved' && (
                   <button
                     onClick={() => {
                       handleApprove(selectedRequest.id);

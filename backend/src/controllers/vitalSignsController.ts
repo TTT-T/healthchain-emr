@@ -194,6 +194,126 @@ export const createVitalSigns = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Create vital signs with visit ID from request body
+ * POST /api/medical/vital-signs
+ */
+export const createVitalSignsWithVisitId = async (req: Request, res: Response) => {
+  try {
+    const { visitId, patientId, ...vitalSignsData } = req.body;
+
+    // Validate required fields
+    if (!visitId) {
+      return res.status(400).json({
+        data: null,
+        meta: null,
+        error: { message: 'Visit ID is required' },
+        statusCode: 400
+      });
+    }
+
+    // Check if visit exists
+    const visitExists = await databaseManager.query(
+      'SELECT id, patient_id FROM visits WHERE id = $1',
+      [visitId]
+    );
+
+    if (visitExists.rows.length === 0) {
+      return res.status(404).json({
+        data: null,
+        meta: null,
+        error: { message: 'Visit not found' },
+        statusCode: 404
+      });
+    }
+
+    const visit = visitExists.rows[0];
+
+    // Get a valid user ID if not provided
+    const userId = (req as any).user?.id;
+    let validUserId = userId;
+    if (!validUserId || validUserId === '1') {
+      const userResult = await databaseManager.query('SELECT id FROM users WHERE role = $1 LIMIT 1', ['nurse']);
+      validUserId = userResult.rows[0]?.id;
+    }
+    
+    // Validate user ID exists
+    if (validUserId) {
+      const userExists = await databaseManager.query('SELECT id FROM users WHERE id = $1', [validUserId]);
+      if (userExists.rows.length === 0) {
+        const fallbackUser = await databaseManager.query('SELECT id FROM users WHERE role = $1 LIMIT 1', ['nurse']);
+        validUserId = fallbackUser.rows[0]?.id;
+      }
+    }
+
+    // Calculate BMI if not provided but weight and height are available
+    let calculatedBMI = vitalSignsData.bmi;
+    if (!calculatedBMI && vitalSignsData.weight && vitalSignsData.height) {
+      const heightInMeters = vitalSignsData.height / 100;
+      calculatedBMI = (vitalSignsData.weight / (heightInMeters * heightInMeters)).toFixed(1);
+    }
+
+    // Create vital signs record
+    const vitalSignsId = uuidv4();
+    const createVitalSignsQuery = `
+      INSERT INTO vital_signs (
+        id, patient_id, visit_id, systolic_bp, diastolic_bp, heart_rate,
+        temperature, respiratory_rate, oxygen_saturation, weight, height,
+        bmi, pain_scale, notes, measured_by, measurement_time
+      )
+      VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+      )
+      RETURNING *
+    `;
+
+    const now = new Date();
+    const vitalSignsResult = await databaseManager.query(createVitalSignsQuery, [
+      vitalSignsId, visit.patient_id, visitId, vitalSignsData.systolicBp, vitalSignsData.diastolicBp, vitalSignsData.heartRate,
+      vitalSignsData.bodyTemperature, vitalSignsData.respiratoryRate, vitalSignsData.oxygenSaturation, vitalSignsData.weight, vitalSignsData.height,
+      calculatedBMI, vitalSignsData.painLevel, vitalSignsData.notes, validUserId, now
+    ]);
+
+    const newVitalSigns = vitalSignsResult.rows[0];
+
+    res.status(201).json({
+      data: {
+        id: newVitalSigns.id,
+        patient_id: newVitalSigns.patient_id,
+        visit_id: newVitalSigns.visit_id,
+        systolic_bp: newVitalSigns.systolic_bp,
+        diastolic_bp: newVitalSigns.diastolic_bp,
+        heart_rate: newVitalSigns.heart_rate,
+        temperature: newVitalSigns.temperature,
+        respiratory_rate: newVitalSigns.respiratory_rate,
+        oxygen_saturation: newVitalSigns.oxygen_saturation,
+        weight: newVitalSigns.weight,
+        height: newVitalSigns.height,
+        bmi: newVitalSigns.bmi,
+        pain_scale: newVitalSigns.pain_scale,
+        notes: newVitalSigns.notes,
+        measurement_time: newVitalSigns.measurement_time,
+        created_at: newVitalSigns.created_at
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        measuredBy: validUserId
+      },
+      error: null,
+      statusCode: 201
+    });
+
+  } catch (error) {
+    console.error('Error creating vital signs with visit ID:', error);
+    res.status(500).json({
+      data: null,
+      meta: null,
+      error: { message: 'Internal server error' },
+      statusCode: 500
+    });
+  }
+};
+
 export const getVitalSignsByVisit = async (req: Request, res: Response) => {
   try {
     const { visitId } = req.params;

@@ -97,9 +97,9 @@ AND id NOT IN (
 DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints 
-        WHERE constraint_name = 'unique_users_national_id' 
-        AND table_name = 'users'
+        SELECT 1 FROM pg_indexes 
+        WHERE indexname = 'unique_users_national_id' 
+        AND tablename = 'users'
     ) THEN
         -- Only create unique constraint for non-null values
         CREATE UNIQUE INDEX unique_users_national_id ON users (national_id) WHERE national_id IS NOT NULL;

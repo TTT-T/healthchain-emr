@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { createLocalDateTimeString, formatLocalDateTime, formatLocalTime } from '@/utils/timeUtils';
 import { User } from '@/types/api';
 import { MedicalPatient } from '@/types/api';
 import { PDFStorageService } from './pdfStorageService';
@@ -95,7 +96,7 @@ export class PDFService {
     });
     
     // บันทึกไฟล์ (สำหรับดาวน์โหลดทันที)
-    const fileName = `checkin-report-${patient.hn || 'unknown'}-${queueNumber}-${new Date().toISOString().slice(0, 10)}.pdf`;
+    const fileName = `checkin-report-${patient.hn || 'unknown'}-${queueNumber}-${createLocalDateTimeString(new Date()).slice(0, 10)}.pdf`;
     doc.save(fileName);
   }
   
@@ -134,8 +135,8 @@ export class PDFService {
     
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Date: ${new Date().toLocaleDateString('en-US')}`, 20, 70);
-    doc.text(`Time: ${new Date().toLocaleTimeString('en-US')}`, 20, 78);
+    doc.text(`Date: ${formatLocalDateTime(new Date())}`, 20, 70);
+    doc.text(`Time: ${formatLocalTime(new Date())}`, 20, 78);
     doc.text(`Queue Number: ${queueNumber}`, pageWidth - 20, 70, { align: 'right' });
     
     // ข้อมูลผู้ป่วย - ใช้กล่อง
@@ -186,8 +187,8 @@ export class PDFService {
       ['Attending Doctor:', doctor.name || 'N/A'],
       ['Department:', doctor.department || 'N/A'],
       ['Specialization:', doctor.specialization || 'N/A'],
-      ['Visit Date:', checkInData.visitTime ? new Date(checkInData.visitTime).toLocaleDateString('en-US') : 'N/A'],
-      ['Visit Time:', checkInData.visitTime ? new Date(checkInData.visitTime).toLocaleTimeString('en-US') : 'N/A'],
+      ['Visit Date:', checkInData.visitTime ? formatLocalDateTime(new Date(checkInData.visitTime)) : 'N/A'],
+      ['Visit Time:', checkInData.visitTime ? formatLocalTime(new Date(checkInData.visitTime)) : 'N/A'],
       ['Chief Complaint:', checkInData.symptoms || 'N/A'],
       ['Notes:', checkInData.notes || 'N/A']
     ];
@@ -218,8 +219,8 @@ export class PDFService {
       ['Position:', this.getRoleLabel(currentUser.role) || 'N/A'],
       ['Department:', currentUser.departmentId || 'N/A'],
       ['Employee ID:', currentUser.employeeId || 'N/A'],
-      ['Created Date:', new Date().toLocaleDateString('en-US')],
-      ['Created Time:', new Date().toLocaleTimeString('en-US')]
+      ['Created Date:', formatLocalDateTime(new Date())],
+      ['Created Time:', formatLocalTime(new Date())]
     ];
     
     staffData.forEach(([label, value]) => {
@@ -266,7 +267,7 @@ export class PDFService {
     doc.text(`Queue Number: ${queueNumber}`, 20, 45);
     doc.text(`Patient: ${patient.hn || 'N/A'}`, 20, 55);
     doc.text(`Doctor: ${doctor.name || 'N/A'}`, 20, 65);
-    doc.text(`Date: ${new Date().toLocaleDateString('en-US')}`, 20, 75);
+    doc.text(`Date: ${formatLocalDateTime(new Date())}`, 20, 75);
   }
   
   /**
@@ -300,8 +301,8 @@ export class PDFService {
           
           <div class="section">
             <h3>ข้อมูลการเช็คอิน</h3>
-            <p><span class="label">วันที่:</span> <span class="value">${new Date().toLocaleDateString('th-TH')}</span></p>
-            <p><span class="label">เวลา:</span> <span class="value">${new Date().toLocaleTimeString('th-TH')}</span></p>
+            <p><span class="label">วันที่:</span> <span class="value">${formatLocalDateTime(new Date())}</span></p>
+            <p><span class="label">เวลา:</span> <span class="value">${formatLocalTime(new Date())}</span></p>
             <p><span class="label">หมายเลขคิว:</span> <span class="value">${queueNumber}</span></p>
           </div>
           
@@ -323,8 +324,8 @@ export class PDFService {
             <p><span class="label">แพทย์ผู้ตรวจ:</span> <span class="value">${doctor.name || 'ไม่ระบุ'}</span></p>
             <p><span class="label">แผนก:</span> <span class="value">${doctor.department || 'ไม่ระบุ'}</span></p>
             <p><span class="label">ความเชี่ยวชาญ:</span> <span class="value">${doctor.specialization || 'ไม่ระบุ'}</span></p>
-            <p><span class="label">วันที่มาตรวจ:</span> <span class="value">${checkInData.visitTime ? new Date(checkInData.visitTime).toLocaleDateString('th-TH') : 'ไม่ระบุ'}</span></p>
-            <p><span class="label">เวลาที่มาตรวจ:</span> <span class="value">${checkInData.visitTime ? new Date(checkInData.visitTime).toLocaleTimeString('th-TH') : 'ไม่ระบุ'}</span></p>
+            <p><span class="label">วันที่มาตรวจ:</span> <span class="value">${checkInData.visitTime ? formatLocalDateTime(new Date(checkInData.visitTime)) : 'ไม่ระบุ'}</span></p>
+            <p><span class="label">เวลาที่มาตรวจ:</span> <span class="value">${checkInData.visitTime ? formatLocalTime(new Date(checkInData.visitTime)) : 'ไม่ระบุ'}</span></p>
             <p><span class="label">อาการเบื้องต้น:</span> <span class="value">${checkInData.symptoms || 'ไม่ระบุ'}</span></p>
             <p><span class="label">หมายเหตุ:</span> <span class="value">${checkInData.notes || 'ไม่ระบุ'}</span></p>
           </div>
@@ -335,8 +336,8 @@ export class PDFService {
             <p><span class="label">ตำแหน่ง:</span> <span class="value">${this.getRoleLabel(currentUser.role) || 'ไม่ระบุ'}</span></p>
             <p><span class="label">แผนก:</span> <span class="value">${currentUser.departmentId || 'ไม่ระบุ'}</span></p>
             <p><span class="label">รหัสพนักงาน:</span> <span class="value">${currentUser.employeeId || 'ไม่ระบุ'}</span></p>
-            <p><span class="label">วันที่สร้าง:</span> <span class="value">${new Date().toLocaleDateString('th-TH')}</span></p>
-            <p><span class="label">เวลาที่สร้าง:</span> <span class="value">${new Date().toLocaleTimeString('th-TH')}</span></p>
+            <p><span class="label">วันที่สร้าง:</span> <span class="value">${formatLocalDateTime(new Date())}</span></p>
+            <p><span class="label">เวลาที่สร้าง:</span> <span class="value">${formatLocalTime(new Date())}</span></p>
           </div>
           
           <div class="section">

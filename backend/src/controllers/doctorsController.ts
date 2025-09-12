@@ -108,7 +108,7 @@ export const getAllDoctors = async (req: Request, res: Response) => {
         const estimatedWait = queueCount * 15;
 
         return {
-          id: doctor.id,
+          id: doctor.user_id, // Use user_id instead of doctor.id for foreign key compatibility
           name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
           department: doctor.department || 'ไม่ระบุ',
           specialization: doctor.specialization || 'ไม่ระบุ',
@@ -121,7 +121,7 @@ export const getAllDoctors = async (req: Request, res: Response) => {
           consultationFee: doctor.consultation_fee,
           email: doctor.email,
           phone: doctor.phone,
-          availability: doctor.availability ? JSON.parse(doctor.availability) : null
+          availability: doctor.availability && doctor.availability !== 'null' ? JSON.parse(doctor.availability) : null
         };
       } catch (error) {
         console.error(`Error getting queue for doctor ${doctor.id}:`, error);
@@ -130,7 +130,7 @@ export const getAllDoctors = async (req: Request, res: Response) => {
         const estimatedWait = queueCount * 15;
         
         return {
-          id: doctor.id,
+          id: doctor.user_id, // Use user_id instead of doctor.id for foreign key compatibility
           name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
           department: doctor.department || 'ไม่ระบุ',
           specialization: doctor.specialization || 'ไม่ระบุ',
@@ -143,7 +143,7 @@ export const getAllDoctors = async (req: Request, res: Response) => {
           consultationFee: doctor.consultation_fee,
           email: doctor.email,
           phone: doctor.phone,
-          availability: doctor.availability ? JSON.parse(doctor.availability) : null
+          availability: doctor.availability && doctor.availability !== 'null' ? JSON.parse(doctor.availability) : null
         };
       }
     }));
@@ -250,7 +250,7 @@ export const getDoctorById = async (req: Request, res: Response) => {
     }
     
     const formattedDoctor = {
-      id: doctor.id,
+      id: doctor.user_id, // Use user_id instead of doctor.id for foreign key compatibility
       name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
       department: doctor.department || 'ไม่ระบุ',
       specialization: doctor.specialization || 'ไม่ระบุ',
@@ -263,11 +263,11 @@ export const getDoctorById = async (req: Request, res: Response) => {
       consultationFee: doctor.consultation_fee,
       email: doctor.email,
       phone: doctor.phone,
-      availability: doctor.availability ? JSON.parse(doctor.availability) : null,
-      education: doctor.education ? JSON.parse(doctor.education) : null,
-      certifications: doctor.certifications ? JSON.parse(doctor.certifications) : null,
-      languages: doctor.languages ? JSON.parse(doctor.languages) : null,
-      workSchedule: doctor.work_schedule ? JSON.parse(doctor.work_schedule) : null,
+      availability: doctor.availability && doctor.availability !== 'null' ? JSON.parse(doctor.availability) : null,
+      education: doctor.education && doctor.education !== 'null' ? JSON.parse(doctor.education) : null,
+      certifications: doctor.certifications && doctor.certifications !== 'null' ? JSON.parse(doctor.certifications) : null,
+      languages: doctor.languages && doctor.languages !== 'null' ? JSON.parse(doctor.languages) : null,
+      workSchedule: doctor.work_schedule && doctor.work_schedule !== 'null' ? JSON.parse(doctor.work_schedule) : null,
       emergencyContact: doctor.emergency_contact,
       emergencyPhone: doctor.emergency_phone,
       createdAt: doctor.created_at,

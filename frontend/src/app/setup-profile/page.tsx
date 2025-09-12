@@ -169,7 +169,7 @@ const getDashboardUrl = (user: any) => {
   } else if (user.role === 'doctor' || user.role === 'nurse') {
     return '/emr/dashboard';
   } else if (user.role === 'admin') {
-    return '/admin/dashboard';
+    return '/admin';
   } else if (user.role === 'external_requester') {
     return '/external-requesters/dashboard';
   } else {

@@ -1,5 +1,6 @@
 import { apiClient } from '@/lib/api';
 import { logger } from '@/lib/logger';
+import { createLocalDateTimeString } from '@/utils/timeUtils';
 import { 
   MedicalPatient, 
   CreatePatientRequest, 
@@ -197,7 +198,7 @@ export class PatientService {
               page: 1,
               limit: 10,
               totalPages: 1,
-              timestamp: new Date().toISOString()
+              timestamp: createLocalDateTimeString(new Date())
             },
             error: null,
             statusCode: 200
@@ -348,8 +349,8 @@ export class PatientService {
             allergies: null,
             drug_allergies: null,
             chronic_diseases: null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            created_at: createLocalDateTimeString(new Date()),
+            updated_at: createLocalDateTimeString(new Date())
           }],
           meta: {
             total: 1,

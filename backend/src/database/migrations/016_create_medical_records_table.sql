@@ -95,8 +95,13 @@ CREATE INDEX IF NOT EXISTS idx_medical_records_recorded_time ON medical_records(
 CREATE INDEX IF NOT EXISTS idx_medical_records_visit_id ON medical_records(visit_id);
 CREATE INDEX IF NOT EXISTS idx_medical_records_recorded_by ON medical_records(recorded_by);
 
--- Trigger for timestamp updates
-CREATE TRIGGER update_medical_records_updated_at BEFORE UPDATE ON medical_records
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Trigger for timestamp updates (only create if it doesn't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_medical_records_updated_at') THEN
+        CREATE TRIGGER update_medical_records_updated_at BEFORE UPDATE ON medical_records
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
 
 COMMENT ON TABLE medical_records IS 'Medical Records - Unified table for all medical activities and patient summary';

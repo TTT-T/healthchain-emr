@@ -98,7 +98,7 @@ export default function ResponsiveSidebar({ userType = "patient", isOpen = false
       { href: "/accounts/doctor/appointments", label: "การนัดหมาย", icon: "📅" },
     ],
     admin: [
-      { href: "/accounts/admin/dashboard", label: "แดชบอร์ด", icon: "⚙️" },
+      { href: "/admin", label: "แดชบอร์ด", icon: "⚙️" },
       { href: "/accounts/admin/users", label: "ผู้ใช้งาน", icon: "👥" },
       { href: "/accounts/admin/reports", label: "รายงาน", icon: "📊" },
     ]
