@@ -29,7 +29,7 @@ export const getDatabaseStatus = async (req: Request, res: Response) => {
     const tableStats = await databaseManager.query(`
       SELECT 
         schemaname,
-        tablename,
+        relname as tablename,
         n_tup_ins as inserts,
         n_tup_upd as updates,
         n_tup_del as deletes,
@@ -59,8 +59,8 @@ export const getDatabaseStatus = async (req: Request, res: Response) => {
     const indexStats = await databaseManager.query(`
       SELECT 
         schemaname,
-        tablename,
-        indexname,
+        relname as tablename,
+        indexrelname as indexname,
         idx_tup_read,
         idx_tup_fetch,
         idx_scan,
@@ -69,19 +69,32 @@ export const getDatabaseStatus = async (req: Request, res: Response) => {
       ORDER BY idx_scan DESC
     `);
 
-    // Get slow queries (if available)
-    const slowQueriesResult = await databaseManager.query(`
-      SELECT 
-        query,
-        calls,
-        total_time,
-        mean_time,
-        rows
-      FROM pg_stat_statements
-      WHERE mean_time > 100
-      ORDER BY mean_time DESC
-      LIMIT 10
-    `).catch(() => ({ rows: [] })); // Ignore if pg_stat_statements is not available
+    // Get slow queries (if available) - check if extension exists first
+    let slowQueriesResult = { rows: [] };
+    try {
+      // Check if pg_stat_statements extension is available
+      const extensionCheck = await databaseManager.query(`
+        SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements'
+      `);
+      
+      if (extensionCheck.rows.length > 0) {
+        slowQueriesResult = await databaseManager.query(`
+          SELECT 
+            query,
+            calls,
+            total_time,
+            mean_time,
+            rows
+          FROM pg_stat_statements
+          WHERE mean_time > 100
+          ORDER BY mean_time DESC
+          LIMIT 10
+        `);
+      }
+    } catch (error) {
+      // Extension not available, use empty result
+      slowQueriesResult = { rows: [] };
+    }
 
     const responseTime = Date.now() - startTime;
 
@@ -127,30 +140,46 @@ export const getDatabaseStatus = async (req: Request, res: Response) => {
  */
 export const getDatabaseBackups = async (req: Request, res: Response) => {
   try {
+    // Check if backup tables exist first
+    const tableCheck = await databaseManager.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name IN ('database_backup_logs', 'system_settings')
+    `);
+    
+    const existingTables = tableCheck.rows.map(row => row.table_name);
+    
     // Get backup information from database backup log table
-    const backupLogsResult = await databaseManager.query(`
-      SELECT 
-        id,
-        filename,
-        size_bytes,
-        size_mb,
-        created_at,
-        status,
-        type,
-        description
-      FROM database_backup_logs
-      ORDER BY created_at DESC
-      LIMIT 50
-    `).catch(() => ({ rows: [] })); // Fallback if table doesn't exist
+    let backupLogsResult = { rows: [] };
+    if (existingTables.includes('database_backup_logs')) {
+      backupLogsResult = await databaseManager.query(`
+        SELECT 
+          id,
+          filename,
+          size_bytes,
+          size_mb,
+          created_at,
+          status,
+          type,
+          description
+        FROM database_backup_logs
+        ORDER BY created_at DESC
+        LIMIT 50
+      `);
+    }
 
     // Get backup policy from settings
-    const backupPolicyResult = await databaseManager.query(`
-      SELECT 
-        setting_name,
-        setting_value
-      FROM system_settings
-      WHERE setting_name LIKE 'backup_%'
-    `).catch(() => ({ rows: [] })); // Fallback if table doesn't exist
+    let backupPolicyResult = { rows: [] };
+    if (existingTables.includes('system_settings')) {
+      backupPolicyResult = await databaseManager.query(`
+        SELECT 
+          setting_name,
+          setting_value
+        FROM system_settings
+        WHERE setting_name LIKE 'backup_%'
+      `);
+    }
 
     // Process backup logs
     const backups = backupLogsResult.rows.map(backup => ({
@@ -263,29 +292,44 @@ export const createDatabaseBackup = async (req: Request, res: Response) => {
     const backupId = `backup_${Date.now()}`;
     const filename = `healthchain_backup_${new Date().toISOString().split('T')[0]}_${Date.now()}.sql`;
 
-    // Log backup creation in database
-    await databaseManager.query(`
-      INSERT INTO database_backup_logs (
-        id, filename, type, description, status, created_by, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
-    `, [backupId, filename, type, description || 'Manual backup', 'in_progress', userId])
-    .catch(() => {
-      // If table doesn't exist, just log to console
+    // Log backup creation in database (if table exists)
+    try {
+      const tableCheck = await databaseManager.query(`
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'database_backup_logs'
+      `);
+      
+      if (tableCheck.rows.length > 0) {
+        await databaseManager.query(`
+          INSERT INTO database_backup_logs (
+            id, filename, type, description, status, created_by, created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        `, [backupId, filename, type, description || 'Manual backup', 'in_progress', userId]);
+      } else {
+        console.log(`Backup logged: ${backupId} - ${filename}`);
+      }
+    } catch (error) {
       console.log(`Backup logged: ${backupId} - ${filename}`);
-    });
+    }
 
     // In a real implementation, this would trigger an actual backup process
     // For now, we'll simulate the backup completion after a delay
     setTimeout(async () => {
       try {
-        // Update backup status to completed
-        await databaseManager.query(`
-          UPDATE database_backup_logs 
-          SET status = 'completed', completed_at = NOW(), size_bytes = $1, size_mb = $2
-          WHERE id = $3
-        `, [2684354560, 2560, backupId]).catch(() => {
-          console.log(`Backup completed: ${backupId}`);
-        });
+        // Update backup status to completed (if table exists)
+        const tableCheck = await databaseManager.query(`
+          SELECT 1 FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = 'database_backup_logs'
+        `);
+        
+        if (tableCheck.rows.length > 0) {
+          await databaseManager.query(`
+            UPDATE database_backup_logs 
+            SET status = 'completed', completed_at = NOW(), size_bytes = $1, size_mb = $2
+            WHERE id = $3
+          `, [2684354560, 2560, backupId]);
+        }
+        console.log(`Backup completed: ${backupId}`);
       } catch (error) {
         console.error('Error updating backup status:', error);
       }
@@ -328,22 +372,62 @@ export const createDatabaseBackup = async (req: Request, res: Response) => {
 export const optimizeDatabase = async (req: Request, res: Response) => {
   try {
     const { type = 'full' } = req.body;
+    const userId = (req as any).user?.id;
+
+    // Log maintenance operation start
+    let maintenanceLogId = null;
+    try {
+      const tableCheck = await databaseManager.query(`
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'database_maintenance_logs'
+      `);
+      
+      if (tableCheck.rows.length > 0) {
+        const logResult = await databaseManager.query(`
+          INSERT INTO database_maintenance_logs (
+            operation_type, status, started_at, performed_by
+          ) VALUES ($1, $2, NOW(), $3) RETURNING id
+        `, [type, 'started', userId]);
+        maintenanceLogId = logResult.rows[0].id;
+      }
+    } catch (error) {
+      console.log('Could not log maintenance operation:', error.message);
+    }
 
     // Perform database optimization
     const startTime = Date.now();
+    let errorMessage = null;
 
-    if (type === 'full') {
-      // VACUUM ANALYZE
-      await databaseManager.query('VACUUM ANALYZE');
-    } else if (type === 'vacuum') {
-      // VACUUM only
-      await databaseManager.query('VACUUM');
-    } else if (type === 'analyze') {
-      // ANALYZE only
-      await databaseManager.query('ANALYZE');
+    try {
+      if (type === 'full') {
+        // VACUUM ANALYZE
+        await databaseManager.query('VACUUM ANALYZE');
+      } else if (type === 'vacuum') {
+        // VACUUM only
+        await databaseManager.query('VACUUM');
+      } else if (type === 'analyze') {
+        // ANALYZE only
+        await databaseManager.query('ANALYZE');
+      }
+    } catch (error) {
+      errorMessage = error.message;
+      throw error;
     }
 
     const duration = Date.now() - startTime;
+
+    // Log maintenance operation completion
+    if (maintenanceLogId) {
+      try {
+        await databaseManager.query(`
+          UPDATE database_maintenance_logs 
+          SET status = $1, completed_at = NOW(), duration_ms = $2, error_message = $3
+          WHERE id = $4
+        `, [errorMessage ? 'failed' : 'completed', duration, errorMessage, maintenanceLogId]);
+      } catch (error) {
+        console.log('Could not update maintenance log:', error.message);
+      }
+    }
 
     res.status(200).json({
       data: {
@@ -412,7 +496,7 @@ export const getDatabasePerformance = async (req: Request, res: Response) => {
     const tableAccessStats = await databaseManager.query(`
       SELECT 
         schemaname,
-        tablename,
+        relname as tablename,
         seq_scan,
         seq_tup_read,
         idx_scan,
@@ -424,6 +508,32 @@ export const getDatabasePerformance = async (req: Request, res: Response) => {
       ORDER BY seq_scan + idx_scan DESC
       LIMIT 10
     `);
+
+    // Store performance metrics (if table exists)
+    try {
+      const tableCheck = await databaseManager.query(`
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'database_performance_metrics'
+      `);
+      
+      if (tableCheck.rows.length > 0) {
+        const metrics = [
+          { name: 'active_connections', value: connectionStats.rows.find(r => r.state === 'active')?.count || 0 },
+          { name: 'total_connections', value: connectionStats.rows.reduce((sum, r) => sum + parseInt(r.count), 0) },
+          { name: 'cache_hit_ratio', value: cacheStats.rows[0]?.value || 0 },
+          { name: 'total_locks', value: lockStats.rows.reduce((sum, r) => sum + parseInt(r.count), 0) }
+        ];
+
+        for (const metric of metrics) {
+          await databaseManager.query(`
+            INSERT INTO database_performance_metrics (metric_name, metric_value, metric_unit, recorded_at)
+            VALUES ($1, $2, $3, NOW())
+          `, [metric.name, metric.value, metric.name.includes('ratio') ? 'percent' : 'count']);
+        }
+      }
+    } catch (error) {
+      console.log('Could not store performance metrics:', error.message);
+    }
 
     res.status(200).json({
       data: {

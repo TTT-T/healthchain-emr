@@ -130,6 +130,9 @@ import {
   getRequestStatistics
 } from '../controllers/adminRequestHistoryController';
 
+// Import Activity Logs routes
+import activityLogsRoutes from './adminActivityLogsRoutes';
+
 const router = express.Router();
 
 // Apply authentication and admin authorization to all routes
@@ -269,5 +272,10 @@ router.get('/system-monitoring/services', authenticate, asyncHandler(getServiceS
 router.get('/system-monitoring/alerts', authenticate, asyncHandler(getSystemAlerts));
 router.get('/system-monitoring/all', authenticate, asyncHandler(getAllSystemData));
 router.post('/system-monitoring/alerts/:alertId/resolve', authenticate, asyncHandler(resolveAlert));
+
+/**
+ * Activity Logs Routes
+ */
+router.use('/activity-logs', activityLogsRoutes);
 
 export default router;

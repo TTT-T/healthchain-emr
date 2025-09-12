@@ -178,6 +178,13 @@ export class MigrationManager {
         up: async () => {
           await this.runSqlMigration('017_create_consent_requests_table.sql');
         }
+      },
+      {
+        name: '018_create_database_management_tables',
+        description: 'Create database management tables for admin panel',
+        up: async () => {
+          await this.runSqlMigration('018_create_database_management_tables.sql');
+        }
       }
     ];
 

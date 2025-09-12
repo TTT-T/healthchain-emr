@@ -3,114 +3,78 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Download, RefreshCw, User, Clock, Activity, Eye } from 'lucide-react';
 import { logger } from '@/lib/logger';
+import { ActivityLogsService, ActivityLog, ActivityLogsFilters } from '@/services/activityLogsService';
 
-interface ActivityLog {
-  id: string;
-  timestamp: string;
-  user: string;
-  userRole: string;
-  action: string;
-  module: string;
-  details: string;
-  ipAddress: string;
-  status: 'success' | 'warning' | 'error';
+interface ActivityLogStats {
+  totalActivities: number;
+  successRate: number;
+  warnings: number;
+  errors: number;
 }
 
-const mockActivityLogs: ActivityLog[] = [
-  {
-    id: '1',
-    timestamp: '2024-12-19 14:30:45',
-    user: 'John Doe',
-    userRole: 'Admin',
-    action: 'User Created',
-    module: 'User Management',
-    details: 'Created new patient account for Jane Smith',
-    ipAddress: '192.168.1.100',
-    status: 'success'
-  },
-  {
-    id: '2',
-    timestamp: '2024-12-19 14:28:12',
-    user: 'Dr. Sarah Wilson',
-    userRole: 'Doctor',
-    action: 'Record Updated',
-    module: 'Medical Records',
-    details: 'Updated medical record #MR-2024-001',
-    ipAddress: '192.168.1.105',
-    status: 'success'
-  },
-  {
-    id: '3',
-    timestamp: '2024-12-19 14:25:33',
-    user: 'System',
-    userRole: 'System',
-    action: 'Login Failed',
-    module: 'Authentication',
-    details: 'Failed login attempt for user: admin@hospital.com',
-    ipAddress: '203.154.123.45',
-    status: 'warning'
-  },
-  {
-    id: '4',
-    timestamp: '2024-12-19 14:20:18',
-    user: 'Mike Johnson',
-    userRole: 'Nurse',
-    action: 'Data Export',
-    module: 'Reports',
-    details: 'Exported patient list report',
-    ipAddress: '192.168.1.110',
-    status: 'success'
-  },
-  {
-    id: '5',
-    timestamp: '2024-12-19 14:15:22',
-    user: 'System',
-    userRole: 'System',
-    action: 'Database Error',
-    module: 'Database',
-    details: 'Connection timeout while accessing patient records',
-    ipAddress: '127.0.0.1',
-    status: 'error'
-  }
-];
-
 export default function ActivityLogsPage() {
-  const [logs, setLogs] = useState<ActivityLog[]>(mockActivityLogs);
-  const [filteredLogs, setFilteredLogs] = useState<ActivityLog[]>(mockActivityLogs);
+  const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [filteredLogs, setFilteredLogs] = useState<ActivityLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterModule, setFilterModule] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterUser, setFilterUser] = useState('');
   const [dateRange, setDateRange] = useState('today');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [availableModules, setAvailableModules] = useState<string[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<string[]>([]);
+  const [stats, setStats] = useState<ActivityLogStats>({
+    totalActivities: 0,
+    successRate: 0,
+    warnings: 0,
+    errors: 0
+  });
 
-  const modules = [...new Set(logs.map(log => log.module))];
-  const users = [...new Set(logs.map(log => log.user))];
+  // Load activity logs data
+  const loadActivityLogs = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
+      const filters: ActivityLogsFilters = {
+        page: currentPage,
+        limit: 50,
+        search: searchTerm || undefined,
+        module: filterModule || undefined,
+        status: filterStatus || undefined,
+        user: filterUser || undefined,
+        dateRange: dateRange || 'today',
+        sortBy: 'created_at',
+        sortOrder: 'desc'
+      };
+
+      const response = await ActivityLogsService.getActivityLogs(filters);
+      
+      setLogs(response.logs);
+      setFilteredLogs(response.logs);
+      setCurrentPage(response.pagination.page);
+      setTotalPages(response.pagination.totalPages);
+      setTotalRecords(response.pagination.total);
+      setAvailableModules(response.filters.modules);
+      setAvailableUsers(response.filters.users);
+      setStats(response.statistics);
+
+    } catch (err) {
+      logger.error('Error loading activity logs:', err);
+      setError('Failed to load activity logs');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load data on component mount and when filters change
   useEffect(() => {
-    let filtered = logs;
-
-    if (searchTerm) {
-      filtered = filtered.filter(log =>
-        log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.user.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (filterModule) {
-      filtered = filtered.filter(log => log.module === filterModule);
-    }
-
-    if (filterStatus) {
-      filtered = filtered.filter(log => log.status === filterStatus);
-    }
-
-    if (filterUser) {
-      filtered = filtered.filter(log => log.user === filterUser);
-    }
-
-    setFilteredLogs(filtered);
-  }, [searchTerm, filterModule, filterStatus, filterUser, logs]);
+    loadActivityLogs();
+  }, [currentPage, searchTerm, filterModule, filterStatus, filterUser, dateRange]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -130,13 +94,71 @@ export default function ActivityLogsPage() {
     }
   };
 
-  const handleExport = () => {
-    logger.debug('Exporting activity logs...');
+  const handleExport = async () => {
+    try {
+      logger.debug('Exporting activity logs...');
+      
+      const filters = {
+        search: searchTerm || undefined,
+        module: filterModule || undefined,
+        status: filterStatus || undefined,
+        user: filterUser || undefined,
+        dateRange: dateRange || 'today',
+        format: 'csv' as const
+      };
+
+      const blob = await ActivityLogsService.exportActivityLogs(filters) as Blob;
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `activity_logs_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      logger.debug('Activity logs exported successfully');
+    } catch (err) {
+      logger.error('Error exporting activity logs:', err);
+      setError('Failed to export activity logs');
+    }
   };
 
   const handleRefresh = () => {
     logger.debug('Refreshing logs...');
+    loadActivityLogs();
   };
+
+  if (loading) {
+    return (
+      <div className="w-full h-full bg-gray-50 p-2 lg:p-4 overflow-auto flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading activity logs...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full h-full bg-gray-50 p-2 lg:p-4 overflow-auto flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-6xl mb-4">⚠️</div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Activity Logs</h3>
+          <p className="text-gray-500 mb-4">{error}</p>
+          <button
+            onClick={handleRefresh}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full bg-gray-50 p-2 lg:p-4 overflow-auto">
@@ -175,7 +197,7 @@ export default function ActivityLogsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Activities</p>
-              <p className="text-2xl font-bold text-gray-900">{logs.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalActivities}</p>
             </div>
             <Activity className="text-blue-600" size={24} />
           </div>
@@ -185,7 +207,7 @@ export default function ActivityLogsPage() {
             <div>
               <p className="text-sm font-medium text-gray-600">Success Rate</p>
               <p className="text-2xl font-bold text-green-600">
-                {Math.round((logs.filter(l => l.status === 'success').length / logs.length) * 100)}%
+                {stats.successRate}%
               </p>
             </div>
             <div className="text-green-600 text-xl">✓</div>
@@ -196,7 +218,7 @@ export default function ActivityLogsPage() {
             <div>
               <p className="text-sm font-medium text-gray-600">Warnings</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {logs.filter(l => l.status === 'warning').length}
+                {stats.warnings}
               </p>
             </div>
             <div className="text-yellow-600 text-xl">⚠</div>
@@ -207,7 +229,7 @@ export default function ActivityLogsPage() {
             <div>
               <p className="text-sm font-medium text-gray-600">Errors</p>
               <p className="text-2xl font-bold text-red-600">
-                {logs.filter(l => l.status === 'error').length}
+                {stats.errors}
               </p>
             </div>
             <div className="text-red-600 text-xl">✗</div>
@@ -237,7 +259,7 @@ export default function ActivityLogsPage() {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">All Modules</option>
-            {modules.map(module => (
+            {availableModules.map(module => (
               <option key={module} value={module}>{module}</option>
             ))}
           </select>
@@ -261,7 +283,7 @@ export default function ActivityLogsPage() {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">All Users</option>
-            {users.map(user => (
+            {availableUsers.map(user => (
               <option key={user} value={user}>{user}</option>
             ))}
           </select>
@@ -323,7 +345,7 @@ export default function ActivityLogsPage() {
                       <User className="text-gray-400" size={14} />
                       <div>
                         <div className="text-sm font-medium text-gray-900">{log.user}</div>
-                        <div className="text-sm text-gray-500">{log.userRole}</div>
+                        <div className="text-sm text-gray-500">{log.user_role}</div>
                       </div>
                     </div>
                   </td>
@@ -337,7 +359,7 @@ export default function ActivityLogsPage() {
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm text-gray-900">{log.details}</span>
-                    <div className="text-xs text-gray-500 mt-1">IP: {log.ipAddress}</div>
+                    <div className="text-xs text-gray-500 mt-1">IP: {log.ip_address}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(log.status)}`}>
@@ -368,19 +390,42 @@ export default function ActivityLogsPage() {
       {filteredLogs.length > 0 && (
         <div className="mt-6 flex items-center justify-between">
           <div className="text-sm text-gray-500">
-            Showing {filteredLogs.length} of {logs.length} activities
+            Showing {filteredLogs.length} of {totalRecords} activities
           </div>
           <div className="flex gap-2">
-            <button className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
+            <button 
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Previous
             </button>
-            <button className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg">
-              1
-            </button>
-            <button className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
-              2
-            </button>
-            <button className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors">
+            
+            {/* Page numbers */}
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+              if (pageNum > totalPages) return null;
+              
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                    pageNum === currentPage
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            
+            <button 
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Next
             </button>
           </div>

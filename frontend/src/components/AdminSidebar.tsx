@@ -31,6 +31,8 @@ interface MenuItem {
   label: string;
   description: string;
   category: 'main' | 'management' | 'monitoring' | 'admin';
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
 const menuItems: MenuItem[] = [
@@ -60,42 +62,54 @@ const menuItems: MenuItem[] = [
     icon: Building2,
     label: 'External Requesters',
     description: 'จัดการผู้ขอข้อมูลภายนอก',
-    category: 'management'
+    category: 'management',
+    disabled: true,
+    disabledReason: 'ไม่มีข้อมูล'
   },
   {
     href: '/admin/consent-dashboard',
     icon: FileCheck,
     label: 'Consent Management',
     description: 'จัดการการยินยอม',
-    category: 'management'
+    category: 'management',
+    disabled: true,
+    disabledReason: 'ไม่มีข้อมูล'
   },
   {
     href: '/admin/consent-requests',
     icon: UserCheck,
     label: 'Consent Requests',
     description: 'คำขอการยินยอม',
-    category: 'management'
+    category: 'management',
+    disabled: true,
+    disabledReason: 'ไม่มีข้อมูล'
   },
   {
     href: '/admin/consent-contracts',
     icon: FileText,
     label: 'Consent Contracts',
     description: 'สัญญาการยินยอม',
-    category: 'management'
+    category: 'management',
+    disabled: true,
+    disabledReason: 'ไม่มีข้อมูล'
   },
   {
     href: '/admin/consent-compliance',
     icon: Shield,
     label: 'Consent Compliance',
     description: 'การปฏิบัติตามกฎเกณฑ์',
-    category: 'monitoring'
+    category: 'monitoring',
+    disabled: true,
+    disabledReason: 'ไม่มีข้อมูล'
   },
   {
     href: '/admin/consent-audit',
     icon: BarChart3,
     label: 'Consent Audit',
     description: 'รายงานการตรวจสอบ',
-    category: 'monitoring'
+    category: 'monitoring',
+    disabled: true,
+    disabledReason: 'ไม่มีข้อมูล'
   },
   {
     href: '/admin/system-monitoring',
@@ -123,7 +137,9 @@ const menuItems: MenuItem[] = [
     icon: Mail,
     label: 'Notifications',
     description: 'การแจ้งเตือน',
-    category: 'admin'
+    category: 'admin',
+    disabled: true,
+    disabledReason: 'ยังไม่ได้พัฒนา'
   },
   {
     href: '/admin/settings',
@@ -297,6 +313,7 @@ export default function AdminSidebar({
                     {items.map((item) => {
                       const Icon = item.icon;
                       const isActive = pathname === item.href;
+                      const isDisabled = item.disabled;
                       
                       return (
                         <Link
@@ -304,20 +321,38 @@ export default function AdminSidebar({
                           href={item.href}
                           onClick={sidebarIsOpen ? handleClose : undefined}
                           className={`flex items-center p-2 rounded-lg transition-colors group ${
-                            isActive
+                            isDisabled
+                              ? 'text-gray-400 hover:bg-gray-50'
+                              : isActive
                               ? 'bg-purple-50 text-purple-700 border-l-2 border-purple-700'
                               : 'text-gray-700 hover:bg-gray-50'
                           } ${(sidebarIsCollapsed && !sidebarIsOpen) ? 'justify-center' : ''}`}
-                          title={(sidebarIsCollapsed && !sidebarIsOpen) ? item.label : item.description}
+                          title={
+                            isDisabled 
+                              ? `${item.label} - ${item.disabledReason}`
+                              : (sidebarIsCollapsed && !sidebarIsOpen) 
+                              ? item.label 
+                              : item.description
+                          }
                         >
                           <Icon className={`h-4 w-4 ${(sidebarIsCollapsed && !sidebarIsOpen) ? '' : 'mr-2'} ${
-                            isActive ? 'text-purple-700' : 'text-gray-500 group-hover:text-gray-700'
+                            isDisabled 
+                              ? 'text-gray-400' 
+                              : isActive 
+                              ? 'text-purple-700' 
+                              : 'text-gray-500 group-hover:text-gray-700'
                           }`} />
                           {(!sidebarIsCollapsed || sidebarIsOpen) && (
                             <div className="flex-1">
-                              <div className="font-medium text-sm">{item.label}</div>
-                              <div className="text-xs text-gray-500 mt-0.5 truncate">
-                                {item.description}
+                              <div className={`font-medium text-sm ${
+                                isDisabled ? 'text-gray-400' : ''
+                              }`}>
+                                {item.label}
+                              </div>
+                              <div className={`text-xs mt-0.5 truncate ${
+                                isDisabled ? 'text-gray-400' : 'text-gray-500'
+                              }`}>
+                                {isDisabled ? item.disabledReason : item.description}
                               </div>
                             </div>
                           )}

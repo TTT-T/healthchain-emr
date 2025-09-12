@@ -18,6 +18,7 @@ interface TableInfo {
   name: string;
   records: number;
   size: string;
+  sizeBytes?: number;
   lastUpdated: string;
   status: 'active' | 'inactive';
 }
@@ -85,13 +86,17 @@ export default function DatabasePage() {
         setDatabaseStatus(statusResponse.data);
         
         // Map database status to DatabaseStats format
+        const dbData = statusResponse.data as any;
+        const connectionInfo = dbData.connection || {};
+        const tablesData = dbData.tables || {};
+        
         const mappedDatabases: DatabaseStats[] = [{
-          name: (statusResponse.data as any).database_name || 'healthchain_main',
-          size: (statusResponse.data as any).database_size || 'Unknown',
-          tables: (statusResponse.data as any).table_count || 0,
-          records: (statusResponse.data as any).total_records || 0,
-          status: (statusResponse.data as any).status === 'connected' ? 'healthy' : 'error',
-          lastBackup: (statusResponse.data as any).last_backup || 'Never'
+          name: connectionInfo.database_name || 'postgres',
+          size: connectionInfo.database_size || 'Unknown',
+          tables: tablesData.statistics?.length || 0,
+          records: tablesData.statistics?.reduce((sum: number, table: any) => sum + (parseInt(table.live_tuples) || 0), 0) || 0,
+          status: dbData.status === 'healthy' ? 'healthy' : 'error',
+          lastBackup: 'Never'
         }];
         setDatabases(mappedDatabases);
         
@@ -100,18 +105,35 @@ export default function DatabasePage() {
         }
       }
 
-      // Load table information
-      // const tablesResponse = await apiClient.getDatabaseTables();
-      // if (tablesResponse.success) {
-        // const mappedTables: TableInfo[] = tablesResponse.data.tables?.map((table: any) => ({
-        //   name: table.table_name,
-        //   records: table.row_count || 0,
-        //   size: table.table_size || 'Unknown',
-        //   lastUpdated: table.last_updated || 'Unknown',
-        //   status: 'active'
-        // })) || [];
-        // setTables(mappedTables);
-      // }
+      // Load table information from database status
+      if (statusResponse.statusCode === 200) {
+        const dbData = statusResponse.data as any;
+        const tablesData = dbData.tables || {};
+        const tableSizes = tablesData.sizes || [];
+        const tableStats = tablesData.statistics || [];
+        
+        // Map table statistics to TableInfo format
+        const mappedTables: TableInfo[] = tableStats.map((table: any) => {
+          const sizeInfo = tableSizes.find((size: any) => size.tablename === table.tablename);
+          const tableSize = sizeInfo?.size || 'Unknown';
+          const tableSizeBytes = parseInt(sizeInfo?.size_bytes) || 0;
+          
+          // Debug: Log size information
+          if (tableSizeBytes > 0) {
+            console.log(`Table ${table.tablename}: ${tableSize} (${tableSizeBytes} bytes)`);
+          }
+          
+          return {
+            name: table.tablename,
+            records: parseInt(table.live_tuples) || 0,
+            size: tableSize,
+            sizeBytes: tableSizeBytes, // Store bytes for accurate calculation
+            lastUpdated: table.last_analyze ? new Date(table.last_analyze).toLocaleString() : 'Unknown',
+            status: 'active'
+          };
+        });
+        setTables(mappedTables);
+      }
 
       // Load backups
       // const backupsResponse = await apiClient.getDatabaseBackups();
@@ -209,8 +231,62 @@ export default function DatabasePage() {
     }
   };
 
-  const totalRecords = databases.reduce((sum, db) => sum + db.records, 0);
-  const totalSize = databases.reduce((sum, db) => sum + parseFloat(db.size), 0);
+  const totalRecords = tables.reduce((sum, table) => sum + table.records, 0);
+  const totalSize = tables.reduce((sum, table) => {
+    // Use sizeBytes if available for accurate calculation
+    if (table.sizeBytes && table.sizeBytes > 0) {
+      const sizeInGB = table.sizeBytes / (1024 * 1024 * 1024);
+      console.log(`Table ${table.name}: ${table.sizeBytes} bytes -> ${sizeInGB.toFixed(6)} GB`);
+      return sum + sizeInGB;
+    }
+    
+    // Fallback to parsing size string if sizeBytes not available
+    if (!table.size || table.size === 'Unknown') {
+      console.log(`Table ${table.name}: No size information available`);
+      return sum;
+    }
+    
+    const sizeStr = table.size.replace(' GB', '').replace(' MB', '').replace(' KB', '').replace(' bytes', '');
+    const size = parseFloat(sizeStr);
+    if (isNaN(size)) {
+      console.log(`Table ${table.name}: Invalid size format: ${table.size}`);
+      return sum;
+    }
+    
+    let sizeInGB = 0;
+    
+    // Convert to GB if needed
+    if (table.size.includes(' MB')) {
+      sizeInGB = size / 1024;
+    } else if (table.size.includes(' KB')) {
+      sizeInGB = size / (1024 * 1024);
+    } else if (table.size.includes(' bytes')) {
+      sizeInGB = size / (1024 * 1024 * 1024);
+    } else if (table.size.includes(' GB')) {
+      sizeInGB = size; // Already in GB
+    } else {
+      // If no unit specified, assume it's already in GB
+      sizeInGB = size;
+    }
+    
+    console.log(`Table ${table.name}: ${table.size} -> ${sizeInGB.toFixed(6)} GB (fallback)`);
+    return sum + sizeInGB;
+  }, 0);
+
+  // Debug: Log total size calculation
+  console.log(`🔍 Total Size Calculation: ${totalSize.toFixed(6)} GB`);
+  console.log(`🔍 Total Size Rounded: ${totalSize.toFixed(3)} GB`);
+  
+  // Format total size for display
+  const formatTotalSize = (sizeInGB: number): string => {
+    if (sizeInGB >= 1) {
+      return `${sizeInGB.toFixed(2)} GB`;
+    } else if (sizeInGB >= 0.001) {
+      return `${(sizeInGB * 1024).toFixed(1)} MB`;
+    } else {
+      return `${(sizeInGB * 1024 * 1024).toFixed(0)} KB`;
+    }
+  };
 
   if (loading) {
     return (
@@ -303,7 +379,7 @@ export default function DatabasePage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Size</p>
-              <p className="text-2xl font-bold text-gray-900">{totalSize.toFixed(1)} GB</p>
+              <p className="text-2xl font-bold text-gray-900">{formatTotalSize(totalSize)}</p>
             </div>
             <Server className="text-purple-600" size={24} />
           </div>
@@ -438,37 +514,47 @@ export default function DatabasePage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {tables.map((table) => (
-                <tr key={table.name} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="font-medium text-gray-900">{table.name}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {table.records.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{table.size}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{table.lastUpdated}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(table.status)}`}>
-                      {getStatusIcon(table.status)}
-                      {table.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <button className="text-blue-600 hover:text-blue-900 transition-colors">
-                        <Monitor size={16} />
-                      </button>
-                      <button className="text-green-600 hover:text-green-900 transition-colors">
-                        <Download size={16} />
-                      </button>
-                      <button className="text-yellow-600 hover:text-yellow-900 transition-colors">
-                        <Settings size={16} />
-                      </button>
-                    </div>
+              {tables.length > 0 ? (
+                tables.map((table) => (
+                  <tr key={table.name} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="font-medium text-gray-900">{table.name}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {table.records.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{table.size}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{table.lastUpdated}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(table.status)}`}>
+                        {getStatusIcon(table.status)}
+                        {table.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <button className="text-blue-600 hover:text-blue-900 transition-colors">
+                          <Monitor size={16} />
+                        </button>
+                        <button className="text-green-600 hover:text-green-900 transition-colors">
+                          <Download size={16} />
+                        </button>
+                        <button className="text-yellow-600 hover:text-yellow-900 transition-colors">
+                          <Settings size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    <Database size={48} className="mx-auto mb-2 text-gray-300" />
+                    <p>ไม่มีข้อมูลตาราง</p>
+                    <p className="text-sm">กดปุ่ม Refresh เพื่อโหลดข้อมูลใหม่</p>
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
