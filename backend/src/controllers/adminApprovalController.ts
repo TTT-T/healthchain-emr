@@ -162,12 +162,11 @@ export const approveUser = async (req: Request, res: Response) => {
       UPDATE users 
       SET 
         is_active = true,
-        updated_at = NOW(),
-        updated_by = $1
-      WHERE id = $2
+        updated_at = NOW()
+      WHERE id = $1
       RETURNING *
     `;
-    const updateResult = await databaseManager.query(updateQuery, [approvedBy, id]);
+    const updateResult = await databaseManager.query(updateQuery, [id]);
 
     // Log approval action
     await databaseManager.query(`
@@ -275,12 +274,11 @@ export const rejectUser = async (req: Request, res: Response) => {
       SET 
         is_active = false,
         updated_at = NOW(),
-        updated_by = $1,
-        rejection_reason = $2
-      WHERE id = $3
+        rejection_reason = $1
+      WHERE id = $2
       RETURNING *
     `;
-    const updateResult = await databaseManager.query(updateQuery, [rejectedBy, rejectionReason, id]);
+    const updateResult = await databaseManager.query(updateQuery, [rejectionReason, id]);
 
     // Log rejection action
     await databaseManager.query(`

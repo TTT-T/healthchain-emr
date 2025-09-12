@@ -79,7 +79,7 @@ export default function EMRDashboard() {
     try {
       logger.debug('📊 Loading dashboard data...');
 
-      // Fetch real data from API
+      // Fetch real data from API - get patients data
       const promises = [
         apiClient.getPatients({ page: 1, limit: 100 }),
         // TODO: Add more real API calls when available:
@@ -90,21 +90,15 @@ export default function EMRDashboard() {
 
       const [patientsResponse] = await Promise.all(promises);
 
-      // Calculate stats from real data
+      // Calculate stats from real data - use patients data but show 0 since no actual patient users exist
       const patientsData = (patientsResponse.data?.patients as any[]) || [];
-      const todayPatientsCount = patientsData.length;
+      // Since there are no users with "patient" role, we'll show 0 for patient count
+      const todayPatientsCount = 0;
       
-      // Count patients with active visits (in_progress status)
-      const activeQueueCount = patientsData.filter((patient: any) => 
-        patient.visit_info?.visit_status === 'in_progress' || 
-        patient.visit_status === 'in_progress'
-      ).length;
-      
-      // Count completed visits
-      const completedVisitsCount = patientsData.filter((patient: any) => 
-        patient.visit_info?.visit_status === 'completed' || 
-        patient.visit_status === 'completed'
-      ).length;
+      // For now, set these to 0 since we don't have visit data for patient users
+      // TODO: Implement proper visit tracking for patient users
+      const activeQueueCount = 0;
+      const completedVisitsCount = 0;
       
       // Set real stats from actual data
       setStats({
@@ -118,39 +112,20 @@ export default function EMRDashboard() {
         criticalAlerts: 0 // Will be calculated from real alert data when available
       });
 
-      // Generate queue data from patients with active visits only
-      const activePatients = patientsData.filter((patient: any) => 
-        patient.visit_info?.visit_status === 'in_progress' || 
-        patient.visit_status === 'in_progress'
-      );
-      
-      const queueData: QueueItem[] = activePatients.slice(0, 5).map((patient: any, index: number) => ({
-        id: `${patient.id}-queue-${index}`, // Make unique key by adding index
-        queueNumber: patient.visit_info?.visit_number || patient.personal_info?.hospital_number || `HN${String(index + 1).padStart(3, '0')}`,
-        patientName: patient.personal_info?.thai_name || `${patient.personal_info?.first_name || ''} ${patient.personal_info?.last_name || ''}`.trim() || 'ไม่ระบุชื่อ',
-        status: 'waiting' as any, // Real status - patients with in_progress visits are waiting
-        department: patient.department || 'ไม่ระบุแผนก',
-        waitTime: 0, // Real wait time - will be calculated from appointment data when available
-        priority: 'normal' as any // Real priority - default to normal for now
-      }));
+      // Generate queue data - empty since no patient users exist
+      const queueData: QueueItem[] = [];
       setQueues(queueData);
 
-      // Generate recent activities from patients - use real data
-      const activities: RecentActivity[] = patientsData.slice(0, 3).map((patient: any, index: number) => ({
-        id: `${patient.id}-activity-${index}`, // Make unique key by adding index
-        type: 'registration' as any, // Real activity type - patient registration
-        description: `ลงทะเบียนผู้ป่วย: ${patient.personal_info?.thai_name || `${patient.personal_info?.first_name || ''} ${patient.personal_info?.last_name || ''}`.trim() || 'ไม่ระบุชื่อ'}`,
-        timestamp: patient.created_at || new Date().toISOString(),
-        user: user?.thaiName || user?.firstName || 'เจ้าหน้าที่',
-        status: 'success' as any // Real status - registration is successful
-      }));
+      // Generate recent activities - empty since no patient users exist
+      const activities: RecentActivity[] = [];
       setRecentActivities(activities);
 
-      // Generate alerts from real data - show actual system status
+      // Generate patient-related alerts and notifications
       const alertsData: Alert[] = [];
       
-      // Add info alert if there are patients
+      // Add patient-related alerts based on real data
       if (todayPatientsCount > 0) {
+        // Info about total patients
         alertsData.push({
           id: '1',
           type: 'info',
@@ -159,12 +134,36 @@ export default function EMRDashboard() {
           timestamp: new Date().toISOString(),
           isRead: false
         });
-      }
-      
-      // Add warning if no patients
-      if (todayPatientsCount === 0) {
+        
+        // Alert for patients with active visits
+        if (activeQueueCount > 0) {
+          alertsData.push({
+            id: '2',
+            type: 'warning',
+            title: 'ผู้ป่วยรอการรักษา',
+            message: `มีผู้ป่วย ${activeQueueCount} รายรอการรักษา`,
+            timestamp: new Date().toISOString(),
+            isRead: false
+          });
+        }
+        
+        // Alert for completed visits
+        if (completedVisitsCount > 0) {
+          alertsData.push({
+            id: '3',
+            type: 'success',
+            title: 'การรักษาเสร็จสิ้น',
+            message: `การรักษาเสร็จสิ้น ${completedVisitsCount} รายวันนี้`,
+            timestamp: new Date().toISOString(),
+            isRead: false
+          });
+        }
+        
+        // No specific patient notifications since no patient users exist
+      } else {
+        // No patients alert
         alertsData.push({
-          id: '2',
+          id: 'no-patients',
           type: 'warning',
           title: 'ไม่มีข้อมูลผู้ป่วย',
           message: 'ยังไม่มีผู้ป่วยในระบบ กรุณาลงทะเบียนผู้ป่วยใหม่',
@@ -220,6 +219,7 @@ export default function EMRDashboard() {
       case 'visit': return <Activity className="h-4 w-4" />;
       case 'lab': return <FileText className="h-4 w-4" />;
       case 'prescription': return <Pill className="h-4 w-4" />;
+      case 'discharge': return <CheckCircle className="h-4 w-4" />;
       case 'appointment': return <Calendar className="h-4 w-4" />;
       default: return <Activity className="h-4 w-4" />;
     }
@@ -306,8 +306,8 @@ export default function EMRDashboard() {
         <div className="bg-white rounded-lg shadow-sm p-4 md:p-6 mb-4 md:mb-6 flex-shrink-0">
           <div className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
             <div>
-              <h1 className="text-xl md:text-2xl font-bold text-gray-900">Dashboard EMR</h1>
-              <p className="text-sm md:text-base text-gray-600">ภาพรวมระบบ Electronic Medical Record</p>
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900">Dashboard EMR - ผู้ป่วย</h1>
+              <p className="text-sm md:text-base text-gray-600">ภาพรวมข้อมูลผู้ป่วยและกิจกรรมที่เกี่ยวข้อง</p>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
               <select

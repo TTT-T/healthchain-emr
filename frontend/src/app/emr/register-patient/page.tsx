@@ -342,12 +342,20 @@ export default function RegisterPatient() {
             birthDay: item.birth_day,
             birthMonth: item.birth_month,
             birthYear: item.birth_year,
+            role: item.role, // เพิ่ม role information
             hasPatientRecord: isExistingPatient,
             patientData: isExistingPatient ? {
               hospital_number: item.hospital_number,
               id: item.id
             } : null
           };
+        });
+
+        // เรียงลำดับผลลัพธ์: patient role ก่อน, แล้วตาม role อื่นๆ
+        formattedResults.sort((a: any, b: any) => {
+          if (a.role === 'patient' && b.role !== 'patient') return -1;
+          if (a.role !== 'patient' && b.role === 'patient') return 1;
+          return 0;
         });
 
         setSearchResults(formattedResults);
@@ -973,7 +981,8 @@ export default function RegisterPatient() {
             <h2 className="text-xl font-bold text-gray-800 mb-2">
               ค้นหาข้อมูลผู้ป่วย
             </h2>
-            <p className="text-gray-600">ค้นหาด้วยเลขบัตรประชาชนเพื่อตรวจสอบข้อมูลเดิม หรือลงทะเบียนใหม่</p>
+            <p className="text-gray-600">ค้นหาด้วยเลขบัตรประชาชนเพื่อตรวจสอบข้อมูลเดิม หรือลงทะเบียนใหม่<br/>
+            <span className="text-sm text-blue-600">💡 ระบบจะแสดงผู้ใช้ที่มีบทบาท "ผู้ป่วย" ก่อน หากมีหลายคนที่มีเลขบัตรประชาชนเดียวกัน</span></p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4">
@@ -1043,38 +1052,59 @@ export default function RegisterPatient() {
                     <div key={index} className={`p-4 border rounded-lg ${
                       user.hasPatientRecord 
                 ? 'bg-red-50 border-red-200' 
-                        : 'bg-green-50 border-green-200'
+                        : user.role === 'patient' 
+                          ? 'bg-blue-50 border-blue-200' 
+                          : 'bg-yellow-50 border-yellow-200'
             }`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                          <svg className={`w-5 h-5 mr-2 ${user.hasPatientRecord ? 'text-red-600' : 'text-green-600'}`} fill="currentColor" viewBox="0 0 20 20">
+                          <svg className={`w-5 h-5 mr-2 ${
+                            user.hasPatientRecord ? 'text-red-600' : 
+                            user.role === 'patient' ? 'text-blue-600' : 
+                            'text-yellow-600'
+                          }`} fill="currentColor" viewBox="0 0 20 20">
                             {user.hasPatientRecord ? (
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                     ) : (
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     )}
                   </svg>
-                          <span className={`font-medium ${user.hasPatientRecord ? 'text-red-800' : 'text-green-800'}`}>
-                            {user.hasPatientRecord ? 'ผู้ป่วยมีการลงทะเบียนแล้ว' : 'พบข้อมูลผู้ใช้ในระบบ'}
+                          <span className={`font-medium ${
+                            user.hasPatientRecord ? 'text-red-800' : 
+                            user.role === 'patient' ? 'text-blue-800' : 
+                            'text-yellow-800'
+                          }`}>
+                            {user.hasPatientRecord ? 'ผู้ป่วยมีการลงทะเบียนแล้ว' : 
+                             user.role === 'patient' ? 'พบข้อมูลผู้ป่วยในระบบ (แนะนำ)' : 
+                             'พบข้อมูลผู้ใช้ในระบบ (ไม่ใช่ผู้ป่วย)'}
                   </span>
                 </div>
                         {!user.hasPatientRecord && (
                   <button
                             onClick={() => selectUser(user)}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                            className={`px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium ${
+                              user.role === 'patient' 
+                                ? 'bg-blue-600 hover:bg-blue-700' 
+                                : 'bg-yellow-600 hover:bg-yellow-700'
+                            }`}
                   >
                     <svg className="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
-                            เลือกผู้ใช้
+                            {user.role === 'patient' ? 'เลือกผู้ป่วย' : 'เลือกผู้ใช้'}
                   </button>
                 )}
               </div>
-                      <div className={`mt-2 text-sm ${user.hasPatientRecord ? 'text-red-700' : 'text-green-700'} space-y-1`}>
+                      <div className={`mt-2 text-sm ${
+                        user.hasPatientRecord ? 'text-red-700' : 
+                        user.role === 'patient' ? 'text-blue-700' : 
+                        'text-yellow-700'
+                      } space-y-1`}>
                         <p><strong>คำนำหน้าชื่อ:</strong> {user.title || (user.gender === 'male' ? 'นาย' : user.gender === 'female' ? 'นางสาว' : 'ไม่ระบุ')}</p>
                         <p><strong>ชื่อไทย:</strong> {user.thaiFirstName || 'ไม่ระบุ'} {user.thaiLastName || ''}</p>
                         <p><strong>ชื่ออังกฤษ:</strong> {user.firstName || 'ไม่ระบุ'} {user.lastName || 'ไม่ระบุ'}</p>
                         <p><strong>เพศ:</strong> {user.gender === 'male' ? 'ชาย' : user.gender === 'female' ? 'หญิง' : user.gender || 'ไม่ระบุ'}</p>
+                        <p><strong>บทบาท:</strong> {user.role === 'patient' ? 'ผู้ป่วย' : user.role === 'doctor' ? 'แพทย์' : user.role === 'nurse' ? 'พยาบาล' : user.role === 'admin' ? 'ผู้ดูแลระบบ' : user.role || 'ไม่ระบุ'}</p>
                         <p><strong>อีเมล:</strong> {user.email || 'ไม่ระบุ'}</p>
                         <p><strong>โทรศัพท์:</strong> {user.phone || 'ไม่ระบุ'}</p>
                         <p><strong>เลขบัตรประชาชน:</strong> {user.nationalId || 'ไม่ระบุ'}</p>

@@ -86,7 +86,8 @@ export const searchUsersByNationalId = async (req: Request, res: Response) => {
       });
     }
 
-    // If no patient found, search in users table for patient role
+    // If no patient found, search in users table for patient role only
+    // If multiple users with same national ID exist, prioritize patient role
     const searchQuery = `
       SELECT 
         u.id,
@@ -130,11 +131,17 @@ export const searchUsersByNationalId = async (req: Request, res: Response) => {
         u.birth_day,
         u.birth_month,
         u.birth_year,
+        u.role,
         u.created_at,
         u.updated_at
       FROM users u
       WHERE u.national_id = $1
-      ORDER BY u.created_at DESC
+      ORDER BY 
+        CASE 
+          WHEN u.role = 'patient' THEN 1
+          ELSE 2
+        END,
+        u.created_at DESC
     `;
 
     const result = await databaseManager.query(searchQuery, [national_id]);
