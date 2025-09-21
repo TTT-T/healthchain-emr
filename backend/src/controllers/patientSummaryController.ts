@@ -128,8 +128,8 @@ export const getPatientSummary = asyncHandler(async (req: Request, res: Response
             pastHistory: record.past_history,
             familyHistory: record.family_history,
             socialHistory: record.social_history,
-            medications: record.medications ? JSON.parse(record.medications) : [],
-            allergies: record.allergies ? JSON.parse(record.allergies) : [],
+            medications: record.medications ? (typeof record.medications === 'string' ? JSON.parse(record.medications) : record.medications) : [],
+            allergies: record.allergies ? (typeof record.allergies === 'string' ? JSON.parse(record.allergies) : record.allergies) : [],
             notes: record.notes
           };
           organizedRecords.historyTaking.push(recordData);
@@ -137,9 +137,9 @@ export const getPatientSummary = asyncHandler(async (req: Request, res: Response
         
         case 'doctor_visit':
           recordData.data = {
-            physicalExam: record.physical_exam ? JSON.parse(record.physical_exam) : {},
-            diagnosis: record.diagnosis ? JSON.parse(record.diagnosis) : [],
-            treatmentPlan: record.treatment_plan ? JSON.parse(record.treatment_plan) : {},
+            physicalExam: record.physical_exam ? (typeof record.physical_exam === 'string' ? JSON.parse(record.physical_exam) : record.physical_exam) : {},
+            diagnosis: record.diagnosis ? (typeof record.diagnosis === 'string' ? JSON.parse(record.diagnosis) : record.diagnosis) : [],
+            treatmentPlan: record.treatment_plan ? (typeof record.treatment_plan === 'string' ? JSON.parse(record.treatment_plan) : record.treatment_plan) : {},
             advice: record.advice,
             followUp: record.follow_up,
             notes: record.notes
@@ -149,7 +149,7 @@ export const getPatientSummary = asyncHandler(async (req: Request, res: Response
         
         case 'pharmacy_dispensing':
           recordData.data = {
-            medications: record.medications ? JSON.parse(record.medications) : [],
+            medications: record.medications ? (typeof record.medications === 'string' ? JSON.parse(record.medications) : record.medications) : [],
             totalAmount: record.total_amount,
             paymentMethod: record.payment_method,
             notes: record.notes
@@ -161,11 +161,11 @@ export const getPatientSummary = asyncHandler(async (req: Request, res: Response
           recordData.data = {
             testType: record.test_type,
             testName: record.test_name,
-            testResults: record.test_results ? JSON.parse(record.test_results) : [],
+            testResults: record.test_results ? (typeof record.test_results === 'string' ? JSON.parse(record.test_results) : record.test_results) : [],
             overallResult: record.overall_result,
             interpretation: record.interpretation,
             recommendations: record.recommendations,
-            attachments: record.attachments ? JSON.parse(record.attachments) : [],
+            attachments: record.attachments ? (typeof record.attachments === 'string' ? JSON.parse(record.attachments) : record.attachments) : [],
             notes: record.notes
           };
           organizedRecords.labResults.push(recordData);
@@ -429,16 +429,16 @@ function getRecordData(record: any): any {
     case 'doctor_visit':
       return {
         ...baseData,
-        physicalExam: record.physical_exam ? JSON.parse(record.physical_exam) : {},
-        diagnosis: record.diagnosis ? JSON.parse(record.diagnosis) : [],
-        treatmentPlan: record.treatment_plan ? JSON.parse(record.treatment_plan) : {},
+        physicalExam: record.physical_exam ? (typeof record.physical_exam === 'string' ? JSON.parse(record.physical_exam) : record.physical_exam) : {},
+        diagnosis: record.diagnosis ? (typeof record.diagnosis === 'string' ? JSON.parse(record.diagnosis) : record.diagnosis) : [],
+        treatmentPlan: record.treatment_plan ? (typeof record.treatment_plan === 'string' ? JSON.parse(record.treatment_plan) : record.treatment_plan) : {},
         advice: record.advice,
         followUp: record.follow_up
       };
     case 'pharmacy_dispensing':
       return {
         ...baseData,
-        medications: record.medications ? JSON.parse(record.medications) : [],
+        medications: record.medications ? (typeof record.medications === 'string' ? JSON.parse(record.medications) : record.medications) : [],
         totalAmount: record.total_amount,
         paymentMethod: record.payment_method
       };
@@ -447,7 +447,7 @@ function getRecordData(record: any): any {
         ...baseData,
         testType: record.test_type,
         testName: record.test_name,
-        testResults: record.test_results ? JSON.parse(record.test_results) : [],
+        testResults: record.test_results ? (typeof record.test_results === 'string' ? JSON.parse(record.test_results) : record.test_results) : [],
         overallResult: record.overall_result,
         interpretation: record.interpretation,
         recommendations: record.recommendations
