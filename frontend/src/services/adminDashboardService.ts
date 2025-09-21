@@ -150,14 +150,8 @@ class AdminDashboardService {
    */
   async getDashboardStats(): Promise<DashboardResponse> {
     try {
-      const response = await this.apiClient.request<DashboardResponse>({
-        method: 'GET',
-        url: '/admin/dashboard/stats',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      return response;
+      const response = await this.apiClient.get<DashboardResponse>('/admin/dashboard/stats');
+      return response.data as DashboardResponse;
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
       throw error;
@@ -169,14 +163,8 @@ class AdminDashboardService {
    */
   async getSystemStats(period: number = 30): Promise<SystemStatsResponse> {
     try {
-      const response = await this.apiClient.request<SystemStatsResponse>({
-        method: 'GET',
-        url: `/admin/system/stats?period=${period}`,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      return response;
+      const response = await this.apiClient.get<SystemStatsResponse>(`/admin/system/stats?period=${period}`);
+      return response.data as SystemStatsResponse;
     } catch (error) {
       console.error('Error fetching system stats:', error);
       throw error;
@@ -188,14 +176,8 @@ class AdminDashboardService {
    */
   async getSystemHealth(): Promise<DashboardResponse> {
     try {
-      const response = await this.apiClient.request<DashboardResponse>({
-        method: 'GET',
-        url: '/admin/system/health',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      return response;
+      const response = await this.apiClient.get<DashboardResponse>('/admin/system/health');
+      return response.data as DashboardResponse;
     } catch (error) {
       console.error('Error fetching system health:', error);
       throw error;
@@ -207,14 +189,8 @@ class AdminDashboardService {
    */
   async getApprovalStats(): Promise<ApprovalStatsResponse> {
     try {
-      const response = await this.apiClient.request<ApprovalStatsResponse>({
-        method: 'GET',
-        url: '/admin/approval-stats',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      return response;
+      const response = await this.apiClient.get<ApprovalStatsResponse>('/admin/approval-stats');
+      return response as unknown as ApprovalStatsResponse;
     } catch (error) {
       console.error('Error fetching approval stats:', error);
       throw error;

@@ -117,7 +117,7 @@ export class HistoryTakingService {
    */
   static async updateHistoryTaking(id: string, data: UpdateHistoryTakingRequest): Promise<APIResponse<HistoryTakingRecord>> {
     try {
-      const response = await apiClient.put(`/medical/history-taking/${id}`, data);
+      const response = await apiClient.post(`/medical/history-taking/${id}/update`, data);
       return response as APIResponse<HistoryTakingRecord>;
     } catch (error) {
       logger.error('Error updating history taking record:', error);
@@ -130,7 +130,7 @@ export class HistoryTakingService {
    */
   static async deleteHistoryTaking(id: string): Promise<APIResponse<{ id: string }>> {
     try {
-      const response = await apiClient.delete(`/medical/history-taking/${id}`);
+      const response = await apiClient.post(`/medical/history-taking/${id}/delete`, {});
       return response as APIResponse<{ id: string }>;
     } catch (error) {
       logger.error('Error deleting history taking record:', error);

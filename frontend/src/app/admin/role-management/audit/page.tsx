@@ -168,7 +168,7 @@ export default function AuditLogPage() {
       let filteredLogs = apiLogs.length > 0 ? apiLogs : mockAuditLogs;
       
       if (searchTerm) {
-        filteredLogs = filteredLogs.filter(log => 
+        filteredLogs = filteredLogs.filter((log: any) =>
           log.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
           log.resource.toLowerCase().includes(searchTerm.toLowerCase())
@@ -176,18 +176,18 @@ export default function AuditLogPage() {
       }
       
       if (selectedAction !== 'all') {
-        filteredLogs = filteredLogs.filter(log => log.action === selectedAction);
+        filteredLogs = filteredLogs.filter((log: any) => log.action === selectedAction);
       }
       
       if (selectedStatus !== 'all') {
-        filteredLogs = filteredLogs.filter(log => log.status === selectedStatus);
+        filteredLogs = filteredLogs.filter((log: any) => log.status === selectedStatus);
       }
       
       // Apply date range filter (simplified)
       const now = new Date();
       const daysBack = parseInt(dateRange.replace('d', ''));
       const cutoffDate = new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000));
-      filteredLogs = filteredLogs.filter(log => new Date(log.timestamp) >= cutoffDate);
+      filteredLogs = filteredLogs.filter((log: any) => new Date(log.timestamp) >= cutoffDate);
       
       // Apply pagination
       const startIndex = (pagination.page - 1) * pagination.limit;

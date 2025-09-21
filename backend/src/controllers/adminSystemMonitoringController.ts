@@ -232,7 +232,7 @@ export class AdminSystemMonitoringController {
       Object.values(networkInterfaces).forEach(interfaces => {
         interfaces?.forEach(iface => {
           if (iface.family === 'IPv4' && !iface.internal) {
-            totalBytes += iface.mtu || 1500;
+            totalBytes += 1500; // Default MTU size
           }
         });
       });

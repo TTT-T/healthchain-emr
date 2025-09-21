@@ -17,7 +17,7 @@ export const getPendingUsers = async (req: Request, res: Response) => {
     const offset = (Number(page) - 1) * Number(limit);
 
     // Build query conditions
-    let whereClause = 'WHERE u.is_active = false AND u.email_verified = true';
+    let whereClause = 'WHERE u.is_active = false';
     const queryParams: any[] = [];
     let paramCount = 0;
 
@@ -356,9 +356,9 @@ export const getApprovalStats = async (req: Request, res: Response) => {
       SELECT 
         role,
         COUNT(*) as total,
-        COUNT(CASE WHEN is_active = false AND email_verified = true THEN 1 END) as pending,
+        COUNT(CASE WHEN is_active = false THEN 1 END) as pending,
         COUNT(CASE WHEN is_active = true THEN 1 END) as approved,
-        COUNT(CASE WHEN is_active = false AND email_verified = false THEN 1 END) as unverified
+        COUNT(CASE WHEN email_verified = false THEN 1 END) as unverified
       FROM users 
       WHERE role IN ('doctor', 'nurse', 'staff')
       GROUP BY role

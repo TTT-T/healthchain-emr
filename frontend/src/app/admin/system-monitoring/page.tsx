@@ -25,7 +25,7 @@ import {
   Clock
 } from 'lucide-react'
 
-interface SystemMetric {
+interface LocalSystemMetric {
   name: string
   value: number
   unit: string
@@ -34,7 +34,7 @@ interface SystemMetric {
   lastUpdated: string
 }
 
-interface ServiceStatus {
+interface LocalServiceStatus {
   name: string
   status: 'running' | 'stopped' | 'error'
   uptime: string
@@ -42,7 +42,7 @@ interface ServiceStatus {
   responseTime?: number
 }
 
-interface AlertItem {
+interface LocalAlertItem {
   id: string
   type: 'error' | 'warning' | 'info'
   message: string
@@ -53,9 +53,9 @@ interface AlertItem {
 
 export default function SystemMonitoringPage() {
   const [overview, setOverview] = useState<SystemOverview | null>(null)
-  const [metrics, setMetrics] = useState<SystemMetric[]>([])
-  const [services, setServices] = useState<ServiceStatus[]>([])
-  const [alerts, setAlerts] = useState<AlertItem[]>([])
+  const [metrics, setMetrics] = useState<LocalSystemMetric[]>([])
+  const [services, setServices] = useState<LocalServiceStatus[]>([])
+  const [alerts, setAlerts] = useState<LocalAlertItem[]>([])
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
   const [loading, setLoading] = useState(true)
@@ -137,15 +137,15 @@ export default function SystemMonitoringPage() {
         alerts: alertsData
       })
 
-      setOverview(overviewData)
-      setMetrics(metricsData)
-      setServices(servicesData)
-      setAlerts(alertsData)
+      setOverview(overviewData as SystemOverview)
+      setMetrics(metricsData as LocalSystemMetric[])
+      setServices(servicesData as LocalServiceStatus[])
+      setAlerts(alertsData as LocalAlertItem[])
       setLastRefresh(new Date())
       console.log('✅ Data set successfully')
     } catch (error) {
       console.error('❌ Critical error in fetchData:', error)
-      setError(`Failed to load data: ${error.message}`)
+      setError(`Failed to load data: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
       console.log('🏁 Loading completed')

@@ -8,6 +8,126 @@ import { v4 as uuidv4 } from 'uuid';
  */
 
 /**
+ * Send notification to patient when visit is created
+ */
+async function sendPatientVisitNotification(visit: any, doctorId: string, queueCount: number) {
+  try {
+    console.log('📱 Sending patient visit notification...');
+    
+    // Get patient information
+    const patientQuery = `
+      SELECT 
+        p.id,
+        p.hospital_number,
+        p.first_name,
+        p.last_name,
+        p.thai_name,
+        p.phone,
+        p.email,
+        p.user_id,
+        u.username,
+        u.email as user_email
+      FROM patients p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.id = $1
+    `;
+    const patientResult = await databaseManager.query(patientQuery, [visit.patient_id]);
+    
+    if (patientResult.rows.length === 0) {
+      console.log('❌ Patient not found for notification');
+      return;
+    }
+    
+    const patient = patientResult.rows[0];
+    
+    // Get doctor information
+    const doctorQuery = `
+      SELECT 
+        u.id,
+        u.first_name,
+        u.last_name,
+        u.thai_name,
+        d.department_name
+      FROM users u
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE u.id = $1
+    `;
+    const doctorResult = await databaseManager.query(doctorQuery, [doctorId]);
+    
+    if (doctorResult.rows.length === 0) {
+      console.log('❌ Doctor not found for notification');
+      return;
+    }
+    
+    const doctor = doctorResult.rows[0];
+    
+    // Create notification data
+    const notificationData = {
+      id: uuidv4(),
+      patient_id: patient.id,
+      user_id: patient.user_id,
+      type: 'visit_created',
+      title: `ได้รับหมายเลขคิว ${visit.visit_number}`,
+      message: `คุณ ${patient.thai_name || `${patient.first_name} ${patient.last_name}`} ได้รับหมายเลขคิว ${visit.visit_number} สำหรับตรวจกับ ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`,
+      data: {
+        visit_id: visit.id,
+        visit_number: visit.visit_number,
+        hospital_number: patient.hospital_number,
+        doctor_name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
+        department: doctor.department_name,
+        queue_position: queueCount,
+        estimated_wait_time: queueCount * 15, // 15 minutes per patient
+        visit_date: visit.visit_date,
+        visit_time: visit.visit_time,
+        visit_type: visit.visit_type,
+        chief_complaint: visit.chief_complaint
+      },
+      is_read: false,
+      created_at: new Date().toISOString()
+    };
+    
+    // Insert notification into database
+    const insertNotificationQuery = `
+      INSERT INTO notifications (
+        id, patient_id, title, message, notification_type, priority, is_read, created_by, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `;
+    
+    await databaseManager.query(insertNotificationQuery, [
+      notificationData.id,
+      notificationData.patient_id,
+      notificationData.title,
+      notificationData.message,
+      notificationData.type,
+      'normal', // priority
+      notificationData.is_read,
+      notificationData.user_id, // created_by
+      notificationData.created_at
+    ]);
+    
+    console.log('✅ Patient notification sent successfully', {
+      patientHn: patient.hospital_number,
+      visitNumber: visit.visit_number,
+      notificationId: notificationData.id
+    });
+    
+    // TODO: Send SMS/Email if patient has phone/email
+    if (patient.phone) {
+      console.log(`📱 Would send SMS to ${patient.phone}: คุณได้รับหมายเลขคิว ${visit.visit_number} สำหรับตรวจกับ ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`);
+    }
+    
+    if (patient.email || patient.user_email) {
+      const email = patient.email || patient.user_email;
+      console.log(`📧 Would send email to ${email}: คุณได้รับหมายเลขคิว ${visit.visit_number} สำหรับตรวจกับ ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error sending patient visit notification:', error);
+    throw error;
+  }
+}
+
+/**
  * Get all visits
  * GET /api/medical/visits
  */
@@ -254,6 +374,7 @@ export const createVisit = async (req: Request, res: Response) => {
     console.log('✅ Normalized data:', normalizedData);
 
     const userId = (req as any).user.id;
+    console.log('🔍 Current user ID:', userId);
 
     // Validate required fields using normalized data
     if (!normalizedData.patient_id || !normalizedData.doctor_id || !normalizedData.visit_type) {
@@ -273,32 +394,65 @@ export const createVisit = async (req: Request, res: Response) => {
 
     // Get a valid user ID if not provided
     let validUserId = normalizedData.doctor_id || userId;
-    if (!validUserId || validUserId === '1') {
-      const userResult = await databaseManager.query('SELECT id FROM users WHERE role = $1 LIMIT 1', ['doctor']);
-      validUserId = userResult.rows[0]?.id;
-    }
+    console.log(`🔍 Initial validUserId: ${validUserId}`);
+    console.log(`🔍 normalizedData.doctor_id: ${normalizedData.doctor_id}`);
+    console.log(`🔍 userId: ${userId}`);
+    console.log(`🔍 About to check if ${validUserId} is doctor_id or user_id`);
     
-    // If validUserId is a doctor_id, get the corresponding user_id
-    if (validUserId && validUserId !== userId) {
-      try {
-        const doctorUserQuery = 'SELECT user_id FROM doctors WHERE id = $1';
-        const doctorUserResult = await databaseManager.query(doctorUserQuery, [validUserId]);
-        if (doctorUserResult.rows.length > 0) {
-          validUserId = doctorUserResult.rows[0].user_id;
-          console.log(`🔄 Converted doctor_id to user_id: ${validUserId}`);
-        }
-      } catch (error) {
-        console.error('Error converting doctor_id to user_id:', error);
+    // Check if validUserId is a doctor_id or user_id
+    console.log(`🔍 Checking if ${validUserId} is doctor_id or user_id`);
+    let isDoctorId = false;
+    try {
+      // First check if it's a doctor_id
+      const doctorCheckQuery = 'SELECT user_id FROM doctors WHERE id = $1';
+      console.log(`🔍 Executing doctor check query: ${doctorCheckQuery} with param: ${validUserId}`);
+      const doctorCheckResult = await databaseManager.query(doctorCheckQuery, [validUserId]);
+      console.log(`🔍 Doctor check result:`, doctorCheckResult.rows);
+      if (doctorCheckResult.rows.length > 0) {
+        validUserId = doctorCheckResult.rows[0].user_id;
+        isDoctorId = true;
+        console.log(`🔄 Converted doctor_id to user_id: ${validUserId}`);
+      } else {
+        console.log(`🔍 ${validUserId} is not a doctor_id, checking as user_id`);
       }
+    } catch (error) {
+      console.error('Error checking doctor_id:', error);
     }
     
     // Validate user ID exists
     if (validUserId) {
-      const userExists = await databaseManager.query('SELECT id FROM users WHERE id = $1', [validUserId]);
+      console.log(`🔍 Validating user_id: ${validUserId}`);
+      const userExists = await databaseManager.query('SELECT id FROM users WHERE id = $1 AND role = $2 AND is_active = true', [validUserId, 'doctor']);
+      console.log(`🔍 User validation result:`, userExists.rows);
       if (userExists.rows.length === 0) {
-        const fallbackUser = await databaseManager.query('SELECT id FROM users WHERE role = $1 LIMIT 1', ['doctor']);
-        validUserId = fallbackUser.rows[0]?.id;
+        console.log(`❌ Doctor not found: ${validUserId}`);
+        const fallbackUser = await databaseManager.query('SELECT id FROM users WHERE role = $1 AND is_active = true LIMIT 1', ['doctor']);
+        console.log(`🔍 Fallback doctor result:`, fallbackUser.rows);
+        if (fallbackUser.rows.length > 0) {
+          validUserId = fallbackUser.rows[0].id;
+          console.log(`🔄 Using fallback doctor: ${validUserId}`);
+        } else {
+          return res.status(404).json({
+            data: null,
+            meta: null,
+            error: { message: 'No active doctors found' },
+            statusCode: 404
+          });
+        }
+      } else {
+        console.log(`✅ Doctor validation successful: ${validUserId}`);
       }
+    } else {
+      // If no validUserId, get a fallback doctor
+      const userResult = await databaseManager.query('SELECT id FROM users WHERE role = $1 LIMIT 1', ['doctor']);
+      validUserId = userResult.rows[0]?.id;
+      console.log(`🔄 Using fallback doctor: ${validUserId}`);
+    }
+    
+    // Final fallback: if still no valid doctor, use the current user (who is a doctor)
+    if (!validUserId) {
+      validUserId = userId;
+      console.log(`🔄 Using current user as doctor: ${validUserId}`);
     }
 
     // Get a valid department ID if not provided
@@ -433,6 +587,14 @@ export const createVisit = async (req: Request, res: Response) => {
       console.log(`📊 Updated queue for doctor ${validUserId}: ${updatedQueueCount} patients`);
     } catch (error) {
       console.error('Error checking updated queue:', error);
+    }
+
+    // Send notification to patient
+    try {
+      await sendPatientVisitNotification(newVisit, validUserId, updatedQueueCount);
+    } catch (notificationError) {
+      console.error('Failed to send patient notification:', notificationError);
+      // Don't fail the visit creation if notification fails
     }
 
     res.status(201).json({

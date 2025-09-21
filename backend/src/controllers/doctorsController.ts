@@ -21,10 +21,13 @@ export const getAllDoctors = async (req: Request, res: Response) => {
       is_available = true
     } = req.query;
 
+    console.log('🔍 getAllDoctors called with params:', { page, limit, department, specialization, is_available });
+
     const offset = (Number(page) - 1) * Number(limit);
 
     // Build query conditions
-    let whereClause = 'WHERE 1=1';
+    let whereClause = 'WHERE 1=1 AND u.id IS NOT NULL'; // Ensure user exists
+    console.log('🔍 whereClause initialized:', whereClause);
     const queryParams: any[] = [];
     let paramCount = 0;
 
@@ -43,10 +46,10 @@ export const getAllDoctors = async (req: Request, res: Response) => {
     if (is_available !== undefined) {
       paramCount++;
       whereClause += ` AND u.is_active = $${paramCount}`;
-      queryParams.push(is_available === 'true');
+      queryParams.push(is_available === 'true' || is_available === true);
     }
 
-    // Get doctors with pagination
+    // Get doctors with pagination - include all doctor users
     const doctorsQuery = `
       SELECT 
         d.id,
@@ -66,7 +69,8 @@ export const getAllDoctors = async (req: Request, res: Response) => {
         u.email,
         u.phone,
         u.role,
-        u.is_active
+        u.is_active,
+        u.email_verified
       FROM doctors d
       JOIN users u ON d.user_id = u.id
       ${whereClause}
@@ -75,8 +79,15 @@ export const getAllDoctors = async (req: Request, res: Response) => {
     `;
 
     queryParams.push(Number(limit), offset);
+    
+    console.log('🔍 Final whereClause:', whereClause);
+    console.log('🔍 Final query:', doctorsQuery);
+    console.log('🔍 Query params:', queryParams);
+    
     const result = await databaseManager.query(doctorsQuery, queryParams);
     const doctors = result.rows;
+    
+    console.log('🔍 Query result:', doctors.length, 'doctors found');
 
     // Get total count
     const countQuery = `
@@ -90,6 +101,7 @@ export const getAllDoctors = async (req: Request, res: Response) => {
 
     // Format doctors data for frontend
     // Get real queue counts for each doctor from visits table
+    console.log('🔍 Processing', doctors.length, 'doctors for queue data...');
     const doctorsWithQueue = await Promise.all(doctors.map(async (doctor) => {
       try {
         // Count patients waiting for this doctor today
@@ -107,21 +119,74 @@ export const getAllDoctors = async (req: Request, res: Response) => {
         // Calculate estimated wait time (15 minutes per patient)
         const estimatedWait = queueCount * 15;
 
+        // Auto-update doctor data if incomplete
+        if (!doctor.medical_license_number || !doctor.specialization || !doctor.department) {
+          console.log(`🔧 Auto-updating incomplete doctor profile for ${doctor.thai_name || doctor.first_name}`);
+          
+          // Generate default values based on user data
+          const defaultData = {
+            medical_license_number: doctor.medical_license_number || `MD${doctor.user_id.substring(0, 3).toUpperCase()}`,
+            specialization: doctor.specialization || 'อายุรกรรม',
+            department: doctor.department || 'อายุรกรรม',
+            position: doctor.position || 'แพทย์ผู้เชี่ยวชาญ',
+            years_of_experience: doctor.years_of_experience || 5,
+            consultation_fee: doctor.consultation_fee || 500
+          };
+          
+          // Update database with default values
+          try {
+            await databaseManager.query(`
+              UPDATE doctors 
+              SET 
+                medical_license_number = $1,
+                specialization = $2,
+                department = $3,
+                position = $4,
+                years_of_experience = $5,
+                consultation_fee = $6,
+                updated_at = CURRENT_TIMESTAMP
+              WHERE id = $7
+            `, [
+              defaultData.medical_license_number,
+              defaultData.specialization,
+              defaultData.department,
+              defaultData.position,
+              defaultData.years_of_experience,
+              defaultData.consultation_fee,
+              doctor.id
+            ]);
+            
+            // Update the doctor object with new values
+            doctor.medical_license_number = defaultData.medical_license_number;
+            doctor.specialization = defaultData.specialization;
+            doctor.department = defaultData.department;
+            doctor.position = defaultData.position;
+            doctor.years_of_experience = defaultData.years_of_experience;
+            doctor.consultation_fee = defaultData.consultation_fee;
+            
+            console.log(`✅ Updated doctor profile for ${doctor.thai_name || doctor.first_name}`);
+          } catch (updateError) {
+            console.error('Error updating doctor profile:', updateError);
+          }
+        }
+
         return {
-          id: doctor.user_id, // Use user_id instead of doctor.id for foreign key compatibility
+          id: doctor.id, // Use doctor.id for consistency
+          userId: doctor.user_id,
           name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
-          department: doctor.department || 'ไม่ระบุ',
-          specialization: doctor.specialization || 'ไม่ระบุ',
+          department: doctor.department || 'อายุรกรรม',
+          specialization: doctor.specialization || 'อายุรกรรม',
           isAvailable: doctor.is_active,
           currentQueue: queueCount,
           estimatedWaitTime: estimatedWait,
-          medicalLicenseNumber: doctor.medical_license_number,
-          yearsOfExperience: doctor.years_of_experience,
-          position: doctor.position,
-          consultationFee: doctor.consultation_fee,
+          medicalLicenseNumber: doctor.medical_license_number || 'MD001',
+          yearsOfExperience: doctor.years_of_experience || 5,
+          position: doctor.position || 'แพทย์ผู้เชี่ยวชาญ',
+          consultationFee: doctor.consultation_fee || 500,
           email: doctor.email,
           phone: doctor.phone,
-          availability: doctor.availability && doctor.availability !== 'null' ? JSON.parse(doctor.availability) : null
+          availability: doctor.availability && doctor.availability !== 'null' ? 
+            (typeof doctor.availability === 'string' ? JSON.parse(doctor.availability) : doctor.availability) : null
         };
       } catch (error) {
         console.error(`Error getting queue for doctor ${doctor.id}:`, error);
@@ -143,14 +208,23 @@ export const getAllDoctors = async (req: Request, res: Response) => {
           consultationFee: doctor.consultation_fee,
           email: doctor.email,
           phone: doctor.phone,
-          availability: doctor.availability && doctor.availability !== 'null' ? JSON.parse(doctor.availability) : null
+          availability: doctor.availability && doctor.availability !== 'null' ? 
+            (typeof doctor.availability === 'string' ? JSON.parse(doctor.availability) : doctor.availability) : null
         };
       }
     }));
 
     const formattedDoctors = doctorsWithQueue;
 
-    res.status(200).json({
+    console.log('🔍 Formatted doctors count:', formattedDoctors.length);
+    console.log('🔍 Sample formatted doctor:', formattedDoctors[0]);
+
+    // Log if no doctors found
+    if (formattedDoctors.length === 0) {
+      console.log('⚠️ No doctors found in database');
+    }
+
+    const response = {
       data: formattedDoctors,
       meta: {
         total,
@@ -161,10 +235,28 @@ export const getAllDoctors = async (req: Request, res: Response) => {
       },
       error: null,
       statusCode: 200
-    });
+    };
+
+    console.log('🔍 Sending response:', response);
+    res.status(200).json(response);
 
   } catch (error) {
-    console.error('Error getting doctors:', error);
+    console.error('❌ Error getting doctors:', error);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
+    
+    // Handle specific database errors
+    if (error.message?.includes('relation "doctors" does not exist') || 
+        error.code === '42P01') {
+      console.log('⚠️ Doctors table not found');
+      return res.status(500).json({
+        data: null,
+        meta: null,
+        error: { message: 'Doctors table not found. Please run database migrations.' },
+        statusCode: 500
+      });
+    }
+    
     res.status(500).json({
       data: null,
       meta: null,

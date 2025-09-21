@@ -309,11 +309,9 @@ export class PatientDocumentService {
         patientEmail: '',
         recordType: 'document',
         recordId: document.id,
-        recordTitle: document.documentTitle,
-        recordDescription: `มีเอกสารใหม่: ${document.documentTitle}`,
-        createdBy: document.createdBy,
-        createdByName: document.createdByName,
-        createdAt: document.createdAt
+        recordedBy: document.createdBy || 'system',
+        recordedTime: document.createdAt || new Date().toISOString(),
+        message: `มีเอกสารใหม่: ${document.documentTitle}`
       });
 
       logger.info('Patient notified of new document', { documentId: document.id });

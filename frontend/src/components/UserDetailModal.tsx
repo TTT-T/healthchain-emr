@@ -50,6 +50,8 @@ export default function UserDetailModal({ isOpen, onClose, userId, onEdit, onDel
         id: userData.id,
         username: userData.username || '',
         name: `${userData.first_name || ''} ${userData.last_name || ''}`.trim(),
+        first_name: userData.first_name || '',
+        last_name: userData.last_name || '',
         email: userData.email,
         role: userData.role,
         status: userData.is_active ? 'active' : 'inactive',

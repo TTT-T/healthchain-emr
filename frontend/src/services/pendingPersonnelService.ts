@@ -76,12 +76,8 @@ class PendingPersonnelService {
     search?: string;
   }): Promise<PendingUsersResponse> {
     try {
-      const response = await this.apiClient.request<PendingUsersResponse>({
-        method: 'GET',
-        url: '/admin/pending-users',
-        params
-      });
-      return response;
+      const response = await this.apiClient.get<PendingUsersResponse>('/admin/pending-users', { params });
+      return response as unknown as PendingUsersResponse;
     } catch (error) {
       console.error('Error fetching pending users:', error);
       throw error;
@@ -93,11 +89,8 @@ class PendingPersonnelService {
    */
   async getApprovalStats(): Promise<ApprovalStatsResponse> {
     try {
-      const response = await this.apiClient.request<ApprovalStatsResponse>({
-        method: 'GET',
-        url: '/admin/approval-stats'
-      });
-      return response;
+      const response = await this.apiClient.get<ApprovalStatsResponse>('/admin/approval-stats');
+      return response as unknown as ApprovalStatsResponse;
     } catch (error) {
       console.error('Error fetching approval stats:', error);
       throw error;
@@ -109,12 +102,8 @@ class PendingPersonnelService {
    */
   async approveUser(userId: string, data: ApproveUserRequest): Promise<any> {
     try {
-      const response = await this.apiClient.request({
-        method: 'POST',
-        url: `/admin/pending-users/${userId}/approve`,
-        data
-      });
-      return response;
+      const response = await this.apiClient.post(`/admin/pending-users/${userId}/approve`, data);
+      return response.data;
     } catch (error) {
       console.error('Error approving user:', error);
       throw error;
@@ -126,12 +115,8 @@ class PendingPersonnelService {
    */
   async rejectUser(userId: string, data: RejectUserRequest): Promise<any> {
     try {
-      const response = await this.apiClient.request({
-        method: 'POST',
-        url: `/admin/pending-users/${userId}/reject`,
-        data
-      });
-      return response;
+      const response = await this.apiClient.post(`/admin/pending-users/${userId}/reject`, data);
+      return response.data;
     } catch (error) {
       console.error('Error rejecting user:', error);
       throw error;

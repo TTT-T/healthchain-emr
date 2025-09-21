@@ -79,14 +79,6 @@ import {
 } from '../controllers/adminSystemMonitoringController';
 
 import {
-  getComplianceReports,
-  getComplianceTrends,
-  getComplianceStats,
-  createComplianceReport,
-  updateComplianceReport
-} from '../controllers/adminComplianceController';
-
-import {
   getRolePermissions,
   updateRolePermissions
 } from '../controllers/adminRolePermissionsController';

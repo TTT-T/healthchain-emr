@@ -9,6 +9,18 @@ import { PatientDocumentService } from '@/services/patientDocumentService';
 import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
 
+interface Medication {
+  medicationName: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  quantity: number;
+  unit: string;
+  instructions: string;
+  dispensedQuantity: number;
+  price: number;
+}
+
 export default function Pharmacy() {
   const { isAuthenticated, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
@@ -19,8 +31,23 @@ export default function Pharmacy() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const calculateAge = (birthDate: string): number => {
+    if (!birthDate) return 0;
+    
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    
+    return age;
+  };
+
   const [pharmacyData, setPharmacyData] = useState({
-    medications: [],
+    medications: [] as Medication[],
     totalAmount: 0,
     paymentMethod: 'cash',
     notes: '',
@@ -147,9 +174,9 @@ export default function Pharmacy() {
   const sendPatientNotification = async (patient: MedicalPatient, dispensingRecord: any) => {
     try {
       const notificationData = {
-        patientHn: patient.hn || patient.hospital_number || '',
-        patientNationalId: patient.national_id || '',
-        patientName: patient.thai_name || `${patient.firstName} ${patient.lastName}`,
+        patientHn: patient.hn || patient.hospitalNumber || '',
+        patientNationalId: patient.nationalId || '',
+        patientName: patient.thaiName || `${patient.firstName} ${patient.lastName}`,
         patientPhone: patient.phone || '',
         patientEmail: patient.email || '',
         recordType: 'pharmacy_dispensing',
@@ -157,7 +184,7 @@ export default function Pharmacy() {
         chiefComplaint: `จ่ายยา ${dispensingRecord.medications.length} รายการ`,
         recordedBy: dispensingRecord.dispensedBy,
         recordedTime: dispensingRecord.dispensedTime,
-        message: `มีการจ่ายยาใหม่สำหรับคุณ ${patient.thai_name || `${patient.firstName} ${patient.lastName}`} โดย ${dispensingRecord.dispensedBy}`
+        message: `มีการจ่ายยาใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${dispensingRecord.dispensedBy}`
       };
 
       await NotificationService.notifyPatientRecordUpdate(notificationData);
@@ -192,8 +219,8 @@ export default function Pharmacy() {
         pharmacyData,
         {
           patientHn: patient.hn || '',
-          patientNationalId: patient.national_id || '',
-          patientName: patient.thai_name || ''
+          patientNationalId: patient.nationalId || '',
+          patientName: patient.thaiName || ''
         },
         user?.id || '',
         user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เภสัชกร'
@@ -251,13 +278,13 @@ export default function Pharmacy() {
               <h3 className="text-lg font-semibold text-green-800 mb-2">ข้อมูลผู้ป่วย</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospital_number}
+                  <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospitalNumber}
                 </div>
                 <div>
-                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thai_name || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thaiName || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
                 </div>
                 <div>
-                  <span className="font-medium">อายุ:</span> {selectedPatient.age || 'ไม่ระบุ'}
+                  <span className="font-medium">อายุ:</span> {selectedPatient.birthDate ? calculateAge(selectedPatient.birthDate) : 'ไม่ระบุ'}
                 </div>
                 <div>
                   <span className="font-medium">เพศ:</span> {selectedPatient.gender || 'ไม่ระบุ'}

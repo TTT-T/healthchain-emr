@@ -42,23 +42,46 @@ export default function RoleManagementPage() {
       setLoading(true);
       setError(null);
       
-      const [usersResponse, systemStatsResponse] = await Promise.all([
-        roleManagementService.getUsers({
+      // Try to fetch users with fallback
+      let usersResponse;
+      try {
+        usersResponse = await roleManagementService.getUsers({
           page: pagination.page,
           limit: pagination.limit,
           role: selectedRole === 'all' ? undefined : selectedRole,
           search: searchTerm || undefined
-        }),
-        roleManagementService.getSystemStats()
-      ]);
+        });
+        setUsers(usersResponse?.data?.users || []);
+        setPagination(usersResponse?.data?.pagination || {
+          page: 1,
+          limit: 50,
+          total: 0,
+          totalPages: 0
+        });
+        
+        // Calculate role statistics
+        const stats = roleManagementService.calculateRoleStats(usersResponse?.data?.users || []);
+        setRoleStats(stats);
+      } catch (usersError) {
+        console.warn('Could not fetch users, using fallback:', usersError);
+        setUsers([]);
+        setPagination({
+          page: 1,
+          limit: 50,
+          total: 0,
+          totalPages: 0
+        });
+        setRoleStats({});
+      }
 
-      setUsers(usersResponse.data.users);
-      setPagination(usersResponse.data.pagination);
-      setSystemStats(systemStatsResponse.data);
-      
-      // Calculate role statistics
-      const stats = roleManagementService.calculateRoleStats(usersResponse.data.users);
-      setRoleStats(stats);
+      // Try to fetch system stats with fallback
+      try {
+        const systemStatsResponse = await roleManagementService.getSystemStats();
+        setSystemStats(systemStatsResponse?.data || null);
+      } catch (statsError) {
+        console.warn('Could not fetch system stats, using fallback:', statsError);
+        setSystemStats(null);
+      }
     } catch (err: any) {
       console.error('Error fetching data:', err);
       setError('ไม่สามารถโหลดข้อมูลได้');
@@ -163,12 +186,38 @@ export default function RoleManagementPage() {
     setShowEditModal(true);
   };
 
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    try {
+      setActionLoading(true);
+      await roleManagementService.updateUserRole(userId, newRole);
+      await fetchData(); // Refresh data
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      alert('เกิดข้อผิดพลาดในการอัปเดตบทบาท');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleStatusChange = async (userId: string, isActive: boolean) => {
+    try {
+      setActionLoading(true);
+      await roleManagementService.updateUserStatus(userId, isActive);
+      await fetchData(); // Refresh data
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      alert('เกิดข้อผิดพลาดในการอัปเดตสถานะ');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // Get unique roles from users
   const uniqueRoles = Array.from(new Set(users.map(user => user.role)));
 
   // Calculate statistics
-  const totalUsers = systemStats?.users?.total || 0;
-  const activeUsers = systemStats?.users?.active || 0;
+  const totalUsers = users.length;
+  const activeUsers = users.filter(user => user.status === 'active').length;
   const totalRoles = Object.keys(roleStats).length;
   const activeRoles = Object.values(roleStats).filter(role => role.active > 0).length;
   const avgPermissions = Object.keys(roleStats).reduce((sum, role) => {
@@ -311,133 +360,156 @@ export default function RoleManagementPage() {
         </div>
       </div>
 
-      {/* Roles Grid */}
+      {/* Users Table */}
       {loading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-              <div className="animate-pulse">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-6 bg-gray-200 rounded-full w-20"></div>
-                    <div className="h-4 bg-gray-200 rounded w-12"></div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="animate-pulse">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+            </div>
+            {Array.from({ length: 5 }).map((_, index) => (
+              <div key={index} className="px-6 py-4 border-b border-gray-200 last:border-b-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
+                    <div>
+                      <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-48"></div>
+                    </div>
                   </div>
-                  <div className="h-6 w-6 bg-gray-200 rounded"></div>
-                </div>
-                <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-                <div className="flex gap-2">
-                  <div className="h-8 bg-gray-200 rounded w-20"></div>
-                  <div className="h-8 bg-gray-200 rounded w-16"></div>
-                  <div className="h-8 bg-gray-200 rounded w-16"></div>
+                  <div className="flex items-center gap-4">
+                    <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+                    <div className="h-6 bg-gray-200 rounded-full w-16"></div>
+                    <div className="h-8 bg-gray-200 rounded w-20"></div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
-          {Object.entries(roleStats).map(([role, stats]) => {
-            const roleColor = roleManagementService.getRoleColor(role);
-            const roleDisplayName = roleManagementService.getRoleDisplayName(role);
-            const permissions = roleManagementService.getRolePermissions(role);
-            const roleUsers = users.filter(user => user.role === role);
-            
-            return (
-              <div key={role} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getColorClasses(roleColor)}`}>
-                      {roleDisplayName}
-                    </div>
-                    <span className="text-sm text-gray-500">{stats.total} คน</span>
-                  </div>
-                  <div className="relative">
-                    <button className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
-                      <MoreVertical size={16} className="text-gray-400" />
-                    </button>
-                  </div>
-                </div>
-
-                <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                  {role === 'admin' && 'ผู้ดูแลระบบสูงสุด มีสิทธิ์เข้าถึงทุกฟีเจอร์'}
-                  {role === 'doctor' && 'แพทย์ มีสิทธิ์เข้าถึงข้อมูลผู้ป่วยและระบบ EMR'}
-                  {role === 'nurse' && 'พยาบาล มีสิทธิ์ช่วยในการดูแลผู้ป่วย'}
-                  {role === 'patient' && 'ผู้ป่วย มีสิทธิ์ดูข้อมูลส่วนตัวเท่านั้น'}
-                  {role === 'pharmacist' && 'เภสัชกร มีสิทธิ์จัดการยาและใบสั่งยา'}
-                  {role === 'lab_technician' && 'นักเทคนิคแลป มีสิทธิ์จัดการผลแลป'}
-                  {role === 'staff' && 'เจ้าหน้าที่ มีสิทธิ์ช่วยงานทั่วไป'}
-                </p>
-
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">สิทธิ์การเข้าถึง</h4>
-                  <div className="flex flex-wrap gap-1">
-                    {permissions.slice(0, 3).map((permission, index) => (
-                      <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md">
-                        {permission}
-                      </span>
-                    ))}
-                    {permissions.length > 3 && (
-                      <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md">
-                        +{permissions.length - 3} อื่น ๆ
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">ผู้ใช้ในบทบาทนี้</h4>
-                  <div className="space-y-2">
-                    {roleUsers.slice(0, 3).map((user) => (
-                      <div key={user.id} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-700">{user.name}</span>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          user.status === 'active' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {user.status === 'active' ? 'ใช้งาน' : 'ไม่ใช้งาน'}
-                        </span>
-                      </div>
-                    ))}
-                    {roleUsers.length > 3 && (
-                      <div className="text-xs text-gray-500">
-                        +{roleUsers.length - 3} คนอื่น ๆ
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-3 border-t border-gray-100">
-                  <button 
-                    onClick={() => handleViewUser(roleUsers[0])}
-                    disabled={roleUsers.length === 0 || actionLoading}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Eye size={14} />
-                    ดูรายละเอียด
-                  </button>
-                  <button 
-                    onClick={() => roleUsers.length > 0 && handleEditUserClick(roleUsers[0])}
-                    disabled={roleUsers.length === 0 || actionLoading}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Edit3 size={14} />
-                    แก้ไข
-                  </button>
-                  <button 
-                    onClick={() => roleUsers.length > 0 && handleDeleteUser(roleUsers[0].id)}
-                    disabled={roleUsers.length === 0 || actionLoading}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Trash2 size={14} />
-                    ลบ
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h3 className="text-lg font-medium text-gray-900">รายชื่อผู้ใช้ทั้งหมด</h3>
+            <p className="text-sm text-gray-600 mt-1">จัดการบทบาทและสิทธิ์ของผู้ใช้แต่ละคน</p>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ผู้ใช้
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    บทบาท
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    สถานะ
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    เข้าสู่ระบบล่าสุด
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    การดำเนินการ
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {users.map((user) => {
+                  const roleColor = roleManagementService.getRoleColor(user.role);
+                  const roleDisplayName = roleManagementService.getRoleDisplayName(user.role);
+                  
+                  return (
+                    <tr key={user.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Users size={16} className="text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {user.first_name} {user.last_name}
+                            </div>
+                            <div className="text-sm text-gray-500">{user.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                          disabled={actionLoading}
+                          className={`px-3 py-1 rounded-full text-xs font-medium border ${getColorClasses(roleColor)} disabled:opacity-50 cursor-pointer`}
+                        >
+                          <option value="admin">ผู้ดูแลระบบ</option>
+                          <option value="doctor">แพทย์</option>
+                          <option value="nurse">พยาบาล</option>
+                          <option value="pharmacist">เภสัชกร</option>
+                          <option value="lab_technician">นักเทคนิคแลป</option>
+                          <option value="staff">เจ้าหน้าที่</option>
+                          <option value="patient">ผู้ป่วย</option>
+                        </select>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => handleStatusChange(user.id, user.status === 'active' ? false : true)}
+                          disabled={actionLoading}
+                          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 ${
+                            user.status === 'active' 
+                              ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                              : 'bg-red-100 text-red-800 hover:bg-red-200'
+                          }`}
+                        >
+                          {actionLoading ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            user.status === 'active' ? 'ใช้งาน' : 'ไม่ใช้งาน'
+                          )}
+                        </button>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {user.last_login ? new Date(user.last_login).toLocaleDateString('th-TH') : 'ไม่เคยเข้าสู่ระบบ'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleViewUser(user)}
+                            className="text-blue-600 hover:text-blue-900 transition-colors"
+                            title="ดูรายละเอียด"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleEditUserClick(user)}
+                            className="text-orange-600 hover:text-orange-900 transition-colors"
+                            title="แก้ไข"
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="text-red-600 hover:text-red-900 transition-colors"
+                            title="ลบ"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          
+          {users.length === 0 && (
+            <div className="text-center py-12">
+              <Users className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">ไม่มีผู้ใช้</h3>
+              <p className="mt-1 text-sm text-gray-500">เริ่มต้นด้วยการเพิ่มผู้ใช้ใหม่</p>
+            </div>
+          )}
         </div>
       )}
 

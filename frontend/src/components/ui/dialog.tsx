@@ -71,3 +71,29 @@ export function DialogTitle({ children, className = '' }: DialogTitleProps) {
     </h2>
   );
 }
+
+interface DialogDescriptionProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function DialogDescription({ children, className = '' }: DialogDescriptionProps) {
+  return (
+    <p className={`text-sm text-gray-600 mt-1 ${className}`}>
+      {children}
+    </p>
+  );
+}
+
+interface DialogFooterProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function DialogFooter({ children, className = '' }: DialogFooterProps) {
+  return (
+    <div className={`p-6 border-t flex justify-end space-x-2 ${className}`}>
+      {children}
+    </div>
+  );
+}

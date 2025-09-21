@@ -17,6 +17,21 @@ export default function DoctorVisit() {
   const [selectedPatient, setSelectedPatient] = useState<MedicalPatient | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const calculateAge = (birthDate: string): number => {
+    if (!birthDate) return 0;
+    
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    
+    return age;
+  };
   const [success, setSuccess] = useState<string | null>(null);
 
   const [doctorVisitData, setDoctorVisitData] = useState({
@@ -117,9 +132,9 @@ export default function DoctorVisit() {
   const sendPatientNotification = async (patient: MedicalPatient, visitRecord: any) => {
     try {
       const notificationData = {
-        patientHn: patient.hn || patient.hospital_number || '',
-        patientNationalId: patient.national_id || '',
-        patientName: patient.thai_name || `${patient.firstName} ${patient.lastName}`,
+        patientHn: patient.hn || patient.hospitalNumber || '',
+        patientNationalId: patient.nationalId || '',
+        patientName: patient.thaiName || `${patient.firstName} ${patient.lastName}`,
         patientPhone: patient.phone || '',
         patientEmail: patient.email || '',
         recordType: 'doctor_visit',
@@ -127,7 +142,7 @@ export default function DoctorVisit() {
         chiefComplaint: visitRecord.chiefComplaint,
         recordedBy: visitRecord.examinedBy,
         recordedTime: visitRecord.examinedTime,
-        message: `มีการบันทึกการตรวจโดยแพทย์ใหม่สำหรับคุณ ${patient.thai_name || `${patient.firstName} ${patient.lastName}`} โดย ${visitRecord.examinedBy}`
+        message: `มีการบันทึกการตรวจโดยแพทย์ใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${visitRecord.examinedBy}`
       };
 
       await NotificationService.notifyPatientRecordUpdate(notificationData);
@@ -162,8 +177,8 @@ export default function DoctorVisit() {
         visitData,
         {
           patientHn: patient.hn || '',
-          patientNationalId: patient.national_id || '',
-          patientName: patient.thai_name || ''
+          patientNationalId: patient.nationalId || '',
+          patientName: patient.thaiName || ''
         },
         user?.id || '',
         user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'แพทย์'
@@ -221,13 +236,13 @@ export default function DoctorVisit() {
               <h3 className="text-lg font-semibold text-green-800 mb-2">ข้อมูลผู้ป่วย</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospital_number}
+                  <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospitalNumber}
                 </div>
                 <div>
-                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thai_name || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thaiName || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
                 </div>
                 <div>
-                  <span className="font-medium">อายุ:</span> {selectedPatient.age || 'ไม่ระบุ'}
+                  <span className="font-medium">อายุ:</span> {selectedPatient.birthDate ? calculateAge(selectedPatient.birthDate) : 'ไม่ระบุ'}
                 </div>
                 <div>
                   <span className="font-medium">เพศ:</span> {selectedPatient.gender || 'ไม่ระบุ'}

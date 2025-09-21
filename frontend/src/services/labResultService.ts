@@ -122,7 +122,7 @@ export class LabResultService {
    */
   static async updateLabResult(id: string, data: UpdateLabResultRequest): Promise<APIResponse<LabResultRecord>> {
     try {
-      const response = await apiClient.put(`/medical/lab-results/${id}`, data);
+      const response = await apiClient.post(`/medical/lab-results/${id}/update`, data);
       return response as APIResponse<LabResultRecord>;
     } catch (error) {
       logger.error('Error updating lab result record:', error);
@@ -135,7 +135,7 @@ export class LabResultService {
    */
   static async deleteLabResult(id: string): Promise<APIResponse<{ id: string }>> {
     try {
-      const response = await apiClient.delete(`/medical/lab-results/${id}`);
+      const response = await apiClient.post(`/medical/lab-results/${id}/delete`, {});
       return response as APIResponse<{ id: string }>;
     } catch (error) {
       logger.error('Error deleting lab result record:', error);

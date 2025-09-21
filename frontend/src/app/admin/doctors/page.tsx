@@ -42,7 +42,7 @@ export default function DoctorsManagement() {
       });
       
       if (response.statusCode === 200 && response.data) {
-        setDoctors(response.data);
+        setDoctors(response.data as Doctor[]);
         logger.debug('✅ Doctors loaded successfully:', response.data);
       } else {
         throw new Error('Failed to load doctors');

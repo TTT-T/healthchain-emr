@@ -122,7 +122,7 @@ export class DocumentService {
    */
   static async updateDocument(id: string, data: UpdateDocumentRequest): Promise<APIResponse<DocumentRecord>> {
     try {
-      const response = await apiClient.put(`/medical/documents/${id}`, data);
+      const response = await apiClient.post(`/medical/documents/${id}/update`, data);
       return response as APIResponse<DocumentRecord>;
     } catch (error) {
       logger.error('Error updating document:', error);
@@ -135,7 +135,7 @@ export class DocumentService {
    */
   static async deleteDocument(id: string): Promise<APIResponse<{ id: string }>> {
     try {
-      const response = await apiClient.delete(`/medical/documents/${id}`);
+      const response = await apiClient.post(`/medical/documents/${id}/delete`, {});
       return response as APIResponse<{ id: string }>;
     } catch (error) {
       logger.error('Error deleting document:', error);

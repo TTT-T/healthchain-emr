@@ -683,11 +683,11 @@ export default function ConsentRequestsPage() {
                         })}
                       </p>
                     </div>
-                    {selectedRequest.validatedAt && (
+                    {selectedRequest.validated_at && (
                       <div>
                         <label className="text-sm font-medium text-gray-600">วันที่ตรวจสอบ</label>
                         <p className="text-gray-900">
-                          {new Date(selectedRequest.validatedAt).toLocaleDateString('th-TH', {
+                          {new Date(selectedRequest.validated_at).toLocaleDateString('th-TH', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric',
@@ -695,8 +695,8 @@ export default function ConsentRequestsPage() {
                             minute: '2-digit'
                           })}
                         </p>
-                        {selectedRequest.validatedBy && (
-                          <p className="text-sm text-gray-500">โดย: {selectedRequest.validatedBy}</p>
+                        {selectedRequest.validated_by && (
+                          <p className="text-sm text-gray-500">โดย: {selectedRequest.validated_by}</p>
                         )}
                       </div>
                     )}

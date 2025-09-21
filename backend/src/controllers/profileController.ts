@@ -27,21 +27,23 @@ export const getCompleteProfile = async (req: Request, res: Response) => {
       );
     }
 
-    // Get complete user data from database
+    // Get complete user data from database with patient information
     const userQuery = `
       SELECT 
-        id, username, email, first_name, last_name, phone, role,
-        thai_name, thai_last_name, national_id, birth_date, birth_day, birth_month, birth_year, gender, blood_type,
-        address, id_card_address,
-        emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
-        allergies, drug_allergies, food_allergies, environment_allergies,
-        medical_history, current_medications, chronic_diseases,
-        weight, height, occupation, education, marital_status, religion, race,
-        insurance_type, insurance_number, insurance_expiry_date, insurance_expiry_day, insurance_expiry_month, insurance_expiry_year,
-        profile_image, is_active, email_verified, profile_completed,
-        created_at, updated_at, last_login, last_activity
-      FROM users 
-      WHERE id = $1
+        u.id, u.username, u.email, u.first_name, u.last_name, u.phone, u.role,
+        u.thai_name, u.thai_last_name, u.national_id, u.birth_date, u.birth_day, u.birth_month, u.birth_year, u.gender, u.blood_type,
+        u.address, u.id_card_address,
+        u.emergency_contact_name, u.emergency_contact_phone, u.emergency_contact_relation,
+        u.allergies, u.drug_allergies, u.food_allergies, u.environment_allergies,
+        u.medical_history, u.current_medications, u.chronic_diseases,
+        u.weight, u.height, u.occupation, u.education, u.marital_status, u.religion, u.race,
+        u.insurance_type, u.insurance_number, u.insurance_expiry_date, u.insurance_expiry_day, u.insurance_expiry_month, u.insurance_expiry_year,
+        u.profile_image, u.is_active, u.email_verified, u.profile_completed,
+        u.created_at, u.updated_at, u.last_login, u.last_activity,
+        p.hospital_number
+      FROM users u
+      LEFT JOIN patients p ON u.id = p.user_id
+      WHERE u.id = $1
     `;
     
     const result = await databaseManager.query(userQuery, [user.id]);

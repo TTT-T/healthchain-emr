@@ -375,7 +375,7 @@ export default function PendingUsersPage() {
         </Card>
 
         {/* Approval Dialog */}
-        <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
+        <Dialog isOpen={showApprovalDialog} onClose={() => setShowApprovalDialog(false)}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>อนุมัติผู้ใช้</DialogTitle>
@@ -415,7 +415,7 @@ export default function PendingUsersPage() {
         </Dialog>
 
         {/* Rejection Dialog */}
-        <Dialog open={showRejectionDialog} onOpenChange={setShowRejectionDialog}>
+        <Dialog isOpen={showRejectionDialog} onClose={() => setShowRejectionDialog(false)}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>ปฏิเสธผู้ใช้</DialogTitle>

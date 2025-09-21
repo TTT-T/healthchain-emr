@@ -30,11 +30,29 @@ export const getPatientNotifications = async (req: Request, res: Response) => {
       );
       
       if (patientByEmail.rows.length === 0) {
-        return res.status(404).json({
-          data: null,
-          meta: null,
-          error: { message: 'Patient record not found for this user' },
-          statusCode: 404
+        // Patient record not found - this is expected for users who haven't registered in EMR yet
+        // Return empty notifications instead of 404 error
+        return res.status(200).json({
+          data: {
+            patient: {
+              id: user.id,
+              name: `${user.first_name} ${user.last_name}`
+            },
+            notifications: [],
+            unread_count: 0,
+            pagination: {
+              page: Number(page),
+              limit: Number(limit),
+              total: 0,
+              totalPages: 0
+            }
+          },
+          meta: {
+            timestamp: new Date().toISOString(),
+            notificationCount: 0
+          },
+          error: null,
+          statusCode: 200
         });
       }
       
@@ -131,12 +149,21 @@ export const getPatientNotifications = async (req: Request, res: Response) => {
       SELECT COUNT(*) as unread_count
       FROM notifications n
       WHERE n.patient_id = $1 AND n.is_read = false
-    `, [patientId]);
+    `, [actualPatientId]);
     const unreadCount = parseInt(unreadCountResult.rows[0].unread_count);
+
+    console.log('🔔 Backend - Notification data:', {
+      actualPatientId,
+      patientId,
+      notificationsCount: notifications.length,
+      unreadCount,
+      notifications: notifications.map(n => ({ id: n.id, is_read: n.is_read, title: n.title }))
+    });
 
     // Format notifications
     const formattedNotifications = notifications.map(notif => ({
       id: notif.id,
+      patient_id: actualPatientId, // Add patient_id to response
       title: notif.title,
       message: notif.message,
       notification_type: notif.notification_type,
@@ -223,11 +250,13 @@ export const markNotificationAsRead = async (req: Request, res: Response) => {
     }
 
     // Mark notification as read
+    console.log('🔔 Backend - Marking notification as read:', { notifId, patientId });
     await databaseManager.query(`
       UPDATE notifications 
       SET is_read = true, read_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
     `, [notifId]);
+    console.log('🔔 Backend - Notification marked as read successfully');
 
     // Get updated notification
     const updatedNotification = await databaseManager.query(`

@@ -169,6 +169,34 @@ export class WebSocketService {
   }
 
   /**
+   * เข้าร่วมห้อง (room)
+   */
+  public joinRoom(roomId: string): boolean {
+    return this.send('join_room', { roomId });
+  }
+
+  /**
+   * ออกจากห้อง (room)
+   */
+  public leaveRoom(roomId: string): boolean {
+    return this.send('leave_room', { roomId });
+  }
+
+  /**
+   * เริ่มพิมพ์ (typing indicator)
+   */
+  public startTyping(roomId: string, userId: string): boolean {
+    return this.send('start_typing', { roomId, userId });
+  }
+
+  /**
+   * หยุดพิมพ์ (typing indicator)
+   */
+  public stopTyping(roomId: string, userId: string): boolean {
+    return this.send('stop_typing', { roomId, userId });
+  }
+
+  /**
    * ตรวจสอบสถานะการเชื่อมต่อ
    */
   public getConnectionStatus(): {
@@ -290,6 +318,10 @@ export const useWebSocket = (config?: WebSocketConfig) => {
     send: (type: string, data: any) => service.send(type, data),
     on: (eventType: string, handler: WebSocketEventHandler) => service.on(eventType, handler),
     off: (eventType: string, handler: WebSocketEventHandler) => service.off(eventType, handler),
-    getConnectionStatus: () => service.getConnectionStatus()
+    getConnectionStatus: () => service.getConnectionStatus(),
+    joinRoom: (roomId: string) => service.joinRoom(roomId),
+    leaveRoom: (roomId: string) => service.leaveRoom(roomId),
+    startTyping: (roomId: string, userId: string) => service.startTyping(roomId, userId),
+    stopTyping: (roomId: string, userId: string) => service.stopTyping(roomId, userId)
   };
 };

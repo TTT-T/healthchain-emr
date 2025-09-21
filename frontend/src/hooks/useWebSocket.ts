@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { webSocketService } from '@/services/websocketService';
+import { getWebSocketService } from '@/services/websocketService';
 import { logger } from '@/lib/logger';
 
 /**
@@ -53,7 +53,7 @@ export const useWebSocket = () => {
   useEffect(() => {
     if (isAuthenticated && user?.accessToken) {
       // Connect to WebSocket
-      webSocketService.connect(user.accessToken);
+      getWebSocketService().connect();
 
       // Set up event listeners
       const handleConnected = () => {
@@ -92,17 +92,17 @@ export const useWebSocket = () => {
       };
 
       // Add event listeners
-      webSocketService.on('connected', handleConnected);
-      webSocketService.on('disconnected', handleDisconnected as any);
-      webSocketService.on('connection_error', handleConnectionError as any);
-      webSocketService.on('notification', handleNotification as any);
-      webSocketService.on('system_update', handleSystemUpdate as any);
-      webSocketService.on('dashboard_update', handleDashboardUpdate as any);
-      webSocketService.on('patient_update', handlePatientUpdate as any);
+      getWebSocketService().on('connected', handleConnected);
+      getWebSocketService().on('disconnected', handleDisconnected as any);
+      getWebSocketService().on('connection_error', handleConnectionError as any);
+      getWebSocketService().on('notification', handleNotification as any);
+      getWebSocketService().on('system_update', handleSystemUpdate as any);
+      getWebSocketService().on('dashboard_update', handleDashboardUpdate as any);
+      getWebSocketService().on('patient_update', handlePatientUpdate as any);
 
       // Set connection timeout
       connectionTimeoutRef.current = setTimeout(() => {
-        if (!webSocketService.getConnectionStatus()) {
+        if (!getWebSocketService().getConnectionStatus()) {
           logger.warn('⚠️ WebSocket connection timeout');
           setIsConnected(false);
         }
@@ -111,13 +111,13 @@ export const useWebSocket = () => {
       // Cleanup function
       return () => {
         // Remove event listeners
-        webSocketService.off('connected', handleConnected);
-        webSocketService.off('disconnected', handleDisconnected as any);
-        webSocketService.off('connection_error', handleConnectionError as any);
-        webSocketService.off('notification', handleNotification as any);
-        webSocketService.off('system_update', handleSystemUpdate as any);
-        webSocketService.off('dashboard_update', handleDashboardUpdate as any);
-        webSocketService.off('patient_update', handlePatientUpdate as any);
+        getWebSocketService().off('connected', handleConnected);
+        getWebSocketService().off('disconnected', handleDisconnected as any);
+        getWebSocketService().off('connection_error', handleConnectionError as any);
+        getWebSocketService().off('notification', handleNotification as any);
+        getWebSocketService().off('system_update', handleSystemUpdate as any);
+        getWebSocketService().off('dashboard_update', handleDashboardUpdate as any);
+        getWebSocketService().off('patient_update', handlePatientUpdate as any);
 
         // Clear timeout
         if (connectionTimeoutRef.current) {
@@ -125,12 +125,12 @@ export const useWebSocket = () => {
         }
 
         // Disconnect WebSocket
-        webSocketService.disconnect();
+        getWebSocketService().disconnect();
         setIsConnected(false);
       };
     } else {
       // Disconnect if not authenticated
-      webSocketService.disconnect();
+      getWebSocketService().disconnect();
       setIsConnected(false);
     }
   }, [isAuthenticated, user?.accessToken]);
@@ -138,26 +138,27 @@ export const useWebSocket = () => {
   // Auto-join relevant rooms based on user role
   useEffect(() => {
     if (isConnected && user) {
+      // TODO: Implement room joining functionality
       // Join user-specific room
-      webSocketService.joinRoom(`user:${user.id}`);
+      // getWebSocketService().joinRoom(`user:${user.id}`);
       
       // Join role-specific room
-      if (user.role) {
-        webSocketService.joinRoom(`role:${user.role}`);
-      }
+      // if (user.role) {
+      //   getWebSocketService().joinRoom(`role:${user.role}`);
+      // }
 
       // Join admin room if user is admin
-      if (user.role === 'admin') {
-        webSocketService.joinRoom('admin');
-      }
+      // if (user.role === 'admin') {
+      //   getWebSocketService().joinRoom('admin');
+      // }
 
       // Join common rooms
-      webSocketService.joinRoom('notifications');
-      webSocketService.joinRoom('system_updates');
+      // getWebSocketService().joinRoom('notifications');
+      // getWebSocketService().joinRoom('system_updates');
       
-      if (user.role === 'patient') {
-        webSocketService.joinRoom('patient_updates');
-      }
+      // if (user.role === 'patient') {
+      //   getWebSocketService().joinRoom('patient_updates');
+      // }
     }
   }, [isConnected, user]);
 
@@ -167,10 +168,11 @@ export const useWebSocket = () => {
     systemUpdates,
     dashboardData,
     patientUpdates,
-    joinRoom: webSocketService.joinRoom.bind(webSocketService),
-    leaveRoom: webSocketService.leaveRoom.bind(webSocketService),
-    startTyping: webSocketService.startTyping.bind(webSocketService),
-    stopTyping: webSocketService.stopTyping.bind(webSocketService),
+    // TODO: Implement these methods in WebSocketService
+    // joinRoom: getWebSocketService().joinRoom.bind(getWebSocketService()),
+    // leaveRoom: getWebSocketService().leaveRoom.bind(getWebSocketService()),
+    // startTyping: getWebSocketService().startTyping.bind(getWebSocketService()),
+    // stopTyping: getWebSocketService().stopTyping.bind(getWebSocketService()),
     clearNotifications: () => setNotifications([]),
     clearSystemUpdates: () => setSystemUpdates([]),
     clearPatientUpdates: () => setPatientUpdates([])

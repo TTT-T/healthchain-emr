@@ -54,23 +54,28 @@ export class ConsentAuditService {
   private apiClient = apiClient;
 
   async getAuditSummary(): Promise<ConsentAuditResponse> {
-    return this.apiClient.get('/admin/consent-audit/summary');
+    const response = await this.apiClient.get('/admin/consent-audit/summary');
+    return response.data as ConsentAuditResponse;
   }
 
   async getViolationAlerts(limit: number = 10): Promise<{ success: boolean; data: ViolationAlert[] }> {
-    return this.apiClient.get(`/admin/consent-audit/violations?limit=${limit}`);
+    const response = await this.apiClient.get(`/admin/consent-audit/violations?limit=${limit}`);
+    return response.data as { success: boolean; data: ViolationAlert[] };
   }
 
   async getUsageByUserType(): Promise<{ success: boolean; data: UsageByUserType[] }> {
-    return this.apiClient.get('/admin/consent-audit/usage-by-type');
+    const response = await this.apiClient.get('/admin/consent-audit/usage-by-type');
+    return response.data as { success: boolean; data: UsageByUserType[] };
   }
 
   async getMonthlyTrends(period: number = 30): Promise<{ success: boolean; data: MonthlyTrend[] }> {
-    return this.apiClient.get(`/admin/consent-audit/monthly-trends?period=${period}`);
+    const response = await this.apiClient.get(`/admin/consent-audit/monthly-trends?period=${period}`);
+    return response.data as { success: boolean; data: MonthlyTrend[] };
   }
 
   async getAllAuditData(): Promise<ConsentAuditResponse> {
-    return this.apiClient.get('/admin/consent-audit/all');
+    const response = await this.apiClient.get('/admin/consent-audit/all');
+    return response.data as ConsentAuditResponse;
   }
 }
 

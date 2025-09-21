@@ -52,21 +52,26 @@ export class DoctorService {
     limit?: number;
     department?: string;
     specialization?: string;
-    isAvailable?: boolean;
+    is_available?: boolean;
   }) {
     try {
       logger.debug('📱 DoctorService.getDoctors called', params);
+      console.log('📱 DoctorService.getDoctors called with params:', params);
       
-      const response = await apiClient.request({
-        method: 'GET',
-        url: '/medical/doctors',
-        params
-      });
+      const response = await apiClient.get('/medical/doctors', { params });
       
       logger.debug('✅ DoctorService.getDoctors success:', response);
+      console.log('✅ DoctorService.getDoctors success:', response);
       return response;
     } catch (error) {
       logger.error('❌ DoctorService.getDoctors error:', error);
+      console.error('❌ DoctorService.getDoctors error:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        url: error.config?.url
+      });
       throw error;
     }
   }
@@ -78,10 +83,7 @@ export class DoctorService {
     try {
       logger.debug('📱 DoctorService.getDoctorById called', { id });
       
-      const response = await apiClient.request({
-        method: 'GET',
-        url: `/medical/doctors/${id}`
-      });
+      const response = await apiClient.get(`/medical/doctors/${id}`);
       
       logger.debug('✅ DoctorService.getDoctorById success:', response);
       return response;
@@ -98,11 +100,7 @@ export class DoctorService {
     try {
       logger.debug('📱 DoctorService.createDoctor called', data);
       
-      const response = await apiClient.request({
-        method: 'POST',
-        url: '/medical/doctors',
-        data
-      });
+      const response = await apiClient.post('/medical/doctors', data);
       
       logger.debug('✅ DoctorService.createDoctor success:', response);
       return response;
@@ -119,11 +117,7 @@ export class DoctorService {
     try {
       logger.debug('📱 DoctorService.updateDoctor called', { id, data });
       
-      const response = await apiClient.request({
-        method: 'PUT',
-        url: `/medical/doctors/${id}`,
-        data
-      });
+      const response = await apiClient.post(`/medical/doctors/${id}/update`, data);
       
       logger.debug('✅ DoctorService.updateDoctor success:', response);
       return response;
@@ -140,10 +134,7 @@ export class DoctorService {
     try {
       logger.debug('📱 DoctorService.deleteDoctor called', { id });
       
-      const response = await apiClient.request({
-        method: 'DELETE',
-        url: `/medical/doctors/${id}`
-      });
+      const response = await apiClient.post(`/medical/doctors/${id}/delete`, {});
       
       logger.debug('✅ DoctorService.deleteDoctor success:', response);
       return response;
@@ -160,11 +151,7 @@ export class DoctorService {
     try {
       logger.debug('📱 DoctorService.updateAvailability called', { id, isAvailable });
       
-      const response = await apiClient.request({
-        method: 'PATCH',
-        url: `/medical/doctors/${id}/availability`,
-        data: { isAvailable }
-      });
+      const response = await apiClient.post(`/medical/doctors/${id}/availability`, { isAvailable });
       
       logger.debug('✅ DoctorService.updateAvailability success:', response);
       return response;
@@ -181,10 +168,7 @@ export class DoctorService {
     try {
       logger.debug('📱 DoctorService.getCurrentQueue called', { id });
       
-      const response = await apiClient.request({
-        method: 'GET',
-        url: `/medical/doctors/${id}/queue`
-      });
+      const response = await apiClient.get(`/medical/doctors/${id}/queue`);
       
       logger.debug('✅ DoctorService.getCurrentQueue success:', response);
       return response;
@@ -202,7 +186,7 @@ export class DoctorService {
       logger.debug('📱 DoctorService.getAvailableDoctors called');
       
       const response = await this.getDoctors({
-        isAvailable: true,
+        is_available: true,
         limit: 100 // ดึงทั้งหมด
       });
       

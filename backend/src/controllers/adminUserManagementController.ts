@@ -68,14 +68,21 @@ export const getAllUsers = async (req: Request, res: Response) => {
         u.created_at,
         u.updated_at,
         d.department_name,
-        COUNT(v.id) as visit_count,
-        COUNT(a.id) as appointment_count
+        COALESCE(visit_counts.visit_count, 0) as visit_count,
+        COALESCE(appointment_counts.appointment_count, 0) as appointment_count
       FROM users u
       LEFT JOIN departments d ON u.department_id = d.id
-      LEFT JOIN visits v ON u.id = v.attending_doctor_id
-      LEFT JOIN appointments a ON u.id = a.physician_id
+      LEFT JOIN (
+        SELECT attending_doctor_id, COUNT(*) as visit_count 
+        FROM visits 
+        GROUP BY attending_doctor_id
+      ) visit_counts ON u.id = visit_counts.attending_doctor_id
+      LEFT JOIN (
+        SELECT physician_id, COUNT(*) as appointment_count 
+        FROM appointments 
+        GROUP BY physician_id
+      ) appointment_counts ON u.id = appointment_counts.physician_id
       ${whereClause}
-      GROUP BY u.id, d.department_name
       ORDER BY u.${validSortBy} ${validSortOrder}
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
     `;
@@ -97,6 +104,8 @@ export const getAllUsers = async (req: Request, res: Response) => {
       id: user.id,
       username: user.username,
       name: `${user.first_name} ${user.last_name}`,
+      first_name: user.first_name,
+      last_name: user.last_name,
       email: user.email,
       role: user.role,
       status: user.is_active ? 'active' : 'inactive',

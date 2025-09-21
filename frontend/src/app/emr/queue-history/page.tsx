@@ -2,7 +2,17 @@
 import { useState, useEffect } from "react";
 import { useAuth } from '@/contexts/AuthContext';
 import { FileText, Download, Eye, Calendar, Clock, User, Stethoscope, Search, Filter, BarChart3, RefreshCw } from 'lucide-react';
-import { QueueHistoryService, QueueHistoryRecord, QueueStatistics, QueueHistoryQuery } from '@/services/queueHistoryService';
+import { 
+  getAllQueueHistory, 
+  getQueueStatistics, 
+  searchQueueByPatient, 
+  downloadQueueReport, 
+  generateStatisticsReport, 
+  getSampleQueueData,
+  QueueHistoryRecord, 
+  QueueStatistics, 
+  QueueHistoryQuery 
+} from '@/services/queueHistoryService';
 import { PDFStorageService } from '@/services/pdfStorageService';
 import { PatientDocumentService } from '@/services/patientDocumentService';
 import { logger } from '@/lib/logger';
@@ -60,18 +70,18 @@ export default function QueueHistory() {
 
       // ดึงข้อมูลจาก API
       try {
-        const apiResponse = await QueueHistoryService.getAllQueueHistory(filters);
+        const apiResponse = await getAllQueueHistory(filters);
         const allRecords = [...apiResponse.data, ...queueRecordsFromPDFs];
         setQueueRecords(allRecords);
       } catch (apiError) {
         logger.warn('API not available, using sample data', apiError);
-        const sampleData = QueueHistoryService.getSampleQueueData();
+        const sampleData = getSampleQueueData();
         const allRecords = [...sampleData, ...queueRecordsFromPDFs];
         setQueueRecords(allRecords);
       }
     } catch (error) {
       logger.error('Error loading queue records:', error);
-      const sampleData = QueueHistoryService.getSampleQueueData();
+      const sampleData = getSampleQueueData();
       setQueueRecords(sampleData);
     } finally {
       setIsLoading(false);
@@ -81,7 +91,7 @@ export default function QueueHistory() {
   const loadStatistics = async () => {
     try {
       setIsLoadingStats(true);
-      const response = await QueueHistoryService.getQueueStatistics();
+      const response = await getQueueStatistics();
       setStatistics(response.data);
     } catch (error) {
       logger.warn('Statistics API not available, using sample data', error);
@@ -113,7 +123,7 @@ export default function QueueHistory() {
 
     try {
       setIsLoading(true);
-      const results = await QueueHistoryService.searchQueueByPatient(searchQuery);
+      const results = await searchQueueByPatient(searchQuery);
       setQueueRecords(results);
     } catch (error) {
       logger.error('Error searching queue records:', error);
@@ -137,7 +147,7 @@ export default function QueueHistory() {
   const applyFilters = async () => {
     try {
       setIsLoading(true);
-      const response = await QueueHistoryService.getAllQueueHistory(filters);
+      const response = await getAllQueueHistory(filters);
       setQueueRecords(response.data);
     } catch (error) {
       logger.error('Error applying filters:', error);
@@ -181,7 +191,7 @@ export default function QueueHistory() {
         document.body.removeChild(link);
       } else {
         // สร้างรายงานใหม่
-        await QueueHistoryService.downloadQueueReport(record.id);
+        await downloadQueueReport(record.id);
       }
       
       // สร้างเอกสารให้ผู้ป่วย
@@ -194,7 +204,7 @@ export default function QueueHistory() {
 
   const handleDownloadStatistics = async () => {
     try {
-      await QueueHistoryService.generateStatisticsReport({ format: 'pdf' });
+      await generateStatisticsReport({ format: 'pdf' });
     } catch (error) {
       logger.error('Error downloading statistics:', error);
       alert('ไม่สามารถดาวน์โหลดรายงานสถิติได้');

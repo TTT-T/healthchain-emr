@@ -137,7 +137,7 @@ export class DoctorVisitService {
    */
   static async updateDoctorVisit(id: string, data: UpdateDoctorVisitRequest): Promise<APIResponse<DoctorVisitRecord>> {
     try {
-      const response = await apiClient.put(`/medical/doctor-visit/${id}`, data);
+      const response = await apiClient.post(`/medical/doctor-visit/${id}/update`, data);
       return response as APIResponse<DoctorVisitRecord>;
     } catch (error) {
       logger.error('Error updating doctor visit record:', error);
@@ -150,7 +150,7 @@ export class DoctorVisitService {
    */
   static async deleteDoctorVisit(id: string): Promise<APIResponse<{ id: string }>> {
     try {
-      const response = await apiClient.delete(`/medical/doctor-visit/${id}`);
+      const response = await apiClient.post(`/medical/doctor-visit/${id}/delete`, {});
       return response as APIResponse<{ id: string }>;
     } catch (error) {
       logger.error('Error deleting doctor visit record:', error);

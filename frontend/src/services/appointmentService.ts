@@ -131,7 +131,7 @@ export class AppointmentService {
    */
   static async updateAppointment(id: string, data: UpdateAppointmentRequest): Promise<APIResponse<AppointmentRecord>> {
     try {
-      const response = await apiClient.put(`/medical/appointments/${id}`, data);
+      const response = await apiClient.post(`/medical/appointments/${id}/update`, data);
       return response as APIResponse<AppointmentRecord>;
     } catch (error) {
       logger.error('Error updating appointment:', error);
@@ -144,7 +144,7 @@ export class AppointmentService {
    */
   static async deleteAppointment(id: string): Promise<APIResponse<{ id: string }>> {
     try {
-      const response = await apiClient.delete(`/medical/appointments/${id}`);
+      const response = await apiClient.post(`/medical/appointments/${id}/delete`, {});
       return response as APIResponse<{ id: string }>;
     } catch (error) {
       logger.error('Error deleting appointment:', error);

@@ -52,19 +52,41 @@ export default function PendingPersonnelPage() {
       setLoading(true);
       setError(null);
       
-      const [usersResponse, statsResponse] = await Promise.all([
-        pendingPersonnelService.getPendingUsers({
+      // Try to fetch pending users with fallback
+      let usersResponse;
+      try {
+        usersResponse = await pendingPersonnelService.getPendingUsers({
           page: pagination.page,
           limit: pagination.limit,
           role: roleFilter === 'all' ? undefined : roleFilter,
           search: searchTerm || undefined
-        }),
-        pendingPersonnelService.getApprovalStats()
-      ]);
+        });
+        setPersonnel(usersResponse?.data?.users || []);
+        setPagination(usersResponse?.data?.pagination || {
+          page: 1,
+          limit: 10,
+          total: 0,
+          totalPages: 0
+        });
+      } catch (usersError) {
+        console.warn('Could not fetch pending users, using fallback:', usersError);
+        setPersonnel([]);
+        setPagination({
+          page: 1,
+          limit: 10,
+          total: 0,
+          totalPages: 0
+        });
+      }
 
-      setPersonnel(usersResponse.data.users);
-      setPagination(usersResponse.data.pagination);
-      setStats(statsResponse.data);
+      // Try to fetch approval stats with fallback
+      try {
+        const statsResponse = await pendingPersonnelService.getApprovalStats();
+        setStats(statsResponse?.data || null);
+      } catch (statsError) {
+        console.warn('Could not fetch approval stats, using fallback:', statsError);
+        setStats(null);
+      }
     } catch (err: any) {
       console.error('Error fetching data:', err);
       setError('ไม่สามารถโหลดข้อมูลได้');

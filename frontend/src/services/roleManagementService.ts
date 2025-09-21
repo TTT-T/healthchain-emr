@@ -4,6 +4,8 @@ export interface User {
   id: string;
   username: string;
   name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   role: string;
   status: 'active' | 'inactive';
@@ -107,12 +109,8 @@ class RoleManagementService {
     sortOrder?: string;
   }): Promise<UsersResponse> {
     try {
-      const response = await this.apiClient.request<UsersResponse>({
-        method: 'GET',
-        url: '/admin/users',
-        params
-      });
-      return response;
+      const response = await this.apiClient.get<UsersResponse>('/admin/users', { params });
+      return response as unknown as UsersResponse;
     } catch (error) {
       console.error('Error fetching users:', error);
       throw error;
@@ -124,78 +122,24 @@ class RoleManagementService {
    */
   async getSystemStats(): Promise<SystemStatsResponse> {
     try {
-      const response = await this.apiClient.request<SystemStatsResponse>({
-        method: 'GET',
-        url: '/admin/system/health'
-      });
-      return response;
+      const response = await this.apiClient.get<SystemStatsResponse>('/admin/system/health');
+      return response as unknown as SystemStatsResponse;
     } catch (error) {
       console.error('Error fetching system stats:', error);
       throw error;
     }
   }
 
-  /**
-   * Get user by ID
-   */
-  async getUserById(id: string): Promise<any> {
-    try {
-      const response = await this.apiClient.request({
-        method: 'GET',
-        url: `/admin/users/${id}`
-      });
-      return response;
-    } catch (error) {
-      console.error('Error fetching user:', error);
-      throw error;
-    }
-  }
 
-  /**
-   * Update user role
-   */
-  async updateUserRole(id: string, role: string): Promise<any> {
-    try {
-      const response = await this.apiClient.request({
-        method: 'PUT',
-        url: `/admin/users/${id}`,
-        data: { role }
-      });
-      return response;
-    } catch (error) {
-      console.error('Error updating user role:', error);
-      throw error;
-    }
-  }
 
-  /**
-   * Update user status (active/inactive)
-   */
-  async updateUserStatus(id: string, isActive: boolean): Promise<any> {
-    try {
-      const response = await this.apiClient.request({
-        method: 'PUT',
-        url: `/admin/users/${id}`,
-        data: { is_active: isActive }
-      });
-      return response;
-    } catch (error) {
-      console.error('Error updating user status:', error);
-      throw error;
-    }
-  }
 
   /**
    * Update user details
    */
   async updateUser(id: string, userData: Partial<User>): Promise<any> {
     try {
-      const response = await this.apiClient.request({
-        method: 'PUT',
-        url: `/admin/users/${id}`,
-        data: userData
-      });
-      return response;
+      const response = await this.apiClient.post(`/admin/users/${id}/update`, userData);
+      return response.data;
     } catch (error) {
       console.error('Error updating user:', error);
       throw error;
@@ -214,44 +158,22 @@ class RoleManagementService {
     password: string;
   }): Promise<any> {
     try {
-      const response = await this.apiClient.request({
-        method: 'POST',
-        url: '/admin/users',
-        data: userData
-      });
-      return response;
+      const response = await this.apiClient.post('/admin/users', userData);
+      return response.data;
     } catch (error) {
       console.error('Error creating user:', error);
       throw error;
     }
   }
 
-  /**
-   * Delete user (soft delete)
-   */
-  async deleteUser(id: string): Promise<any> {
-    try {
-      const response = await this.apiClient.request({
-        method: 'DELETE',
-        url: `/admin/users/${id}`
-      });
-      return response;
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      throw error;
-    }
-  }
 
   /**
    * Get user by ID
    */
   async getUserById(userId: string): Promise<any> {
     try {
-      const response = await this.apiClient.request({
-        method: 'GET',
-        url: `/admin/users/${userId}`
-      });
-      return response;
+      const response = await this.apiClient.get(`/admin/users/${userId}`);
+      return response.data;
     } catch (error) {
       console.error('Error fetching user by ID:', error);
       throw error;
@@ -263,12 +185,8 @@ class RoleManagementService {
    */
   async updateUserRole(userId: string, role: string): Promise<any> {
     try {
-      const response = await this.apiClient.request({
-        method: 'PUT',
-        url: `/admin/users/${userId}`,
-        data: { role }
-      });
-      return response;
+      const response = await this.apiClient.post(`/admin/users/${userId}/update`, { role });
+      return response.data;
     } catch (error) {
       console.error('Error updating user role:', error);
       throw error;
@@ -280,12 +198,8 @@ class RoleManagementService {
    */
   async updateUserStatus(userId: string, isActive: boolean): Promise<any> {
     try {
-      const response = await this.apiClient.request({
-        method: 'PUT',
-        url: `/admin/users/${userId}`,
-        data: { is_active: isActive }
-      });
-      return response;
+      const response = await this.apiClient.post(`/admin/users/${userId}/update`, { is_active: isActive });
+      return response.data;
     } catch (error) {
       console.error('Error updating user status:', error);
       throw error;
@@ -297,11 +211,8 @@ class RoleManagementService {
    */
   async deleteUser(userId: string): Promise<any> {
     try {
-      const response = await this.apiClient.request({
-        method: 'DELETE',
-        url: `/admin/users/${userId}`
-      });
-      return response;
+      const response = await this.apiClient.post(`/admin/users/${userId}/delete`, {});
+      return response.data;
     } catch (error) {
       console.error('Error deleting user:', error);
       throw error;

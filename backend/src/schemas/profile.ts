@@ -87,6 +87,7 @@ export const CompleteProfileSchema = z.object({
   // Personal Information
   thaiName: ProfileFieldValidators.thaiName,
   nationalId: ProfileFieldValidators.nationalId,
+  hospitalNumber: z.string().optional().nullable(),
   birthDate: ProfileFieldValidators.birthDate,
   gender: ProfileFieldValidators.gender,
   bloodType: ProfileFieldValidators.bloodType,
@@ -279,6 +280,7 @@ export const ProfileTransformers = {
     
     // Personal Info
     nationalId: data.national_id,
+    hospitalNumber: data.hospital_number,
     birthDate: data.birth_date,
     birthDay: data.birth_day || (data.birth_date ? new Date(data.birth_date).getDate() : null),
     birthMonth: data.birth_month || (data.birth_date ? new Date(data.birth_date).getMonth() + 1 : null),

@@ -100,7 +100,7 @@ export class ActivityLogsService {
     if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
 
     const response = await apiClient.get(`/admin/activity-logs?${params.toString()}`);
-    return response.data;
+    return response as unknown as ActivityLogsResponse;
   }
 
   /**
@@ -108,7 +108,7 @@ export class ActivityLogsService {
    */
   static async getActivityLogDetails(id: string): Promise<ActivityLogDetailsResponse> {
     const response = await apiClient.get(`/admin/activity-logs/${id}`);
-    return response.data;
+    return response as unknown as ActivityLogDetailsResponse;
   }
 
   /**
@@ -130,6 +130,6 @@ export class ActivityLogsService {
       responseType: filters.format === 'csv' ? 'blob' : 'json'
     });
 
-    return response.data;
+    return response as unknown as Blob | ExportActivityLogsResponse;
   }
 }

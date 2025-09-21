@@ -128,7 +128,7 @@ export class AdminActivityLogsController {
         FROM system_audit_logs sal
         LEFT JOIN users u ON sal.user_id = u.id
         ${whereClause}
-        ORDER BY sal.${sortBy} ${sortOrder.toUpperCase()}
+        ORDER BY sal.${sortBy} ${String(sortOrder).toUpperCase()}
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `;
 

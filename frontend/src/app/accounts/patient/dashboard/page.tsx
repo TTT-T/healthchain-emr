@@ -40,6 +40,7 @@ interface PatientData {
   thaiLastName?: string;
   phone?: string;
   nationalId?: string;
+  hospitalNumber?: string;
   birthDate?: string;
   birthDay?: number;
   birthMonth?: number;
@@ -160,7 +161,7 @@ const PatientDashboard = () => {
   const loadRecentDocuments = async () => {
     try {
       setDocumentsLoading(true);
-      const patientId = user?.hn || user?.nationalId || '';
+      const patientId = user?.id || '';
       if (patientId) {
         const response = await PatientDocumentService.getPatientDocuments(patientId, {
           limit: 5,
@@ -255,7 +256,7 @@ const PatientDashboard = () => {
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                ยินดีต้อนรับ, {patient?.thai_name || (user as any)?.first_name || 'ผู้ป่วย'}
+                ยินดีต้อนรับ, {patient?.thaiName || user?.firstName || 'ผู้ป่วย'}
               </h1>
               <p className="text-gray-800 mt-1">
                 ภาพรวมข้อมูลสุขภาพและการรักษาของคุณ
@@ -277,16 +278,39 @@ const PatientDashboard = () => {
               <h2 className="text-lg font-semibold text-gray-900">ข้อมูลผู้ป่วย</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* ชื่อไทย */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                   <User className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">ชื่อ-นามสกุล</p>
-                  <p className="font-medium text-gray-900">{patient.thaiName || `${patient.firstName} ${patient.lastName}`}</p>
+                  <p className="text-sm text-gray-600">ชื่อ-นามสกุล (ไทย)</p>
+                  <p className="font-medium text-gray-900">
+                    {patient.thaiName && patient.thaiLastName 
+                      ? `${patient.thaiName} ${patient.thaiLastName}`
+                      : 'ไม่ระบุ'
+                    }
+                  </p>
                 </div>
               </div>
 
+              {/* ชื่ออังกฤษ */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                  <User className="h-5 w-5 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">ชื่อ-นามสกุล (อังกฤษ)</p>
+                  <p className="font-medium text-gray-900">
+                    {patient.firstName && patient.lastName 
+                      ? `${patient.firstName} ${patient.lastName}`
+                      : 'ไม่ระบุ'
+                    }
+                  </p>
+                </div>
+              </div>
+
+              {/* อายุ */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                   <Calendar className="h-5 w-5 text-green-600" />
@@ -297,6 +321,7 @@ const PatientDashboard = () => {
                 </div>
               </div>
 
+              {/* เบอร์โทรศัพท์ */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                   <Phone className="h-5 w-5 text-purple-600" />
@@ -307,6 +332,7 @@ const PatientDashboard = () => {
                 </div>
               </div>
 
+              {/* ที่อยู่ */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
                   <MapPin className="h-5 w-5 text-orange-600" />
@@ -317,6 +343,7 @@ const PatientDashboard = () => {
                 </div>
               </div>
 
+              {/* หมู่เลือด */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
                   <Droplets className="h-5 w-5 text-red-600" />
@@ -327,13 +354,19 @@ const PatientDashboard = () => {
                 </div>
               </div>
 
+              {/* HN หรือสถานะการลงทะเบียน */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
                   <FileText className="h-5 w-5 text-indigo-600" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">HN</p>
-                  <p className="font-medium text-gray-900">{patient.hospital_number || 'ไม่ระบุ'}</p>
+                  <p className="font-medium text-gray-900">
+                    {patient.hospitalNumber 
+                      ? patient.hospitalNumber 
+                      : 'ยังไม่ได้ลงทะเบียนผ่านระบบ EMR'
+                    }
+                  </p>
                 </div>
               </div>
             </div>
@@ -511,30 +544,30 @@ const PatientDashboard = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {recentDocuments.map((document) => (
-                <div key={document.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+              {recentDocuments.map((doc) => (
+                <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="text-lg">
-                      {document.documentType === 'vital_signs' && '💓'}
-                      {document.documentType === 'history_taking' && '📋'}
-                      {document.documentType === 'doctor_visit' && '👨‍⚕️'}
-                      {document.documentType === 'lab_result' && '🧪'}
-                      {document.documentType === 'prescription' && '💊'}
-                      {document.documentType === 'appointment' && '📅'}
-                      {document.documentType === 'medical_certificate' && '📜'}
-                      {document.documentType === 'referral' && '📤'}
-                      {!['vital_signs', 'history_taking', 'doctor_visit', 'lab_result', 'prescription', 'appointment', 'medical_certificate', 'referral'].includes(document.documentType) && '📄'}
+                      {doc.documentType === 'vital_signs' && '💓'}
+                      {doc.documentType === 'history_taking' && '📋'}
+                      {doc.documentType === 'doctor_visit' && '👨‍⚕️'}
+                      {doc.documentType === 'lab_result' && '🧪'}
+                      {doc.documentType === 'prescription' && '💊'}
+                      {doc.documentType === 'appointment' && '📅'}
+                      {doc.documentType === 'medical_certificate' && '📜'}
+                      {doc.documentType === 'referral' && '📤'}
+                      {!['vital_signs', 'history_taking', 'doctor_visit', 'lab_result', 'prescription', 'appointment', 'medical_certificate', 'referral'].includes(doc.documentType) && '📄'}
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900 text-sm">{document.documentTitle}</p>
+                      <p className="font-medium text-gray-900 text-sm">{doc.documentTitle}</p>
                       <p className="text-xs text-gray-500">
-                        {new Date(document.createdAt).toLocaleDateString('th-TH')} • {document.doctorName || 'ระบบ'}
+                        {new Date(doc.createdAt).toLocaleDateString('th-TH')} • {doc.doctorName || 'ระบบ'}
                       </p>
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => window.open(document.fileUrl, '_blank')}
+                      onClick={() => window.open(doc.fileUrl, '_blank')}
                       className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
                       title="ดูออนไลน์"
                     >
@@ -543,11 +576,11 @@ const PatientDashboard = () => {
                     <button
                       onClick={async () => {
                         try {
-                          const blob = await PatientDocumentService.downloadDocument(document.id);
+                          const blob = await PatientDocumentService.downloadDocument(doc.id);
                           const url = window.URL.createObjectURL(blob);
                           const link = document.createElement('a');
                           link.href = url;
-                          link.download = document.fileName;
+                          link.download = doc.fileName;
                           document.body.appendChild(link);
                           link.click();
                           document.body.removeChild(link);

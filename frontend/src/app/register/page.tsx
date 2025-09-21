@@ -346,6 +346,7 @@ export default function Register() {
                     confirmEmail: `test${timestamp}@example.com`,
                     phone: '0812345678',
                     address: '123 ถนนทดสอบ แขวงทดสอบ เขตทดสอบ กรุงเทพฯ 10110',
+                    idCardAddress: '123 ถนนทดสอบ แขวงทดสอบ เขตทดสอบ กรุงเทพฯ 10110',
                     bloodType: 'O+',
                     password: 'SecurePass123!',
                     confirmPassword: 'SecurePass123!',

@@ -72,7 +72,7 @@ class ConsentDashboardService {
    */
   async getStats(): Promise<ConsentStats> {
     const response = await this.apiClient.get('/admin/consent-dashboard/stats');
-    return response.data;
+    return response.data as ConsentStats;
   }
 
   /**
@@ -82,7 +82,7 @@ class ConsentDashboardService {
     const response = await this.apiClient.get('/admin/consent-dashboard/recent-requests', {
       params: { limit }
     });
-    return response.data.requests;
+    return (response.data as any).requests;
   }
 
   /**
@@ -92,7 +92,7 @@ class ConsentDashboardService {
     const response = await this.apiClient.get('/admin/consent-dashboard/active-contracts', {
       params: { limit }
     });
-    return response.data.contracts;
+    return (response.data as any).contracts;
   }
 
   /**
@@ -102,7 +102,7 @@ class ConsentDashboardService {
     const response = await this.apiClient.get('/admin/consent-dashboard/compliance-alerts', {
       params: { limit }
     });
-    return response.data.alerts;
+    return (response.data as any).alerts;
   }
 
   /**
@@ -110,21 +110,21 @@ class ConsentDashboardService {
    */
   async getOverview(): Promise<ConsentDashboardOverview> {
     const response = await this.apiClient.get('/admin/consent-dashboard/overview');
-    return response.data;
+    return response.data as ConsentDashboardOverview;
   }
 
   /**
    * Mark compliance alert as read
    */
   async markAlertAsRead(alertId: string): Promise<void> {
-    await this.apiClient.put(`/admin/consent-dashboard/compliance-alerts/${alertId}/read`);
+    await this.apiClient.post(`/admin/consent-dashboard/compliance-alerts/${alertId}/read`, {});
   }
 
   /**
    * Resolve compliance alert
    */
   async resolveAlert(alertId: string): Promise<void> {
-    await this.apiClient.put(`/admin/consent-dashboard/compliance-alerts/${alertId}/resolve`);
+    await this.apiClient.post(`/admin/consent-dashboard/compliance-alerts/${alertId}/resolve`, {});
   }
 
   /**
@@ -135,7 +135,7 @@ class ConsentDashboardService {
       params: { format },
       responseType: 'blob'
     });
-    return response.data;
+    return response.data as Blob;
   }
 }
 

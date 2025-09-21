@@ -492,9 +492,9 @@ export default function VitalSigns() {
       
       if ((vitalResponse.statusCode === 200 || vitalResponse.statusCode === 201) && vitalResponse.data) {
         // แสดงการแจ้งเตือนที่สวยงาม
-        const visitNumber = visit.visit_number || visit.visitNumber || visit.id || 'N/A';
+        const visitNumber = visit.visit_number || visit.id || 'N/A';
         const bmiValue = vitalResponse.data.bmi || 'N/A';
-        const bmiCategory = vitalResponse.data.bmiCategory || '';
+        const bmiCategory = (vitalResponse.data as any).bmiCategory || '';
         
         setSuccess(`✅ บันทึกสัญญาณชีพสำเร็จ!
         
@@ -685,7 +685,10 @@ export default function VitalSigns() {
         },
         createdBy: user?.id || '',
         createdByName: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่',
-        createdAt: createLocalDateTimeString(new Date())
+        createdAt: createLocalDateTimeString(new Date()),
+        recordedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่',
+        recordedTime: createLocalDateTimeString(new Date()),
+        message: `มีการบันทึกสัญญาณชีพใหม่สำหรับคุณ ${patient.thaiName} โดย ${user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'}`
       };
 
       // ส่งการแจ้งเตือนผ่าน NotificationService

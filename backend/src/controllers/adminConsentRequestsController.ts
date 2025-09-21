@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { databaseManager } from '../database/connection';
-import { asyncHandler } from '../utils/asyncHandler';
+import { asyncHandler } from '../middleware/errorHandler';
 
 /**
  * GET /api/admin/consent-requests

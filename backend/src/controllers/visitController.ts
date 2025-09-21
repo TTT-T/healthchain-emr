@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { databaseManager } from '../database/connection';
+import { v4 as uuidv4 } from 'uuid';
 
 // Create a database helper that combines databaseManager and DatabaseSchema
 const db = {
@@ -25,6 +26,244 @@ import {
   successResponse, 
   errorResponse
 } from '../utils';
+import { v4 as uuidv4 } from 'uuid';
+
+/**
+ * Send notification to patient when visit is created
+ */
+async function sendPatientVisitNotification(visit: any, doctorId: string) {
+  try {
+    console.log('📱 Sending patient visit notification...');
+    
+    // Get patient information
+    const patientQuery = `
+      SELECT 
+        p.id,
+        p.hospital_number,
+        p.first_name,
+        p.last_name,
+        p.thai_name,
+        p.phone,
+        p.email,
+        p.user_id,
+        u.username,
+        u.email as user_email
+      FROM patients p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.id = $1
+    `;
+    const patientResult = await db.query(patientQuery, [visit.patient_id]);
+    
+    if (patientResult.rows.length === 0) {
+      console.log('❌ Patient not found for notification');
+      return;
+    }
+    
+    const patient = patientResult.rows[0];
+    
+    // Get doctor information
+    const doctorQuery = `
+      SELECT 
+        u.id,
+        u.first_name,
+        u.last_name,
+        u.thai_name,
+        d.department_name
+      FROM users u
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE u.id = $1
+    `;
+    const doctorResult = await db.query(doctorQuery, [doctorId]);
+    
+    if (doctorResult.rows.length === 0) {
+      console.log('❌ Doctor not found for notification');
+      return;
+    }
+    
+    const doctor = doctorResult.rows[0];
+    
+    // Create notification data
+    const notificationData = {
+      id: uuidv4(),
+      patient_id: patient.id,
+      user_id: patient.user_id,
+      type: 'visit_created',
+      title: `ได้รับหมายเลขคิว ${visit.visit_number}`,
+      message: `คุณ ${patient.thai_name || `${patient.first_name} ${patient.last_name}`} ได้รับหมายเลขคิว ${visit.visit_number} สำหรับตรวจกับ ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`,
+      data: {
+        visit_id: visit.id,
+        visit_number: visit.visit_number,
+        hospital_number: patient.hospital_number,
+        doctor_name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
+        department: doctor.department_name,
+        visit_date: visit.visit_date,
+        visit_time: visit.visit_time,
+        visit_type: visit.visit_type,
+        chief_complaint: visit.chief_complaint
+      },
+      is_read: false,
+      created_at: new Date().toISOString()
+    };
+    
+    // Insert notification into database
+    const insertNotificationQuery = `
+      INSERT INTO notifications (
+        id, patient_id, title, message, notification_type, priority, is_read, created_by, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `;
+    
+    await db.query(insertNotificationQuery, [
+      notificationData.id,
+      notificationData.patient_id,
+      notificationData.title,
+      notificationData.message,
+      notificationData.type,
+      'normal', // priority
+      notificationData.is_read,
+      notificationData.user_id, // created_by
+      notificationData.created_at
+    ]);
+    
+    console.log('✅ Patient notification sent successfully', {
+      patientHn: patient.hospital_number,
+      visitNumber: visit.visit_number,
+      notificationId: notificationData.id
+    });
+    
+    // TODO: Send SMS/Email if patient has phone/email
+    if (patient.phone) {
+      console.log(`📱 Would send SMS to ${patient.phone}: คุณได้รับหมายเลขคิว ${visit.visit_number} สำหรับตรวจกับ ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`);
+    }
+    
+    if (patient.email || patient.user_email) {
+      const email = patient.email || patient.user_email;
+      console.log(`📧 Would send email to ${email}: คุณได้รับหมายเลขคิว ${visit.visit_number} สำหรับตรวจกับ ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error sending patient visit notification:', error);
+    throw error;
+  }
+}
+
+/**
+ * Send notification to patient when visit starts
+ */
+async function sendVisitStartedNotification(visit: any) {
+  try {
+    console.log('📱 Sending visit started notification...');
+    
+    // Get patient information
+    const patientQuery = `
+      SELECT 
+        p.id,
+        p.hospital_number,
+        p.first_name,
+        p.last_name,
+        p.thai_name,
+        p.phone,
+        p.email,
+        p.user_id,
+        u.username,
+        u.email as user_email
+      FROM patients p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.id = $1
+    `;
+    const patientResult = await db.query(patientQuery, [visit.patient_id]);
+    
+    if (patientResult.rows.length === 0) {
+      console.log('❌ Patient not found for notification');
+      return;
+    }
+    
+    const patient = patientResult.rows[0];
+    
+    // Get doctor information
+    const doctorQuery = `
+      SELECT 
+        u.id,
+        u.first_name,
+        u.last_name,
+        u.thai_name,
+        d.department_name
+      FROM users u
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE u.id = $1
+    `;
+    const doctorResult = await db.query(doctorQuery, [visit.attending_doctor_id]);
+    
+    if (doctorResult.rows.length === 0) {
+      console.log('❌ Doctor not found for notification');
+      return;
+    }
+    
+    const doctor = doctorResult.rows[0];
+    
+    // Create notification data
+    const notificationData = {
+      id: uuidv4(),
+      patient_id: patient.id,
+      user_id: patient.user_id,
+      type: 'visit_started',
+      title: `เริ่มการตรวจ - หมายเลขคิว ${visit.visit_number}`,
+      message: `คุณ ${patient.thai_name || `${patient.first_name} ${patient.last_name}`} หมายเลขคิว ${visit.visit_number} กำลังได้รับการตรวจจาก ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`,
+      data: {
+        visit_id: visit.id,
+        visit_number: visit.visit_number,
+        hospital_number: patient.hospital_number,
+        doctor_name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
+        department: doctor.department_name,
+        visit_date: visit.visit_date,
+        visit_time: visit.visit_time,
+        visit_type: visit.visit_type,
+        chief_complaint: visit.chief_complaint,
+        status: visit.status
+      },
+      is_read: false,
+      created_at: new Date().toISOString()
+    };
+    
+    // Insert notification into database
+    const insertNotificationQuery = `
+      INSERT INTO notifications (
+        id, patient_id, title, message, notification_type, priority, is_read, created_by, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `;
+    
+    await db.query(insertNotificationQuery, [
+      notificationData.id,
+      notificationData.patient_id,
+      notificationData.title,
+      notificationData.message,
+      notificationData.type,
+      'normal', // priority
+      notificationData.is_read,
+      notificationData.user_id, // created_by
+      notificationData.created_at
+    ]);
+    
+    console.log('✅ Visit started notification sent successfully', {
+      patientHn: patient.hospital_number,
+      visitNumber: visit.visit_number,
+      notificationId: notificationData.id
+    });
+    
+    // TODO: Send SMS/Email if patient has phone/email
+    if (patient.phone) {
+      console.log(`📱 Would send SMS to ${patient.phone}: หมายเลขคิว ${visit.visit_number} กำลังได้รับการตรวจจาก ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`);
+    }
+    
+    if (patient.email || patient.user_email) {
+      const email = patient.email || patient.user_email;
+      console.log(`📧 Would send email to ${email}: หมายเลขคิว ${visit.visit_number} กำลังได้รับการตรวจจาก ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error sending visit started notification:', error);
+    throw error;
+  }
+}
 
 // Validation schemas
 const createVisitSchema = z.object({
@@ -99,14 +338,35 @@ export const createVisit = async (req: Request, res: Response) => {
     }
 
     // Verify doctor exists if provided
+    let finalDoctorId = validatedData.attendingDoctorId;
     if (validatedData.attendingDoctorId) {
+      console.log('🔍 Original attendingDoctorId:', validatedData.attendingDoctorId);
+      
+      // Check if attendingDoctorId is a doctor_id or user_id
+      try {
+        // First check if it's a doctor_id
+        const doctorCheckQuery = 'SELECT user_id FROM doctors WHERE id = $1';
+        console.log('🔍 Executing doctor check query:', doctorCheckQuery, 'with param:', validatedData.attendingDoctorId);
+        const doctorCheckResult = await db.query(doctorCheckQuery, [validatedData.attendingDoctorId]);
+        console.log('🔍 Doctor check result:', doctorCheckResult.rows);
+        
+        if (doctorCheckResult.rows.length > 0) {
+          finalDoctorId = doctorCheckResult.rows[0].user_id;
+          console.log('🔄 Converted doctor_id to user_id:', finalDoctorId);
+        } else {
+          console.log('🔍 attendingDoctorId is not a doctor_id, treating as user_id:', validatedData.attendingDoctorId);
+        }
+      } catch (error) {
+        console.error('Error checking doctor_id:', error);
+      }
+      
       const doctorResult = await db.query(
         'SELECT id FROM users WHERE id = $1 AND role = $2 AND is_active = true',
-        [validatedData.attendingDoctorId, 'doctor']
+        [finalDoctorId, 'doctor']
       );
       
       if (doctorResult.rows.length === 0) {
-        console.log('❌ Doctor not found:', validatedData.attendingDoctorId);
+        console.log('❌ Doctor not found:', finalDoctorId);
         return res.status(404).json(
           errorResponse('ไม่พบข้อมูลแพทย์ที่ระบุ', 404)
         );
@@ -134,7 +394,7 @@ export const createVisit = async (req: Request, res: Response) => {
         validatedData.chiefComplaint,
         validatedData.presentIllness || null,
         validatedData.priority,
-        validatedData.attendingDoctorId || null,
+        finalDoctorId || null,
         validatedData.assignedNurseId || null,
         validatedData.departmentId || null,
         req.user?.id
@@ -156,6 +416,16 @@ export const createVisit = async (req: Request, res: Response) => {
       },
       ipAddress: req.ip || 'unknown'
     });
+
+    // Send notification to patient
+    try {
+      console.log('📱 Sending patient visit notification...');
+      await sendPatientVisitNotification(result, finalDoctorId);
+      console.log('✅ Patient notification sent successfully');
+    } catch (notificationError) {
+      console.error('❌ Failed to send patient notification:', notificationError);
+      // Don't fail the visit creation if notification fails
+    }
 
     // Return visit data (mapped to camelCase)
     const visitData = {
@@ -373,6 +643,16 @@ export const updateVisit = async (req: Request, res: Response) => {
     });
 
     const updatedVisit = result.rows[0];
+
+    // Send notification if status changed to 'in_progress'
+    if (validatedData.status === 'in_progress') {
+      try {
+        await sendVisitStartedNotification(updatedVisit);
+      } catch (notificationError) {
+        console.error('Failed to send visit started notification:', notificationError);
+        // Don't fail the visit update if notification fails
+      }
+    }
 
     // Format response data
     const visitData = {

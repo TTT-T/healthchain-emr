@@ -104,10 +104,10 @@ export class PushNotificationService {
           body: data.body,
           icon: data.icon || '/icon-192x192.png',
           badge: data.badge || '/badge-72x72.png',
-          image: data.image,
+          // image: data.image, // Not supported in NotificationOptions
           tag: data.tag,
           data: data.data,
-          actions: data.actions,
+          // actions: data.actions, // Not supported in NotificationOptions
           requireInteraction: data.requireInteraction,
           silent: data.silent
         });

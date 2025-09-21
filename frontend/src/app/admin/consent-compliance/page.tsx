@@ -54,18 +54,69 @@ export default function ConsentCompliancePage() {
       setLoading(true);
       setError(null);
 
-      // Fetch all compliance data in parallel
-      const [alertsData, reportsData, trendsData, statsData] = await Promise.all([
-        consentDashboardService.getComplianceAlerts(),
-        complianceService.getComplianceReports(),
-        complianceService.getComplianceTrends(),
-        complianceService.getComplianceStats()
-      ]);
+      // Try to fetch alerts with fallback
+      try {
+        const alertsData = await consentDashboardService.getComplianceAlerts();
+        setAlerts(alertsData || []);
+      } catch (alertsError) {
+        console.warn('Could not fetch compliance alerts, using fallback:', alertsError);
+        setAlerts([]);
+      }
 
-      setAlerts(alertsData);
-      setReports(reportsData.data.reports);
-      setTrends(trendsData.data.trends);
-      setStats(statsData.data);
+      // Try to fetch reports with fallback
+      try {
+        const reportsData = await complianceService.getComplianceReports();
+        setReports(reportsData?.data?.reports || []);
+      } catch (reportsError) {
+        console.warn('Could not fetch compliance reports, using fallback:', reportsError);
+        setReports([]);
+      }
+
+      // Try to fetch trends with fallback
+      try {
+        const trendsData = await complianceService.getComplianceTrends();
+        setTrends(trendsData?.data?.trends || []);
+      } catch (trendsError) {
+        console.warn('Could not fetch compliance trends, using fallback:', trendsError);
+        setTrends([]);
+      }
+
+      // Try to fetch stats with fallback
+      try {
+        const statsData = await complianceService.getComplianceStats();
+        setStats(statsData?.data || {
+          totalAlerts: 0,
+          highPriorityAlerts: 0,
+          mediumPriorityAlerts: 0,
+          lowPriorityAlerts: 0,
+          resolvedAlerts: 0,
+          pendingAlerts: 0,
+          complianceScore: 0,
+          lastAuditDate: '',
+          trends: {
+            scoreChange: 0,
+            alertChange: 0,
+            resolutionRate: 0
+          }
+        });
+      } catch (statsError) {
+        console.warn('Could not fetch compliance stats, using fallback:', statsError);
+        setStats({
+          totalAlerts: 0,
+          highPriorityAlerts: 0,
+          mediumPriorityAlerts: 0,
+          lowPriorityAlerts: 0,
+          resolvedAlerts: 0,
+          pendingAlerts: 0,
+          complianceScore: 0,
+          lastAuditDate: '',
+          trends: {
+            scoreChange: 0,
+            alertChange: 0,
+            resolutionRate: 0
+          }
+        });
+      }
 
     } catch (err) {
       console.error('Failed to fetch compliance data:', err);

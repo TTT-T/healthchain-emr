@@ -13,7 +13,7 @@ interface Notification {
   message: string;
   type: string;
   priority: string;
-  read_status: boolean;
+  is_read: boolean;
   actionRequired: boolean;
   created_at: string;
   updated_at: string;
@@ -82,11 +82,13 @@ export default function Notifications() {
 
   const markAsRead = async (notificationId: string) => {
     try {
+      console.log('🔔 Mark as read - Starting:', { notificationId, user: user?.id });
+      
       // Update local state immediately
       setNotifications(prev => 
         prev.map(notification => 
           notification.id === notificationId 
-            ? { ...notification, read_status: true }
+            ? { ...notification, is_read: true }
             : notification
         )
       );
@@ -94,9 +96,28 @@ export default function Notifications() {
       // Refresh notification count
       await refreshNotificationCount();
       
-      // TODO: Call API to mark as read
-      // await apiClient.markNotificationAsRead(notificationId);
+      // Call API to mark as read
+      if (user?.id) {
+        // Get patient ID from the notification data
+        const notification = notifications.find(n => n.id === notificationId);
+        console.log('🔔 Mark as read - Notification:', notification);
+        if (notification?.patient_id) {
+          console.log('🔔 Mark as read - Calling API with:', { notificationId, patientId: notification.patient_id });
+          try {
+            const apiResponse = await apiClient.markPatientNotificationAsRead(notificationId, notification.patient_id);
+            console.log('🔔 Mark as read - API Response:', apiResponse);
+          } catch (apiError) {
+            console.error('🔔 Mark as read - API Error:', apiError);
+            throw apiError;
+          }
+        } else {
+          console.error('🔔 Mark as read - No patient_id found in notification:', notification);
+        }
+      } else {
+        console.error('🔔 Mark as read - No user ID found:', user);
+      }
     } catch (err) {
+      console.error('🔔 Mark as read - Error:', err);
       logger.error("Error marking notification as read:", err);
     }
   };
@@ -104,7 +125,7 @@ export default function Notifications() {
   const markAllAsRead = async () => {
     try {
       setNotifications(prev => 
-        prev.map(notification => ({ ...notification, read_status: true }))
+        prev.map(notification => ({ ...notification, is_read: true }))
       );
       
       // Refresh notification count
@@ -117,6 +138,45 @@ export default function Notifications() {
     }
   };
 
+  const showNotificationDetails = (notification: Notification) => {
+    // Create a detailed message with all notification information
+    const details = `
+📋 รายละเอียดการแจ้งเตือน
+
+🏷️ หัวข้อ: ${notification.title}
+📝 ข้อความ: ${notification.message}
+📂 ประเภท: ${getTypeText(notification.type)}
+⚡ ความสำคัญ: ${getPriorityText(notification.priority)}
+📊 สถานะ: ${notification.is_read ? 'อ่านแล้ว' : 'ยังไม่อ่าน'}
+${notification.actionRequired ? '🔔 ต้องดำเนินการ: ใช่' : '🔔 ต้องดำเนินการ: ไม่'}
+📅 วันที่สร้าง: ${new Date(notification.created_at).toLocaleString('th-TH', {
+      year: 'numeric',
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })}
+🔄 วันที่อัปเดต: ${new Date(notification.updated_at).toLocaleString('th-TH', {
+      year: 'numeric',
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })}
+🆔 ID: ${notification.id}
+    `;
+    
+    // Show in alert for now (can be improved with a modal later)
+    alert(details);
+    
+    // Mark as read when viewing details
+    if (!notification.is_read) {
+      markAsRead(notification.id);
+    }
+  };
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case "appointment": return "📅";
@@ -125,6 +185,7 @@ export default function Notifications() {
       case "system": return "⚙️";
       case "reminder": return "⏰";
       case "alert": return "🚨";
+      case "visit_created": return "🏥";
       default: return "📢";
     }
   };
@@ -155,6 +216,7 @@ export default function Notifications() {
       case "system": return "ระบบ";
       case "reminder": return "การแจ้งเตือน";
       case "alert": return "แจ้งเตือนสำคัญ";
+      case "visit_created": return "การสร้างคิว";
       default: return "ทั่วไป";
     }
   };
@@ -162,14 +224,14 @@ export default function Notifications() {
   const filteredNotifications = Array.isArray(notifications) 
     ? notifications.filter(notification => {
         if (activeTab === "all") return true;
-        if (activeTab === "unread") return !notification.read_status;
+        if (activeTab === "unread") return !notification.is_read;
         if (activeTab === "action") return notification.actionRequired;
         return notification.type === activeTab;
       })
     : [];
 
   const unreadCount = Array.isArray(notifications) 
-    ? notifications.filter(n => !n.read_status).length 
+    ? notifications.filter(n => !n.is_read).length 
     : 0;
   const actionRequiredCount = Array.isArray(notifications) 
     ? notifications.filter(n => n.actionRequired).length 
@@ -192,9 +254,12 @@ export default function Notifications() {
               >
                 ทำเครื่องหมายอ่านทั้งหมด
               </button>
-              <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+              <button 
+                onClick={fetchNotifications}
+                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-5 5-5-5h5v-12"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                 </svg>
                 รีเฟรช
               </button>
@@ -258,6 +323,7 @@ export default function Notifications() {
                 { id: "unread", label: "ยังไม่อ่าน", icon: "🔔", count: unreadCount },
                 { id: "action", label: "ต้องดำเนินการ", icon: "⚡", count: actionRequiredCount },
                 { id: "appointment", label: "การนัดหมาย", icon: "📅" },
+                { id: "visit_created", label: "การสร้างคิว", icon: "🏥" },
                 { id: "medication", label: "ยา", icon: "💊" },
                 { id: "lab_result", label: "ผลตรวจ", icon: "🧪" },
                 { id: "system", label: "ระบบ", icon: "⚙️" }
@@ -310,6 +376,7 @@ export default function Notifications() {
                     { id: "unread", label: "ยังไม่อ่าน" },
                     { id: "action", label: "ต้องดำเนินการ" },
                     { id: "appointment", label: "การนัดหมาย" },
+                    { id: "visit_created", label: "การสร้างคิว" },
                     { id: "medication", label: "ยา" },
                     { id: "lab_result", label: "ผลตรวจ" },
                     { id: "system", label: "ระบบ" }
@@ -323,7 +390,7 @@ export default function Notifications() {
               <div 
                 key={notification.id} 
                 className={`bg-white rounded-xl border shadow-sm hover:shadow-md transition-shadow ${
-                  !notification.read_status 
+                  !notification.is_read 
                     ? "border-blue-200 bg-blue-50" 
                     : "border-slate-200"
                 } ${getPriorityColor(notification.priority)}`}
@@ -337,11 +404,11 @@ export default function Notifications() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className={`text-lg font-semibold ${
-                            !notification.read_status ? "text-blue-900" : "text-gray-900"
+                            !notification.is_read ? "text-blue-900" : "text-gray-900"
                           }`}>
                             {notification.title}
                           </h3>
-                          {!notification.read_status && (
+                          {!notification.is_read && (
                             <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
                           )}
                           <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
@@ -364,7 +431,7 @@ export default function Notifications() {
                         </div>
                         
                         <p className={`text-sm mb-3 ${
-                          !notification.read_status ? "text-blue-800" : "text-gray-700"
+                          !notification.is_read ? "text-blue-800" : "text-gray-700"
                         }`}>
                           {notification.message}
                         </p>
@@ -384,7 +451,7 @@ export default function Notifications() {
                     </div>
                     
                     <div className="flex flex-col gap-2 ml-4">
-                      {!notification.read_status && (
+                      {!notification.is_read && (
                         <button 
                           onClick={() => markAsRead(notification.id)}
                           className="px-3 py-1 text-sm border border-slate-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -397,7 +464,10 @@ export default function Notifications() {
                           ดำเนินการ
                         </button>
                       )}
-                      <button className="px-3 py-1 text-sm border border-slate-300 rounded-lg hover:bg-gray-50 transition-colors">
+                      <button 
+                        onClick={() => showNotificationDetails(notification)}
+                        className="px-3 py-1 text-sm border border-slate-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
                         รายละเอียด
                       </button>
                     </div>

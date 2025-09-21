@@ -11,8 +11,8 @@ import { logger } from '@/lib/logger';
 
 interface Patient {
   hn: string;
-  national_id: string;
-  thai_name: string;
+  nationalId: string;
+  thaiName: string;
   gender: string;
   birth_date: string;
   queueNumber: string;
@@ -186,7 +186,7 @@ export default function HistoryTaking() {
       
       if (response.statusCode === 200 && response.data && response.data.length > 0) {
         // Find exact match
-        const exactMatch = response.data.find(p => 
+        const exactMatch = response.data.find((p: any) =>
           searchType === "hn" ? p.hn === searchQuery : p.hn === searchQuery
         );
         
@@ -376,9 +376,9 @@ export default function HistoryTaking() {
   ) => {
     try {
       const notificationData = {
-        patientHn: patient.hn || patient.hospital_number || '',
-        patientNationalId: patient.national_id || '',
-        patientName: patient.thai_name || `${patient.firstName} ${patient.lastName}`,
+        patientHn: patient.hn || patient.hospitalNumber || '',
+        patientNationalId: patient.nationalId || '',
+        patientName: patient.thaiName || `${patient.firstName} ${patient.lastName}`,
         patientPhone: patient.phone || '',
         patientEmail: patient.email || '',
         recordType: 'history_taking',
@@ -386,7 +386,7 @@ export default function HistoryTaking() {
         chiefComplaint: historyRecord.chiefComplaint,
         recordedBy: historyRecord.recordedBy,
         recordedTime: historyRecord.recordedTime,
-        message: `มีการบันทึกประวัติการซักประวัติใหม่สำหรับคุณ ${patient.thai_name || `${patient.firstName} ${patient.lastName}`} โดย ${historyRecord.recordedBy}`
+        message: `มีการบันทึกประวัติการซักประวัติใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${historyRecord.recordedBy}`
       };
 
       await NotificationService.notifyPatientRecordUpdate(notificationData);
@@ -428,15 +428,15 @@ export default function HistoryTaking() {
   /**
    * สร้างเอกสารให้ผู้ป่วย
    */
-  const createPatientDocument = async (patient: Patient, historyData: any) => {
+  const createPatientDocument = async (patient: MedicalPatient, historyData: any) => {
     try {
       await PatientDocumentService.createDocumentFromMedicalRecord(
         'history_taking',
         historyData,
         {
           patientHn: patient.hn || '',
-          patientNationalId: patient.national_id || '',
-          patientName: patient.thai_name || ''
+          patientNationalId: patient.nationalId || '',
+          patientName: patient.thaiName || ''
         },
         user?.id || '',
         user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'
@@ -561,7 +561,7 @@ export default function HistoryTaking() {
                 </div>
                 <div>
                   <span className="text-slate-600">ชื่อ:</span>
-                  <span className="ml-2 font-medium text-slate-800">{selectedPatient.thai_name}</span>
+                  <span className="ml-2 font-medium text-slate-800">{selectedPatient.thaiName}</span>
                 </div>
                 <div>
                   <span className="text-slate-600">อายุ:</span>

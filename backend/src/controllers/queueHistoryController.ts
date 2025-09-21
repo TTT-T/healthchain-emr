@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
+import { databaseManager } from '../database/connection';
 
 // Interface สำหรับ Queue History
 interface QueueHistoryRecord {
@@ -562,14 +563,44 @@ export const generateStatisticsReport = asyncHandler(async (req: Request, res: R
 
     logger.info('Generating statistics report', { dateFrom, dateTo, department, doctorId, format });
 
-    // Get statistics data
-    const statisticsResponse = await getQueueStatistics(req, res);
+    // Get statistics data directly
     
-    if (statisticsResponse.statusCode !== 200) {
-      return statisticsResponse;
+    // Build the query for statistics
+    let statisticsQuery = `
+      SELECT 
+        COUNT(*) as total_visits,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_visits,
+        COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_visits,
+        AVG(EXTRACT(EPOCH FROM (completed_at - created_at))/60) as avg_wait_time_minutes
+      FROM visits 
+      WHERE 1=1
+    `;
+    
+    const queryParams: any[] = [];
+    let paramIndex = 1;
+    
+    if (dateFrom) {
+      statisticsQuery += ` AND created_at >= $${paramIndex++}`;
+      queryParams.push(dateFrom);
     }
-
-    const statistics = statisticsResponse.data;
+    
+    if (dateTo) {
+      statisticsQuery += ` AND created_at <= $${paramIndex++}`;
+      queryParams.push(dateTo);
+    }
+    
+    if (department) {
+      statisticsQuery += ` AND department_id = $${paramIndex++}`;
+      queryParams.push(department);
+    }
+    
+    if (doctorId) {
+      statisticsQuery += ` AND doctor_id = $${paramIndex++}`;
+      queryParams.push(doctorId);
+    }
+    
+    const statisticsResult = await databaseManager.query(statisticsQuery, queryParams);
+    const statistics = statisticsResult.rows[0];
 
     // Generate additional report data
     const reportData = {

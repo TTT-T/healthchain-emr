@@ -43,6 +43,7 @@ export default function CheckIn() {
   
   // Debug logging for user data
   useEffect(() => {
+    console.log('🔍 Auth status check:', { isAuthenticated, user: !!user });
     if (user) {
       console.log('🔍 User data in checkin page:', {
         id: user.id,
@@ -56,8 +57,10 @@ export default function CheckIn() {
         departmentId: user.departmentId,
         allFields: Object.keys(user)
       });
+    } else {
+      console.log('❌ No user data available');
     }
-  }, [user]);
+  }, [user, isAuthenticated]);
 
   // Update time to current time when page loads
   useEffect(() => {
@@ -121,6 +124,12 @@ export default function CheckIn() {
 
   // Real doctors data - will be loaded from API
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  
+  // Debug doctors state changes
+  useEffect(() => {
+    console.log('🔍 Doctors state changed:', doctors.length, 'doctors');
+    console.log('🔍 Doctors data:', doctors);
+  }, [doctors]);
 
   const treatmentTypes = [
     { value: "opd", label: "OPD - ตรวจรักษาทั่วไป", icon: "🏥", color: "blue" },
@@ -133,21 +142,55 @@ export default function CheckIn() {
   // Load real doctors data from API
   const loadDoctors = async () => {
     try {
+      console.log('🔄 Loading doctors from API...');
       logger.debug('🔄 Loading doctors from API...');
       const response = await DoctorService.getAvailableDoctors();
+      console.log('📡 API Response:', response);
       
       if (response.statusCode === 200 && response.data) {
         logger.debug('✅ Doctors loaded successfully:', response.data);
-        setDoctors(response.data);
+        
+        // Map API response to frontend Doctor interface
+        const mappedDoctors: Doctor[] = response.data.map((doctor: any) => ({
+          id: doctor.id,
+          name: doctor.name || doctor.thaiName || `${doctor.firstName} ${doctor.lastName}`,
+          department: doctor.department,
+          specialization: doctor.specialization,
+          currentQueue: doctor.currentQueue || doctor.queueCount || 0,
+          estimatedWaitTime: doctor.estimatedWaitTime || 0,
+          isAvailable: doctor.isAvailable || doctor.isActive,
+          medicalLicenseNumber: doctor.medicalLicenseNumber,
+          yearsOfExperience: doctor.yearsOfExperience,
+          position: doctor.position,
+          consultationFee: doctor.consultationFee,
+          email: doctor.email,
+          phone: doctor.phone,
+          availability: doctor.availability
+        }));
+        
+        logger.debug('📱 Mapped doctors:', mappedDoctors);
+        console.log('📱 Mapped doctors:', mappedDoctors);
+        setDoctors(mappedDoctors);
+        console.log('✅ Doctors state updated with', mappedDoctors.length, 'doctors');
         return;
       } else {
         throw new Error('Failed to load doctors');
       }
     } catch (error) {
       logger.error('❌ Error loading doctors from API:', error);
+      console.error('❌ Error loading doctors from API:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        config: error.config,
+        url: error.config?.url,
+        method: error.config?.method
+      });
       
       // Fallback to sample data if API fails
       logger.debug('🔄 Using fallback sample doctors data...');
+      console.log('🔄 Using fallback sample doctors data...');
       const sampleDoctors: Doctor[] = [
         {
           id: 'doc-001',
@@ -203,18 +246,26 @@ export default function CheckIn() {
         }
       ];
       
+      console.log('🔄 Setting fallback doctors:', sampleDoctors);
       setDoctors(sampleDoctors);
+      console.log('✅ Fallback doctors state updated with', sampleDoctors.length, 'doctors');
     }
   };
 
   useEffect(() => {
+    console.log('🔍 useEffect triggered, isAuthenticated:', isAuthenticated);
+    console.log('🔍 useEffect triggered, user:', !!user);
     if (isAuthenticated) {
+      console.log('🔄 Loading doctors...');
       loadDoctors();
+    } else {
+      console.log('❌ Not authenticated, skipping doctors load');
+      console.log('❌ Auth details:', { isAuthenticated, user: !!user });
     }
     
     // Add test button for development
     addTokenExpiryTestButton();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   // Update visit time to current time when component mounts or when user is authenticated
   useEffect(() => {
@@ -254,7 +305,7 @@ export default function CheckIn() {
       
       if (response.statusCode === 200 && response.data && response.data.length > 0) {
         // Find exact match
-        const exactMatch = response.data.find(p => {
+        const exactMatch = response.data.find((p: any) => {
           if (searchType === "hn") {
             // Check both hn and hospital_number fields, and also check if the search query matches
             const hnMatch = (p as any).hn === searchQuery;
@@ -284,7 +335,7 @@ export default function CheckIn() {
         console.log('Number of patients found:', response.data.length);
         
         // Debug each patient's fields
-        response.data.forEach((patient, index) => {
+        response.data.forEach((patient: any, index: number) => {
           console.log(`Patient ${index}:`, {
             id: patient.id,
             hn: patient.hn,
@@ -298,6 +349,19 @@ export default function CheckIn() {
         console.log('Exact match:', exactMatch);
         
         if (exactMatch) {
+          console.log('🔍 Setting selected patient:', exactMatch);
+          console.log('🔍 Patient fields:', {
+            hn: exactMatch.hn,
+            hospital_number: exactMatch.hospital_number,
+            thai_name: exactMatch.thai_name,
+            first_name: exactMatch.first_name,
+            last_name: exactMatch.last_name,
+            gender: exactMatch.gender,
+            birth_date: exactMatch.birth_date,
+            birth_year: exactMatch.birth_year,
+            birth_month: exactMatch.birth_month,
+            birth_day: exactMatch.birth_day
+          });
           setSelectedPatient(exactMatch);
           // อัปเดตเวลาปัจจุบันเมื่อเลือกผู้ป่วย
           const currentTime = createLocalDateTimeString(new Date());
@@ -630,7 +694,7 @@ export default function CheckIn() {
       console.log('🔍 Selected Patient Data:', {
         id: selectedPatient?.id,
         hn: selectedPatient?.hn,
-        hospital_number: selectedPatient?.hospital_number,
+        hospital_number: selectedPatient?.hospitalNumber,
         fullData: selectedPatient
       });
 
@@ -681,12 +745,11 @@ export default function CheckIn() {
       
       console.log('🔍 Visit Data being sent:', visitData);
       
-      const response = await VisitService.createVisit(visitData);
+      const response = await VisitService.createVisit(visitData as any);
       
       console.log('🔍 Visit creation response:', {
         statusCode: response.statusCode,
-        data: response.data,
-        success: response.success
+        data: response.data
       });
       
       if (response.statusCode === 200 || response.statusCode === 201) {
@@ -702,7 +765,7 @@ export default function CheckIn() {
         const formattedDateTime = formatToBuddhistEra(visitDateTime);
         
             // Get queue information from API response
-            const queueInfo = response.data?.queueInfo;
+            const queueInfo = (response.data as any)?.queueInfo;
             const currentQueue = queueInfo?.currentQueue || selectedDoc?.currentQueue || 0;
             const estimatedWaitTime = queueInfo?.estimatedWaitTime || (currentQueue * 15);
             const queuePosition = queueInfo?.queuePosition || currentQueue;
@@ -733,7 +796,7 @@ export default function CheckIn() {
       } else if (response.statusCode === 409) {
         // Handle duplicate visit error
         const errorMessage = response.error?.message || "ผู้ป่วยนี้ได้เช็คอินแล้วในวันนี้";
-        const existingVisit = response.error?.existingVisit;
+        const existingVisit = (response.error as any)?.existingVisit;
         setError(`❌ ${errorMessage}${existingVisit ? `\n\nหมายเลขคิวเดิม: ${existingVisit.visit_number}\nสถานะ: ${existingVisit.status}\nวันที่: ${existingVisit.visit_date}` : ''}`);
       } else {
         setError("เกิดข้อผิดพลาดในการสร้างข้อมูล visit");
@@ -802,6 +865,8 @@ export default function CheckIn() {
 
   const getAvailableDoctors = () => {
     // Return all doctors for now, can add filtering logic later
+    console.log('🔍 getAvailableDoctors called, doctors count:', doctors.length);
+    console.log('🔍 doctors data:', doctors);
     return doctors;
   };
 
@@ -862,9 +927,9 @@ export default function CheckIn() {
     try {
       // สร้างข้อมูลการแจ้งเตือน
       const notificationData = {
-        patientHn: patient.hn || patient.hospital_number || '',
-        patientNationalId: patient.national_id || '',
-        patientName: patient.thai_name || `${patient.firstName} ${patient.lastName}`,
+        patientHn: patient.hn || patient.hospitalNumber || '',
+        patientNationalId: patient.nationalId || '',
+        patientName: patient.thaiName || `${patient.firstName} ${patient.lastName}`,
         patientPhone: patient.phone || '',
         patientEmail: patient.email || '',
         queueNumber,
@@ -1037,11 +1102,11 @@ export default function CheckIn() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="text-slate-600">HN:</span>
-                  <span className="ml-2 font-medium text-slate-800">{selectedPatient.hn || selectedPatient.hospital_number}</span>
+                  <span className="ml-2 font-medium text-slate-800">{selectedPatient.hn || selectedPatient.hospital_number || selectedPatient.hospitalNumber}</span>
                 </div>
                 <div>
                   <span className="text-slate-600">ชื่อ:</span>
-                  <span className="ml-2 font-medium text-slate-800">{selectedPatient.thai_name}</span>
+                  <span className="ml-2 font-medium text-slate-800">{selectedPatient.thai_name || selectedPatient.thaiName || `${selectedPatient.first_name || ''} ${selectedPatient.last_name || ''}`.trim()}</span>
                 </div>
                 <div>
                   <span className="text-slate-600">อายุ:</span>
@@ -1049,7 +1114,7 @@ export default function CheckIn() {
                 </div>
                 <div>
                   <span className="text-slate-600">เพศ:</span>
-                  <span className="ml-2 font-medium text-slate-800">{selectedPatient.gender === 'male' ? 'ชาย' : 'หญิง'}</span>
+                  <span className="ml-2 font-medium text-slate-800">{selectedPatient.gender === 'male' ? 'ชาย' : selectedPatient.gender === 'female' ? 'หญิง' : 'ไม่ระบุ'}</span>
                 </div>
               </div>
             </div>
@@ -1147,10 +1212,36 @@ export default function CheckIn() {
                   </div>
                   <h3 className="text-lg font-semibold text-slate-800">แพทย์ผู้ตรวจ</h3>
                   <span className="text-red-500 ml-1">*</span>
+                  <div className="ml-auto flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        console.log('🔍 Auth status:', { isAuthenticated, user: !!user });
+                        console.log('🔍 User data:', user);
+                      }}
+                      className="px-3 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+                    >
+                      ตรวจสอบ Auth
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        console.log('🔄 Manual load doctors button clicked');
+                        loadDoctors();
+                      }}
+                      className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                    >
+                      โหลดข้อมูลแพทย์
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {getAvailableDoctors().length > 0 ? (
+                  {(() => {
+                    const availableDoctors = getAvailableDoctors();
+                    console.log('🔍 Rendering doctors section, count:', availableDoctors.length);
+                    return availableDoctors.length > 0;
+                  })() ? (
                     getAvailableDoctors().map((doctor) => (
                     <label
                       key={doctor.id}
@@ -1201,6 +1292,7 @@ export default function CheckIn() {
                         </svg>
                         <p className="text-lg font-medium text-gray-900 mb-2">ไม่มีแพทย์ให้เลือก</p>
                         <p className="text-sm text-gray-500">กรุณาติดต่อผู้ดูแลระบบเพื่อเพิ่มข้อมูลแพทย์</p>
+                        <p className="text-xs text-gray-400 mt-2">Debug: Doctors count = {getAvailableDoctors().length}</p>
                       </div>
                     </div>
                   )}

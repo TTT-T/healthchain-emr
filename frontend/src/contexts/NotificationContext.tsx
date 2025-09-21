@@ -48,8 +48,11 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
             : (response.data as any)?.notifications || [];
           
           const unreadCount = notifications.filter((notif: any) => 
-            !notif.isRead && !notif.is_read && !notif.read_at
+            !notif.is_read
           ).length;
+          
+          console.log('🔔 NotificationContext - Notifications:', notifications);
+          console.log('🔔 NotificationContext - Unread count:', unreadCount);
           
           setNotificationCount(unreadCount);
         } else if (response.statusCode === 404) {
@@ -60,16 +63,14 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           setNotificationCount(0);
         }
       } catch (error: any) {
-        // Check if it's a 404 error (patient not found)
+        // Check if it's a 404 error (patient not found) - this is expected for new patient users
         if (error?.response?.status === 404 || error?.statusCode === 404) {
           // Patient record not found - this is expected for users who haven't registered in EMR yet
+          // Don't log this as an error since it's expected behavior
           setNotificationCount(0);
         } else {
-          // Don't log error for expected 404s, only log unexpected errors
-          if (error?.response?.status !== 404 && error?.statusCode !== 404) {
-            console.error('Error fetching notification count:', error);
-          }
-          // Set to 0 on other errors
+          // Only log unexpected errors (not 404s)
+          console.error('Unexpected error fetching notification count:', error);
           setNotificationCount(0);
         }
       }

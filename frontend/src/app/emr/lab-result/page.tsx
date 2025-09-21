@@ -9,6 +9,15 @@ import { PatientDocumentService } from '@/services/patientDocumentService';
 import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
 
+interface TestResult {
+  parameter: string;
+  value: string;
+  unit: string;
+  normalRange: string;
+  status: string;
+  notes: string;
+}
+
 export default function LabResult() {
   const { isAuthenticated, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
@@ -19,14 +28,29 @@ export default function LabResult() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const calculateAge = (birthDate: string): number => {
+    if (!birthDate) return 0;
+    
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    
+    return age;
+  };
+
   const [labResultData, setLabResultData] = useState({
     testType: '',
     testName: '',
-    testResults: [],
+    testResults: [] as TestResult[],
     overallResult: 'normal',
     interpretation: '',
     recommendations: '',
-    attachments: [],
+    attachments: [] as any[],
     notes: '',
     testedTime: new Date().toISOString().slice(0, 16)
   });
@@ -171,9 +195,9 @@ export default function LabResult() {
   const sendPatientNotification = async (patient: MedicalPatient, labResultRecord: any) => {
     try {
       const notificationData = {
-        patientHn: patient.hn || patient.hospital_number || '',
-        patientNationalId: patient.national_id || '',
-        patientName: patient.thai_name || `${patient.firstName} ${patient.lastName}`,
+        patientHn: patient.hn || patient.hospitalNumber || '',
+        patientNationalId: patient.nationalId || '',
+        patientName: patient.thaiName || `${patient.firstName} ${patient.lastName}`,
         patientPhone: patient.phone || '',
         patientEmail: patient.email || '',
         recordType: 'lab_result',
@@ -181,7 +205,7 @@ export default function LabResult() {
         chiefComplaint: `ผลแลบ: ${labResultRecord.testName}`,
         recordedBy: labResultRecord.testedBy,
         recordedTime: labResultRecord.testedTime,
-        message: `มีผลแลบใหม่สำหรับคุณ ${patient.thai_name || `${patient.firstName} ${patient.lastName}`} โดย ${labResultRecord.testedBy}`
+        message: `มีผลแลบใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${labResultRecord.testedBy}`
       };
 
       await NotificationService.notifyPatientRecordUpdate(notificationData);
@@ -216,8 +240,8 @@ export default function LabResult() {
         labData,
         {
           patientHn: patient.hn || '',
-          patientNationalId: patient.national_id || '',
-          patientName: patient.thai_name || ''
+          patientNationalId: patient.nationalId || '',
+          patientName: patient.thaiName || ''
         },
         user?.id || '',
         user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่แลบ'
@@ -275,13 +299,13 @@ export default function LabResult() {
               <h3 className="text-lg font-semibold text-purple-800 mb-2">ข้อมูลผู้ป่วย</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospital_number}
+                  <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospitalNumber}
                 </div>
                 <div>
-                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thai_name || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thaiName || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
                 </div>
                 <div>
-                  <span className="font-medium">อายุ:</span> {selectedPatient.age || 'ไม่ระบุ'}
+                  <span className="font-medium">อายุ:</span> {selectedPatient.birthDate ? calculateAge(selectedPatient.birthDate) : 'ไม่ระบุ'}
                 </div>
                 <div>
                   <span className="font-medium">เพศ:</span> {selectedPatient.gender || 'ไม่ระบุ'}

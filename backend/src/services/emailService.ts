@@ -1556,7 +1556,11 @@ class EmailService {
       const subject = `🎉 บัญชีของคุณได้รับการอนุมัติแล้ว - HealthChain EMR`;
       const htmlContent = this.generateUserApprovalTemplate(firstName, role, approvalNotes);
       
-      return await this.sendEmail(email, subject, htmlContent);
+      return await this.sendEmail({
+        to: email,
+        subject: subject,
+        html: htmlContent
+      });
     } catch (error) {
       console.error('Error sending user approval notification:', error);
       return false;
@@ -1576,7 +1580,11 @@ class EmailService {
       const subject = `❌ บัญชีของคุณไม่ได้รับการอนุมัติ - HealthChain EMR`;
       const htmlContent = this.generateUserRejectionTemplate(firstName, role, rejectionReason);
       
-      return await this.sendEmail(email, subject, htmlContent);
+      return await this.sendEmail({
+        to: email,
+        subject: subject,
+        html: htmlContent
+      });
     } catch (error) {
       console.error('Error sending user rejection notification:', error);
       return false;

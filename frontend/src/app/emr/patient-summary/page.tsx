@@ -22,6 +22,21 @@ export default function PatientSummary() {
   const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'records'>('overview');
   const [isGeneratingDocument, setIsGeneratingDocument] = useState(false);
 
+  const calculateAge = (birthDate: string): number => {
+    if (!birthDate) return 0;
+    
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    
+    return age;
+  };
+
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     
@@ -40,30 +55,28 @@ export default function PatientSummary() {
         
         // Backend sends data in nested format, extract the patient data
         const patientData = response.data[0];
-        const formattedPatient = {
+        const formattedPatient: MedicalPatient = {
           id: patientData.id,
           hn: patientData.personal_info?.hospital_number || patientData.hospital_number,
-          hospital_number: patientData.personal_info?.hospital_number || patientData.hospital_number,
-          thai_name: patientData.personal_info?.thai_name || patientData.thai_name,
-          first_name: patientData.personal_info?.first_name || patientData.first_name,
-          last_name: patientData.personal_info?.last_name || patientData.last_name,
-          national_id: patientData.personal_info?.national_id || patientData.national_id,
-          birth_date: patientData.personal_info?.birth_date || patientData.birth_date,
+          hospitalNumber: patientData.personal_info?.hospital_number || patientData.hospital_number,
+          thaiName: patientData.personal_info?.thai_name || patientData.thai_name,
+          firstName: patientData.personal_info?.first_name || patientData.first_name,
+          lastName: patientData.personal_info?.last_name || patientData.last_name,
+          nationalId: patientData.personal_info?.national_id || patientData.national_id,
+          birthDate: patientData.personal_info?.birth_date || patientData.birth_date,
+          dateOfBirth: patientData.personal_info?.birth_date || patientData.birth_date,
           gender: patientData.personal_info?.gender || patientData.gender,
-          age: patientData.personal_info?.age || patientData.age,
           phone: patientData.contact_info?.phone || patientData.phone,
           email: patientData.contact_info?.email || patientData.email,
           address: patientData.contact_info?.address || patientData.address,
-          current_address: patientData.contact_info?.current_address || patientData.current_address,
-          blood_type: patientData.medical_info?.blood_type || patientData.blood_type,
-          medical_history: patientData.medical_info?.medical_history || patientData.medical_history,
+          currentAddress: patientData.contact_info?.current_address || patientData.current_address,
+          bloodType: patientData.medical_info?.blood_type || patientData.blood_type,
+          medicalHistory: patientData.medical_info?.medical_history || patientData.medical_history,
           allergies: patientData.medical_info?.allergies || patientData.allergies,
-          drug_allergies: patientData.medical_info?.drug_allergies || patientData.drug_allergies,
-          chronic_diseases: patientData.medical_info?.chronic_diseases || patientData.chronic_diseases,
-          status: patientData.status,
-          department: patientData.department,
-          created_at: patientData.created_at,
-          updated_at: patientData.updated_at
+          drugAllergies: patientData.medical_info?.drug_allergies || patientData.drug_allergies,
+          chronicDiseases: patientData.medical_info?.chronic_diseases || patientData.chronic_diseases,
+          createdAt: patientData.created_at,
+          updatedAt: patientData.updated_at
         };
         
         setSelectedPatient(formattedPatient);
@@ -171,8 +184,8 @@ export default function PatientSummary() {
         },
         {
           patientHn: selectedPatient.hn || '',
-          patientNationalId: selectedPatient.national_id || '',
-          patientName: selectedPatient.thai_name || ''
+          patientNationalId: selectedPatient.nationalId || '',
+          patientName: selectedPatient.thaiName || ''
         },
         user?.id || '',
         user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'แพทย์'
@@ -261,13 +274,13 @@ export default function PatientSummary() {
               <h3 className="text-lg font-semibold text-teal-800 mb-4">ข้อมูลผู้ป่วย</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                 <div>
-                  <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospital_number}
+                  <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospitalNumber}
                 </div>
                 <div>
-                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thai_name || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thaiName || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
                 </div>
                 <div>
-                  <span className="font-medium">อายุ:</span> {patientSummary?.patient?.age || selectedPatient.age || 'ไม่ระบุ'}
+                  <span className="font-medium">อายุ:</span> {patientSummary?.patient?.age || (selectedPatient.birthDate ? calculateAge(selectedPatient.birthDate) : 'ไม่ระบุ')}
                 </div>
                 <div>
                   <span className="font-medium">เพศ:</span> {patientSummary?.patient?.gender || selectedPatient.gender || 'ไม่ระบุ'}

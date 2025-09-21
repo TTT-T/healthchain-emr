@@ -14,6 +14,8 @@ export interface ConsentRequest {
   status: 'pending' | 'sent_to_patient' | 'patient_reviewing' | 'approved' | 'rejected' | 'expired';
   created_at: string;
   expires_at: string;
+  validated_at?: string;
+  validated_by?: string;
   is_compliant: boolean;
   compliance_notes?: string;
 }
@@ -42,7 +44,7 @@ class ConsentRequestsService {
     const response = await this.apiClient.get('/admin/consent-requests', {
       params
     });
-    return response.data.requests || [];
+    return (response.data as any as any).requests || [];
   }
 
   /**
@@ -50,7 +52,7 @@ class ConsentRequestsService {
    */
   async getRequestById(id: string): Promise<ConsentRequest> {
     const response = await this.apiClient.get(`/admin/consent-requests/${id}`);
-    return response.data;
+    return response.data as any as ConsentRequest;
   }
 
   /**
@@ -58,14 +60,14 @@ class ConsentRequestsService {
    */
   async getRequestStats(): Promise<ConsentRequestStats> {
     const response = await this.apiClient.get('/admin/consent-requests/stats');
-    return response.data;
+    return response.data as any;
   }
 
   /**
    * Approve consent request
    */
   async approveRequest(id: string, notes?: string): Promise<void> {
-    await this.apiClient.put(`/admin/consent-requests/${id}/approve`, {
+    await this.apiClient.post(`/admin/consent-requests/${id}/approve`, {
       notes
     });
   }
@@ -74,7 +76,7 @@ class ConsentRequestsService {
    * Reject consent request
    */
   async rejectRequest(id: string, reason: string): Promise<void> {
-    await this.apiClient.put(`/admin/consent-requests/${id}/reject`, {
+    await this.apiClient.post(`/admin/consent-requests/${id}/reject`, {
       reason
     });
   }
@@ -83,7 +85,7 @@ class ConsentRequestsService {
    * Update consent request status
    */
   async updateRequestStatus(id: string, status: string, notes?: string): Promise<void> {
-    await this.apiClient.put(`/admin/consent-requests/${id}/status`, {
+    await this.apiClient.post(`/admin/consent-requests/${id}/status`, {
       status,
       notes
     });
@@ -97,7 +99,7 @@ class ConsentRequestsService {
       params: { format, ...filters },
       responseType: 'blob'
     });
-    return response.data;
+    return response.data as any;
   }
 }
 

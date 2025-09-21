@@ -193,7 +193,7 @@ const refreshTokenSchema = z.object({
 export const register = async (req: Request, res: Response) => {
   try {
     // Validate input
-    const validatedData = registerSchema.parse(req.body);
+    const validatedData = registerSchema.parse(req.body) as any;
     
     // Check if email already exists (only check email, not username)
     const existingUser = await db.getUserByEmail(validatedData.email);
@@ -278,14 +278,24 @@ export const register = async (req: Request, res: Response) => {
         // Import DoctorDB
         const { DoctorDB } = await import('../database/doctors');
         
-        // Create doctor profile
+        // Create doctor profile with default values
         await DoctorDB.createDoctorProfile({
           userId: newUser.id,
-          medicalLicenseNumber: validatedData.medicalLicenseNumber || '',
-          specialization: validatedData.specialization || '',
-          yearsOfExperience: validatedData.yearsOfExperience || null,
-          department: validatedData.department || null,
-          position: validatedData.position || null
+          medicalLicenseNumber: validatedData.medicalLicenseNumber || `MD${newUser.id.substring(0, 8).toUpperCase()}`,
+          specialization: validatedData.specialization || 'อายุรกรรม',
+          yearsOfExperience: validatedData.yearsOfExperience || 5,
+          department: validatedData.department || 'อายุรกรรม',
+          position: validatedData.position || 'แพทย์ผู้เชี่ยวชาญ',
+          consultationFee: validatedData.consultationFee || 500,
+          availability: validatedData.availability || {
+            monday: true,
+            tuesday: true,
+            wednesday: true,
+            thursday: true,
+            friday: true,
+            saturday: false,
+            sunday: false
+          }
         });
         
         console.log('👨‍⚕️ Doctor profile created for user:', newUser.id);
@@ -790,10 +800,14 @@ export const getProfile = async (req: Request, res: Response) => {
     // Map snake_case to camelCase for frontend compatibility
     const mappedUser = {
       ...userWithoutPassword,
+      firstName: userWithoutPassword.first_name,
+      lastName: userWithoutPassword.last_name,
       thaiFirstName: userWithoutPassword.thai_name, // Use thai_name (combined) as first name
       thaiLastName: userWithoutPassword.thai_last_name,
       departmentId: userWithoutPassword.department_id,
       // Remove snake_case fields
+      first_name: undefined,
+      last_name: undefined,
       thai_name: undefined,
       thai_last_name: undefined,
       department_id: undefined

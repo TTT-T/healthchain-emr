@@ -52,16 +52,38 @@ export default function ActivityLogsPage() {
         sortOrder: 'desc'
       };
 
-      const response = await ActivityLogsService.getActivityLogs(filters);
-      
-      setLogs(response.logs);
-      setFilteredLogs(response.logs);
-      setCurrentPage(response.pagination.page);
-      setTotalPages(response.pagination.totalPages);
-      setTotalRecords(response.pagination.total);
-      setAvailableModules(response.filters.modules);
-      setAvailableUsers(response.filters.users);
-      setStats(response.statistics);
+      try {
+        const response = await ActivityLogsService.getActivityLogs(filters);
+        
+        setLogs(response?.data?.logs || []);
+        setFilteredLogs(response?.data?.logs || []);
+        setCurrentPage(response?.data?.pagination?.page || 1);
+        setTotalPages(response?.data?.pagination?.totalPages || 1);
+        setTotalRecords(response?.data?.pagination?.total || 0);
+        setAvailableModules(response?.data?.filters?.modules || []);
+        setAvailableUsers(response?.data?.filters?.users || []);
+        setStats(response?.data?.statistics || {
+          totalActivities: 0,
+          successRate: 0,
+          warnings: 0,
+          errors: 0
+        });
+      } catch (apiError) {
+        console.warn('Could not fetch activity logs, using fallback:', apiError);
+        setLogs([]);
+        setFilteredLogs([]);
+        setCurrentPage(1);
+        setTotalPages(1);
+        setTotalRecords(0);
+        setAvailableModules([]);
+        setAvailableUsers([]);
+        setStats({
+          totalActivities: 0,
+          successRate: 0,
+          warnings: 0,
+          errors: 0
+        });
+      }
 
     } catch (err) {
       logger.error('Error loading activity logs:', err);

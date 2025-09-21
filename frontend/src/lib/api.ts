@@ -1178,6 +1178,24 @@ class APIClient {
   }
 
   /**
+   * Mark patient notification as read
+   */
+  async markPatientNotificationAsRead(notificationId: string, patientId: string): Promise<APIResponse<unknown>> {
+    console.log('🔔 API Client - markPatientNotificationAsRead called:', { notificationId, patientId });
+    try {
+      const response = await this.request<unknown>({
+        method: 'PUT',
+        url: `/medical/patients/${patientId}/notifications/${notificationId}/read`
+      });
+      console.log('🔔 API Client - markPatientNotificationAsRead response:', response);
+      return response;
+    } catch (error) {
+      console.error('🔔 API Client - markPatientNotificationAsRead error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Search patients for external requesters
    */
   async searchPatients(query: unknown): Promise<APIResponse<unknown>> {

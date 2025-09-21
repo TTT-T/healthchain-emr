@@ -82,21 +82,21 @@ export default function PatientDocuments() {
     setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
   };
 
-  const handleDownload = async (document: PatientDocument) => {
+  const handleDownload = async (doc: PatientDocument) => {
     try {
-      // ใช้ apiClient สำหรับการดาวน์โหลด
-      const response = await apiClient.request({
-        method: 'GET',
-        url: `/patients/${user?.id}/documents/${document.id}/download`,
-        responseType: 'blob'
+      // ใช้ fetch สำหรับการดาวน์โหลด blob
+      const response = await fetch(`/api/patients/${user?.id}/documents/${doc.id}/download`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        }
       });
 
-      if (response.statusCode === 200 && response.data) {
-        // สร้าง download link
-        const url = window.URL.createObjectURL(response.data);
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = document.fileName;
+        link.download = doc.fileName;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -113,16 +113,13 @@ export default function PatientDocuments() {
     }
   };
 
-  const handleViewOnline = async (document: PatientDocument) => {
+  const handleViewOnline = async (doc: PatientDocument) => {
     try {
       // ใช้ apiClient สำหรับการดูเอกสารออนไลน์
-      const response = await apiClient.request({
-        method: 'GET',
-        url: `/patients/${user?.id}/documents/${document.id}/view`
-      });
+      const response = await apiClient.get(`/patients/${user?.id}/documents/${doc.id}/view`);
 
-      if (response.statusCode === 200 && response.data?.fileUrl) {
-        window.open(response.data.fileUrl, '_blank');
+      if (response.statusCode === 200 && (response.data as any)?.fileUrl) {
+        window.open((response.data as any).fileUrl, '_blank');
         
         // รีเฟรชข้อมูล
         loadDocuments();

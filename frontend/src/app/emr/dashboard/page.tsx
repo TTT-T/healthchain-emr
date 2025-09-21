@@ -91,7 +91,7 @@ export default function EMRDashboard() {
       const [patientsResponse] = await Promise.all(promises);
 
       // Calculate stats from real data - use patients data but show 0 since no actual patient users exist
-      const patientsData = (patientsResponse.data?.patients as any[]) || [];
+      const patientsData = (patientsResponse.data as any[]) || [];
       // Since there are no users with "patient" role, we'll show 0 for patient count
       const todayPatientsCount = 0;
       
@@ -151,7 +151,7 @@ export default function EMRDashboard() {
         if (completedVisitsCount > 0) {
           alertsData.push({
             id: '3',
-            type: 'success',
+            type: 'info',
             title: 'การรักษาเสร็จสิ้น',
             message: `การรักษาเสร็จสิ้น ${completedVisitsCount} รายวันนี้`,
             timestamp: new Date().toISOString(),

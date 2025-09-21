@@ -73,7 +73,6 @@ import {
   deletePharmacyDispensing
 } from '../controllers/pharmacyController';
 import {
-  createLabResult,
   getLabResultsByPatient,
   getLabResultById,
   updateLabResult,
@@ -131,11 +130,11 @@ import {
 } from '../controllers/labController';
 import {
   createPrescription as createPatientPrescription,
-  getPrescription,
+  getPrescriptions as getPrescription,
   updatePrescription as updatePatientPrescription,
-  updatePrescriptionItem,
-  getPrescriptionsByVisit
-} from '../controllers/pharmacyController';
+  updatePrescriptionStatus as updatePrescriptionItem,
+  getPrescriptions as getPrescriptionsByVisit
+} from '../controllers/prescriptionsController';
 import {
   getPatientRecords,
   createPatientRecord,

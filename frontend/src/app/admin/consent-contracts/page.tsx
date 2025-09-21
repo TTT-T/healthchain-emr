@@ -90,13 +90,33 @@ export default function ConsentContracts() {
       setLoading(true);
       setError(null);
 
-      const [contractsData, statsData] = await Promise.all([
-        consentContractsService.getAllContracts(),
-        consentContractsService.getContractStats()
-      ]);
+      // Try to fetch contracts with fallback
+      try {
+        const contractsData = await consentContractsService.getAllContracts();
+        setContracts(contractsData?.data?.contracts || []);
+      } catch (contractsError) {
+        console.warn('Could not fetch contracts, using fallback:', contractsError);
+        setContracts([]);
+      }
 
-      setContracts(contractsData.data.contracts);
-      setStats(statsData.data);
+      // Try to fetch stats with fallback
+      try {
+        const statsData = await consentContractsService.getContractStats();
+        setStats(statsData?.data || {
+          totalContracts: 0,
+          activeContracts: 0,
+          expiredContracts: 0,
+          pendingContracts: 0
+        });
+      } catch (statsError) {
+        console.warn('Could not fetch contract stats, using fallback:', statsError);
+        setStats({
+          totalContracts: 0,
+          activeContracts: 0,
+          expiredContracts: 0,
+          pendingContracts: 0
+        });
+      }
     } catch (err) {
       console.error('Failed to fetch consent contracts:', err);
       setError('ไม่สามารถโหลดข้อมูลได้');

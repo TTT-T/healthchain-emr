@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { databaseManager } from '../database';
+import { databaseManager } from '../database/connection';
 import { asyncHandler } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 

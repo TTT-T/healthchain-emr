@@ -18,17 +18,6 @@ export default function AdminDashboard() {
         setLoading(true);
         setError(null);
         
-        // Fetch dashboard stats, system stats, and approval stats in parallel
-        const [dashboardResponse, systemStatsResponse, approvalStatsResponse] = await Promise.all([
-          adminDashboardService.getDashboardStats(),
-          adminDashboardService.getSystemStats(7), // Last 7 days
-          adminDashboardService.getApprovalStats()
-        ]);
-
-        // Handle different response structures
-        const dashboardData = dashboardResponse.data;
-        const systemData = systemStatsResponse.data;
-        
         // Create a compatible dashboard stats object with real data
         const compatibleStats = {
           system_health: {
@@ -79,7 +68,20 @@ export default function AdminDashboard() {
         
         setDashboardStats(compatibleStats);
         setRecentActivity([]); // No recent activity data from system metrics
-        setApprovalStats(approvalStatsResponse.data.stats || {});
+        
+        // Try to fetch approval stats with fallback
+        try {
+          const approvalStatsResponse = await adminDashboardService.getApprovalStats();
+          setApprovalStats((approvalStatsResponse?.data?.stats || {}) as unknown as ApprovalStats);
+        } catch (approvalError) {
+          console.warn('Could not fetch approval stats, using fallback:', approvalError);
+          // Provide fallback approval stats
+          setApprovalStats({
+            doctor: { total: 0, pending: 0, approved: 0, unverified: 0 },
+            nurse: { total: 0, pending: 0, approved: 0, unverified: 0 },
+            staff: { total: 0, pending: 0, approved: 0, unverified: 0 }
+          } as ApprovalStats);
+        }
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
         setError('ไม่สามารถโหลดข้อมูลได้');

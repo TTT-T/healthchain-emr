@@ -54,15 +54,8 @@ class ConsentContractsService {
 
   async getActiveContracts(limit: number = 10): Promise<ConsentContractResponse> {
     try {
-      const response = await this.apiClient.request<ConsentContractResponse>({
-        method: 'GET',
-        url: `${this.baseUrl}/consent-dashboard/active-contracts`,
-        params: { limit },
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      return response;
+      const response = await this.apiClient.get<ConsentContractResponse>(`${this.baseUrl}/consent-dashboard/active-contracts?limit=${limit}`);
+      return response as unknown as ConsentContractResponse;
     } catch (error) {
       console.error('Error fetching active consent contracts:', error);
       throw error;
@@ -71,14 +64,8 @@ class ConsentContractsService {
 
   async getAllContracts(): Promise<ConsentContractResponse> {
     try {
-      const response = await this.apiClient.request<ConsentContractResponse>({
-        method: 'GET',
-        url: `${this.baseUrl}/consent-contracts`,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      return response;
+      const response = await this.apiClient.get<ConsentContractResponse>(`${this.baseUrl}/consent-contracts`);
+      return response as unknown as ConsentContractResponse;
     } catch (error) {
       console.error('Error fetching all consent contracts:', error);
       throw error;
@@ -87,14 +74,8 @@ class ConsentContractsService {
 
   async getContractStats(): Promise<ConsentContractStatsResponse> {
     try {
-      const response = await this.apiClient.request<ConsentContractStatsResponse>({
-        method: 'GET',
-        url: `${this.baseUrl}/consent-contracts/stats`,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      return response;
+      const response = await this.apiClient.get<ConsentContractStatsResponse>(`${this.baseUrl}/consent-contracts/stats`);
+      return response as unknown as ConsentContractStatsResponse;
     } catch (error) {
       console.error('Error fetching consent contract stats:', error);
       throw error;
@@ -103,14 +84,8 @@ class ConsentContractsService {
 
   async getContractById(id: string): Promise<ConsentContractResponse> {
     try {
-      const response = await this.apiClient.request<ConsentContractResponse>({
-        method: 'GET',
-        url: `${this.baseUrl}/consent-contracts/${id}`,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      return response;
+      const response = await this.apiClient.get<ConsentContractResponse>(`${this.baseUrl}/consent-contracts/${id}`);
+      return response as unknown as ConsentContractResponse;
     } catch (error) {
       console.error('Error fetching consent contract by ID:', error);
       throw error;
@@ -119,15 +94,8 @@ class ConsentContractsService {
 
   async updateContractStatus(id: string, status: string): Promise<ConsentContractResponse> {
     try {
-      const response = await this.apiClient.request<ConsentContractResponse>({
-        method: 'PUT',
-        url: `${this.baseUrl}/consent-contracts/${id}/status`,
-        data: { status },
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      return response;
+      const response = await this.apiClient.post<ConsentContractResponse>(`${this.baseUrl}/consent-contracts/${id}/status`, { status });
+      return response as unknown as ConsentContractResponse;
     } catch (error) {
       console.error('Error updating consent contract status:', error);
       throw error;

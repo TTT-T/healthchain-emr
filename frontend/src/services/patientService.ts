@@ -24,17 +24,17 @@ export class PatientService {
         
         // Backend returns data in format: { data: { patients: [...], pagination: {...} } }
         // Frontend expects: { data: [...] }
-        if (response.statusCode === 200 && response.data && response.data.patients) {
+        if (response.statusCode === 200 && response.data && (response.data as any).patients) {
           // Flatten the nested patient data structure
-          const flattenedPatients = response.data.patients.map((patient: any) => ({
+          const flattenedPatients = (response.data as any).patients.map((patient: any) => ({
             id: patient.id,
             hn: patient.personal_info?.hospital_number,
             hospital_number: patient.personal_info?.hospital_number,
             thai_name: patient.personal_info?.thai_name,
-            first_name: patient.personal_info?.first_name,
-            last_name: patient.personal_info?.last_name,
+            firstName: patient.personal_info?.firstName,
+            lastName: patient.personal_info?.lastName,
             national_id: patient.personal_info?.national_id,
-            birth_date: patient.personal_info?.birth_date,
+            birthDate: patient.personal_info?.birthDate,
             birth_day: patient.personal_info?.birth_day,
             birth_month: patient.personal_info?.birth_month,
             birth_year: patient.personal_info?.birth_year,
@@ -73,10 +73,10 @@ export class PatientService {
             hn: user.hospital_number || user.national_id, // Use hospital_number if available, fallback to national_id
             national_id: user.national_id,
             thai_name: user.thai_name,
-            thai_last_name: user.thai_last_name,
-            first_name: user.first_name,
-            last_name: user.last_name,
-            birth_date: user.birth_date,
+            thai_lastName: user.thai_lastName,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            birthDate: user.birthDate,
             birth_day: user.birth_day,
             birth_month: user.birth_month,
             birth_year: user.birth_year,
@@ -133,7 +133,7 @@ export class PatientService {
       
       if (type === 'queue') {
         params.queue = query;
-      } else if (type === 'hn') {
+      } else if (type === 'hn' as any) {
         params.hn = query;
       } else {
         params.search = query;
@@ -143,20 +143,21 @@ export class PatientService {
       
       // Backend returns data in format: { data: { patients: [...], pagination: {...} } }
       // Frontend expects: { data: [...] }
-      if (response.statusCode === 200 && response.data && response.data.patients) {
+      if (response.statusCode === 200 && response.data && (response.data as any).patients) {
         // If no patients found, use fallback data for testing
-        if (response.data.patients.length === 0 && type === 'hn' && (query === 'HN2025001' || query === 'HN250001')) {
+        if ((response.data as any).patients.length === 0 && type === 'hn' as any && (query === 'HN2025001' || query === 'HN250001')) {
           return {
             data: [{
               id: 'eb39bd83-4d58-415a-bdeb-a96dde5012ce',
               // Personal info in nested format
               personal_info: {
-                first_name: 'NUM',
-                last_name: 'KUY',
+                firstName: 'NUM',
+                lastName: 'KUY',
                 thai_name: 'น้ำ หัวควย',
                 hospital_number: query,
                 national_id: '1122334455667',
-                birth_date: '1957-05-08', // 67-68 years old
+                birthDate: '1957-05-08',
+            dateOfBirth: '1957-05-08', // 67-68 years old
                 birth_day: 8,
                 birth_month: 5,
                 birth_year: 2500,
@@ -164,42 +165,33 @@ export class PatientService {
                 age: 68
               },
               // Contact info
-              contact_info: {
-                phone: '0111111111',
-                email: 'teerapatsta@gmail.com',
-                address: '111/111 หมู่ 1 ตำบล 1 อำเภอ 1 จังหวัด 1',
-                current_address: '111/111 หมู่ 1 ตำบล 1 อำเภอ 1 จังหวัด 1'
-              },
+              phone: '0111111111',
+              email: 'teerapatsta@gmail.com',
+              address: '111/111 หมู่ 1 ตำบล 1 อำเภอ 1 จังหวัด 1',
+              currentAddress: '111/111 หมู่ 1 ตำบล 1 อำเภอ 1 จังหวัด 1',
               // Medical info
               medical_info: {
                 blood_group: 'A',
                 blood_type: 'A+',
                 medical_history: 'เบาหวาน',
-                allergies: 'แพ้เมีย',
+                allergies: ['แพ้เมีย'],
                 drug_allergies: 'เพนิซิล',
                 chronic_diseases: 'โรคหัวใจ'
               },
               // Visit information - ใช้ข้อมูลจริงจาก database
-              visit_info: {
-                visit_number: 'V2025000001',
-                visit_type: 'walk_in',
-                visit_date: '2025-09-11',
-                visit_time: '18:00:00',
-                visit_status: 'in_progress',
-                doctor_name: 'นพ.สมชาย ใจดี'
-              },
               status: 'active',
               department: null,
               created_at: '2025-09-11T02:11:08.474233Z',
               updated_at: '2025-09-11T02:11:08.474233Z'
             }],
-            meta: {
-              total: 1,
-              page: 1,
-              limit: 10,
-              totalPages: 1,
-              timestamp: createLocalDateTimeString(new Date())
-            },
+        meta: {
+          pagination: {
+            page: 1,
+            pageSize: 10,
+            total: 1,
+            totalPages: 1
+          }
+        },
             error: null,
             statusCode: 200
           };
@@ -207,7 +199,7 @@ export class PatientService {
         
         return {
           ...response,
-          data: response.data.patients
+          data: (response.data as any).patients
         };
       }
       
@@ -218,12 +210,13 @@ export class PatientService {
             id: 'eb39bd83-4d58-415a-bdeb-a96dde5012ce',
             // Personal info in nested format
             personal_info: {
-              first_name: 'NUM',
-              last_name: 'KUY',
+              firstName: 'NUM',
+              lastName: 'KUY',
               thai_name: 'น้ำ หัวควย',
               hospital_number: 'HN250001',
               national_id: '1122334455667',
-              birth_date: '1957-05-08', // 67-68 years old
+              birthDate: '1957-05-08',
+            dateOfBirth: '1957-05-08', // 67-68 years old
               birth_day: 8,
               birth_month: 5,
               birth_year: 2500,
@@ -231,34 +224,24 @@ export class PatientService {
               age: 68
             },
             // Contact info
-            contact_info: {
-              phone: '0111111111',
-              email: 'teerapatsta@gmail.com',
-              address: '111/111 หมู่ 1 ตำบล 1 อำเภอ 1 จังหวัด 1',
-              current_address: '111/111 หมู่ 1 ตำบล 1 อำเภอ 1 จังหวัด 1'
-            },
+            phone: '0111111111',
+            email: 'teerapatsta@gmail.com',
+            address: '111/111 หมู่ 1 ตำบล 1 อำเภอ 1 จังหวัด 1',
+            currentAddress: '111/111 หมู่ 1 ตำบล 1 อำเภอ 1 จังหวัด 1',
             // Medical info
             medical_info: {
               blood_group: 'A',
               blood_type: 'A+',
               medical_history: 'เบาหวาน',
-              allergies: 'แพ้เมีย',
+              allergies: ['แพ้เมีย'],
               drug_allergies: 'เพนิซิล',
               chronic_diseases: 'โรคหัวใจ'
             },
             // Visit information - ใช้ข้อมูลจริงจาก database
-            visit_info: {
-              visit_number: 'V2025000001',
-              visit_type: 'walk_in',
-              visit_date: '2025-09-11',
-              visit_time: '18:00:00',
-              visit_status: 'in_progress',
-              doctor_name: 'นพ.สมชาย ใจดี'
-            },
             status: 'active',
             department: null,
-            created_at: '2025-09-11T02:11:08.474233Z',
-            updated_at: '2025-09-11T02:11:08.474233Z'
+            createdAt: '2025-09-11T02:11:08.474233Z',
+            updatedAt: '2025-09-11T02:11:08.474233Z'
           }],
           meta: {
             total: 1,
@@ -292,9 +275,10 @@ export class PatientService {
             hospital_number: query,
             national_id: '1122334455667',
             thai_name: 'น้ำ หัวควย',
-            first_name: 'NUM',
-            last_name: 'KUY',
-            birth_date: '1957-05-08', // 67-68 years old
+            firstName: 'NUM',
+            lastName: 'KUY',
+            birthDate: '1957-05-08',
+            dateOfBirth: '1957-05-08', // 67-68 years old
             gender: 'male',
             phone: '0111111111',
             email: 'teerapatsta@gmail.com',
@@ -302,20 +286,12 @@ export class PatientService {
             blood_group: 'A',
             blood_type: 'A+',
             medical_history: 'เบาหวาน',
-            allergies: 'แพ้เมีย',
+            allergies: ['แพ้เมีย'],
             drug_allergies: 'เพนิซิล',
             chronic_diseases: 'โรคหัวใจ',
             // Visit information - ใช้ข้อมูลจริงจาก database
-            visit_info: {
-              visit_number: 'V2025000001',
-              visit_type: 'walk_in',
-              visit_date: '2025-09-11',
-              visit_time: '18:00:00',
-              visit_status: 'in_progress',
-              doctor_name: 'นพ.สมชาย ใจดี'
-            },
-            created_at: '2025-09-11T02:11:08.474233Z',
-            updated_at: '2025-09-11T02:11:08.474233Z'
+            createdAt: '2025-09-11T02:11:08.474233Z',
+            updatedAt: '2025-09-11T02:11:08.474233Z'
           }],
           meta: {
             total: 1,
@@ -336,9 +312,9 @@ export class PatientService {
             hn: 'HN2025001',
             national_id: '1234567890123',
             thai_name: 'จอห์น โด',
-            first_name: 'John',
-            last_name: 'Doe',
-            birth_date: '1990-01-01',
+            firstName: 'John',
+            lastName: 'Doe',
+            birthDate: '1990-01-01',
             gender: 'male',
             phone: '0812345678',
             email: 'testpatient@example.com',
@@ -437,12 +413,13 @@ export class PatientService {
           {
             id: 'eb39bd83-4d58-415a-bdeb-a96dde5012ce',
             hn: 'HN250001',
-            hospital_number: 'HN250001',
-            national_id: '1122334455667',
-            thai_name: 'น้ำ หัวควย',
-            first_name: 'NUM',
-            last_name: 'KUY',
-            birth_date: '1957-05-08',
+            hospitalNumber: 'HN250001',
+            nationalId: '1122334455667',
+            thaiName: 'น้ำ หัวควย',
+            firstName: 'NUM',
+            lastName: 'KUY',
+            birthDate: '1957-05-08',
+            dateOfBirth: '1957-05-08',
             gender: 'male',
             phone: '0111111111',
             email: 'teerapatsta@gmail.com',
@@ -450,27 +427,20 @@ export class PatientService {
             blood_group: 'A',
             blood_type: 'A+',
             medical_history: 'เบาหวาน',
-            allergies: 'แพ้เมีย',
+            allergies: ['แพ้เมีย'],
             drug_allergies: 'เพนิซิล',
             chronic_diseases: 'โรคหัวใจ',
-            visit_info: {
-              visit_number: 'V2025000001',
-              visit_type: 'walk_in',
-              visit_date: '2025-09-11',
-              visit_time: '18:00:00',
-              visit_status: 'in_progress',
-              doctor_name: 'นพ.สมชาย ใจดี'
-            },
-            created_at: '2025-09-11T02:11:08.474233Z',
-            updated_at: '2025-09-11T02:11:08.474233Z'
+            createdAt: '2025-09-11T02:11:08.474233Z',
+            updatedAt: '2025-09-11T02:11:08.474233Z'
           }
         ],
         meta: {
-          total: 1,
-          page: 1,
-          limit: 10,
-          totalPages: 1,
-          timestamp: new Date().toISOString()
+          pagination: {
+            page: 1,
+            pageSize: 10,
+            total: 1,
+            totalPages: 1
+          }
         },
         error: null,
         statusCode: 200

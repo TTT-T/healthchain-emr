@@ -262,7 +262,7 @@ export default function UsersManagementPage() {
                           <Users size={16} className="text-blue-600" />
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                          <div className="text-sm font-medium text-gray-900">{user.first_name} {user.last_name}</div>
                           <div className="text-sm text-gray-500">{user.email}</div>
                         </div>
                       </div>

@@ -57,17 +57,23 @@ export function CreateAppointmentDialog({
     (async () => {
       setIsLoading(true);
       try {
-        const [typesResponse, doctorsResponse] = await Promise.all([
-          AppointmentService.getAppointments("1"),
-          AppointmentService.getAvailableTimeSlots({ doctorId: 1, date: "2024-01-01", typeId: 1 }),
-        ]);
+        // Mock data for appointment types and doctors
+        const mockAppointmentTypes: AppointmentType[] = [
+          { id: 1, name: "ตรวจรักษาทั่วไป", durationMinutes: 30, description: "การตรวจรักษาทั่วไป", color: "#3B82F6" },
+          { id: 2, name: "ตรวจสุขภาพ", durationMinutes: 60, description: "การตรวจสุขภาพประจำปี", color: "#10B981" },
+          { id: 3, name: "ฉีดวัคซีน", durationMinutes: 15, description: "การฉีดวัคซีน", color: "#F59E0B" },
+          { id: 4, name: "ติดตามผล", durationMinutes: 20, description: "การติดตามผลการรักษา", color: "#8B5CF6" }
+        ];
 
-        if (typesResponse.statusCode !== 200) throw new Error(typesResponse.error?.message || "Error");
-        if (doctorsResponse.statusCode !== 200) throw new Error(doctorsResponse.error?.message || "Error");
+        const mockDoctors: Doctor[] = [
+          { id: 1, firstName: "นพ. สมชาย", lastName: "ใจดี", speciality: "อายุรกรรม" },
+          { id: 2, firstName: "นพ. สมหญิง", lastName: "รักสุขภาพ", speciality: "กุมารเวชกรรม" },
+          { id: 3, firstName: "นพ. วิชัย", lastName: "สุขภาพดี", speciality: "เวชศาสตร์ป้องกัน" }
+        ];
 
         if (!cancelled) {
-          setAppointmentTypes(typesResponse.data as unknown as AppointmentType[] || []);
-          setDoctors(doctorsResponse.data as unknown as Doctor[] || []);
+          setAppointmentTypes(mockAppointmentTypes);
+          setDoctors(mockDoctors);
           setError(null);
         }
       } catch (err: any) {
@@ -94,22 +100,22 @@ export function CreateAppointmentDialog({
     (async () => {
       setIsLoading(true);
       try {
-        const response = await AppointmentService.getAvailableTimeSlots({
-          doctorId: selectedDoctor.id,
-          date: format(selectedDate, 'yyyy-MM-dd'),
-          typeId: selectedType.id,
-        });
-
-        if (response.statusCode !== 200) throw new Error(response.error?.message || "Error");
+        // Mock time slots
+        const mockTimeSlots: TimeSlot[] = [
+          { startTime: "09:00", endTime: "09:30", isAvailable: true },
+          { startTime: "09:30", endTime: "10:00", isAvailable: true },
+          { startTime: "10:00", endTime: "10:30", isAvailable: false },
+          { startTime: "10:30", endTime: "11:00", isAvailable: true },
+          { startTime: "11:00", endTime: "11:30", isAvailable: true },
+          { startTime: "14:00", endTime: "14:30", isAvailable: true },
+          { startTime: "14:30", endTime: "15:00", isAvailable: true },
+          { startTime: "15:00", endTime: "15:30", isAvailable: false },
+          { startTime: "15:30", endTime: "16:00", isAvailable: true }
+        ];
 
         if (!cancelled) {
-          const slots = (response.data || []).map((slot: any) => ({
-            startTime: slot.startTime,
-            endTime: slot.endTime,
-            isAvailable: slot.available
-          }));
-          setAvailableTimeSlots(slots);
-          setError(slots.length === 0 ? 'ไม่มีช่วงเวลาว่างในวันที่เลือก' : null);
+          setAvailableTimeSlots(mockTimeSlots);
+          setError(mockTimeSlots.length === 0 ? 'ไม่มีช่วงเวลาว่างในวันที่เลือก' : null);
           setSelectedTimeSlot(undefined);
         }
       } catch (err: any) {

@@ -80,14 +80,8 @@ class ComplianceService {
 
   async getComplianceReports(): Promise<ComplianceReportsResponse> {
     try {
-      const response = await this.apiClient.request<ComplianceReportsResponse>({
-        method: 'GET',
-        url: `${this.baseUrl}/compliance/reports`,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      return response;
+      const response = await this.apiClient.get<ComplianceReportsResponse>(`${this.baseUrl}/compliance/reports`);
+      return response as unknown as ComplianceReportsResponse;
     } catch (error) {
       console.error('Error fetching compliance reports:', error);
       throw error;
@@ -96,15 +90,8 @@ class ComplianceService {
 
   async getComplianceTrends(period: number = 30): Promise<ComplianceTrendsResponse> {
     try {
-      const response = await this.apiClient.request<ComplianceTrendsResponse>({
-        method: 'GET',
-        url: `${this.baseUrl}/compliance/trends`,
-        params: { period },
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      return response;
+      const response = await this.apiClient.get<ComplianceTrendsResponse>(`${this.baseUrl}/compliance/trends?period=${period}`);
+      return response as unknown as ComplianceTrendsResponse;
     } catch (error) {
       console.error('Error fetching compliance trends:', error);
       throw error;
@@ -113,14 +100,8 @@ class ComplianceService {
 
   async getComplianceStats(): Promise<ComplianceStatsResponse> {
     try {
-      const response = await this.apiClient.request<ComplianceStatsResponse>({
-        method: 'GET',
-        url: `${this.baseUrl}/compliance/stats`,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      return response;
+      const response = await this.apiClient.get<ComplianceStatsResponse>(`${this.baseUrl}/compliance/stats`);
+      return response as unknown as ComplianceStatsResponse;
     } catch (error) {
       console.error('Error fetching compliance stats:', error);
       throw error;
@@ -129,15 +110,8 @@ class ComplianceService {
 
   async createComplianceReport(reportData: Partial<ComplianceReport>): Promise<ComplianceReportsResponse> {
     try {
-      const response = await this.apiClient.request<ComplianceReportsResponse>({
-        method: 'POST',
-        url: `${this.baseUrl}/compliance/reports`,
-        data: reportData,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      return response;
+      const response = await this.apiClient.post<ComplianceReportsResponse>(`${this.baseUrl}/compliance/reports`, reportData);
+      return response as unknown as ComplianceReportsResponse;
     } catch (error) {
       console.error('Error creating compliance report:', error);
       throw error;
@@ -146,15 +120,8 @@ class ComplianceService {
 
   async updateComplianceReport(id: string, reportData: Partial<ComplianceReport>): Promise<ComplianceReportsResponse> {
     try {
-      const response = await this.apiClient.request<ComplianceReportsResponse>({
-        method: 'PUT',
-        url: `${this.baseUrl}/compliance/reports/${id}`,
-        data: reportData,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      return response;
+      const response = await this.apiClient.post<ComplianceReportsResponse>(`${this.baseUrl}/compliance/reports/${id}/update`, reportData);
+      return response as unknown as ComplianceReportsResponse;
     } catch (error) {
       console.error('Error updating compliance report:', error);
       throw error;

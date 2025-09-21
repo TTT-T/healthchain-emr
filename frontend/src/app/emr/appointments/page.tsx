@@ -164,9 +164,9 @@ export default function Appointments() {
   const sendPatientNotification = async (patient: MedicalPatient, appointmentRecord: any) => {
     try {
       const notificationData = {
-        patientHn: patient.hn || patient.hospital_number || '',
-        patientNationalId: patient.national_id || '',
-        patientName: patient.thai_name || `${patient.firstName} ${patient.lastName}`,
+        patientHn: patient.hn || patient.hospitalNumber || '',
+        patientNationalId: patient.nationalId || '',
+        patientName: patient.thaiName || `${patient.firstName} ${patient.lastName}`,
         patientPhone: patient.phone || '',
         patientEmail: patient.email || '',
         recordType: 'appointment',
@@ -174,7 +174,7 @@ export default function Appointments() {
         chiefComplaint: `นัดหมาย: ${appointmentRecord.appointmentType}`,
         recordedBy: appointmentRecord.createdBy,
         recordedTime: appointmentRecord.createdAt,
-        message: `มีการสร้างนัดหมายใหม่สำหรับคุณ ${patient.thai_name || `${patient.firstName} ${patient.lastName}`} โดย ${appointmentRecord.createdBy}`
+        message: `มีการสร้างนัดหมายใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${appointmentRecord.createdBy}`
       };
 
       await NotificationService.notifyPatientRecordUpdate(notificationData);
@@ -288,13 +288,13 @@ export default function Appointments() {
                   <h3 className="text-lg font-semibold text-blue-800 mb-2">ข้อมูลผู้ป่วย</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospital_number}
+                      <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospitalNumber}
                     </div>
                     <div>
-                      <span className="font-medium">ชื่อ:</span> {selectedPatient.thai_name || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                      <span className="font-medium">ชื่อ:</span> {selectedPatient.thaiName || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
                     </div>
                     <div>
-                      <span className="font-medium">อายุ:</span> {selectedPatient.age || 'ไม่ระบุ'}
+                      <span className="font-medium">อายุ:</span> {selectedPatient.birthDate ? Math.floor((new Date().getTime() - new Date(selectedPatient.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 'ไม่ระบุ'}
                     </div>
                     <div>
                       <span className="font-medium">เพศ:</span> {selectedPatient.gender || 'ไม่ระบุ'}

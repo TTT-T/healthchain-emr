@@ -56,7 +56,7 @@ export default function UserEditModal({ isOpen, onClose, user, onSave, loading =
         last_name: formData.last_name,
         email: formData.email,
         role: formData.role,
-        is_active: formData.is_active
+        status: formData.is_active ? 'active' : 'inactive'
       });
       onClose();
     } catch (error) {

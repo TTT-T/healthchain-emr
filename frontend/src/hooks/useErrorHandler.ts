@@ -11,7 +11,7 @@ interface ErrorHandlerOptions {
 
 export const useErrorHandler = (options: ErrorHandlerOptions = {}) => {
   const { showToast = true, logError = true, fallbackMessage = 'เกิดข้อผิดพลาดที่ไม่คาดคิด' } = options;
-  const { showError, showWarning, showInfo } = useToast();
+  const { addToast } = useToast();
 
   const handleError = useCallback((error: any, context?: string) => {
     if (logError) {
@@ -64,9 +64,14 @@ export const useErrorHandler = (options: ErrorHandlerOptions = {}) => {
         }
       }
 
-      showError(title, message);
+      addToast({
+        type: 'error',
+        title,
+        message,
+        duration: 5000
+      });
     }
-  }, [showError, showToast, logError, fallbackMessage]);
+  }, [addToast, showToast, logError, fallbackMessage]);
 
   const handleWarning = useCallback((message: string, title: string = 'คำเตือน') => {
     if (logError) {
@@ -74,9 +79,14 @@ export const useErrorHandler = (options: ErrorHandlerOptions = {}) => {
     }
 
     if (showToast) {
-      showWarning(title, message);
+      addToast({
+        type: 'warning',
+        title,
+        message,
+        duration: 4000
+      });
     }
-  }, [showWarning, showToast, logError]);
+  }, [addToast, showToast, logError]);
 
   const handleInfo = useCallback((message: string, title: string = 'ข้อมูล') => {
     if (logError) {
@@ -84,9 +94,14 @@ export const useErrorHandler = (options: ErrorHandlerOptions = {}) => {
     }
 
     if (showToast) {
-      showInfo(title, message);
+      addToast({
+        type: 'info',
+        title,
+        message,
+        duration: 3000
+      });
     }
-  }, [showInfo, showToast, logError]);
+  }, [addToast, showToast, logError]);
 
   // Global error event listeners
   useEffect(() => {

@@ -105,7 +105,7 @@ export class PharmacyService {
    */
   static async updatePharmacyDispensing(id: string, data: UpdatePharmacyRequest): Promise<APIResponse<PharmacyRecord>> {
     try {
-      const response = await apiClient.put(`/medical/pharmacy/${id}`, data);
+      const response = await apiClient.post(`/medical/pharmacy/${id}/update`, data);
       return response as APIResponse<PharmacyRecord>;
     } catch (error) {
       logger.error('Error updating pharmacy dispensing record:', error);
@@ -118,7 +118,7 @@ export class PharmacyService {
    */
   static async deletePharmacyDispensing(id: string): Promise<APIResponse<{ id: string }>> {
     try {
-      const response = await apiClient.delete(`/medical/pharmacy/${id}`);
+      const response = await apiClient.post(`/medical/pharmacy/${id}/delete`, {});
       return response as APIResponse<{ id: string }>;
     } catch (error) {
       logger.error('Error deleting pharmacy dispensing record:', error);

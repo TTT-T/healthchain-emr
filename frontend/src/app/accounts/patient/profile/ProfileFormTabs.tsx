@@ -23,6 +23,8 @@ interface FormFieldProps {
   required?: boolean;
   disabled?: boolean;
   placeholder?: string;
+  min?: string;
+  max?: string;
   onDelete?: () => void;
   deletable?: boolean;
 }
@@ -36,6 +38,8 @@ const FormField: React.FC<FormFieldProps> = ({
   required = false,
   disabled = false,
   placeholder,
+  min,
+  max,
   onDelete,
   deletable = false
 }) => {
@@ -76,6 +80,8 @@ const FormField: React.FC<FormFieldProps> = ({
             onChange={(e) => onChange(type === 'number' ? parseFloat(e.target.value) || null : e.target.value)}
             disabled={disabled}
             placeholder={placeholder}
+            min={min}
+            max={max}
             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 transition-colors"
           />
         );
@@ -294,18 +300,18 @@ export const ProfileFormTabs: React.FC<ProfileFormTabsProps> = ({
               type="select"
               disabled={!isEditing}
               options={[
-                { value: 1, label: 'มกราคม' },
-                { value: 2, label: 'กุมภาพันธ์' },
-                { value: 3, label: 'มีนาคม' },
-                { value: 4, label: 'เมษายน' },
-                { value: 5, label: 'พฤษภาคม' },
-                { value: 6, label: 'มิถุนายน' },
-                { value: 7, label: 'กรกฎาคม' },
-                { value: 8, label: 'สิงหาคม' },
-                { value: 9, label: 'กันยายน' },
-                { value: 10, label: 'ตุลาคม' },
-                { value: 11, label: 'พฤศจิกายน' },
-                { value: 12, label: 'ธันวาคม' }
+                { value: '1', label: 'มกราคม' },
+                { value: '2', label: 'กุมภาพันธ์' },
+                { value: '3', label: 'มีนาคม' },
+                { value: '4', label: 'เมษายน' },
+                { value: '5', label: 'พฤษภาคม' },
+                { value: '6', label: 'มิถุนายน' },
+                { value: '7', label: 'กรกฎาคม' },
+                { value: '8', label: 'สิงหาคม' },
+                { value: '9', label: 'กันยายน' },
+                { value: '10', label: 'ตุลาคม' },
+                { value: '11', label: 'พฤศจิกายน' },
+                { value: '12', label: 'ธันวาคม' }
               ]}
             />
             <FormField
@@ -666,18 +672,18 @@ export const ProfileFormTabs: React.FC<ProfileFormTabsProps> = ({
                   type="select"
                   disabled={!isEditing}
                   options={[
-                    { value: 1, label: 'มกราคม' },
-                    { value: 2, label: 'กุมภาพันธ์' },
-                    { value: 3, label: 'มีนาคม' },
-                    { value: 4, label: 'เมษายน' },
-                    { value: 5, label: 'พฤษภาคม' },
-                    { value: 6, label: 'มิถุนายน' },
-                    { value: 7, label: 'กรกฎาคม' },
-                    { value: 8, label: 'สิงหาคม' },
-                    { value: 9, label: 'กันยายน' },
-                    { value: 10, label: 'ตุลาคม' },
-                    { value: 11, label: 'พฤศจิกายน' },
-                    { value: 12, label: 'ธันวาคม' }
+                    { value: '1', label: 'มกราคม' },
+                    { value: '2', label: 'กุมภาพันธ์' },
+                    { value: '3', label: 'มีนาคม' },
+                    { value: '4', label: 'เมษายน' },
+                    { value: '5', label: 'พฤษภาคม' },
+                    { value: '6', label: 'มิถุนายน' },
+                    { value: '7', label: 'กรกฎาคม' },
+                    { value: '8', label: 'สิงหาคม' },
+                    { value: '9', label: 'กันยายน' },
+                    { value: '10', label: 'ตุลาคม' },
+                    { value: '11', label: 'พฤศจิกายน' },
+                    { value: '12', label: 'ธันวาคม' }
                   ]}
                 />
                 <FormField
