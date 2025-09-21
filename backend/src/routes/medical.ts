@@ -25,7 +25,8 @@ import {
 } from '../controllers/visitManagementController';
 import {
   createVisit,
-  searchVisits
+  searchVisits,
+  getVisitsByPatient
 } from '../controllers/visitController';
 import {
   recordVitalSigns,
@@ -79,13 +80,8 @@ import {
   deleteLabResult
 } from '../controllers/labResultController';
 import {
-  createAppointment,
-  getAppointmentsByPatient,
-  getAppointmentsByDoctor,
-  getAppointmentById,
-  updateAppointment,
-  deleteAppointment
-} from '../controllers/appointmentController';
+  getAllAppointments
+} from '../controllers/appointmentsController';
 import {
   createDocument,
   getDocumentsByPatient,
@@ -154,7 +150,6 @@ import {
   cancelPatientAppointment
 } from '../controllers/appointmentsController';
 import {
-  getPatientDocuments,
   uploadPatientDocument,
   deletePatientDocument,
   downloadPatientDocument
@@ -170,6 +165,7 @@ import {
   deletePatientNotification,
   createPatientNotification
 } from '../controllers/notificationsController';
+import { NotificationService } from '../services/notificationService';
 import {
   getPatientAIInsights,
   calculatePatientAIInsights
@@ -215,6 +211,7 @@ router.put('/doctors/:id', authorize(['doctor', 'admin']), asyncHandler(updateDo
 // Visit Management
 router.get('/visits', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAllVisits));
 router.post('/visits', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createVisit));
+router.get('/visits/patient/:patientId', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getVisitsByPatient));
 router.get('/visits/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getVisitById));
 router.put('/visits/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(updateVisit));
 router.post('/visits/:id/complete', authorize(['doctor', 'nurse', 'admin']), asyncHandler(completeVisit));
@@ -283,11 +280,11 @@ router.put('/doctor-visit/:id', authorize(['doctor', 'admin']), asyncHandler(upd
 router.delete('/doctor-visit/:id', authorize(['doctor', 'admin']), asyncHandler(deleteDoctorVisit));
 
 // Pharmacy routes
-router.post('/pharmacy', authorize(['pharmacist', 'nurse', 'admin']), asyncHandler(createPharmacyDispensing));
-router.get('/patients/:patientId/pharmacy', authorize(['pharmacist', 'nurse', 'admin']), asyncHandler(getPharmacyDispensingsByPatient));
-router.get('/pharmacy/:id', authorize(['pharmacist', 'nurse', 'admin']), asyncHandler(getPharmacyDispensingById));
-router.put('/pharmacy/:id', authorize(['pharmacist', 'admin']), asyncHandler(updatePharmacyDispensing));
-router.delete('/pharmacy/:id', authorize(['pharmacist', 'admin']), asyncHandler(deletePharmacyDispensing));
+router.post('/pharmacy', authorize(['pharmacist', 'nurse', 'doctor', 'admin']), asyncHandler(createPharmacyDispensing));
+router.get('/patients/:patientId/pharmacy', authorize(['pharmacist', 'nurse', 'doctor', 'admin']), asyncHandler(getPharmacyDispensingsByPatient));
+router.get('/pharmacy/:id', authorize(['pharmacist', 'nurse', 'doctor', 'admin']), asyncHandler(getPharmacyDispensingById));
+router.put('/pharmacy/:id', authorize(['pharmacist', 'doctor', 'admin']), asyncHandler(updatePharmacyDispensing));
+router.delete('/pharmacy/:id', authorize(['pharmacist', 'doctor', 'admin']), asyncHandler(deletePharmacyDispensing));
 
 // Lab Results routes
 router.post('/lab-results', authorize(['lab_tech', 'doctor', 'admin']), asyncHandler(createLabResult));
@@ -297,16 +294,18 @@ router.put('/lab-results/:id', authorize(['lab_tech', 'doctor', 'admin']), async
 router.delete('/lab-results/:id', authorize(['lab_tech', 'admin']), asyncHandler(deleteLabResult));
 
 // Appointments routes
-router.post('/appointments', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createAppointment));
-router.get('/patients/:patientId/appointments', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAppointmentsByPatient));
-router.get('/doctors/:doctorId/appointments', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAppointmentsByDoctor));
-router.get('/appointments/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAppointmentById));
-router.put('/appointments/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(updateAppointment));
-router.delete('/appointments/:id', authorize(['doctor', 'admin']), asyncHandler(deleteAppointment));
+router.get('/appointments', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAllAppointments));
+// router.get('/patients/:patientId/appointments', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAppointmentsByPatient));
+// router.get('/doctors/:doctorId/appointments', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAppointmentsByDoctor));
+// router.get('/appointments/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAppointmentById));
+// router.put('/appointments/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(updateAppointment));
+// router.delete('/appointments/:id', authorize(['doctor', 'admin']), asyncHandler(deleteAppointment));
 
 // Documents routes
 router.post('/documents', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createDocument));
-router.get('/patients/:patientId/documents', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getDocumentsByPatient));
+router.get('/patients/:patientId/medical-documents', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getDocumentsByPatient));
+// Patient can access their own documents
+router.get('/patients/:patientId/medical-documents/patient', authorize(['patient']), asyncHandler(getDocumentsByPatient));
 router.get('/documents/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getDocumentById));
 router.put('/documents/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(updateDocument));
 router.delete('/documents/:id', authorize(['doctor', 'admin']), asyncHandler(deleteDocument));
@@ -380,8 +379,8 @@ router.post('/patients/:id/prescriptions', authorize(['doctor']), asyncHandler(a
   });
 }));
 
-// Medical Documents
-router.get('/patients/:id/documents', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(getPatientDocuments));
+// Medical Documents (File uploads - different from document records)
+// Note: GET /patients/:id/documents route removed to avoid conflict with document records
 router.post('/patients/:id/documents', authorize(['doctor', 'nurse', 'admin']), asyncHandler(uploadPatientDocument));
 router.delete('/patients/:id/documents/:docId', authorize(['doctor', 'nurse', 'admin']), asyncHandler(deletePatientDocument));
 router.get('/patients/:id/documents/:docId/download', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(downloadPatientDocument));
@@ -396,6 +395,24 @@ router.get('/patients/:id/notifications', authorize(['doctor', 'nurse', 'admin',
 router.post('/patients/:id/notifications', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createPatientNotification));
 router.put('/patients/:id/notifications/:notifId/read', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(markNotificationAsRead));
 router.delete('/patients/:id/notifications/:notifId', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(deletePatientNotification));
+
+// Get patient notifications (new endpoint using NotificationService)
+router.get('/patients/:id/notifications-list', authorize(['patient']), asyncHandler(async (req: any, res: any) => {
+  const { id: patientId } = req.params;
+  const { limit = 50 } = req.query;
+  
+  const notifications = await NotificationService.getPatientNotifications(patientId, Number(limit));
+  
+  res.json({
+    data: notifications,
+    meta: {
+      timestamp: new Date().toISOString(),
+      count: notifications.length
+    },
+    error: null,
+    statusCode: 200
+  });
+}));
 
 // AI Insights
 router.get('/patients/:id/ai-insights', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(getPatientAIInsights));

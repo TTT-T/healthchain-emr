@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { databaseManager } from '../database/connection';
 import { v4 as uuidv4 } from 'uuid';
+import { NotificationService } from '../services/notificationService';
 
 /**
  * Prescriptions Controller

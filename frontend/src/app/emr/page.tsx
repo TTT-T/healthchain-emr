@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/api';
+import { getThailandTime } from '@/utils/thailandTime';
 
 interface QuickStats {
   todayPatients: number;
@@ -53,12 +54,37 @@ export default function EMRDashboardPage() {
         const patientsData = (patientsResponse.data as any)?.patients || [];
         const todayPatientsCount = patientsData.length;
         
+        // Get visits data to calculate real active queues
+        const visitsResponse = await apiClient.getVisits({ page: 1, limit: 100 });
+        const visitsData = Array.isArray(visitsResponse.data) ? visitsResponse.data : [];
+        
+        console.log('🔍 EMR Main - All visits for queue calculation:', visitsData);
+        const activeQueueCount = visitsData.filter(visit => {
+          console.log('🔍 EMR Main - Checking visit status:', {
+            id: visit.id,
+            status: visit.status,
+            isInProgress: visit.status === 'in_progress'
+          });
+          return visit.status === 'in_progress';
+        }).length;
+        console.log('🔍 EMR Main - Active queue count:', activeQueueCount);
+        
+        // Get appointments data to calculate real upcoming appointments
+        const appointmentsResponse = await apiClient.getAppointments({ page: 1, limit: 100 });
+        const appointmentsData = Array.isArray(appointmentsResponse.data) ? appointmentsResponse.data : [];
+        
+        console.log('🔍 EMR Main - All appointments for calculation:', appointmentsData);
+        const upcomingAppointmentsCount = appointmentsData.filter(appointment => 
+          appointment.status === 'scheduled' || appointment.status === 'confirmed'
+        ).length;
+        console.log('🔍 EMR Main - Upcoming appointments count:', upcomingAppointmentsCount);
+        
         // Calculate real stats from actual data
         setStats({
-          todayPatients: todayPatientsCount,
-          activeQueues: Math.floor(todayPatientsCount * 0.3), // 30% of patients in queue
-          pendingLabs: Math.floor(todayPatientsCount * 0.15), // 15% pending labs
-          upcomingAppointments: Math.floor(todayPatientsCount * 0.25) // 25% upcoming appointments
+          todayPatients: todayPatientsCount, // Total patients
+          activeQueues: activeQueueCount, // Use real active queue count
+          pendingLabs: 0, // TODO: Implement lab results API
+          upcomingAppointments: upcomingAppointmentsCount // Use real upcoming appointments count
         });
       }
     } catch (error) {

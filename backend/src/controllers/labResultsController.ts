@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { databaseManager } from '../database/connection';
 import { v4 as uuidv4 } from 'uuid';
+import { NotificationService } from '../services/notificationService';
 
 /**
  * Lab Results Controller
@@ -86,150 +87,148 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
     
     const offset = (Number(page) - 1) * Number(limit);
 
-    // Build query for lab results
-    let whereClause = 'WHERE lo.patient_id = $1';
+    // Build query for lab results from medical_records
+    let whereClause = 'WHERE mr.patient_id = $1 AND mr.record_type = \'lab_result\'';
     const queryParams: any[] = [actualPatientId];
 
     if (testCategory) {
-      whereClause += ' AND lo.test_category = $2';
-      queryParams.push(testCategory);
+      whereClause += ` AND mr.test_type ILIKE $${queryParams.length + 1}`;
+      queryParams.push(`%${testCategory}%`);
     }
 
     if (startDate) {
       const paramIndex = queryParams.length + 1;
-      whereClause += ` AND lo.order_date >= $${paramIndex}`;
+      whereClause += ` AND mr.recorded_time >= $${paramIndex}`;
       queryParams.push(startDate);
     }
 
     if (endDate) {
       const paramIndex = queryParams.length + 1;
-      whereClause += ` AND lo.order_date <= $${paramIndex}`;
+      whereClause += ` AND mr.recorded_time <= $${paramIndex}`;
       queryParams.push(endDate);
     }
 
     if (status) {
-      const paramIndex = queryParams.length + 1;
-      whereClause += ` AND lo.status = $${paramIndex}`;
+      whereClause += ` AND mr.overall_result = $${queryParams.length + 1}`;
       queryParams.push(status);
     }
 
-    // Get lab orders with results
+    // Get lab results from medical_records
     const labResultsQuery = `
       SELECT 
-        lo.id as lab_order_id,
-        lo.order_number,
-        lo.order_date,
-        lo.order_time,
-        lo.test_category,
-        lo.test_name,
-        lo.test_code,
-        lo.clinical_indication,
-        lo.specimen_type,
-        lo.priority,
-        lo.status as order_status,
-        lo.requested_completion,
-        u1.first_name as ordered_by_first_name,
-        u1.last_name as ordered_by_last_name,
-        lr.id as result_id,
-        lr.result_value,
-        lr.result_numeric,
-        lr.result_unit,
-        lr.reference_range,
-        lr.reference_min,
-        lr.reference_max,
-        lr.abnormal_flag,
-        lr.interpretation,
-        lr.validated,
-        lr.validated_by,
-        lr.validated_at,
-        lr.result_date,
-        lr.result_time,
-        lr.reported_at,
-        lr.method,
-        lr.instrument,
-        lr.technician_notes,
-        lr.pathologist_notes,
-        u2.first_name as validated_by_first_name,
-        u2.last_name as validated_by_last_name
-      FROM lab_orders lo
-      LEFT JOIN users u1 ON lo.ordered_by = u1.id
-      LEFT JOIN lab_results lr ON lo.id = lr.lab_order_id
-      LEFT JOIN users u2 ON lr.validated_by = u2.id
-      ${whereClause}
-      ORDER BY lo.order_date DESC, lo.order_time DESC
+        mr.id as lab_result_id,
+        mr.test_type,
+        mr.test_name,
+        mr.test_results,
+        mr.overall_result,
+        mr.interpretation,
+        mr.recommendations,
+        mr.attachments,
+        mr.notes,
+        mr.recorded_time as result_date,
+        mr.recorded_by,
+        mr.created_at,
+        mr.updated_at,
+        u.first_name as tested_by_first_name,
+        u.last_name as tested_by_last_name,
+        v.visit_number,
+        v.visit_date,
+        v.diagnosis
+      FROM medical_records mr
+      LEFT JOIN users u ON mr.recorded_by = u.id
+      LEFT JOIN visits v ON mr.visit_id = v.id
+      WHERE mr.patient_id = $1 AND mr.record_type = 'lab_result'
+      ORDER BY mr.recorded_time DESC, mr.created_at DESC
       LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
     `;
 
     queryParams.push(Number(limit), offset);
 
+    console.log('🔍 Lab results query:', labResultsQuery);
+    console.log('🔍 Query params:', queryParams);
+    
     const labResultsResult = await databaseManager.query(labResultsQuery, queryParams);
     const labResults = labResultsResult.rows;
+    
+    console.log('📊 Found lab results records:', labResults.length);
+    console.log('📊 Sample lab result record:', labResults[0] || 'No records found');
 
     // Get total count for pagination
     const countQuery = `
       SELECT COUNT(*) as total
-      FROM lab_orders lo
+      FROM medical_records mr
       ${whereClause}
     `;
     const countResult = await databaseManager.query(countQuery, queryParams.slice(0, -2));
     const total = parseInt(countResult.rows[0].total);
 
-    // Group results by lab order
-    const groupedResults = labResults.reduce((acc: any, result: any) => {
-      const orderId = result.lab_order_id;
-      if (!acc[orderId]) {
-        acc[orderId] = {
-          lab_order: {
-            id: result.lab_order_id,
-            order_number: result.order_number,
-            order_date: result.order_date,
-            order_time: result.order_time,
-            test_category: result.test_category,
-            test_name: result.test_name,
-            test_code: result.test_code,
-            clinical_indication: result.clinical_indication,
-            specimen_type: result.specimen_type,
-            priority: result.priority,
-            status: result.order_status,
-            requested_completion: result.requested_completion,
-            ordered_by: {
-              name: `${result.ordered_by_first_name} ${result.ordered_by_last_name}`
-            }
-          },
-          results: []
-        };
+    // Format lab results from medical_records
+    console.log('🔄 Formatting lab results...');
+    
+    const formattedResults = labResults.map((result: any) => {
+      console.log('🔍 Processing lab result:', result.lab_result_id);
+      console.log('🔍 Test results data:', result.test_results);
+      console.log('🔍 Test results type:', typeof result.test_results);
+      // Parse test_results JSON
+      let testResults = [];
+      if (result.test_results) {
+        try {
+          if (typeof result.test_results === 'string') {
+            testResults = JSON.parse(result.test_results);
+          } else if (Array.isArray(result.test_results)) {
+            testResults = result.test_results;
+          } else if (typeof result.test_results === 'object') {
+            testResults = [result.test_results];
+          }
+        } catch (error) {
+          console.error('Error parsing test_results JSON:', error);
+          testResults = [];
+        }
       }
 
-      if (result.result_id) {
-        acc[orderId].results.push({
-          id: result.result_id,
-          result_value: result.result_value,
-          result_numeric: result.result_numeric,
-          result_unit: result.result_unit,
-          reference_range: result.reference_range,
-          reference_min: result.reference_min,
-          reference_max: result.reference_max,
-          abnormal_flag: result.abnormal_flag,
-          interpretation: result.interpretation,
-          validated: result.validated,
-          validated_by: result.validated_by ? {
-            name: `${result.validated_by_first_name} ${result.validated_by_last_name}`
-          } : null,
-          validated_at: result.validated_at,
-          result_date: result.result_date,
-          result_time: result.result_time,
-          reported_at: result.reported_at,
-          method: result.method,
-          instrument: result.instrument,
-          technician_notes: result.technician_notes,
-          pathologist_notes: result.pathologist_notes
-        });
+      // Parse attachments JSON
+      let attachments = [];
+      if (result.attachments) {
+        try {
+          if (typeof result.attachments === 'string') {
+            attachments = JSON.parse(result.attachments);
+          } else if (Array.isArray(result.attachments)) {
+            attachments = result.attachments;
+          } else if (typeof result.attachments === 'object') {
+            attachments = [result.attachments];
+          }
+        } catch (error) {
+          console.error('Error parsing attachments JSON:', error);
+          attachments = [];
+        }
       }
 
-      return acc;
-    }, {});
+      return {
+        id: result.lab_result_id,
+        test_type: result.test_type,
+        test_name: result.test_name,
+        test_results: testResults,
+        overall_result: result.overall_result,
+        interpretation: result.interpretation,
+        recommendations: result.recommendations,
+        attachments: attachments,
+        notes: result.notes,
+        result_date: result.result_date,
+        tested_by: {
+          name: `${result.tested_by_first_name || ''} ${result.tested_by_last_name || ''}`.trim() || 'ไม่ระบุ'
+        },
+        visit: {
+          number: result.visit_number || 'ไม่ระบุ',
+          date: result.visit_date || result.result_date,
+          diagnosis: result.diagnosis || 'ไม่ระบุ'
+        },
+        created_at: result.created_at,
+        updated_at: result.updated_at
+      };
+    });
 
-    const formattedResults = Object.values(groupedResults);
+    console.log('✅ Formatted lab results count:', formattedResults.length);
+    console.log('✅ Sample formatted lab result:', formattedResults[0] || 'No formatted results');
 
     res.json({
       data: {
@@ -406,26 +405,23 @@ export const createPatientLabResult = async (req: Request, res: Response) => {
   try {
     const { id: patientId } = req.params;
     const {
-      lab_order_id,
-      result_value,
-      result_numeric,
-      result_unit,
-      reference_range,
-      reference_min,
-      reference_max,
-      abnormal_flag,
+      testType,
+      testName,
+      testResults,
+      overallResult,
       interpretation,
-      method,
-      instrument,
-      technician_notes,
-      pathologist_notes
+      recommendations,
+      attachments,
+      testedBy,
+      testedTime,
+      notes
     } = req.body;
 
     const userId = (req as any).user.id;
 
     // Validate patient exists
     const patientExists = await databaseManager.query(
-      'SELECT id, first_name, last_name FROM patients WHERE id = $1',
+      'SELECT id, first_name, last_name, thai_name, hospital_number FROM patients WHERE id = $1',
       [patientId]
     );
 
@@ -438,64 +434,66 @@ export const createPatientLabResult = async (req: Request, res: Response) => {
       });
     }
 
-    // Validate lab order exists and belongs to patient
-    const labOrderExists = await databaseManager.query(`
-      SELECT id, test_name, test_code FROM lab_orders 
-      WHERE id = $1 AND patient_id = $2
-    `, [lab_order_id, patientId]);
+    const patient = patientExists.rows[0];
 
-    if (labOrderExists.rows.length === 0) {
-      return res.status(404).json({
-        data: null,
-        meta: null,
-        error: { message: 'Lab order not found' },
-        statusCode: 404
-      });
-    }
-
-    const labOrder = labOrderExists.rows[0];
-
-    // Create lab result
+    // Create lab result in medical_records table
     const resultId = uuidv4();
 
     await databaseManager.query(`
-      INSERT INTO lab_results (
-        id, lab_order_id, patient_id, test_name, test_code,
-        result_value, result_numeric, result_unit, reference_range,
-        reference_min, reference_max, abnormal_flag, interpretation,
-        method, instrument, technician_notes, pathologist_notes,
-        result_date, result_time, reported_at
+      INSERT INTO medical_records (
+        id, patient_id, record_type, test_type, test_name, test_results,
+        overall_result, interpretation, recommendations, attachments,
+        notes, recorded_by, recorded_time, created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
+      RETURNING *
     `, [
-      resultId, lab_order_id, patientId, labOrder.test_name, labOrder.test_code,
-      result_value, result_numeric, result_unit, reference_range,
-      reference_min, reference_max, abnormal_flag, interpretation,
-      method, instrument, technician_notes, pathologist_notes
+      resultId, patientId, 'lab_result', testType, testName, JSON.stringify(testResults || []),
+      overallResult, interpretation, recommendations, JSON.stringify(attachments || []),
+      notes, userId, testedTime || new Date().toISOString()
     ]);
-
-    // Update lab order status to completed
-    await databaseManager.query(`
-      UPDATE lab_orders 
-      SET status = 'completed', updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1
-    `, [lab_order_id]);
 
     // Get created lab result
     const createdResult = await databaseManager.query(`
       SELECT 
-        lr.id, lr.result_value, lr.result_unit, lr.reference_range,
-        lr.abnormal_flag, lr.interpretation, lr.result_date, lr.result_time,
-        lo.order_number, lo.test_name, lo.test_category
-      FROM lab_results lr
-      INNER JOIN lab_orders lo ON lr.lab_order_id = lo.id
-      WHERE lr.id = $1
+        mr.id, mr.patient_id, mr.record_type, mr.test_type, mr.test_name,
+        mr.test_results, mr.overall_result, mr.interpretation, mr.recommendations,
+        mr.attachments, mr.notes, mr.recorded_by, mr.recorded_time,
+        mr.created_at, mr.updated_at,
+        p.thai_name, p.hospital_number, p.national_id
+      FROM medical_records mr
+      INNER JOIN patients p ON mr.patient_id = p.id
+      WHERE mr.id = $1
     `, [resultId]);
+
+    const record = createdResult.rows[0];
 
     res.status(201).json({
       data: {
-        lab_result: createdResult.rows[0],
-        message: 'Lab result created successfully'
+        id: record.id,
+        patientId: record.patient_id,
+        recordType: record.record_type,
+        testType: record.test_type,
+        testName: record.test_name,
+        testResults: typeof record.test_results === 'string' 
+          ? JSON.parse(record.test_results || '[]') 
+          : record.test_results || [],
+        overallResult: record.overall_result,
+        interpretation: record.interpretation,
+        recommendations: record.recommendations,
+        attachments: typeof record.attachments === 'string' 
+          ? JSON.parse(record.attachments || '[]') 
+          : record.attachments || [],
+        notes: record.notes,
+        testedBy: record.recorded_by,
+        testedTime: record.recorded_time,
+        createdAt: record.created_at,
+        updatedAt: record.updated_at,
+        patient: {
+          thaiName: record.thai_name,
+          hospitalNumber: record.hospital_number,
+          nationalId: record.national_id
+        }
       },
       meta: {
         timestamp: new Date().toISOString(),

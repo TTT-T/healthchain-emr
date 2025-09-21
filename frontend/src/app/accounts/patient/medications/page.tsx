@@ -63,27 +63,45 @@ const PatientMedications = () => {
   const fetchMedications = async () => {
     try {
       if (user?.id) {
+        logger.info('🔍 Fetching medications for user:', { userId: user.id, userRole: user.role });
+        
         const response = await apiClient.getPatientMedications(user.id);
+        logger.info('📡 Medications API response:', { 
+          statusCode: response.statusCode, 
+          hasData: !!response.data,
+          dataType: typeof response.data,
+          isArray: Array.isArray(response.data)
+        });
+        
         if (response.statusCode === 200 && response.data) {
           // ตรวจสอบว่าข้อมูลเป็น array หรือไม่
           const medicationsData = response.data;
           if (Array.isArray(medicationsData)) {
             setMedications(medicationsData as Medication[]);
+            logger.info('✅ Medications loaded (direct array):', medicationsData.length);
           } else if (medicationsData && typeof medicationsData === 'object' && Array.isArray((medicationsData as any).medications)) {
             // กรณีที่ข้อมูลอยู่ใน medications property (ตามโครงสร้าง backend)
-            setMedications((medicationsData as any).medications as Medication[]);
+            const medications = (medicationsData as any).medications as Medication[];
+            setMedications(medications);
+            logger.info('✅ Medications loaded (nested):', medications.length);
           } else {
             // ถ้าไม่มีข้อมูลหรือไม่ใช่ array ให้ตั้งเป็น array ว่าง
             setMedications([]);
-            logger.warn('Medications data is not an array:', medicationsData);
+            logger.warn('⚠️ Medications data is not an array:', medicationsData);
           }
         } else {
           setMedications([]);
-          setError(response.error?.message || "ไม่สามารถดึงข้อมูลยาได้");
+          const errorMessage = response.error?.message || "ไม่สามารถดึงข้อมูลยาได้";
+          setError(errorMessage);
+          logger.warn('❌ Medications API error:', { statusCode: response.statusCode, error: response.error });
         }
+      } else {
+        logger.warn('⚠️ No user ID available for fetching medications');
+        setMedications([]);
+        setError('ไม่พบข้อมูลผู้ใช้');
       }
     } catch (err) {
-      logger.error('Error fetching medications:', err);
+      logger.error('💥 Error fetching medications:', err);
       setError('เกิดข้อผิดพลาดในการโหลดข้อมูลยา');
     } finally {
       setLoading(false);

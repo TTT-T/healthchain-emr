@@ -31,10 +31,10 @@ export class PatientService {
             hn: patient.personal_info?.hospital_number,
             hospital_number: patient.personal_info?.hospital_number,
             thai_name: patient.personal_info?.thai_name,
-            firstName: patient.personal_info?.firstName,
-            lastName: patient.personal_info?.lastName,
+            firstName: patient.personal_info?.first_name,
+            lastName: patient.personal_info?.last_name,
             national_id: patient.personal_info?.national_id,
-            birthDate: patient.personal_info?.birthDate,
+            birthDate: patient.personal_info?.birth_date,
             birth_day: patient.personal_info?.birth_day,
             birth_month: patient.personal_info?.birth_month,
             birth_year: patient.personal_info?.birth_year,
@@ -132,12 +132,21 @@ export class PatientService {
       const params: { page?: number; limit?: number; search?: string; hn?: string; queue?: string } = {};
       
       if (type === 'queue') {
-        params.queue = query;
+        // For queue search, if query looks like HN number, search by HN instead
+        if (query.startsWith('HN') || /^HN\d+$/.test(query)) {
+          logger.info('Queue search detected HN format, using HN search instead', { query, type });
+          params.hn = query;
+        } else {
+          logger.info('Queue search using visit_number search', { query, type });
+          params.queue = query;
+        }
       } else if (type === 'hn' as any) {
         params.hn = query;
       } else {
         params.search = query;
       }
+      
+      logger.info('Patient search parameters:', { params, query, type });
 
       const response = await apiClient.getPatients(params);
       

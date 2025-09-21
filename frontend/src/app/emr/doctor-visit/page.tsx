@@ -106,7 +106,7 @@ export default function DoctorVisit() {
       const formattedData = DoctorVisitService.formatDoctorVisitDataForAPI(
         doctorVisitData,
         selectedPatient.id,
-        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'แพทย์'
+        user?.id || 'system'
       );
       
       const response = await DoctorVisitService.createDoctorVisit(formattedData);
@@ -118,6 +118,44 @@ export default function DoctorVisit() {
         await createPatientDocument(selectedPatient, response.data);
         
         setSuccess("บันทึกการตรวจโดยแพทย์สำเร็จ!\n\n✅ ระบบได้ส่งการแจ้งเตือนและเอกสารให้ผู้ป่วยแล้ว");
+        
+        // Reset form
+        setDoctorVisitData({
+          chiefComplaint: '',
+          presentIllness: '',
+          physicalExamination: {
+            generalAppearance: '',
+            vitalSigns: '',
+            headNeck: '',
+            chest: '',
+            cardiovascular: '',
+            abdomen: '',
+            extremities: '',
+            neurological: '',
+            other: ''
+          },
+          diagnosis: {
+            primaryDiagnosis: '',
+            secondaryDiagnosis: [],
+            differentialDiagnosis: [],
+            icd10Code: ''
+          },
+          treatmentPlan: {
+            medications: [],
+            procedures: [],
+            lifestyleModifications: [],
+            followUpInstructions: ''
+          },
+          advice: '',
+          followUp: {
+            scheduledDate: '',
+            interval: '',
+            purpose: '',
+            notes: ''
+          },
+          notes: '',
+          examinedTime: new Date().toISOString().slice(0, 16)
+        });
       } else {
         setError("เกิดข้อผิดพลาดในการบันทึกการตรวจ");
       }
@@ -196,7 +234,7 @@ export default function DoctorVisit() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-6">
             <Stethoscope className="h-8 w-8 text-blue-600" />
@@ -209,11 +247,38 @@ export default function DoctorVisit() {
           {/* Search Patient */}
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">ค้นหาผู้ป่วย</h3>
+            
+            {/* Search Type Selection */}
+            <div className="flex gap-4 mb-4">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSearchType("hn")}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                    searchType === "hn" 
+                      ? "bg-blue-600 text-white" 
+                      : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  ค้นหาด้วย HN
+                </button>
+                <button
+                  onClick={() => setSearchType("queue")}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                    searchType === "queue" 
+                      ? "bg-blue-600 text-white" 
+                      : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  ค้นหาด้วยคิว
+                </button>
+              </div>
+            </div>
+            
             <div className="flex gap-4 mb-4">
               <div className="flex-1">
                 <input
                   type="text"
-                  placeholder="กรอก HN หรือหมายเลขคิว"
+                  placeholder={searchType === "hn" ? "กรอก HN (เช่น HN250001)" : "กรอกหมายเลขคิว (เช่น V2025090007)"}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -236,13 +301,13 @@ export default function DoctorVisit() {
               <h3 className="text-lg font-semibold text-green-800 mb-2">ข้อมูลผู้ป่วย</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospitalNumber}
+                  <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospital_number}
                 </div>
                 <div>
-                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thaiName || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thai_name || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
                 </div>
                 <div>
-                  <span className="font-medium">อายุ:</span> {selectedPatient.birthDate ? calculateAge(selectedPatient.birthDate) : 'ไม่ระบุ'}
+                  <span className="font-medium">อายุ:</span> {selectedPatient.age || (selectedPatient.birthDate ? calculateAge(selectedPatient.birthDate) : 'ไม่ระบุ')}
                 </div>
                 <div>
                   <span className="font-medium">เพศ:</span> {selectedPatient.gender || 'ไม่ระบุ'}

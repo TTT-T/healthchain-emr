@@ -76,7 +76,7 @@ export class AppointmentService {
    */
   static async createAppointment(data: CreateAppointmentRequest): Promise<APIResponse<AppointmentRecord>> {
     try {
-      const response = await apiClient.post('/medical/appointments', data);
+      const response = await apiClient.post(`/medical/patients/${data.patientId}/appointments`, data);
       return response as APIResponse<AppointmentRecord>;
     } catch (error) {
       logger.error('Error creating appointment:', error);
@@ -155,23 +155,24 @@ export class AppointmentService {
   /**
    * แปลงข้อมูลจาก UI form เป็น API format
    */
-  static formatAppointmentDataForAPI(appointmentData: any, patientId: string, createdBy: string): CreateAppointmentRequest {
+  static formatAppointmentDataForAPI(appointmentData: any, patientId: string, createdBy: string): any {
     return {
-      patientId,
-      doctorId: appointmentData.doctorId,
-      appointmentType: appointmentData.appointmentType,
-      appointmentDate: appointmentData.appointmentDate,
-      appointmentTime: appointmentData.appointmentTime,
-      duration: appointmentData.duration || 30,
-      reason: appointmentData.reason,
-      notes: appointmentData.notes,
-      status: appointmentData.status || 'scheduled',
-      priority: appointmentData.priority || 'medium',
-      location: appointmentData.location,
-      createdBy,
-      reminderSent: appointmentData.reminderSent || false,
-      followUpRequired: appointmentData.followUpRequired || false,
-      followUpDate: appointmentData.followUpDate
+      patientId: patientId,
+      title: appointmentData.appointmentType || 'นัดหมาย',
+      description: appointmentData.reason || '',
+      appointment_type: appointmentData.appointmentType || 'general',
+      priority: appointmentData.priority || 'normal',
+      appointment_date: appointmentData.appointmentDate,
+      appointment_time: appointmentData.appointmentTime,
+      duration_minutes: appointmentData.duration || 30,
+      location: appointmentData.location || '',
+      notes: appointmentData.notes || '',
+      preparations: '',
+      follow_up_required: appointmentData.followUpRequired || false,
+      follow_up_notes: appointmentData.followUpDate || '',
+      physician_id: appointmentData.doctorId || null,
+      can_reschedule: true,
+      can_cancel: true
     };
   }
 
@@ -312,7 +313,7 @@ export class AppointmentService {
     switch (priority) {
       case 'low':
         return 'text-gray-600 bg-gray-100';
-      case 'medium':
+      case 'normal':
         return 'text-blue-600 bg-blue-100';
       case 'high':
         return 'text-orange-600 bg-orange-100';
@@ -330,7 +331,7 @@ export class AppointmentService {
     switch (priority) {
       case 'low':
         return 'ต่ำ';
-      case 'medium':
+      case 'normal':
         return 'ปานกลาง';
       case 'high':
         return 'สูง';

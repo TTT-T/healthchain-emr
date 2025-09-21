@@ -38,6 +38,19 @@ export class VisitService {
   }
 
   /**
+   * ดึงข้อมูลการมาพบแพทย์ทั้งหมดของผู้ป่วย
+   */
+  static async getVisitsByPatient(patientId: string): Promise<APIResponse<MedicalVisit[]>> {
+    try {
+      const response = await apiClient.getVisitsByPatient(patientId);
+      return response;
+    } catch (error) {
+      logger.error('Error getting visits by patient:', error);
+      throw error;
+    }
+  }
+
+  /**
    * อัปเดตข้อมูลการมาพบแพทย์
    */
   static async updateVisit(id: string, data: Partial<MedicalVisit>): Promise<APIResponse<MedicalVisit>> {

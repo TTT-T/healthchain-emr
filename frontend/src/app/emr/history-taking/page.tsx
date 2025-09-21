@@ -266,14 +266,14 @@ export default function HistoryTaking() {
         familyHistory: JSON.stringify(medicalHistory.familyHistory),
         socialHistory: JSON.stringify(medicalHistory.socialHistory),
         notes: medicalHistory.notes,
-        recordedBy: medicalHistory.recordedBy
+        recordedBy: user?.id || 'system'
       };
       
       // Format data for API
       const formattedData = HistoryTakingService.formatHistoryDataForAPI(
         medicalHistory,
         selectedPatient!.id,
-        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'
+        user?.id || 'system'
       );
       
       // Create medical history record using HistoryTakingService
@@ -386,7 +386,7 @@ export default function HistoryTaking() {
         chiefComplaint: historyRecord.chiefComplaint,
         recordedBy: historyRecord.recordedBy,
         recordedTime: historyRecord.recordedTime,
-        message: `มีการบันทึกประวัติการซักประวัติใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${historyRecord.recordedBy}`
+        message: `มีการบันทึกประวัติการซักประวัติใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'}`
       };
 
       await NotificationService.notifyPatientRecordUpdate(notificationData);
@@ -454,7 +454,7 @@ export default function HistoryTaking() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full">
         {/* Page Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-center space-x-3">

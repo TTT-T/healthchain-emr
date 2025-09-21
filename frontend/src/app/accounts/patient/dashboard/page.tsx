@@ -477,6 +477,18 @@ const PatientDashboard = () => {
               </div>
             </div>
           </Link>
+
+          <Link href="/accounts/patient/notifications">
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-all cursor-pointer group">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-gray-900 group-hover:text-red-600">การแจ้งเตือน</h3>
+                  <p className="text-sm text-gray-600">ดูการแจ้งเตือนและอัปเดต</p>
+                </div>
+                <Bell className="h-8 w-8 text-red-600 group-hover:scale-110 transition-transform" />
+              </div>
+            </div>
+          </Link>
         </div>
 
         {/* Additional Actions */}

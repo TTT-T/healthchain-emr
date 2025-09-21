@@ -85,111 +85,222 @@ export const getPatientMedications = async (req: Request, res: Response) => {
     }
     const offset = (Number(page) - 1) * Number(limit);
 
-    // Build query for medications
-    let whereClause = 'WHERE p.patient_id = $1';
+    // Build query for medications from medical_records
+    let whereClause = 'WHERE mr.patient_id = $1 AND mr.record_type = \'pharmacy_dispensing\'';
     const queryParams: any[] = [actualPatientId];
 
     if (status) {
-      whereClause += ' AND pi.item_status = $2';
-      queryParams.push(status);
+      // For medical_records, we'll use 'dispensed' as the status
+      whereClause += ' AND mr.record_type = \'pharmacy_dispensing\'';
     }
 
     if (medicationType) {
-      whereClause += ` AND pi.medication_name ILIKE $${queryParams.length + 1}`;
+      whereClause += ` AND mr.medications::text ILIKE $${queryParams.length + 1}`;
       queryParams.push(`%${medicationType}%`);
     }
 
     if (startDate) {
       const paramIndex = queryParams.length + 1;
-      whereClause += ` AND p.prescription_date >= $${paramIndex}`;
+      whereClause += ` AND mr.recorded_time >= $${paramIndex}`;
       queryParams.push(startDate);
     }
 
     if (endDate) {
       const paramIndex = queryParams.length + 1;
-      whereClause += ` AND p.prescription_date <= $${paramIndex}`;
+      whereClause += ` AND mr.recorded_time <= $${paramIndex}`;
       queryParams.push(endDate);
     }
 
-    // Get medications from prescription items
+    // Get medications from medical_records (pharmacy_dispensing records)
     const medicationsQuery = `
       SELECT 
-        pi.id as medication_id,
-        pi.medication_name,
-        pi.strength,
-        pi.dosage_form,
-        pi.quantity_prescribed,
-        pi.unit,
-        pi.dosage_instructions,
-        pi.duration_days,
-        pi.item_status,
-        pi.notes,
-        pi.created_at,
-        pi.updated_at,
-        p.id as prescription_id,
-        p.prescription_number,
-        p.prescription_date,
-        p.status as prescription_status,
-        p.general_instructions,
+        mr.id as medication_id,
+        mr.medications,
+        mr.total_amount,
+        mr.payment_method,
+        mr.recorded_time as prescription_date,
+        mr.recorded_by,
+        mr.notes,
+        mr.created_at,
+        mr.updated_at,
         u.first_name as prescribed_by_first_name,
         u.last_name as prescribed_by_last_name,
         v.visit_number,
         v.visit_date,
         v.diagnosis
-      FROM prescription_items pi
-      INNER JOIN prescriptions p ON pi.prescription_id = p.id
-      LEFT JOIN users u ON p.prescribed_by = u.id
-      LEFT JOIN visits v ON p.visit_id = v.id
+      FROM medical_records mr
+      LEFT JOIN users u ON mr.recorded_by = u.id
+      LEFT JOIN visits v ON mr.visit_id = v.id
       ${whereClause}
-      ORDER BY p.prescription_date DESC, pi.created_at DESC
+      ORDER BY mr.recorded_time DESC, mr.created_at DESC
       LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
     `;
 
     queryParams.push(Number(limit), offset);
 
+    console.log('🔍 Medications query:', medicationsQuery);
+    console.log('🔍 Query params:', queryParams);
+    
     const medicationsResult = await databaseManager.query(medicationsQuery, queryParams);
     const medications = medicationsResult.rows;
+    
+    console.log('📊 Found medications records:', medications.length);
+    console.log('📊 Sample medication record:', medications[0] || 'No records found');
 
     // Get total count for pagination
     const countQuery = `
       SELECT COUNT(*) as total
-      FROM prescription_items pi
-      INNER JOIN prescriptions p ON pi.prescription_id = p.id
+      FROM medical_records mr
       ${whereClause}
     `;
     const countResult = await databaseManager.query(countQuery, queryParams.slice(0, -2));
     const total = parseInt(countResult.rows[0].total);
 
-    // Format medications
-    const formattedMedications = medications.map(med => ({
-      id: med.medication_id,
-      medication_name: med.medication_name,
-      strength: med.strength,
-      dosage_form: med.dosage_form,
-      quantity_prescribed: med.quantity_prescribed,
-      unit: med.unit,
-      dosage_instructions: med.dosage_instructions,
-      duration_days: med.duration_days,
-      status: med.item_status,
-      notes: med.notes,
-      created_at: med.created_at,
-      updated_at: med.updated_at,
-      prescription: {
-        id: med.prescription_id,
-        number: med.prescription_number,
-        date: med.prescription_date,
-        status: med.prescription_status,
-        general_instructions: med.general_instructions,
-        prescribed_by: {
-          name: `${med.prescribed_by_first_name} ${med.prescribed_by_last_name}`
+    // Format medications from medical_records
+    const formattedMedications = [];
+    
+    console.log('🔄 Formatting medications...');
+    
+    for (const med of medications) {
+      try {
+        console.log('🔍 Processing medication record:', med.medication_id);
+        console.log('🔍 Medications data:', med.medications);
+        console.log('🔍 Medications type:', typeof med.medications);
+        console.log('🔍 Is array:', Array.isArray(med.medications));
+        
+        // Parse medications JSON array
+        let medicationsArray = [];
+        if (med.medications) {
+          if (typeof med.medications === 'string') {
+            try {
+              medicationsArray = JSON.parse(med.medications);
+            } catch (error) {
+              console.error('❌ JSON parsing error:', error);
+              console.error('❌ Raw medications string:', med.medications);
+              medicationsArray = [];
+            }
+          } else if (Array.isArray(med.medications)) {
+            medicationsArray = med.medications;
+          } else if (typeof med.medications === 'object') {
+            // Handle case where medications is already an object/array
+            medicationsArray = med.medications;
+          }
         }
-      },
-      visit: {
-        number: med.visit_number,
-        date: med.visit_date,
-        diagnosis: med.diagnosis
+        console.log('🔍 Parsed medications array:', medicationsArray);
+        
+        // If no medications array or empty, create a fallback entry
+        if (!medicationsArray || medicationsArray.length === 0) {
+          console.log('⚠️ No medications found in array, creating fallback entry');
+          formattedMedications.push({
+            id: med.medication_id,
+            medication_name: 'ข้อมูลยา (ไม่สามารถแยกวิเคราะห์ได้)',
+            strength: 'ไม่ระบุ',
+            dosage_form: 'ไม่ระบุ',
+            quantity_prescribed: 0,
+            unit: 'ไม่ระบุ',
+            dosage_instructions: 'ไม่ระบุ',
+            duration_days: 0,
+            status: 'dispensed',
+            notes: med.notes || '',
+            created_at: med.created_at,
+            updated_at: med.updated_at,
+            prescription: {
+              id: med.medication_id,
+              number: `RX${med.medication_id.slice(0, 8)}`,
+              date: med.prescription_date,
+              status: 'active',
+              general_instructions: med.notes || '',
+              prescribed_by: {
+                name: `${med.prescribed_by_first_name || ''} ${med.prescribed_by_last_name || ''}`.trim() || 'ไม่ระบุ'
+              }
+            },
+            visit: {
+              number: med.visit_number || 'ไม่ระบุ',
+              date: med.visit_date || med.prescription_date,
+              diagnosis: med.diagnosis || 'ไม่ระบุ'
+            },
+            total_amount: med.total_amount,
+            payment_method: med.payment_method
+          });
+        } else {
+          // Create a medication entry for each item in the medications array
+          for (const medicationItem of medicationsArray) {
+          formattedMedications.push({
+            id: `${med.medication_id}_${medicationItem.medicationName || 'unknown'}`,
+            medication_name: medicationItem.medicationName || 'ไม่ระบุ',
+            strength: medicationItem.dosage || 'ไม่ระบุ',
+            dosage_form: medicationItem.unit || 'ไม่ระบุ',
+            quantity_prescribed: medicationItem.quantity || 0,
+            unit: medicationItem.unit || 'ไม่ระบุ',
+            dosage_instructions: medicationItem.instructions || 'ไม่ระบุ',
+            duration_days: medicationItem.duration ? parseInt(medicationItem.duration.replace(/\D/g, '')) : 0,
+            status: 'dispensed',
+            notes: med.notes || '',
+            created_at: med.created_at,
+            updated_at: med.updated_at,
+            prescription: {
+              id: med.medication_id,
+              number: `RX${med.medication_id.slice(0, 8)}`,
+              date: med.prescription_date,
+              status: 'active',
+              general_instructions: med.notes || '',
+              prescribed_by: {
+                name: `${med.prescribed_by_first_name || ''} ${med.prescribed_by_last_name || ''}`.trim() || 'ไม่ระบุ'
+              }
+            },
+            visit: {
+              number: med.visit_number || 'ไม่ระบุ',
+              date: med.visit_date || med.prescription_date,
+              diagnosis: med.diagnosis || 'ไม่ระบุ'
+            },
+            // Additional fields from medical_records
+            total_amount: med.total_amount,
+            payment_method: med.payment_method,
+            price: medicationItem.price || 0,
+            frequency: medicationItem.frequency || 'ไม่ระบุ',
+            dispensed_quantity: medicationItem.dispensedQuantity || medicationItem.quantity || 0
+          });
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing medications JSON:', error);
+        // If JSON parsing fails, create a single entry with basic info
+        formattedMedications.push({
+          id: med.medication_id,
+          medication_name: 'ข้อมูลยา (ไม่สามารถแยกวิเคราะห์ได้)',
+          strength: 'ไม่ระบุ',
+          dosage_form: 'ไม่ระบุ',
+          quantity_prescribed: 0,
+          unit: 'ไม่ระบุ',
+          dosage_instructions: 'ไม่ระบุ',
+          duration_days: 0,
+          status: 'dispensed',
+          notes: med.notes || '',
+          created_at: med.created_at,
+          updated_at: med.updated_at,
+          prescription: {
+            id: med.medication_id,
+            number: `RX${med.medication_id.slice(0, 8)}`,
+            date: med.prescription_date,
+            status: 'active',
+            general_instructions: med.notes || '',
+            prescribed_by: {
+              name: `${med.prescribed_by_first_name || ''} ${med.prescribed_by_last_name || ''}`.trim() || 'ไม่ระบุ'
+            }
+          },
+          visit: {
+            number: med.visit_number || 'ไม่ระบุ',
+            date: med.visit_date || med.prescription_date,
+            diagnosis: med.diagnosis || 'ไม่ระบุ'
+          },
+          total_amount: med.total_amount,
+          payment_method: med.payment_method
+        });
       }
-    }));
+    }
+
+    console.log('✅ Formatted medications count:', formattedMedications.length);
+    console.log('✅ Sample formatted medication:', formattedMedications[0] || 'No formatted medications');
 
     res.json({
       data: {

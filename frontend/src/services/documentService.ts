@@ -106,9 +106,10 @@ export class DocumentService {
    */
   static async getDocumentsByPatient(patientId: string, documentType?: string): Promise<APIResponse<DocumentRecord[]>> {
     try {
+      // Use the correct route that queries medical_records table (not medical_documents)
       const url = documentType 
-        ? `/medical/patients/${patientId}/documents?documentType=${documentType}`
-        : `/medical/patients/${patientId}/documents`;
+        ? `/medical/patients/${patientId}/medical-documents?documentType=${documentType}`
+        : `/medical/patients/${patientId}/medical-documents`;
       const response = await apiClient.get(url);
       return response as APIResponse<DocumentRecord[]>;
     } catch (error) {
@@ -122,7 +123,7 @@ export class DocumentService {
    */
   static async updateDocument(id: string, data: UpdateDocumentRequest): Promise<APIResponse<DocumentRecord>> {
     try {
-      const response = await apiClient.post(`/medical/documents/${id}/update`, data);
+      const response = await apiClient.put(`/medical/documents/${id}`, data);
       return response as APIResponse<DocumentRecord>;
     } catch (error) {
       logger.error('Error updating document:', error);
@@ -135,7 +136,7 @@ export class DocumentService {
    */
   static async deleteDocument(id: string): Promise<APIResponse<{ id: string }>> {
     try {
-      const response = await apiClient.post(`/medical/documents/${id}/delete`, {});
+      const response = await apiClient.delete(`/medical/documents/${id}`);
       return response as APIResponse<{ id: string }>;
     } catch (error) {
       logger.error('Error deleting document:', error);
@@ -283,17 +284,17 @@ export class DocumentService {
   static getDocumentTypeColor(documentType: string): string {
     switch (documentType) {
       case 'medical_certificate':
-        return 'text-blue-600 bg-blue-100';
+        return 'bg-blue-500';
       case 'referral_letter':
-        return 'text-green-600 bg-green-100';
+        return 'bg-green-500';
       case 'sick_leave':
-        return 'text-orange-600 bg-orange-100';
+        return 'bg-orange-500';
       case 'prescription':
-        return 'text-purple-600 bg-purple-100';
+        return 'bg-purple-500';
       case 'lab_report':
-        return 'text-red-600 bg-red-100';
+        return 'bg-red-500';
       default:
-        return 'text-gray-600 bg-gray-100';
+        return 'bg-gray-500';
     }
   }
 

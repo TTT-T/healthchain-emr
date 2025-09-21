@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { databaseManager } from '../database/connection';
 import { v4 as uuidv4 } from 'uuid';
+import { getThailandTime, getCurrentThailandDateString, getCurrentThailandTimeOnlyString } from '../utils/thailandTime';
 
 // Create a database helper that combines databaseManager and DatabaseSchema
 const db = {
@@ -26,7 +27,6 @@ import {
   successResponse, 
   errorResponse
 } from '../utils';
-import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Send notification to patient when visit is created
@@ -381,12 +381,12 @@ export const createVisit = async (req: Request, res: Response) => {
     const result = await db.transaction(async (client) => {
       // Insert visit
       const visitResult = await client.query(`
-        INSERT INTO visits (
-          patient_id, visit_number, visit_type, chief_complaint, 
-          present_illness, priority, attending_doctor_id, 
-          assigned_nurse_id, department_id, created_by, updated_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)
-        RETURNING *
+            INSERT INTO visits (
+              patient_id, visit_number, visit_type, chief_complaint, 
+              present_illness, priority, attending_doctor_id, 
+              assigned_nurse_id, department_id, status, visit_date, visit_time, created_by, updated_by
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $12, $13, $11, $11)
+            RETURNING *
       `, [
         validatedData.patientId,
         visitNumber,
@@ -397,7 +397,10 @@ export const createVisit = async (req: Request, res: Response) => {
         finalDoctorId || null,
         validatedData.assignedNurseId || null,
         validatedData.departmentId || null,
-        req.user?.id
+        'in_progress', // Set status to in_progress for new visits
+        req.user?.id,
+        getCurrentThailandDateString(),
+        getCurrentThailandTimeOnlyString()
       ]);
       
       return visitResult.rows[0];
@@ -467,6 +470,99 @@ export const createVisit = async (req: Request, res: Response) => {
       );
     }
     
+    res.status(500).json(
+      errorResponse('เกิดข้อผิดพลาดในระบบ', 500)
+    );
+  }
+};
+
+/**
+ * ดูข้อมูลการมาพบแพทย์ทั้งหมดของผู้ป่วย
+ * GET /api/medical/visits/patient/:patientId
+ */
+export const getVisitsByPatient = async (req: Request, res: Response) => {
+  try {
+    const { patientId } = req.params;
+    
+    console.log('🔍 Get visits by patient request:', { patientId });
+    
+    // Validate patient ID
+    if (!patientId) {
+      return res.status(400).json(
+        errorResponse('Patient ID is required', 400)
+      );
+    }
+    
+    // Get visits for patient
+    const visitsResult = await db.query(`
+      SELECT 
+        v.id,
+        v.patient_id,
+        v.visit_number,
+        v.visit_date,
+        v.visit_time,
+        v.visit_type,
+        v.chief_complaint,
+        v.present_illness,
+        v.physical_examination,
+        v.diagnosis,
+        v.treatment_plan,
+        v.doctor_notes,
+        v.status,
+        v.priority,
+        v.attending_doctor_id,
+        v.assigned_nurse_id,
+        v.department_id,
+        v.follow_up_required,
+        v.follow_up_date,
+        v.follow_up_notes,
+        v.created_at,
+        v.updated_at,
+        u.first_name as doctor_first_name,
+        u.last_name as doctor_last_name,
+        u.thai_name as doctor_thai_name,
+        v.department_id as department_name
+      FROM visits v
+      LEFT JOIN users u ON v.attending_doctor_id = u.id
+      WHERE v.patient_id = $1
+      ORDER BY v.created_at DESC
+    `, [patientId]);
+    
+    const visits = visitsResult.rows.map(visit => ({
+      id: visit.id,
+      patientId: visit.patient_id,
+      visitNumber: visit.visit_number,
+      visitDate: visit.visit_date,
+      visitTime: visit.visit_time,
+      visitType: visit.visit_type,
+      chiefComplaint: visit.chief_complaint,
+      presentIllness: visit.present_illness,
+      physicalExamination: visit.physical_examination,
+      diagnosis: visit.diagnosis,
+      treatmentPlan: visit.treatment_plan,
+      doctorNotes: visit.doctor_notes,
+      status: visit.status,
+      priority: visit.priority,
+      attendingDoctorId: visit.attending_doctor_id,
+      assignedNurseId: visit.assigned_nurse_id,
+      departmentId: visit.department_id,
+      followUpRequired: visit.follow_up_required,
+      followUpDate: visit.follow_up_date,
+      followUpNotes: visit.follow_up_notes,
+      createdAt: visit.created_at,
+      updatedAt: visit.updated_at,
+      doctorName: visit.doctor_thai_name || `${visit.doctor_first_name || ''} ${visit.doctor_last_name || ''}`.trim(),
+      departmentName: visit.department_name
+    }));
+    
+    console.log(`🔍 Found ${visits.length} visits for patient ${patientId}`);
+    
+    res.status(200).json(
+      successResponse('ดึงข้อมูลการมาพบแพทย์สำเร็จ', visits)
+    );
+    
+  } catch (error) {
+    console.error('❌ Get visits by patient error:', error);
     res.status(500).json(
       errorResponse('เกิดข้อผิดพลาดในระบบ', 500)
     );

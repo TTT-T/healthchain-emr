@@ -12,7 +12,7 @@ import { logger } from '@/lib/logger';
 export default function Documents() {
   const { isAuthenticated, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchType, setSearchType] = useState<"hn" | "queue">("queue");
+  const [searchType, setSearchType] = useState<"hn" | "queue">("hn");
   const [isSearching, setIsSearching] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<MedicalPatient | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,16 +21,69 @@ export default function Documents() {
   const calculateAge = (birthDate: string): number => {
     if (!birthDate) return 0;
     
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
+    try {
+      const today = new Date();
+      const birth = new Date(birthDate);
+      
+      // Check if birth date is valid
+      if (isNaN(birth.getTime())) {
+        return 0;
+      }
+      
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      
+      return age;
+    } catch (error) {
+      logger.error("Error calculating age:", error);
+      return 0;
     }
+  };
+
+  const calculateAgeFromFields = (patient: MedicalPatient): number => {
+    if (!patient) return 0;
     
-    return age;
+    try {
+      // First try birth_date if available
+      if (patient.birth_date) {
+        return calculateAge(patient.birth_date);
+      }
+      
+      // If birth_date is not available, try separate fields
+      if (patient.birth_year && patient.birth_month && patient.birth_day) {
+        let year = patient.birth_year;
+        
+        // Convert Buddhist year to Christian year if needed
+        if (year > 2500) {
+          year = year - 543;
+        }
+        
+        const today = new Date();
+        const birthDate = new Date(year, patient.birth_month - 1, patient.birth_day);
+        
+        if (isNaN(birthDate.getTime())) {
+          return 0;
+        }
+        
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        
+        return age;
+      }
+      
+      return 0;
+    } catch (error) {
+      logger.error("Error calculating age from fields:", error);
+      return 0;
+    }
   };
   const [success, setSuccess] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -48,6 +101,7 @@ export default function Documents() {
     notes: '',
     issuedDate: new Date().toISOString().split('T')[0],
     validUntil: '',
+    doctorName: user?.thai_name || `${user?.first_name} ${user?.last_name}` || '',
     recipientInfo: {
       name: '',
       organization: '',
@@ -182,20 +236,42 @@ export default function Documents() {
           status: 'issued',
           issuedDate: '2024-01-15',
           validUntil: '2024-02-15',
-          issuedBy: 'นพ.สมชาย ใจดี'
+          issuedBy: user?.id || 'system'
         }
       ]);
     }
   };
 
   const handleDocumentTypeChange = (documentType: string) => {
+    const template = documentTemplates[documentType as keyof typeof documentTemplates] || '';
+    const doctorName = documentData.doctorName || user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'แพทย์';
+    
+    // Replace {{doctorName}} in template with actual doctor name
+    const processedTemplate = template.replace(/\{\{doctorName\}\}/g, doctorName);
+    
     setDocumentData(prev => ({
       ...prev,
       documentType,
       documentTitle: DocumentService.getDocumentTypeLabel(documentType),
-      template: documentTemplates[documentType as keyof typeof documentTemplates] || '',
-      content: documentTemplates[documentType as keyof typeof documentTemplates] || ''
+      template: processedTemplate,
+      content: processedTemplate
     }));
+  };
+
+  const handleDoctorNameChange = (doctorName: string) => {
+    setDocumentData(prev => {
+      const newData = { ...prev, doctorName };
+      
+      // If document type is already selected, update the content with new doctor name
+      if (prev.documentType && documentTemplates[prev.documentType as keyof typeof documentTemplates]) {
+        const template = documentTemplates[prev.documentType as keyof typeof documentTemplates];
+        const processedTemplate = template.replace(/\{\{doctorName\}\}/g, doctorName);
+        newData.content = processedTemplate;
+        newData.template = processedTemplate;
+      }
+      
+      return newData;
+    });
   };
 
   const handleSubmit = async () => {
@@ -204,7 +280,7 @@ export default function Documents() {
     // Validate data
     const validation = DocumentService.validateDocumentData({
       ...documentData,
-      issuedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'แพทย์'
+      issuedBy: user?.id || 'system'
     });
     
     if (!validation.isValid) {
@@ -219,7 +295,7 @@ export default function Documents() {
       const formattedData = DocumentService.formatDocumentDataForAPI(
         documentData,
         selectedPatient.id,
-        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'แพทย์'
+        user?.id || 'system'
       );
       
       const response = await DocumentService.createDocument(formattedData);
@@ -265,7 +341,7 @@ export default function Documents() {
         chiefComplaint: `เอกสาร: ${documentRecord.documentTitle}`,
         recordedBy: documentRecord.issuedBy,
         recordedTime: documentRecord.issuedDate,
-        message: `มีการออกเอกสารใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${documentRecord.issuedBy}`
+        message: `มีการออกเอกสารใหม่สำหรับคุณ ${patient.thai_name || `${patient.first_name} ${patient.last_name}`} โดย ${user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'แพทย์'}`
       };
 
       await NotificationService.notifyPatientRecordUpdate(notificationData);
@@ -341,7 +417,7 @@ export default function Documents() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-6">
             <FileText className="h-8 w-8 text-indigo-600" />
@@ -358,11 +434,33 @@ export default function Documents() {
               <div className="flex-1">
                 <input
                   type="text"
-                  placeholder="กรอก HN หรือหมายเลขคิว"
+                  placeholder={searchType === "hn" ? "กรอก HN" : "กรอกหมายเลขคิว"}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSearchType("hn")}
+                  className={`px-4 py-2 rounded-lg border ${
+                    searchType === "hn"
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  ค้นหาด้วย HN
+                </button>
+                <button
+                  onClick={() => setSearchType("queue")}
+                  className={`px-4 py-2 rounded-lg border ${
+                    searchType === "queue"
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  ค้นหาด้วยคิว
+                </button>
               </div>
               <button
                 onClick={handleSearch}
@@ -383,13 +481,13 @@ export default function Documents() {
                   <h3 className="text-lg font-semibold text-indigo-800 mb-2">ข้อมูลผู้ป่วย</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospitalNumber}
+                      <span className="font-medium">HN:</span> {selectedPatient.hospital_number || selectedPatient.hn}
                     </div>
                     <div>
-                      <span className="font-medium">ชื่อ:</span> {selectedPatient.thaiName || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                      <span className="font-medium">ชื่อ:</span> {selectedPatient.thai_name || `${selectedPatient.first_name} ${selectedPatient.last_name}`}
                     </div>
                     <div>
-                      <span className="font-medium">อายุ:</span> {selectedPatient.birthDate ? calculateAge(selectedPatient.birthDate) : 'ไม่ระบุ'}
+                      <span className="font-medium">อายุ:</span> {calculateAgeFromFields(selectedPatient) > 0 ? `${calculateAgeFromFields(selectedPatient)} ปี` : 'ไม่ระบุ'}
                     </div>
                     <div>
                       <span className="font-medium">เพศ:</span> {selectedPatient.gender || 'ไม่ระบุ'}
@@ -443,6 +541,19 @@ export default function Documents() {
                     onChange={(e) => setDocumentData(prev => ({ ...prev, documentTitle: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="กรอกชื่อเอกสาร"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ชื่อผู้ออกเอกสาร *
+                  </label>
+                  <input
+                    type="text"
+                    value={documentData.doctorName}
+                    onChange={(e) => handleDoctorNameChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="กรอกชื่อผู้ออกเอกสาร"
                   />
                 </div>
                 
@@ -516,69 +627,91 @@ export default function Documents() {
             </div>
           )}
 
-          {/* Documents List */}
-          {selectedPatient && documents.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">รายการเอกสาร</h3>
-              <div className="space-y-4">
-                {documents.map((document) => (
-                  <div key={document.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <FileText className="h-4 w-4 text-indigo-600" />
-                          <span className="font-medium text-gray-900">
-                            {document.documentTitle}
-                          </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${DocumentService.getStatusColor(document.status)}`}>
-                            {DocumentService.getStatusLabel(document.status)}
-                          </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${DocumentService.getDocumentTypeColor(document.documentType)}`}>
-                            {DocumentService.getDocumentTypeLabel(document.documentType)}
-                          </span>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
-                          <div>
-                            <span className="font-medium">ผู้ออก:</span> {document.issuedBy}
+          {/* Documents History Cards */}
+          {selectedPatient && (
+            <div className="mt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-indigo-600" />
+                  ประวัติการออกเอกสาร
+                </h3>
+                <span className="text-sm text-gray-500">
+                  {documents.length} เอกสาร
+                </span>
+              </div>
+              
+              {documents.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {documents.map((document) => (
+                    <div key={document.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`p-2 rounded-lg ${DocumentService.getDocumentTypeColor(document.documentType)}`}>
+                            <FileText className="h-4 w-4 text-white" />
                           </div>
                           <div>
-                            <span className="font-medium">วันที่ออก:</span> {new Date(document.issuedDate).toLocaleDateString('th-TH')}
+                            <h4 className="font-medium text-gray-900 text-sm">
+                              {document.documentTitle}
+                            </h4>
+                            <p className="text-xs text-gray-500">
+                              {DocumentService.getDocumentTypeLabel(document.documentType)}
+                            </p>
                           </div>
-                          {document.validUntil && (
-                            <div>
-                              <span className="font-medium">วันหมดอายุ:</span> {new Date(document.validUntil).toLocaleDateString('th-TH')}
-                            </div>
-                          )}
                         </div>
-                        
-                        {document.notes && (
-                          <div className="mt-2 text-sm text-gray-600">
-                            <span className="font-medium">หมายเหตุ:</span> {document.notes}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${DocumentService.getStatusColor(document.status)}`}>
+                          {DocumentService.getStatusLabel(document.status)}
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-2 text-xs text-gray-600">
+                        <div className="flex items-center gap-2">
+                          <User className="h-3 w-3" />
+                          <span>ผู้ออก: {document.issuedBy || 'ไม่ระบุ'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-3 w-3" />
+                          <span>วันที่ออก: {new Date(document.issuedDate).toLocaleDateString('th-TH')}</span>
+                        </div>
+                        {document.validUntil && (
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="h-3 w-3" />
+                            <span>หมดอายุ: {new Date(document.validUntil).toLocaleDateString('th-TH')}</span>
                           </div>
                         )}
                       </div>
                       
-                      <div className="flex gap-2 ml-4">
+                      <div className="flex gap-2 mt-4">
                         <button
                           onClick={() => handleDownloadDocument(document)}
-                          className="text-blue-600 hover:text-blue-800"
-                          title="ดาวน์โหลดเอกสาร"
+                          className="flex-1 bg-indigo-600 text-white px-3 py-2 rounded-md text-xs font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center gap-1"
                         >
-                          <Download className="h-4 w-4" />
+                          <Download className="h-3 w-3" />
+                          ดาวน์โหลด
                         </button>
                         <button
                           onClick={() => handleDeleteDocument(document.id)}
-                          className="text-red-600 hover:text-red-800"
-                          title="ลบเอกสาร"
+                          className="bg-red-100 text-red-600 px-3 py-2 rounded-md text-xs font-medium hover:bg-red-200 transition-colors"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">ยังไม่มีเอกสาร</h4>
+                  <p className="text-gray-500 mb-4">ผู้ป่วยนี้ยังไม่เคยออกเอกสารใดๆ</p>
+                  <button
+                    onClick={() => setShowForm(true)}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2 mx-auto"
+                  >
+                    <Plus className="h-4 w-4" />
+                    สร้างเอกสารแรก
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

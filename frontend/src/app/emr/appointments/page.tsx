@@ -8,11 +8,12 @@ import { NotificationService } from '@/services/notificationService';
 import { PatientDocumentService } from '@/services/patientDocumentService';
 import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
+import { apiClient } from '@/lib/api';
 
 export default function Appointments() {
   const { isAuthenticated, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchType, setSearchType] = useState<"hn" | "queue">("queue");
+  const [searchType, setSearchType] = useState<"hn" | "queue">("hn");
   const [isSearching, setIsSearching] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<MedicalPatient | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,7 +32,7 @@ export default function Appointments() {
     reason: '',
     notes: '',
     status: 'scheduled',
-    priority: 'medium',
+    priority: 'normal',
     location: '',
     reminderSent: false,
     followUpRequired: false,
@@ -43,17 +44,78 @@ export default function Appointments() {
     loadDoctors();
   }, []);
 
+  // Reset doctorId when doctors array changes
+  useEffect(() => {
+    if (doctors.length === 0 && appointmentData.doctorId) {
+      logger.warn('Doctors array is empty, resetting doctorId');
+      setAppointmentData(prev => ({ ...prev, doctorId: '' }));
+    }
+  }, [doctors, appointmentData.doctorId]);
+
+  // Age calculation function
+  const calculateAgeFromFields = (patient: MedicalPatient): number => {
+    logger.info("Calculating age for patient:", {
+      birth_date: patient.birth_date,
+      birth_year: patient.birth_year,
+      birth_month: patient.birth_month,
+      birth_day: patient.birth_day
+    });
+    
+    // Try to calculate age from separate birth fields first
+    if (patient.birth_year && patient.birth_month && patient.birth_day) {
+      const today = new Date();
+      const birthYear = patient.birth_year > 2500 ? patient.birth_year - 543 : patient.birth_year;
+      const birth = new Date(birthYear, patient.birth_month - 1, patient.birth_day);
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      
+      logger.info("Calculated age from separate fields:", {
+        age,
+        birthYear,
+        birthMonth: patient.birth_month,
+        birthDay: patient.birth_day
+      });
+      
+      return age;
+    }
+    
+    // Fallback to birth_date
+    if (patient.birth_date) {
+      const age = Math.floor((new Date().getTime() - new Date(patient.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+      logger.info("Calculated age from birth_date:", { age, birth_date: patient.birth_date });
+      return age;
+    }
+    
+    logger.info("No birth data available, returning 0");
+    return 0;
+  };
+
   const loadDoctors = async () => {
     try {
-      // Sample doctors data - in real app, this would come from API
-      const sampleDoctors = [
-        { id: '1', name: 'นพ.สมชาย ใจดี', department: 'อายุรกรรม' },
-        { id: '2', name: 'นพ.สมหญิง รักสุขภาพ', department: 'กุมารเวชกรรม' },
-        { id: '3', name: 'นพ.สมศักดิ์ ใจงาม', department: 'ศัลยกรรม' }
-      ];
-      setDoctors(sampleDoctors);
+      logger.info('Loading doctors from API...');
+      // Load real doctors from API using apiClient (with authentication)
+      const response = await apiClient.get('/medical/doctors?limit=100');
+      
+      logger.info('Doctors API response:', { 
+        statusCode: response.statusCode, 
+        dataLength: response.data?.length || 0,
+        data: response.data 
+      });
+      
+      if (response.statusCode === 200 && response.data) {
+        logger.info('Successfully loaded doctors from API:', response.data);
+        setDoctors(response.data);
+      } else {
+        logger.warn('Failed to load doctors from API, no doctors available');
+        setDoctors([]);
+      }
     } catch (error) {
-      logger.error('Error loading doctors:', error);
+      logger.error('Error loading doctors from API:', error);
+      setDoctors([]);
     }
   };
 
@@ -67,6 +129,7 @@ export default function Appointments() {
       const response = await PatientService.searchPatients(searchQuery, searchType);
       
       if (response.statusCode === 200 && response.data && response.data.length > 0) {
+        logger.info("Patient found:", response.data[0]);
         setSelectedPatient(response.data[0]);
         await loadPatientAppointments(response.data[0].id);
         setError(null);
@@ -103,7 +166,7 @@ export default function Appointments() {
           duration: 30,
           reason: 'ตรวจสุขภาพประจำปี',
           status: 'scheduled',
-          priority: 'medium',
+          priority: 'normal',
           doctor: { thaiName: 'นพ.สมชาย ใจดี' }
         }
       ]);
@@ -113,11 +176,36 @@ export default function Appointments() {
   const handleSubmit = async () => {
     if (!selectedPatient) return;
     
+    // Debug logging
+    logger.info('Debug selectedPatient data:', {
+      selectedPatientId: selectedPatient.id,
+      selectedPatientHn: selectedPatient.hospital_number,
+      selectedPatientName: selectedPatient.thai_name || `${selectedPatient.first_name} ${selectedPatient.last_name}`
+    });
+    
     // Validate data
     const validation = AppointmentService.validateAppointmentData(appointmentData);
     
     if (!validation.isValid) {
       setError(validation.errors.join('\n'));
+      return;
+    }
+
+    // Additional validation for doctorId
+    if (!appointmentData.doctorId) {
+      setError('กรุณาเลือกแพทย์ผู้ตรวจ');
+      return;
+    }
+
+    // Check if selected doctor exists in doctors array
+    const selectedDoctor = doctors.find(doctor => doctor.id === appointmentData.doctorId);
+    if (!selectedDoctor) {
+      logger.error('Selected doctor not found in doctors array:', {
+        selectedDoctorId: appointmentData.doctorId,
+        availableDoctors: doctors.map(d => ({ id: d.id, name: d.name }))
+      });
+      setError('แพทย์ที่เลือกไม่ถูกต้อง กรุณาเลือกใหม่');
+      setAppointmentData(prev => ({ ...prev, doctorId: '' }));
       return;
     }
     
@@ -128,8 +216,10 @@ export default function Appointments() {
       const formattedData = AppointmentService.formatAppointmentDataForAPI(
         appointmentData,
         selectedPatient.id,
-        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'
+        user?.id || 'system'
       );
+      
+      logger.info('Debug formatted data:', formattedData);
       
       const response = await AppointmentService.createAppointment(formattedData);
       
@@ -246,7 +336,7 @@ export default function Appointments() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-6">
             <Calendar className="h-8 w-8 text-blue-600" />
@@ -259,11 +349,36 @@ export default function Appointments() {
           {/* Search Patient */}
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">ค้นหาผู้ป่วย</h3>
+            
+            {/* Search Type Selection */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setSearchType("hn")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  searchType === "hn"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                ค้นหาด้วย HN
+              </button>
+              <button
+                onClick={() => setSearchType("queue")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  searchType === "queue"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                ค้นหาด้วยคิว
+              </button>
+            </div>
+            
             <div className="flex gap-4 mb-4">
               <div className="flex-1">
                 <input
                   type="text"
-                  placeholder="กรอก HN หรือหมายเลขคิว"
+                  placeholder={searchType === "hn" ? "กรอก HN เช่น HN250001" : "กรอกหมายเลขคิว"}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -288,13 +403,13 @@ export default function Appointments() {
                   <h3 className="text-lg font-semibold text-blue-800 mb-2">ข้อมูลผู้ป่วย</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospitalNumber}
+                      <span className="font-medium">HN:</span> {selectedPatient.hospital_number || selectedPatient.hn}
                     </div>
                     <div>
-                      <span className="font-medium">ชื่อ:</span> {selectedPatient.thaiName || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                      <span className="font-medium">ชื่อ:</span> {selectedPatient.thai_name || `${selectedPatient.first_name} ${selectedPatient.last_name}`}
                     </div>
                     <div>
-                      <span className="font-medium">อายุ:</span> {selectedPatient.birthDate ? Math.floor((new Date().getTime() - new Date(selectedPatient.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 'ไม่ระบุ'}
+                      <span className="font-medium">อายุ:</span> {calculateAgeFromFields(selectedPatient) > 0 ? `${calculateAgeFromFields(selectedPatient)} ปี` : 'ไม่ระบุ'}
                     </div>
                     <div>
                       <span className="font-medium">เพศ:</span> {selectedPatient.gender || 'ไม่ระบุ'}
@@ -345,7 +460,9 @@ export default function Appointments() {
                     onChange={(e) => setAppointmentData(prev => ({ ...prev, doctorId: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="">เลือกแพทย์</option>
+                    <option value="">
+                      {doctors.length > 0 ? "เลือกแพทย์" : "ไม่มีแพทย์ในระบบ"}
+                    </option>
                     {doctors.map(doctor => (
                       <option key={doctor.id} value={doctor.id}>
                         {doctor.name} - {doctor.department}
@@ -405,7 +522,7 @@ export default function Appointments() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="low">ต่ำ</option>
-                    <option value="medium">ปานกลาง</option>
+                    <option value="normal">ปานกลาง</option>
                     <option value="high">สูง</option>
                     <option value="urgent">ด่วน</option>
                   </select>

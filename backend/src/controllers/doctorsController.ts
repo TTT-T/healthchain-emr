@@ -171,7 +171,7 @@ export const getAllDoctors = async (req: Request, res: Response) => {
         }
 
         return {
-          id: doctor.id, // Use doctor.id for consistency
+          id: doctor.user_id, // Use user_id for appointments compatibility
           userId: doctor.user_id,
           name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
           department: doctor.department || 'อายุรกรรม',
@@ -195,7 +195,7 @@ export const getAllDoctors = async (req: Request, res: Response) => {
         const estimatedWait = queueCount * 15;
         
         return {
-          id: doctor.user_id, // Use user_id instead of doctor.id for foreign key compatibility
+          id: doctor.user_id, // Use user_id for appointments compatibility
           name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
           department: doctor.department || 'ไม่ระบุ',
           specialization: doctor.specialization || 'ไม่ระบุ',

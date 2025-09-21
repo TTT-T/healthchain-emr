@@ -5,7 +5,6 @@ import { APIResponse } from '@/types/api';
 export interface CreatePharmacyRequest {
   patientId: string;
   visitId?: string;
-  prescriptionId?: string;
   medications: Array<{
     medicationName: string;
     dosage: string;
@@ -15,8 +14,7 @@ export interface CreatePharmacyRequest {
     unit: string;
     instructions?: string;
     dispensedQuantity?: number;
-    dispensedBy?: string;
-    dispensedTime?: string;
+    price?: number;
   }>;
   totalAmount?: number;
   paymentMethod?: string;
@@ -133,7 +131,6 @@ export class PharmacyService {
     return {
       patientId,
       visitId: pharmacyData.visitId,
-      prescriptionId: pharmacyData.prescriptionId,
       medications: pharmacyData.medications || [],
       totalAmount: pharmacyData.totalAmount || 0,
       paymentMethod: pharmacyData.paymentMethod || 'cash',

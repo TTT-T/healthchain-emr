@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { databaseManager } from '../database/connection';
 import { asyncHandler } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
+import { NotificationService } from '../services/notificationService';
 
 interface CreateDocumentRequest {
   patientId: string;
@@ -83,8 +84,8 @@ export const createDocument = asyncHandler(async (req: Request, res: Response) =
     const client = await databaseManager.getClient();
     
     // Check if patient exists
-    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM users WHERE id = $1 AND role = $2';
-    const patientResult = await client.query(patientQuery, [patientId, 'patient']);
+    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM patients WHERE id = $1';
+    const patientResult = await client.query(patientQuery, [patientId]);
     
     if (patientResult.rows.length === 0) {
       return res.status(404).json({
@@ -109,20 +110,16 @@ export const createDocument = asyncHandler(async (req: Request, res: Response) =
         document_type,
         document_title,
         content,
-        template,
-        variables,
         attachments,
         status,
         notes,
         recorded_by,
         recorded_time,
-        issued_by,
         issued_date,
         valid_until,
-        recipient_info,
         created_at,
         updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
       RETURNING *
     `;
 
@@ -133,17 +130,13 @@ export const createDocument = asyncHandler(async (req: Request, res: Response) =
       documentType,
       documentTitle,
       content,
-      template || null,
-      variables ? JSON.stringify(variables) : null,
       attachments ? JSON.stringify(attachments) : null,
       status || 'draft',
       notes || null,
-      issuedBy,
+      issuedBy, // This goes to recorded_by column
       new Date().toISOString(),
-      issuedBy,
       issuedDate || new Date().toISOString(),
-      validUntil || null,
-      recipientInfo ? JSON.stringify(recipientInfo) : null
+      validUntil || null
     ];
 
     const result = await client.query(insertQuery, values);
@@ -156,6 +149,35 @@ export const createDocument = asyncHandler(async (req: Request, res: Response) =
       issuedBy
     });
 
+    // ส่งการแจ้งเตือนให้ผู้ป่วย
+    try {
+      const user = (req as any).user;
+      
+      await NotificationService.sendPatientNotification({
+        patientId: patient.id,
+        patientHn: patient.hospital_number || '',
+        patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+        patientPhone: patient.phone,
+        patientEmail: patient.email,
+        notificationType: 'document_created',
+        title: `เอกสารใหม่: ${documentTitle}`,
+        message: `มีเอกสารใหม่ "${documentTitle}" สำหรับคุณ ${patient.thai_name || patient.first_name}`,
+        recordType: 'document',
+        recordId: documentRecord.id,
+        createdBy: user.id,
+        createdByName: user.thai_name || `${user.first_name} ${user.last_name}`,
+        metadata: {
+          documentType,
+          documentTitle,
+          issuedDate,
+          validUntil
+        }
+      });
+    } catch (notificationError) {
+      logger.error('Failed to send document notification:', notificationError);
+      // ไม่ throw error เพื่อไม่ให้กระทบการสร้างเอกสาร
+    }
+
     res.status(201).json({
       statusCode: 201,
       message: 'Document created successfully',
@@ -167,15 +189,19 @@ export const createDocument = asyncHandler(async (req: Request, res: Response) =
         documentType: documentRecord.document_type,
         documentTitle: documentRecord.document_title,
         content: documentRecord.content,
-        template: documentRecord.template,
-        variables: documentRecord.variables ? JSON.parse(documentRecord.variables) : {},
-        attachments: documentRecord.attachments ? JSON.parse(documentRecord.attachments) : [],
+        attachments: documentRecord.attachments ? (() => {
+          try {
+            return JSON.parse(documentRecord.attachments);
+          } catch (e) {
+            logger.warn('Failed to parse attachments JSON:', e);
+            return [];
+          }
+        })() : [],
         status: documentRecord.status,
         notes: documentRecord.notes,
-        issuedBy: documentRecord.issued_by,
+        issuedBy: documentRecord.recorded_by,
         issuedDate: documentRecord.issued_date,
         validUntil: documentRecord.valid_until,
-        recipientInfo: documentRecord.recipient_info ? JSON.parse(documentRecord.recipient_info) : null,
         createdAt: documentRecord.created_at,
         updatedAt: documentRecord.updated_at
       },
@@ -209,14 +235,30 @@ export const createDocument = asyncHandler(async (req: Request, res: Response) =
 export const getDocumentsByPatient = asyncHandler(async (req: Request, res: Response) => {
   const { patientId } = req.params;
   const { documentType } = req.query;
+  const user = (req as any).user;
 
   try {
+    // Check if patient is trying to access their own documents
+    if (user.role === 'patient' && user.id !== patientId) {
+      return res.status(403).json({
+        statusCode: 403,
+        message: 'Access denied',
+        data: null,
+        error: {
+          code: 'ACCESS_DENIED',
+          message: 'Patients can only access their own documents'
+        }
+      });
+    }
+
     const client = await databaseManager.getClient();
     
     let query = `
-      SELECT mr.*, u.thai_name, u.national_id, u.hospital_number
+      SELECT mr.*, p.thai_name, p.national_id, p.hospital_number,
+             u.thai_name as issued_by_name, u.first_name, u.last_name
       FROM medical_records mr
-      JOIN users u ON mr.patient_id = u.id
+      JOIN patients p ON mr.patient_id = p.id
+      LEFT JOIN users u ON mr.recorded_by = u.id
       WHERE mr.patient_id = $1 AND mr.record_type = 'document'
     `;
     
@@ -240,14 +282,35 @@ export const getDocumentsByPatient = asyncHandler(async (req: Request, res: Resp
       documentTitle: record.document_title,
       content: record.content,
       template: record.template,
-      variables: record.variables ? JSON.parse(record.variables) : {},
-      attachments: record.attachments ? JSON.parse(record.attachments) : [],
+      variables: record.variables ? (() => {
+        try {
+          return JSON.parse(record.variables);
+        } catch (e) {
+          logger.warn('Failed to parse variables JSON:', e);
+          return {};
+        }
+      })() : {},
+      attachments: record.attachments ? (() => {
+        try {
+          return JSON.parse(record.attachments);
+        } catch (e) {
+          logger.warn('Failed to parse attachments JSON:', e);
+          return [];
+        }
+      })() : [],
       status: record.status,
       notes: record.notes,
-      issuedBy: record.issued_by,
+      issuedBy: record.issued_by_name || (record.first_name && record.last_name ? `${record.first_name} ${record.last_name}` : record.recorded_by),
       issuedDate: record.issued_date,
       validUntil: record.valid_until,
-      recipientInfo: record.recipient_info ? JSON.parse(record.recipient_info) : null,
+      recipientInfo: record.recipient_info ? (() => {
+        try {
+          return JSON.parse(record.recipient_info);
+        } catch (e) {
+          logger.warn('Failed to parse recipientInfo JSON:', e);
+          return null;
+        }
+      })() : null,
       createdAt: record.created_at,
       updatedAt: record.updated_at,
       patient: {
@@ -291,9 +354,9 @@ export const getDocumentById = asyncHandler(async (req: Request, res: Response) 
     const client = await databaseManager.getClient();
     
     const query = `
-      SELECT mr.*, u.thai_name, u.national_id, u.hospital_number
+      SELECT mr.*, p.thai_name, p.national_id, p.hospital_number
       FROM medical_records mr
-      JOIN users u ON mr.patient_id = u.id
+      JOIN patients p ON mr.patient_id = p.id
       WHERE mr.id = $1 AND mr.record_type = 'document'
     `;
 
@@ -325,14 +388,35 @@ export const getDocumentById = asyncHandler(async (req: Request, res: Response) 
         documentTitle: record.document_title,
         content: record.content,
         template: record.template,
-        variables: record.variables ? JSON.parse(record.variables) : {},
-        attachments: record.attachments ? JSON.parse(record.attachments) : [],
+        variables: record.variables ? (() => {
+          try {
+            return JSON.parse(record.variables);
+          } catch (e) {
+            logger.warn('Failed to parse variables JSON:', e);
+            return {};
+          }
+        })() : {},
+        attachments: record.attachments ? (() => {
+          try {
+            return JSON.parse(record.attachments);
+          } catch (e) {
+            logger.warn('Failed to parse attachments JSON:', e);
+            return [];
+          }
+        })() : [],
         status: record.status,
         notes: record.notes,
-        issuedBy: record.issued_by,
+        issuedBy: record.recorded_by,
         issuedDate: record.issued_date,
         validUntil: record.valid_until,
-        recipientInfo: record.recipient_info ? JSON.parse(record.recipient_info) : null,
+        recipientInfo: record.recipient_info ? (() => {
+          try {
+            return JSON.parse(record.recipient_info);
+          } catch (e) {
+            logger.warn('Failed to parse recipientInfo JSON:', e);
+            return null;
+          }
+        })() : null,
         createdAt: record.created_at,
         updatedAt: record.updated_at,
         patient: {
@@ -444,14 +528,35 @@ export const updateDocument = asyncHandler(async (req: Request, res: Response) =
         documentTitle: updatedRecord.document_title,
         content: updatedRecord.content,
         template: updatedRecord.template,
-        variables: updatedRecord.variables ? JSON.parse(updatedRecord.variables) : {},
-        attachments: updatedRecord.attachments ? JSON.parse(updatedRecord.attachments) : [],
+        variables: updatedRecord.variables ? (() => {
+          try {
+            return JSON.parse(updatedRecord.variables);
+          } catch (e) {
+            logger.warn('Failed to parse variables JSON:', e);
+            return {};
+          }
+        })() : {},
+        attachments: updatedRecord.attachments ? (() => {
+          try {
+            return JSON.parse(updatedRecord.attachments);
+          } catch (e) {
+            logger.warn('Failed to parse attachments JSON:', e);
+            return [];
+          }
+        })() : [],
         status: updatedRecord.status,
         notes: updatedRecord.notes,
-        issuedBy: updatedRecord.issued_by,
+        issuedBy: updatedRecord.recorded_by,
         issuedDate: updatedRecord.issued_date,
         validUntil: updatedRecord.valid_until,
-        recipientInfo: updatedRecord.recipient_info ? JSON.parse(updatedRecord.recipient_info) : null,
+        recipientInfo: updatedRecord.recipient_info ? (() => {
+          try {
+            return JSON.parse(updatedRecord.recipient_info);
+          } catch (e) {
+            logger.warn('Failed to parse recipientInfo JSON:', e);
+            return null;
+          }
+        })() : null,
         createdAt: updatedRecord.created_at,
         updatedAt: updatedRecord.updated_at
       }

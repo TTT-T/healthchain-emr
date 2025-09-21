@@ -69,8 +69,8 @@ export const createPharmacyDispensing = asyncHandler(async (req: Request, res: R
     const client = await databaseManager.getClient();
     
     // Check if patient exists
-    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM users WHERE id = $1 AND role = $2';
-    const patientResult = await client.query(patientQuery, [patientId, 'patient']);
+    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM patients WHERE id = $1';
+    const patientResult = await client.query(patientQuery, [patientId]);
     
     if (patientResult.rows.length === 0) {
       return res.status(404).json({
@@ -92,7 +92,6 @@ export const createPharmacyDispensing = asyncHandler(async (req: Request, res: R
         patient_id,
         visit_id,
         record_type,
-        prescription_id,
         medications,
         total_amount,
         payment_method,
@@ -101,7 +100,7 @@ export const createPharmacyDispensing = asyncHandler(async (req: Request, res: R
         recorded_time,
         created_at,
         updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
       RETURNING *
     `;
 
@@ -109,7 +108,6 @@ export const createPharmacyDispensing = asyncHandler(async (req: Request, res: R
       patientId,
       visitId || null,
       'pharmacy_dispensing',
-      prescriptionId || null,
       JSON.stringify(medications),
       totalAmount || 0,
       paymentMethod || 'cash',
@@ -134,9 +132,10 @@ export const createPharmacyDispensing = asyncHandler(async (req: Request, res: R
         id: dispensingRecord.id,
         patientId: dispensingRecord.patient_id,
         visitId: dispensingRecord.visit_id,
-        prescriptionId: dispensingRecord.prescription_id,
         recordType: dispensingRecord.record_type,
-        medications: JSON.parse(dispensingRecord.medications || '[]'),
+        medications: typeof dispensingRecord.medications === 'string' 
+          ? JSON.parse(dispensingRecord.medications || '[]') 
+          : dispensingRecord.medications || [],
         totalAmount: dispensingRecord.total_amount,
         paymentMethod: dispensingRecord.payment_method,
         notes: dispensingRecord.notes,
@@ -179,9 +178,9 @@ export const getPharmacyDispensingsByPatient = asyncHandler(async (req: Request,
     const client = await databaseManager.getClient();
     
     const query = `
-      SELECT mr.*, u.thai_name, u.national_id, u.hospital_number
+      SELECT mr.*, p.thai_name, p.national_id, p.hospital_number
       FROM medical_records mr
-      JOIN users u ON mr.patient_id = u.id
+      JOIN patients p ON mr.patient_id = p.id
       WHERE mr.patient_id = $1 AND mr.record_type = 'pharmacy_dispensing'
       ORDER BY mr.recorded_time DESC
     `;
@@ -192,9 +191,10 @@ export const getPharmacyDispensingsByPatient = asyncHandler(async (req: Request,
       id: record.id,
       patientId: record.patient_id,
       visitId: record.visit_id,
-      prescriptionId: record.prescription_id,
       recordType: record.record_type,
-      medications: JSON.parse(record.medications || '[]'),
+      medications: typeof record.medications === 'string' 
+        ? JSON.parse(record.medications || '[]') 
+        : record.medications || [],
       totalAmount: record.total_amount,
       paymentMethod: record.payment_method,
       notes: record.notes,
@@ -242,9 +242,9 @@ export const getPharmacyDispensingById = asyncHandler(async (req: Request, res: 
     const client = await databaseManager.getClient();
     
     const query = `
-      SELECT mr.*, u.thai_name, u.national_id, u.hospital_number
+      SELECT mr.*, p.thai_name, p.national_id, p.hospital_number
       FROM medical_records mr
-      JOIN users u ON mr.patient_id = u.id
+      JOIN patients p ON mr.patient_id = p.id
       WHERE mr.id = $1 AND mr.record_type = 'pharmacy_dispensing'
     `;
 
@@ -271,9 +271,10 @@ export const getPharmacyDispensingById = asyncHandler(async (req: Request, res: 
         id: record.id,
         patientId: record.patient_id,
         visitId: record.visit_id,
-        prescriptionId: record.prescription_id,
         recordType: record.record_type,
-        medications: JSON.parse(record.medications || '[]'),
+        medications: typeof record.medications === 'string' 
+          ? JSON.parse(record.medications || '[]') 
+          : record.medications || [],
         totalAmount: record.total_amount,
         paymentMethod: record.payment_method,
         notes: record.notes,
@@ -385,9 +386,10 @@ export const updatePharmacyDispensing = asyncHandler(async (req: Request, res: R
         id: updatedRecord.id,
         patientId: updatedRecord.patient_id,
         visitId: updatedRecord.visit_id,
-        prescriptionId: updatedRecord.prescription_id,
         recordType: updatedRecord.record_type,
-        medications: JSON.parse(updatedRecord.medications || '[]'),
+        medications: typeof updatedRecord.medications === 'string' 
+          ? JSON.parse(updatedRecord.medications || '[]') 
+          : updatedRecord.medications || [],
         totalAmount: updatedRecord.total_amount,
         paymentMethod: updatedRecord.payment_method,
         notes: updatedRecord.notes,

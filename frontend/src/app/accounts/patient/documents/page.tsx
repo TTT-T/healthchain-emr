@@ -1,7 +1,49 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { PatientDocument, DocumentSearchQuery } from '@/services/patientDocumentService';
+// Define interface based on backend response
+interface PatientDocument {
+  id: string;
+  patientId: string;
+  visitId?: string;
+  recordType: string;
+  documentType: string;
+  documentTitle: string;
+  content: string;
+  template?: string;
+  variables: any;
+  attachments: any[];
+  status: string;
+  notes?: string;
+  issuedBy: string;
+  issuedDate: string;
+  validUntil?: string;
+  recipientInfo?: any;
+  createdAt: string;
+  updatedAt: string;
+  patient: {
+    thaiName: string;
+    nationalId: string;
+    hospitalNumber: string;
+  };
+  // Additional fields for display
+  fileName?: string;
+  fileSize?: number;
+  downloadCount?: number;
+  doctorName?: string;
+  department?: string;
+  tags?: string[];
+}
+
+interface DocumentSearchQuery {
+  documentType: string;
+  dateFrom: string;
+  dateTo: string;
+  doctorName: string;
+  department: string;
+  page: number;
+  limit: number;
+}
 import { FileText, Download, Eye, Search, Filter, Calendar, User, Stethoscope, Tag, Clock, File } from 'lucide-react';
 import { logger } from '@/lib/logger';
 import { apiClient } from '@/lib/api';
@@ -46,8 +88,18 @@ export default function PatientDocuments() {
       if (response.statusCode === 200 && response.data) {
         // response.data เป็น array ของ documents
         const documents = Array.isArray(response.data) ? response.data : [];
-        setDocuments(documents as any);
-        setTotalDocuments(documents.length);
+        // Map backend data to frontend format
+        const mappedDocuments = documents.map((doc: any) => ({
+          ...doc,
+          fileName: doc.documentTitle || `${doc.documentType}_${doc.id}`,
+          fileSize: doc.content ? doc.content.length : 0,
+          downloadCount: 0,
+          doctorName: doc.issuedBy,
+          department: 'ไม่ระบุ',
+          tags: []
+        }));
+        setDocuments(mappedDocuments);
+        setTotalDocuments(mappedDocuments.length);
       } else if (response.statusCode === 404) {
         // ไม่พบข้อมูล patient - ยังไม่ได้ลงทะเบียนในระบบ EMR
         setDocuments([]);
@@ -84,29 +136,19 @@ export default function PatientDocuments() {
 
   const handleDownload = async (doc: PatientDocument) => {
     try {
-      // ใช้ fetch สำหรับการดาวน์โหลด blob
-      const response = await fetch(`/api/patients/${user?.id}/documents/${doc.id}/download`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      });
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = doc.fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-        
-        // รีเฟรชข้อมูล
-        loadDocuments();
-      } else {
-        throw new Error('ไม่สามารถดาวน์โหลดเอกสารได้');
-      }
+      // สร้างไฟล์จากเนื้อหาเอกสาร
+      const content = doc.content || 'ไม่มีเนื้อหา';
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${doc.documentTitle || doc.documentType}_${new Date().toISOString().split('T')[0]}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      logger.info('Document downloaded successfully');
     } catch (error) {
       logger.error('Error downloading document:', error);
       alert('ไม่สามารถดาวน์โหลดเอกสารได้');
@@ -115,17 +157,8 @@ export default function PatientDocuments() {
 
   const handleViewOnline = async (doc: PatientDocument) => {
     try {
-      // ใช้ apiClient สำหรับการดูเอกสารออนไลน์
-      const response = await apiClient.get(`/patients/${user?.id}/documents/${doc.id}/view`);
-
-      if (response.statusCode === 200 && (response.data as any)?.fileUrl) {
-        window.open((response.data as any).fileUrl, '_blank');
-        
-        // รีเฟรชข้อมูล
-        loadDocuments();
-      } else {
-        throw new Error('ไม่พบ URL ของเอกสาร');
-      }
+      // สำหรับเอกสารที่เก็บใน medical_records เราแสดงเนื้อหาใน modal
+      setSelectedDocument(doc);
     } catch (error) {
       logger.error('Error viewing document online:', error);
       alert('ไม่สามารถเปิดเอกสารได้');
@@ -184,8 +217,9 @@ export default function PatientDocuments() {
 
   return (
     <AppLayout title="เอกสารทางการแพทย์" userType="patient">
-      <div className="p-4 md:p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="min-h-screen bg-gray-50">
+        <div className="p-4 md:p-6">
+          <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -197,6 +231,18 @@ export default function PatientDocuments() {
                 <p className="text-gray-600 mt-1">
                   เอกสารทั้งหมดที่เกี่ยวข้องกับการรักษาของคุณ ({totalDocuments} เอกสาร)
                 </p>
+                {totalDocuments > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-4 text-sm">
+                    <div className="flex items-center gap-2 text-green-600">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span>เอกสารพร้อมใช้งาน</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-blue-600">
+                      <FileText className="h-4 w-4" />
+                      <span>ประเภทเอกสาร: {new Set(documents.map(d => d.documentType)).size} ประเภท</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -275,7 +321,12 @@ export default function PatientDocuments() {
           <div className="text-center py-12">
             <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">ไม่มีเอกสาร</h3>
-            <p className="text-gray-500">ยังไม่มีเอกสารทางการแพทย์ในระบบ</p>
+            <p className="text-gray-500 mb-4">ยังไม่มีเอกสารทางการแพทย์ในระบบ</p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+              <p className="text-sm text-blue-800">
+                เอกสารจะปรากฏที่นี่เมื่อแพทย์หรือเจ้าหน้าที่สร้างเอกสารทางการแพทย์ให้คุณ
+              </p>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -315,37 +366,33 @@ export default function PatientDocuments() {
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Calendar className="h-4 w-4" />
-                      <span>{formatDateTime(document.createdAt)}</span>
+                      <span>{formatDateTime(document.issuedDate || document.createdAt)}</span>
                     </div>
                     
-                    {document.doctorName && (
+                    {document.issuedBy && (
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <User className="h-4 w-4" />
-                        <span>{document.doctorName}</span>
+                        <span>{document.issuedBy}</span>
                       </div>
                     )}
                     
-                    {document.department && (
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Stethoscope className="h-4 w-4" />
-                        <span>{document.department}</span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Stethoscope className="h-4 w-4" />
+                      <span>{document.department || 'ไม่ระบุ'}</span>
+                    </div>
 
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <File className="h-4 w-4" />
-                      <span>{formatFileSize(document.fileSize)}</span>
+                      <span>{formatFileSize(document.fileSize || 0)}</span>
                     </div>
 
-                    {document.downloadCount > 0 && (
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Download className="h-4 w-4" />
-                        <span>ดาวน์โหลดแล้ว {document.downloadCount} ครั้ง</span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Tag className="h-4 w-4" />
+                      <span>สถานะ: {document.status}</span>
+                    </div>
                   </div>
 
-                  {document.tags.length > 0 && (
+                  {document.tags && document.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-4">
                       {document.tags.map((tag, index) => (
                         <span
@@ -405,6 +452,103 @@ export default function PatientDocuments() {
             </div>
           </div>
         )}
+
+        {/* Document View Modal */}
+        {selectedDocument && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-300 shadow-lg">
+              {/* Header Bar */}
+              <div className="bg-gray-50 border-b border-gray-200 px-6 py-4 rounded-t-lg">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-6 w-6 text-gray-600" />
+                    <h2 className="text-xl font-bold text-gray-900">{selectedDocument.documentTitle}</h2>
+                  </div>
+                  <button
+                    onClick={() => setSelectedDocument(null)}
+                    className="text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    <span className="sr-only">ปิด</span>
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6">
+                {/* Document Info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-gray-500" />
+                    <span className="font-medium">ประเภท:</span>
+                    <span>{getDocumentTypeLabel(selectedDocument.documentType)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-gray-500" />
+                    <span className="font-medium">วันที่ออก:</span>
+                    <span>{formatDateTime(selectedDocument.issuedDate || selectedDocument.createdAt)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <User className="h-5 w-5 text-gray-500" />
+                    <span className="font-medium">ผู้ออก:</span>
+                    <span>{selectedDocument.issuedBy}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-5 w-5 text-gray-500" />
+                    <span className="font-medium">สถานะ:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      selectedDocument.status === 'completed' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {selectedDocument.status === 'completed' ? 'เสร็จสิ้น' : selectedDocument.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Document Content */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                    เนื้อหาเอกสาร
+                  </h3>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">
+                      {selectedDocument.content}
+                    </pre>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                {selectedDocument.notes && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold mb-2">หมายเหตุ</h3>
+                    <p className="text-gray-600">{selectedDocument.notes}</p>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => setSelectedDocument(null)}
+                    className="px-6 py-2 text-gray-600 border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors font-medium"
+                  >
+                    ปิด
+                  </button>
+                  <button
+                    onClick={() => handleDownload(selectedDocument)}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors font-medium shadow-md hover:shadow-lg"
+                  >
+                    <Download className="h-4 w-4" />
+                    ดาวน์โหลด
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+          </div>
         </div>
       </div>
     </AppLayout>

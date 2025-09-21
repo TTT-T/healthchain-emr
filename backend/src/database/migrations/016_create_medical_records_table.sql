@@ -30,6 +30,15 @@ CREATE TABLE IF NOT EXISTS medical_records (
     family_history TEXT,
     social_history TEXT,
     
+    -- Additional History Taking Fields
+    pregnancy_history TEXT,
+    dietary_history TEXT,
+    lifestyle_factors TEXT,
+    review_of_systems TEXT,
+    surgical_history TEXT,
+    drug_allergies TEXT,
+    current_medications TEXT,
+    
     -- Physical Examination
     physical_exam JSONB,
     

@@ -10,6 +10,14 @@ import { PatientDocumentService } from '@/services/patientDocumentService';
 import { CreateVitalSignsRequest } from '@/types/api';
 import { logger } from '@/lib/logger';
 import { createLocalDateTimeString, formatLocalDateTime } from '@/utils/timeUtils';
+import { 
+  getThailandTime, 
+  toThailandTime, 
+  formatThailandDateTime, 
+  formatBuddhistDateTime,
+  parseThailandTime,
+  getCurrentThailandTimeString 
+} from '@/utils/thailandTime';
 
 interface Patient {
   id: string;
@@ -81,7 +89,7 @@ export default function VitalSigns() {
     painLevel: "",
     generalCondition: "",
     notes: "",
-    measurementTime: createLocalDateTimeString(new Date()),
+    measurementTime: getCurrentThailandTimeString(),
     measuredBy: "พยาบาลสมหญิง"
   });
 
@@ -174,13 +182,32 @@ export default function VitalSigns() {
                         patient.visit_type === 'appointment' ? 'นัดหมาย' : 
                         patient.visit_type === 'emergency' ? 'ฉุกเฉิน' : 'ฉุกเฉิน',
           assignedDoctor: patient.visit_info?.doctor_name || patient.doctor_name || 'นพ.สมชาย ใจดี',
-          visitDate: patient.visit_info?.visit_date || patient.visit_date || '2025-09-10',
-          visitTime: patient.visit_info?.visit_time || patient.visit_time || '18:00:00'
+          visitDate: patient.visit_info?.visit_date || patient.visit_date || patient.created_at?.split('T')[0] || getThailandTime().toISOString().split('T')[0],
+          visitTime: patient.visit_info?.visit_time || patient.visit_time || patient.created_at?.split('T')[1]?.split('.')[0] || getThailandTime().toTimeString().split(' ')[0]
         };
 
         // Debug logging for patient data
         console.log('🔍 RAW PATIENT DATA FROM API:', patient);
         console.log('🔍 PATIENT VISIT INFO:', patient.visit_info);
+        console.log('🔍 VISIT DATE/TIME MAPPING:', {
+          visitDate: patient.visit_info?.visit_date || patient.visit_date || patient.created_at?.split('T')[0],
+          visitTime: patient.visit_info?.visit_time || patient.visit_time || patient.created_at?.split('T')[1]?.split('.')[0],
+          created_at: patient.created_at,
+          visit_info: patient.visit_info,
+          raw_visit_date: patient.visit_date,
+          raw_visit_time: patient.visit_time,
+          raw_created_at: patient.created_at
+        });
+        
+        // Debug the actual time values being used
+        const actualVisitDate = patient.visit_info?.visit_date || patient.visit_date || patient.created_at?.split('T')[0];
+        const actualVisitTime = patient.visit_info?.visit_time || patient.visit_time || patient.created_at?.split('T')[1]?.split('.')[0];
+        console.log('🔍 ACTUAL TIME VALUES:', {
+          actualVisitDate,
+          actualVisitTime,
+          isVisitDateValid: !!actualVisitDate,
+          isVisitTimeValid: !!actualVisitTime
+        });
         console.log('🔍 PATIENT PERSONAL INFO:', patient.personal_info);
         console.log('🔍 HAS VISIT INFO?', !!patient.visit_info);
         console.log('🔍 VISIT INFO KEYS:', patient.visit_info ? Object.keys(patient.visit_info) : 'No visit_info');
@@ -262,8 +289,8 @@ export default function VitalSigns() {
                             patient.visit_type === 'appointment' ? 'นัดหมาย' : 
                             patient.visit_type === 'emergency' ? 'ฉุกเฉิน' : 'ฉุกเฉิน',
               assignedDoctor: patient.visit_info?.doctor_name || patient.doctor_name || 'นพ.สมชาย ใจดี',
-              visitDate: patient.visit_info?.visit_date || patient.visit_date || '2025-09-10',
-              visitTime: patient.visit_info?.visit_time || patient.visit_time || '18:00:00'
+              visitDate: patient.visit_info?.visit_date || patient.visit_date || patient.created_at?.split('T')[0] || getThailandTime().toISOString().split('T')[0],
+              visitTime: patient.visit_info?.visit_time || patient.visit_time || patient.created_at?.split('T')[1]?.split('.')[0] || getThailandTime().toTimeString().split(' ')[0]
             };
 
             // Debug logging for fallback search
@@ -279,6 +306,12 @@ export default function VitalSigns() {
                 birth_month: patient.birth_month,
                 birth_day: patient.birth_day
               }
+            });
+            console.log('🔍 FALLBACK VISIT DATE/TIME MAPPING:', {
+              visitDate: patient.visit_info?.visit_date || patient.visit_date || patient.created_at?.split('T')[0],
+              visitTime: patient.visit_info?.visit_time || patient.visit_time || patient.created_at?.split('T')[1]?.split('.')[0],
+              created_at: patient.created_at,
+              visit_info: patient.visit_info
             });
 
             setSelectedPatient(mappedPatient);
@@ -369,48 +402,65 @@ export default function VitalSigns() {
     try {
       let visit;
       
-      // ลองสร้าง visit ใหม่ก่อน
+      // ลองหา visit ที่มีอยู่ก่อน
       try {
-        const visitData = {
-          patientId: selectedPatient.id, // ใช้ patient ID (UUID) แทน HN
-          visitType: 'walk_in' as const,
-          chiefComplaint: 'ตรวจสัญญาณชีพ',
-          priority: 'normal' as const,
-          attendingDoctorId: user?.id // เพิ่ม doctor ID
-        };
-        
-        logger.debug('🔍 Creating visit with data:', visitData);
-        logger.debug('🔍 Selected patient details:', {
+        logger.debug('🔍 Searching for existing visit for patient:', {
           id: selectedPatient.id,
           hn: selectedPatient.hn,
           thaiName: selectedPatient.thaiName
         });
-        logger.debug('🔍 User details:', {
-          id: user?.id,
-          role: user?.role
-        });
         
-        // Validate patient ID
-        if (!selectedPatient.id || selectedPatient.id === '') {
-          throw new Error('ไม่พบ Patient ID ที่ถูกต้อง กรุณาค้นหาผู้ป่วยใหม่');
+        // ค้นหา visit ที่มีอยู่สำหรับผู้ป่วยนี้
+        const visitsResponse = await VisitService.getVisitsByPatient(selectedPatient.id);
+        
+        if (visitsResponse.statusCode === 200 && visitsResponse.data && visitsResponse.data.length > 0) {
+          // หา visit ล่าสุดที่ยังไม่เสร็จ
+          const activeVisit = visitsResponse.data.find(v => 
+            v.status === 'in_progress' || v.status === 'waiting'
+          );
+          
+          if (activeVisit) {
+            visit = activeVisit;
+            logger.debug('🔍 Found existing active visit:', visit);
+          } else {
+            // ใช้ visit ล่าสุด
+            visit = visitsResponse.data[0];
+            logger.debug('🔍 Using latest visit:', visit);
+          }
+        } else {
+          // ไม่พบ visit ที่มีอยู่ สร้างใหม่
+          logger.debug('🔍 No existing visit found, creating new one...');
+          
+          const visitData = {
+            patientId: selectedPatient.id,
+            visitType: 'walk_in' as const,
+            chiefComplaint: 'ตรวจสัญญาณชีพ',
+            priority: 'normal' as const,
+            attendingDoctorId: user?.id
+          };
+          
+          // Validate patient ID
+          if (!selectedPatient.id || selectedPatient.id === '') {
+            throw new Error('ไม่พบ Patient ID ที่ถูกต้อง กรุณาค้นหาผู้ป่วยใหม่');
+          }
+          
+          // Validate UUID format
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+          if (!uuidRegex.test(selectedPatient.id)) {
+            throw new Error(`Patient ID ไม่ถูกต้อง: ${selectedPatient.id}`);
+          }
+          
+          // สร้าง visit ใหม่
+          const visitResponse = await VisitService.createVisit(visitData);
+          
+          logger.debug('🔍 Visit creation response:', visitResponse);
+          
+          if (visitResponse.statusCode !== 200 && visitResponse.statusCode !== 201 || !visitResponse.data) {
+            throw new Error(`ไม่สามารถสร้าง visit ได้: ${visitResponse.error?.message || 'Unknown error'}`);
+          }
+          
+          visit = visitResponse.data;
         }
-        
-        // Validate UUID format
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-        if (!uuidRegex.test(selectedPatient.id)) {
-          throw new Error(`Patient ID ไม่ถูกต้อง: ${selectedPatient.id}`);
-        }
-        
-        // สร้าง visit
-        const visitResponse = await VisitService.createVisit(visitData);
-        
-        logger.debug('🔍 Visit creation response:', visitResponse);
-        
-        if (visitResponse.statusCode !== 200 && visitResponse.statusCode !== 201 || !visitResponse.data) {
-          throw new Error(`ไม่สามารถสร้าง visit ได้: ${visitResponse.error?.message || 'Unknown error'}`);
-        }
-        
-        visit = visitResponse.data;
         logger.debug('🔍 Visit data after creation:', visit);
       } catch (createError: any) {
         logger.error('❌ Error creating visit:', createError);
@@ -498,10 +548,11 @@ export default function VitalSigns() {
         
         setSuccess(`✅ บันทึกสัญญาณชีพสำเร็จ!
         
-📋 Visit Number: ${visitNumber}
+📋 Visit Number: ${visit.visitNumber || visitNumber}
 📊 BMI: ${bmiValue} ${bmiCategory ? `(${bmiCategory})` : ''}
 👤 ผู้ป่วย: ${selectedPatient.thaiName} (${selectedPatient.hn})
-⏰ เวลา: ${formatLocalDateTime(new Date())}`);
+⏰ เวลา: ${formatBuddhistDateTime(getThailandTime())}
+${visit.visitNumber ? '🔄 ใช้ Visit ที่มีอยู่แล้ว' : '🆕 สร้าง Visit ใหม่'}`);
 
         // Auto-hide success message after 8 seconds
         setTimeout(() => {
@@ -778,7 +829,7 @@ export default function VitalSigns() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full">
         {/* Page Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-center space-x-3">
@@ -908,11 +959,20 @@ export default function VitalSigns() {
                     <span className="text-slate-600">วันที่และเวลา:</span>
                     <span className="ml-2 font-medium text-slate-800">
                       {(() => {
-                        const visitDate = new Date(selectedPatient.visitDate);
-                        const buddhistYear = visitDate.getFullYear() + 543;
-                        const month = String(visitDate.getMonth() + 1).padStart(2, '0');
-                        const day = String(visitDate.getDate()).padStart(2, '0');
-                        return `${day}/${month}/${buddhistYear} ${selectedPatient.visitTime}`;
+                        console.log('🔍 Displaying visit date/time:', {
+                          visitDate: selectedPatient.visitDate,
+                          visitTime: selectedPatient.visitTime
+                        });
+                        
+                        if (selectedPatient.visitDate && selectedPatient.visitTime) {
+                          const visitDate = toThailandTime(selectedPatient.visitDate);
+                          const buddhistYear = visitDate.getFullYear() + 543;
+                          const month = String(visitDate.getMonth() + 1).padStart(2, '0');
+                          const day = String(visitDate.getDate()).padStart(2, '0');
+                          const time = selectedPatient.visitTime.split('.')[0]; // Remove milliseconds
+                          return `${day}/${month}/${buddhistYear} ${time}`;
+                        }
+                        return 'ไม่ระบุ';
                       })()}
                     </span>
                   </div>

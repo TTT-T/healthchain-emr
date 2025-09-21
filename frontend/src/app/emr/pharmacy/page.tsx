@@ -24,7 +24,7 @@ interface Medication {
 export default function Pharmacy() {
   const { isAuthenticated, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchType, setSearchType] = useState<"hn" | "queue">("queue");
+  const [searchType, setSearchType] = useState<"hn" | "queue">("hn");
   const [isSearching, setIsSearching] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<MedicalPatient | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,6 +46,47 @@ export default function Pharmacy() {
     return age;
   };
 
+  const calculateAgeFromFields = (patient: MedicalPatient): number => {
+    logger.info("Calculating age for patient:", {
+      birth_date: patient.birth_date,
+      birth_year: patient.birth_year,
+      birth_month: patient.birth_month,
+      birth_day: patient.birth_day
+    });
+    
+    // Try to calculate age from separate birth fields first
+    if (patient.birth_year && patient.birth_month && patient.birth_day) {
+      const today = new Date();
+      const birthYear = patient.birth_year > 2500 ? patient.birth_year - 543 : patient.birth_year;
+      const birth = new Date(birthYear, patient.birth_month - 1, patient.birth_day);
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      
+      logger.info("Calculated age from separate fields:", {
+        age,
+        birthYear,
+        birthMonth: patient.birth_month,
+        birthDay: patient.birth_day
+      });
+      
+      return age;
+    }
+    
+    // Fallback to birth_date
+    if (patient.birth_date) {
+      const age = calculateAge(patient.birth_date);
+      logger.info("Calculated age from birth_date:", { age, birth_date: patient.birth_date });
+      return age;
+    }
+    
+    logger.info("No birth data available, returning 0");
+    return 0;
+  };
+
   const [pharmacyData, setPharmacyData] = useState({
     medications: [] as Medication[],
     totalAmount: 0,
@@ -64,7 +105,18 @@ export default function Pharmacy() {
       const response = await PatientService.searchPatients(searchQuery, searchType);
       
       if (response.statusCode === 200 && response.data && response.data.length > 0) {
-        setSelectedPatient(response.data[0]);
+        const patient = response.data[0];
+        logger.info("Patient found:", {
+          id: patient.id,
+          hospital_number: patient.hospital_number,
+          thai_name: patient.thai_name,
+          birth_date: patient.birth_date,
+          birth_year: patient.birth_year,
+          birth_month: patient.birth_month,
+          birth_day: patient.birth_day,
+          gender: patient.gender
+        });
+        setSelectedPatient(patient);
         setError(null);
       } else {
         setError("ไม่พบข้อมูลผู้ป่วย");
@@ -125,7 +177,7 @@ export default function Pharmacy() {
     // Validate data
     const validation = PharmacyService.validatePharmacyData({
       ...pharmacyData,
-      dispensedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เภสัชกร'
+      dispensedBy: user?.id || 'system'
     });
     
     if (!validation.isValid) {
@@ -137,11 +189,24 @@ export default function Pharmacy() {
     setError(null);
     
     try {
+      logger.info('Debug user data:', {
+        userId: user?.id,
+        userFirstName: user?.first_name,
+        userLastName: user?.last_name,
+        userThaiName: user?.thai_name,
+        selectedPatientId: selectedPatient.id
+      });
+      
+      const dispensedByValue = user?.id || 'system';
+      logger.info('Debug dispensedBy value:', { dispensedByValue });
+      
       const formattedData = PharmacyService.formatPharmacyDataForAPI(
         pharmacyData,
         selectedPatient.id,
-        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เภสัชกร'
+        dispensedByValue
       );
+      
+      logger.info('Debug formatted data:', formattedData);
       
       const response = await PharmacyService.createPharmacyDispensing(formattedData);
       
@@ -182,9 +247,9 @@ export default function Pharmacy() {
         recordType: 'pharmacy_dispensing',
         recordId: dispensingRecord.id,
         chiefComplaint: `จ่ายยา ${dispensingRecord.medications.length} รายการ`,
-        recordedBy: dispensingRecord.dispensedBy,
+        recordedBy: user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'เภสัชกร',
         recordedTime: dispensingRecord.dispensedTime,
-        message: `มีการจ่ายยาใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${dispensingRecord.dispensedBy}`
+        message: `มีการจ่ายยาใหม่สำหรับคุณ ${patient.thai_name || `${patient.first_name} ${patient.last_name}`} โดย ${user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'เภสัชกร'}`
       };
 
       await NotificationService.notifyPatientRecordUpdate(notificationData);
@@ -218,16 +283,16 @@ export default function Pharmacy() {
         'prescription',
         pharmacyData,
         {
-          patientHn: patient.hn || '',
-          patientNationalId: patient.nationalId || '',
-          patientName: patient.thaiName || ''
+          patientHn: patient.hospital_number || '',
+          patientNationalId: patient.national_id || '',
+          patientName: patient.thai_name || ''
         },
-        user?.id || '',
-        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เภสัชกร'
+        user?.id || 'system',
+        user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'เภสัชกร'
       );
       
       logger.info('Patient document created successfully for pharmacy', { 
-        patientHn: patient.hn,
+        patientHn: patient.hospital_number,
         recordType: 'prescription'
       });
     } catch (error) {
@@ -238,7 +303,7 @@ export default function Pharmacy() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-6">
             <Pill className="h-8 w-8 text-green-600" />
@@ -251,11 +316,36 @@ export default function Pharmacy() {
           {/* Search Patient */}
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">ค้นหาผู้ป่วย</h3>
+            
+            {/* Search Type Selection */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setSearchType("hn")}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  searchType === "hn"
+                    ? "bg-green-600 text-white"
+                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                ค้นหาด้วย HN
+              </button>
+              <button
+                onClick={() => setSearchType("queue")}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  searchType === "queue"
+                    ? "bg-green-600 text-white"
+                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                ค้นหาด้วยคิว
+              </button>
+            </div>
+            
             <div className="flex gap-4 mb-4">
               <div className="flex-1">
                 <input
                   type="text"
-                  placeholder="กรอก HN หรือหมายเลขคิว"
+                  placeholder={searchType === "hn" ? "กรอก HN (เช่น HN250001)" : "กรอกหมายเลขคิว (เช่น V2025090001)"}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
@@ -278,13 +368,13 @@ export default function Pharmacy() {
               <h3 className="text-lg font-semibold text-green-800 mb-2">ข้อมูลผู้ป่วย</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospitalNumber}
+                  <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospital_number}
                 </div>
                 <div>
-                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thaiName || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thai_name || `${selectedPatient.first_name} ${selectedPatient.last_name}`}
                 </div>
                 <div>
-                  <span className="font-medium">อายุ:</span> {selectedPatient.birthDate ? calculateAge(selectedPatient.birthDate) : 'ไม่ระบุ'}
+                  <span className="font-medium">อายุ:</span> {calculateAgeFromFields(selectedPatient) > 0 ? `${calculateAgeFromFields(selectedPatient)} ปี` : 'ไม่ระบุ'}
                 </div>
                 <div>
                   <span className="font-medium">เพศ:</span> {selectedPatient.gender || 'ไม่ระบุ'}
@@ -389,6 +479,42 @@ export default function Pharmacy() {
                         <option value="g">กรัม</option>
                         <option value="piece">ชิ้น</option>
                       </select>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ราคาต่อหน่วย (บาท) *</label>
+                      <input
+                        type="number"
+                        value={medication.price || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '') {
+                            updateMedication(index, 'price', 0);
+                          } else {
+                            const numValue = parseFloat(value);
+                            if (!isNaN(numValue)) {
+                              updateMedication(index, 'price', numValue);
+                            }
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="0.00"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">จำนวนที่จ่าย</label>
+                      <input
+                        type="number"
+                        value={medication.dispensedQuantity}
+                        onChange={(e) => updateMedication(index, 'dispensedQuantity', parseInt(e.target.value) || 1)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        min="1"
+                      />
                     </div>
                   </div>
                   

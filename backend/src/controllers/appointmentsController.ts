@@ -8,6 +8,161 @@ import { v4 as uuidv4 } from 'uuid';
  */
 
 /**
+ * Get all appointments
+ * GET /api/medical/appointments
+ */
+export const getAllAppointments = async (req: Request, res: Response) => {
+  try {
+    const { page = 1, limit = 10, status, startDate, endDate, type, patientId, doctorId } = req.query;
+    const user = (req as any).user;
+
+    const offset = (Number(page) - 1) * Number(limit);
+
+    // Build query conditions
+    let whereClause = 'WHERE 1=1';
+    const queryParams: any[] = [];
+    let paramCount = 0;
+
+    if (status) {
+      paramCount++;
+      whereClause += ` AND a.status = $${paramCount}`;
+      queryParams.push(status);
+    }
+
+    if (startDate) {
+      paramCount++;
+      whereClause += ` AND a.appointment_date >= $${paramCount}`;
+      queryParams.push(startDate);
+    }
+
+    if (endDate) {
+      paramCount++;
+      whereClause += ` AND a.appointment_date <= $${paramCount}`;
+      queryParams.push(endDate);
+    }
+
+    if (type) {
+      paramCount++;
+      whereClause += ` AND a.appointment_type = $${paramCount}`;
+      queryParams.push(type);
+    }
+
+    if (patientId) {
+      paramCount++;
+      whereClause += ` AND a.patient_id = $${paramCount}`;
+      queryParams.push(patientId);
+    }
+
+    if (doctorId) {
+      paramCount++;
+      whereClause += ` AND a.physician_id = $${paramCount}`;
+      queryParams.push(doctorId);
+    }
+
+    // Get appointments with pagination
+    const appointmentsQuery = `
+      SELECT 
+        a.id,
+        a.title,
+        a.description,
+        a.appointment_type,
+        a.status,
+        a.priority,
+        a.appointment_date,
+        a.appointment_time,
+        a.duration_minutes,
+        a.location,
+        a.notes,
+        a.preparations,
+        a.follow_up_required,
+        a.follow_up_notes,
+        a.reminder_sent,
+        a.reminder_sent_at,
+        a.can_reschedule,
+        a.can_cancel,
+        a.created_at,
+        a.updated_at,
+        u.first_name as doctor_first_name,
+        u.last_name as doctor_last_name,
+        u.phone as doctor_phone,
+        u.email as doctor_email
+      FROM appointments a
+      LEFT JOIN users u ON a.physician_id = u.id
+      ${whereClause}
+      ORDER BY a.appointment_date DESC, a.appointment_time DESC
+      LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
+    `;
+
+    queryParams.push(Number(limit), offset);
+
+    const appointmentsResult = await databaseManager.query(appointmentsQuery, queryParams);
+    const appointments = appointmentsResult.rows;
+
+    // Get total count for pagination
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM appointments a
+      LEFT JOIN users u ON a.physician_id = u.id
+      ${whereClause}
+    `;
+    const countResult = await databaseManager.query(countQuery, queryParams.slice(0, -2));
+    const total = parseInt(countResult.rows[0].total);
+
+    // Format appointments data
+    const formattedAppointments = appointments.map(appointment => ({
+      id: appointment.id,
+      title: appointment.title,
+      description: appointment.description,
+      appointmentType: appointment.appointment_type,
+      status: appointment.status,
+      priority: appointment.priority,
+      appointmentDate: appointment.appointment_date,
+      appointmentTime: appointment.appointment_time,
+      durationMinutes: appointment.duration_minutes,
+      location: appointment.location,
+      notes: appointment.notes,
+      preparations: appointment.preparations,
+      followUpRequired: appointment.follow_up_required,
+      followUpNotes: appointment.follow_up_notes,
+      reminderSent: appointment.reminder_sent,
+      reminderSentAt: appointment.reminder_sent_at,
+      canReschedule: appointment.can_reschedule,
+      canCancel: appointment.can_cancel,
+      createdAt: appointment.created_at,
+      updatedAt: appointment.updated_at,
+      doctor: appointment.doctor_first_name ? {
+        name: `${appointment.doctor_first_name} ${appointment.doctor_last_name}`,
+        phone: appointment.doctor_phone,
+        email: appointment.doctor_email
+      } : null
+    }));
+
+    return res.status(200).json({
+      data: formattedAppointments,
+      meta: {
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total,
+          totalPages: Math.ceil(total / Number(limit))
+        }
+      },
+      error: null,
+      statusCode: 200
+    });
+
+  } catch (error) {
+    console.error('Error getting all appointments:', error);
+    return res.status(500).json({
+      data: null,
+      meta: null,
+      error: { message: 'Failed to get appointments' },
+      statusCode: 500
+    });
+  }
+};
+
+/**
  * Get appointments for a patient
  * GET /api/patients/{id}/appointments
  */
@@ -276,6 +431,29 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
     // Create appointment
     const appointmentId = uuidv4();
 
+    // Format location as JSON if it's a string
+    const locationData = typeof location === 'string' 
+      ? JSON.stringify({ name: location, type: 'room' })
+      : location ? JSON.stringify(location) : JSON.stringify({ name: 'ห้องตรวจ', type: 'room' });
+
+    // Format preparations as array if it's a string
+    const preparationsData = typeof preparations === 'string' 
+      ? [preparations]
+      : Array.isArray(preparations) ? preparations : [];
+
+    // Map Thai appointment_type to English values for database constraint
+    const appointmentTypeMap: { [key: string]: string } = {
+      'ตรวจสุขภาพ': 'consultation',
+      'ตรวจติดตาม': 'follow_up',
+      'ตรวจรักษา': 'procedure',
+      'ตรวจเลือด': 'test',
+      'ฉุกเฉิน': 'emergency',
+      'ปรึกษา': 'consultation',
+      'นัดหมาย': 'consultation'
+    };
+
+    const mappedAppointmentType = appointmentTypeMap[appointment_type] || 'consultation';
+
     await databaseManager.query(`
       INSERT INTO appointments (
         id, patient_id, physician_id, title, description, appointment_type,
@@ -285,9 +463,9 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
     `, [
-      appointmentId, patientId, physician_id, title, description, appointment_type,
+      appointmentId, patientId, physician_id, title, description, mappedAppointmentType,
       'scheduled', priority, appointment_date, appointment_time, duration_minutes,
-      location, notes, preparations, follow_up_required, follow_up_notes,
+      locationData, notes, preparationsData, follow_up_required, follow_up_notes,
       can_reschedule, can_cancel, userId
     ]);
 

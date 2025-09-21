@@ -81,8 +81,8 @@ export const createHistoryTaking = asyncHandler(async (req: Request, res: Respon
     const client = await databaseManager.getClient();
     
     // Check if patient exists
-    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM users WHERE id = $1 AND role = $2';
-    const patientResult = await client.query(patientQuery, [patientId, 'patient']);
+    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM patients WHERE id = $1';
+    const patientResult = await client.query(patientQuery, [patientId]);
     
     if (patientResult.rows.length === 0) {
       return res.status(404).json({
@@ -106,22 +106,20 @@ export const createHistoryTaking = asyncHandler(async (req: Request, res: Respon
         record_type,
         chief_complaint,
         present_illness,
-        past_medical_history,
-        surgical_history,
-        drug_allergies,
-        current_medications,
+        past_history,
         family_history,
         social_history,
         pregnancy_history,
         dietary_history,
         lifestyle_factors,
         review_of_systems,
+        surgical_history,
+        drug_allergies,
+        current_medications,
         notes,
         recorded_by,
-        recorded_time,
-        created_at,
-        updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
+        recorded_time
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       RETURNING *
     `;
 
@@ -132,19 +130,40 @@ export const createHistoryTaking = asyncHandler(async (req: Request, res: Respon
       chiefComplaint,
       presentIllness,
       pastMedicalHistory || null,
-      surgicalHistory || null,
-      drugAllergies || null,
-      currentMedications || null,
       familyHistory || null,
       socialHistory || null,
       pregnancyHistory || null,
       dietaryHistory || null,
       lifestyleFactors || null,
       reviewOfSystems || null,
+      surgicalHistory || null,
+      drugAllergies || null,
+      currentMedications || null,
       notes || null,
       recordedBy,
       recordedTime || new Date().toISOString()
     ];
+
+    // Log all received data for debugging
+    logger.info('History Taking Data Received:', {
+      patientId,
+      visitId,
+      chiefComplaint,
+      presentIllness,
+      pastMedicalHistory,
+      surgicalHistory,
+      drugAllergies,
+      currentMedications,
+      familyHistory,
+      socialHistory,
+      pregnancyHistory,
+      dietaryHistory,
+      lifestyleFactors,
+      reviewOfSystems,
+      notes,
+      recordedBy,
+      recordedTime
+    });
 
     const result = await client.query(insertQuery, values);
     const historyRecord = result.rows[0];
@@ -215,9 +234,33 @@ export const getHistoryTakingByPatient = asyncHandler(async (req: Request, res: 
     const client = await databaseManager.getClient();
     
     const query = `
-      SELECT mr.*, u.thai_name, u.national_id, u.hospital_number
+      SELECT 
+        mr.id,
+        mr.patient_id,
+        mr.visit_id,
+        mr.record_type,
+        mr.chief_complaint,
+        mr.present_illness,
+        mr.past_history,
+        mr.family_history,
+        mr.social_history,
+        mr.pregnancy_history,
+        mr.dietary_history,
+        mr.lifestyle_factors,
+        mr.review_of_systems,
+        mr.surgical_history,
+        mr.drug_allergies,
+        mr.current_medications,
+        mr.notes,
+        mr.recorded_by,
+        mr.recorded_time,
+        mr.created_at,
+        mr.updated_at,
+        p.thai_name, 
+        p.national_id, 
+        p.hospital_number
       FROM medical_records mr
-      JOIN users u ON mr.patient_id = u.id
+      JOIN patients p ON mr.patient_id = p.id
       WHERE mr.patient_id = $1 AND mr.record_type = 'history_taking'
       ORDER BY mr.recorded_time DESC
     `;
@@ -231,7 +274,7 @@ export const getHistoryTakingByPatient = asyncHandler(async (req: Request, res: 
       recordType: record.record_type,
       chiefComplaint: record.chief_complaint,
       presentIllness: record.present_illness,
-      pastMedicalHistory: record.past_medical_history,
+      pastMedicalHistory: record.past_history,
       surgicalHistory: record.surgical_history,
       drugAllergies: record.drug_allergies,
       currentMedications: record.current_medications,
@@ -286,9 +329,33 @@ export const getHistoryTakingById = asyncHandler(async (req: Request, res: Respo
     const client = await databaseManager.getClient();
     
     const query = `
-      SELECT mr.*, u.thai_name, u.national_id, u.hospital_number
+      SELECT 
+        mr.id,
+        mr.patient_id,
+        mr.visit_id,
+        mr.record_type,
+        mr.chief_complaint,
+        mr.present_illness,
+        mr.past_history,
+        mr.family_history,
+        mr.social_history,
+        mr.pregnancy_history,
+        mr.dietary_history,
+        mr.lifestyle_factors,
+        mr.review_of_systems,
+        mr.surgical_history,
+        mr.drug_allergies,
+        mr.current_medications,
+        mr.notes,
+        mr.recorded_by,
+        mr.recorded_time,
+        mr.created_at,
+        mr.updated_at,
+        p.thai_name, 
+        p.national_id, 
+        p.hospital_number
       FROM medical_records mr
-      JOIN users u ON mr.patient_id = u.id
+      JOIN patients p ON mr.patient_id = p.id
       WHERE mr.id = $1 AND mr.record_type = 'history_taking'
     `;
 
@@ -318,7 +385,7 @@ export const getHistoryTakingById = asyncHandler(async (req: Request, res: Respo
         recordType: record.record_type,
         chiefComplaint: record.chief_complaint,
         presentIllness: record.present_illness,
-        pastMedicalHistory: record.past_medical_history,
+        pastMedicalHistory: record.past_history,
         surgicalHistory: record.surgical_history,
         drugAllergies: record.drug_allergies,
         currentMedications: record.current_medications,

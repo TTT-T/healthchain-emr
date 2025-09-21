@@ -21,7 +21,7 @@ interface TestResult {
 export default function LabResult() {
   const { isAuthenticated, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchType, setSearchType] = useState<"hn" | "queue">("queue");
+  const [searchType, setSearchType] = useState<"hn" | "queue">("hn");
   const [isSearching, setIsSearching] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<MedicalPatient | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,6 +41,47 @@ export default function LabResult() {
     }
     
     return age;
+  };
+
+  const calculateAgeFromFields = (patient: MedicalPatient): number => {
+    logger.info("Calculating age for patient:", {
+      birth_date: patient.birth_date,
+      birth_year: patient.birth_year,
+      birth_month: patient.birth_month,
+      birth_day: patient.birth_day
+    });
+    
+    // Try to calculate age from separate birth fields first
+    if (patient.birth_year && patient.birth_month && patient.birth_day) {
+      const today = new Date();
+      const birthYear = patient.birth_year > 2500 ? patient.birth_year - 543 : patient.birth_year;
+      const birth = new Date(birthYear, patient.birth_month - 1, patient.birth_day);
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      
+      logger.info("Calculated age from separate fields:", {
+        age,
+        birthYear,
+        birthMonth: patient.birth_month,
+        birthDay: patient.birth_day
+      });
+      
+      return age;
+    }
+    
+    // Fallback to birth_date
+    if (patient.birth_date) {
+      const age = calculateAge(patient.birth_date);
+      logger.info("Calculated age from birth_date:", { age, birth_date: patient.birth_date });
+      return age;
+    }
+    
+    logger.info("No birth data available, returning 0");
+    return 0;
   };
 
   const [labResultData, setLabResultData] = useState({
@@ -65,6 +106,7 @@ export default function LabResult() {
       const response = await PatientService.searchPatients(searchQuery, searchType);
       
       if (response.statusCode === 200 && response.data && response.data.length > 0) {
+        logger.info("Patient found:", response.data[0]);
         setSelectedPatient(response.data[0]);
         setError(null);
       } else {
@@ -146,7 +188,7 @@ export default function LabResult() {
     // Validate data
     const validation = LabResultService.validateLabResultData({
       ...labResultData,
-      testedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่แลบ'
+      testedBy: user?.id || 'system'
     });
     
     if (!validation.isValid) {
@@ -161,7 +203,7 @@ export default function LabResult() {
       const formattedData = LabResultService.formatLabResultDataForAPI(
         labResultData,
         selectedPatient.id,
-        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่แลบ'
+        user?.id || 'system'
       );
       
       const response = await LabResultService.createLabResult(formattedData);
@@ -195,9 +237,9 @@ export default function LabResult() {
   const sendPatientNotification = async (patient: MedicalPatient, labResultRecord: any) => {
     try {
       const notificationData = {
-        patientHn: patient.hn || patient.hospitalNumber || '',
-        patientNationalId: patient.nationalId || '',
-        patientName: patient.thaiName || `${patient.firstName} ${patient.lastName}`,
+        patientHn: patient.hospital_number || patient.hn || '',
+        patientNationalId: patient.national_id || '',
+        patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
         patientPhone: patient.phone || '',
         patientEmail: patient.email || '',
         recordType: 'lab_result',
@@ -205,7 +247,7 @@ export default function LabResult() {
         chiefComplaint: `ผลแลบ: ${labResultRecord.testName}`,
         recordedBy: labResultRecord.testedBy,
         recordedTime: labResultRecord.testedTime,
-        message: `มีผลแลบใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${labResultRecord.testedBy}`
+        message: `มีผลแลบใหม่สำหรับคุณ ${patient.thai_name || `${patient.first_name} ${patient.last_name}`} โดย ${labResultRecord.testedBy}`
       };
 
       await NotificationService.notifyPatientRecordUpdate(notificationData);
@@ -239,16 +281,16 @@ export default function LabResult() {
         'lab_result',
         labData,
         {
-          patientHn: patient.hn || '',
-          patientNationalId: patient.nationalId || '',
-          patientName: patient.thaiName || ''
+          patientHn: patient.hospital_number || patient.hn || '',
+          patientNationalId: patient.national_id || '',
+          patientName: patient.thai_name || ''
         },
         user?.id || '',
-        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่แลบ'
+        user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'เจ้าหน้าที่แลบ'
       );
       
       logger.info('Patient document created successfully for lab result', { 
-        patientHn: patient.hn,
+        patientHn: patient.hospital_number || patient.hn,
         recordType: 'lab_result'
       });
     } catch (error) {
@@ -259,7 +301,7 @@ export default function LabResult() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-6">
             <FileText className="h-8 w-8 text-purple-600" />
@@ -272,11 +314,36 @@ export default function LabResult() {
           {/* Search Patient */}
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">ค้นหาผู้ป่วย</h3>
+            
+            {/* Search Type Selection */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setSearchType("hn")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  searchType === "hn"
+                    ? "bg-purple-600 text-white"
+                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                ค้นหาด้วย HN
+              </button>
+              <button
+                onClick={() => setSearchType("queue")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  searchType === "queue"
+                    ? "bg-purple-600 text-white"
+                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                ค้นหาด้วยคิว
+              </button>
+            </div>
+            
             <div className="flex gap-4 mb-4">
               <div className="flex-1">
                 <input
                   type="text"
-                  placeholder="กรอก HN หรือหมายเลขคิว"
+                  placeholder={searchType === "hn" ? "กรอก HN เช่น HN250001" : "กรอกหมายเลขคิว เช่น V2025090001"}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -299,13 +366,13 @@ export default function LabResult() {
               <h3 className="text-lg font-semibold text-purple-800 mb-2">ข้อมูลผู้ป่วย</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospitalNumber}
+                  <span className="font-medium">HN:</span> {selectedPatient.hospital_number || selectedPatient.hn}
                 </div>
                 <div>
-                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thaiName || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thai_name || `${selectedPatient.first_name} ${selectedPatient.last_name}`}
                 </div>
                 <div>
-                  <span className="font-medium">อายุ:</span> {selectedPatient.birthDate ? calculateAge(selectedPatient.birthDate) : 'ไม่ระบุ'}
+                  <span className="font-medium">อายุ:</span> {calculateAgeFromFields(selectedPatient) > 0 ? `${calculateAgeFromFields(selectedPatient)} ปี` : 'ไม่ระบุ'}
                 </div>
                 <div>
                   <span className="font-medium">เพศ:</span> {selectedPatient.gender || 'ไม่ระบุ'}

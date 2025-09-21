@@ -921,7 +921,7 @@ export default function RegisterPatient() {
         </div>
       )}
       
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-center justify-between">

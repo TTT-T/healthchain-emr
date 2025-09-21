@@ -7,42 +7,33 @@ import { CheckCircle, AlertCircle, FileText, Calendar, User, Download, TrendingU
 import { logger } from '@/lib/logger';
 
 interface LabResult {
-  lab_order: {
-    id: string;
-    order_number: string;
-    order_date: string;
-    order_time: string;
-    test_category: string;
-    test_name: string;
-    test_code: string;
-    clinical_indication?: string;
-    specimen_type?: string;
-    priority: string;
+  id: string;
+  test_type: string;
+  test_name: string;
+  test_results: Array<{
+    parameter: string;
+    value: string;
+    unit: string;
+    normalRange: string;
     status: string;
-    requested_completion?: string;
-    ordered_by: {
-      name: string;
-    };
-  };
-  results: Array<{
-    id: string;
-    result_value: string;
-    reference_range?: string;
-    status?: string;
-    units?: string;
-    abnormal_flag?: string;
-    validated_by?: {
-      name: string;
-    } | null;
-    validated_at?: string;
-    result_date?: string;
-    result_time?: string;
-    reported_at?: string;
-    method?: string;
-    instrument?: string;
-    technician_notes?: string;
-    pathologist_notes?: string;
+    notes: string;
   }>;
+  overall_result: string;
+  interpretation: string;
+  recommendations: string;
+  attachments: any[];
+  notes: string;
+  result_date: string;
+  tested_by: {
+    name: string;
+  };
+  visit: {
+    number: string;
+    date: string;
+    diagnosis: string;
+  };
+  created_at: string;
+  updated_at: string;
 }
 
 export default function LabResults() {
@@ -155,11 +146,11 @@ export default function LabResults() {
   };
 
   const filteredResults = results.filter(result => {
-    const matchesSearch = result.lab_order.test_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         result.lab_order.ordered_by.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (result.lab_order.clinical_indication && result.lab_order.clinical_indication.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCategory = selectedCategory === "all" || result.lab_order.test_category === selectedCategory;
-    const matchesStatus = selectedStatus === "all" || result.lab_order.status === selectedStatus;
+    const matchesSearch = result.test_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         result.tested_by.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (result.interpretation && result.interpretation.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesCategory = selectedCategory === "all" || result.test_type === selectedCategory;
+    const matchesStatus = selectedStatus === "all" || result.overall_result === selectedStatus;
     
     return matchesSearch && matchesCategory && matchesStatus;
   });
@@ -243,7 +234,7 @@ export default function LabResults() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">เสร็จสิ้น</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {results.filter(r => r.lab_order.status === 'completed').length}
+                  {results.filter(r => r.overall_result === 'normal' || r.overall_result === 'abnormal').length}
                 </p>
               </div>
             </div>
@@ -255,7 +246,7 @@ export default function LabResults() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">รอผล</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {results.filter(r => r.lab_order.status === 'pending' || r.lab_order.status === 'processing').length}
+                  {results.filter(r => r.overall_result === 'pending' || r.overall_result === 'processing').length}
                 </p>
               </div>
             </div>
@@ -267,7 +258,7 @@ export default function LabResults() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">ผิดปกติ</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {results.filter(r => r.lab_order.status === 'completed' && r.results.some(v => v.abnormal_flag && v.abnormal_flag !== 'normal')).length}
+                  {results.filter(r => r.overall_result === 'abnormal' && r.test_results.some(v => v.status === 'abnormal')).length}
                 </p>
               </div>
             </div>
@@ -295,13 +286,13 @@ export default function LabResults() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">ทั้งหมด</option>
-                <option value="blood">ตรวจเลือด</option>
-                <option value="urine">ตรวจปัสสาวะ</option>
-                <option value="chemistry">เคมีคลินิก</option>
-                <option value="microbiology">จุลชีววิทยา</option>
-                <option value="pathology">พยาธิวิทยา</option>
-                <option value="radiology">รังสีวิทยา</option>
-                <option value="other">อื่นๆ</option>
+                <option value="เลือด">ตรวจเลือด</option>
+                <option value="ปัสสาวะ">ตรวจปัสสาวะ</option>
+                <option value="เคมีคลินิก">เคมีคลินิก</option>
+                <option value="จุลชีววิทยา">จุลชีววิทยา</option>
+                <option value="พยาธิวิทยา">พยาธิวิทยา</option>
+                <option value="รังสีวิทยา">รังสีวิทยา</option>
+                <option value="อื่นๆ">อื่นๆ</option>
               </select>
             </div>
             <div>
@@ -312,11 +303,10 @@ export default function LabResults() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">ทั้งหมด</option>
-                <option value="pending">รอตรวจ</option>
-                <option value="collected">เก็บตัวอย่างแล้ว</option>
+                <option value="normal">ปกติ</option>
+                <option value="abnormal">ผิดปกติ</option>
+                <option value="pending">รอผล</option>
                 <option value="processing">กำลังตรวจ</option>
-                <option value="completed">เสร็จสิ้น</option>
-                <option value="cancelled">ยกเลิก</option>
               </select>
             </div>
           </div>
@@ -343,33 +333,33 @@ export default function LabResults() {
           ) : (
             filteredResults.map((result) => (
               <div
-                key={result.lab_order.id}
+                key={result.id}
                 className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => handleResultClick(result)}
               >
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{result.lab_order.test_name}</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{result.test_name}</h3>
                     <div className="flex items-center gap-4 text-sm text-gray-600">
                       <div className="flex items-center gap-1">
                         <FileText className="h-4 w-4" />
-                        <span>{getCategoryText(result.lab_order.test_category)}</span>
+                        <span>{result.test_type}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
-                        <span>{new Date(result.lab_order.order_date).toLocaleDateString('th-TH')}</span>
+                        <span>{new Date(result.result_date).toLocaleDateString('th-TH')}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <User className="h-4 w-4" />
-                        <span>{result.lab_order.ordered_by.name}</span>
+                        <span>{result.tested_by.name}</span>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(result.lab_order.status)}`}>
-                      {getStatusText(result.lab_order.status)}
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(result.overall_result)}`}>
+                      {getStatusText(result.overall_result)}
                     </span>
-                    {result.lab_order.status === 'completed' && (
+                    {(result.overall_result === 'normal' || result.overall_result === 'abnormal') && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -383,19 +373,19 @@ export default function LabResults() {
                   </div>
                 </div>
                 
-                {result.lab_order.status === 'completed' && result.results.length > 0 && (
+                {(result.overall_result === 'normal' || result.overall_result === 'abnormal') && result.test_results.length > 0 && (
                   <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                     <h4 className="text-sm font-medium text-gray-700 mb-2">ผลการตรวจ (แสดงบางส่วน)</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                      {result.results.slice(0, 3).map((value, index) => (
+                      {result.test_results.slice(0, 3).map((value, index) => (
                         <div key={index} className="text-sm">
-                          <span className="font-medium">ผลการตรวจ:</span>
-                          <span className={`ml-1 ${getValueStatusColor(value.abnormal_flag || 'normal')}`}>
-                            {value.result_value} {value.units || ''}
+                          <span className="font-medium">{value.parameter}:</span>
+                          <span className={`ml-1 ${getValueStatusColor(value.status || 'normal')}`}>
+                            {value.value} {value.unit || ''}
                           </span>
-                          {value.abnormal_flag && value.abnormal_flag !== 'normal' && (
+                          {value.status && value.status !== 'normal' && (
                             <span className="ml-1">
-                              {getValueStatusIcon(value.abnormal_flag)}
+                              {getValueStatusIcon(value.status)}
                             </span>
                           )}
                         </div>
@@ -410,14 +400,18 @@ export default function LabResults() {
 
         {/* Modal */}
         {isModalOpen && selectedResult && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">{selectedResult.lab_order.test_name}</h2>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-300 shadow-lg">
+              {/* Header Bar */}
+              <div className="bg-gray-50 border-b border-gray-200 px-6 py-4 rounded-t-lg">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-6 w-6 text-gray-600" />
+                    <h2 className="text-xl font-bold text-gray-900">{selectedResult.test_name}</h2>
+                  </div>
                   <button
                     onClick={() => setIsModalOpen(false)}
-                    className="text-gray-500 hover:text-gray-700"
+                    className="text-gray-500 hover:text-gray-700 transition-colors"
                   >
                     <span className="sr-only">ปิด</span>
                     <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -425,75 +419,88 @@ export default function LabResults() {
                     </svg>
                   </button>
                 </div>
+              </div>
+              
+              <div className="p-6">
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                   <div className="flex items-center gap-2">
                     <FileText className="h-5 w-5 text-gray-500" />
                     <span className="font-medium">ประเภท:</span>
-                    <span>{getCategoryText(selectedResult.lab_order.test_category)}</span>
+                    <span>{selectedResult.test_type}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-gray-500" />
-                    <span className="font-medium">วันที่สั่งตรวจ:</span>
-                    <span>{new Date(selectedResult.lab_order.order_date).toLocaleDateString('th-TH')}</span>
+                    <span className="font-medium">วันที่ตรวจ:</span>
+                    <span>{new Date(selectedResult.result_date).toLocaleDateString('th-TH')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-5 w-5 text-gray-500" />
-                    <span className="font-medium">เลขที่สั่งตรวจ:</span>
-                    <span>{selectedResult.lab_order.order_number}</span>
+                    <span className="font-medium">สถานะ:</span>
+                    <span>{getStatusText(selectedResult.overall_result)}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5 text-gray-500" />
-                    <span className="font-medium">ความเร่งด่วน:</span>
-                    <span>{selectedResult.lab_order.priority}</span>
+                    <User className="h-5 w-5 text-gray-500" />
+                    <span className="font-medium">แพทย์ผู้ตรวจ:</span>
+                    <span>{selectedResult.tested_by.name}</span>
                   </div>
                 </div>
 
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-2">แพทย์ผู้สั่งตรวจ</h3>
+                  <h3 className="text-lg font-semibold mb-2">ข้อมูลการตรวจ</h3>
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="font-medium">{selectedResult.lab_order.ordered_by.name}</p>
-                    {selectedResult.lab_order.clinical_indication && (
-                      <p className="text-gray-600">เหตุผลทางคลินิก: {selectedResult.lab_order.clinical_indication}</p>
+                    <p className="font-medium">การวินิจฉัย: {selectedResult.interpretation || 'ไม่ระบุ'}</p>
+                    {selectedResult.recommendations && (
+                      <p className="text-gray-600 mt-2">คำแนะนำ: {selectedResult.recommendations}</p>
+                    )}
+                    {selectedResult.notes && (
+                      <p className="text-gray-600 mt-2">หมายเหตุ: {selectedResult.notes}</p>
                     )}
                   </div>
                 </div>
 
-                {selectedResult.results.length > 0 && (
+                {selectedResult.test_results.length > 0 && (
                   <div className="mb-6">
-                    <h3 className="text-lg font-semibold mb-4">ผลการตรวจ</h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse border border-gray-300">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-blue-600" />
+                      ผลการตรวจ
+                    </h3>
+                    <div className="overflow-x-auto border border-gray-300 rounded-lg">
+                      <table className="w-full border-collapse">
                         <thead>
-                          <tr className="bg-gray-50">
-                            <th className="border border-gray-300 px-4 py-2 text-left">ผลการตรวจ</th>
-                            <th className="border border-gray-300 px-4 py-2 text-left">หน่วย</th>
-                            <th className="border border-gray-300 px-4 py-2 text-left">ค่าปกติ</th>
-                            <th className="border border-gray-300 px-4 py-2 text-left">สถานะ</th>
-                            <th className="border border-gray-300 px-4 py-2 text-left">วันที่ผล</th>
+                          <tr className="bg-gray-50 border-b border-gray-300">
+                            <th className="px-4 py-3 text-left font-semibold text-gray-900">พารามิเตอร์</th>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-900">ค่า</th>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-900">หน่วย</th>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-900">ค่าปกติ</th>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-900">สถานะ</th>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-900">หมายเหตุ</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {selectedResult.results.map((value, index) => (
-                            <tr key={index} className="hover:bg-gray-50">
-                              <td className={`border border-gray-300 px-4 py-2 font-medium ${getValueStatusColor(value.abnormal_flag || 'normal')}`}>
-                                {value.result_value}
+                          {selectedResult.test_results.map((value, index) => (
+                            <tr key={index} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                              <td className="px-4 py-3 font-medium border-b border-gray-200">
+                                {value.parameter}
                               </td>
-                              <td className="border border-gray-300 px-4 py-2">{value.units || '-'}</td>
-                              <td className="border border-gray-300 px-4 py-2">{value.reference_range || '-'}</td>
-                              <td className="border border-gray-300 px-4 py-2">
+                              <td className={`px-4 py-3 font-medium border-b border-gray-200 ${getValueStatusColor(value.status || 'normal')}`}>
+                                {value.value}
+                              </td>
+                              <td className="px-4 py-3 border-b border-gray-200">{value.unit || '-'}</td>
+                              <td className="px-4 py-3 border-b border-gray-200">{value.normalRange || '-'}</td>
+                              <td className="px-4 py-3 border-b border-gray-200">
                                 <div className="flex items-center gap-2">
-                                  {getValueStatusIcon(value.abnormal_flag || 'normal')}
-                                  <span className={getValueStatusColor(value.abnormal_flag || 'normal')}>
-                                    {value.abnormal_flag === 'high' ? 'สูง' : 
-                                     value.abnormal_flag === 'low' ? 'ต่ำ' : 
-                                     value.abnormal_flag === 'critical' ? 'วิกฤต' : 'ปกติ'}
+                                  {getValueStatusIcon(value.status || 'normal')}
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    value.status === 'abnormal' 
+                                      ? 'bg-red-100 text-red-800' 
+                                      : 'bg-green-100 text-green-800'
+                                  }`}>
+                                    {value.status === 'abnormal' ? 'ผิดปกติ' : 'ปกติ'}
                                   </span>
                                 </div>
                               </td>
-                              <td className="border border-gray-300 px-4 py-2">
-                                {value.result_date ? new Date(value.result_date).toLocaleDateString('th-TH') : '-'}
-                              </td>
+                              <td className="px-4 py-3 border-b border-gray-200">{value.notes || '-'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -508,34 +515,36 @@ export default function LabResults() {
                   <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                     <div>
                       <span className="font-medium">รหัสการตรวจ:</span>
-                      <span className="ml-2">{selectedResult.lab_order.test_code}</span>
+                      <span className="ml-2">{selectedResult.id}</span>
                     </div>
-                    {selectedResult.lab_order.specimen_type && (
-                      <div>
-                        <span className="font-medium">ชนิดตัวอย่าง:</span>
-                        <span className="ml-2">{selectedResult.lab_order.specimen_type}</span>
-                      </div>
-                    )}
+                    <div>
+                      <span className="font-medium">วันที่สร้าง:</span>
+                      <span className="ml-2">{new Date(selectedResult.created_at).toLocaleDateString('th-TH')}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">วันที่อัปเดต:</span>
+                      <span className="ml-2">{new Date(selectedResult.updated_at).toLocaleDateString('th-TH')}</span>
+                    </div>
                     <div>
                       <span className="font-medium">สถานะ:</span>
-                      <span className={`ml-2 px-2 py-1 rounded text-xs ${getStatusColor(selectedResult.lab_order.status)}`}>
-                        {getStatusText(selectedResult.lab_order.status)}
+                      <span className={`ml-2 px-2 py-1 rounded text-xs ${getStatusColor(selectedResult.overall_result)}`}>
+                        {getStatusText(selectedResult.overall_result)}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
                   <button
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    className="px-6 py-2 text-gray-600 border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors font-medium"
                   >
                     ปิด
                   </button>
-                  {selectedResult.lab_order.status === 'completed' && (
+                  {(selectedResult.overall_result === 'normal' || selectedResult.overall_result === 'abnormal') && (
                     <button
                       onClick={() => handleDownload(selectedResult)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors font-medium shadow-md hover:shadow-lg"
                     >
                       <Download className="h-4 w-4" />
                       ดาวน์โหลด

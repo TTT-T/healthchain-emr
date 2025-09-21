@@ -1392,12 +1392,62 @@ class APIClient {
   }
 
   /**
-   * Get patient appointments
+   * Get all visits
    */
-  async getPatientAppointments(patientId: string): Promise<APIResponse<Appointment[]>> {
+  async getVisits(params?: { page?: number; limit?: number; [key: string]: any }): Promise<APIResponse<MedicalVisit[]>> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const url = `/medical/visits${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return this.request<MedicalVisit[]>({
+      method: 'GET',
+      url
+    });
+  }
+
+  /**
+   * Get all appointments
+   */
+  async getAppointments(params?: { page?: number; limit?: number; [key: string]: any }): Promise<APIResponse<Appointment[]>> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const url = `/medical/appointments${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return this.request<Appointment[]>({
       method: 'GET',
-      url: `/patients/${patientId}/appointments`
+      url
+    });
+  }
+
+  /**
+   * Get patient appointments
+   */
+  async getPatientAppointments(patientId: string, params?: { page?: number; limit?: number; [key: string]: any }): Promise<APIResponse<Appointment[]>> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const url = `/medical/patients/${patientId}/appointments${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return this.request<Appointment[]>({
+      method: 'GET',
+      url
     });
   }
 
@@ -1475,6 +1525,16 @@ class APIClient {
     return this.request<MedicalVisit>({
       method: 'GET',
       url: `/medical/visits/${id}`
+    });
+  }
+
+  /**
+   * Get visits by patient ID
+   */
+  async getVisitsByPatient(patientId: string): Promise<APIResponse<MedicalVisit[]>> {
+    return this.request<MedicalVisit[]>({
+      method: 'GET',
+      url: `/medical/visits/patient/${patientId}`
     });
   }
 
@@ -1739,7 +1799,7 @@ class APIClient {
   async getPatientDocuments(patientId: string): Promise<APIResponse<MedicalDocument[]>> {
     return this.request<MedicalDocument[]>({
       method: 'GET',
-      url: `/medical/patients/${patientId}/documents`
+      url: `/medical/patients/${patientId}/medical-documents/patient`
     });
   }
 

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { databaseManager } from '../database/connection';
 import { asyncHandler } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
+import { NotificationService } from '../services/notificationService';
 
 interface CreateDoctorVisitRequest {
   patientId: string;
@@ -49,7 +50,7 @@ interface CreateDoctorVisitRequest {
     notes?: string;
   };
   notes?: string;
-  examinedBy: string;
+  examinedBy: string; // This should be a UUID
   examinedTime?: string;
 }
 
@@ -97,12 +98,26 @@ export const createDoctorVisit = asyncHandler(async (req: Request, res: Response
     });
   }
 
+  // Validate UUID format for examinedBy
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(examinedBy)) {
+    return res.status(400).json({
+      statusCode: 400,
+      message: 'Invalid examinedBy format. Must be a valid UUID.',
+      data: null,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'examinedBy must be a valid UUID'
+      }
+    });
+  }
+
   try {
     const client = await databaseManager.getClient();
     
     // Check if patient exists
-    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM users WHERE id = $1 AND role = $2';
-    const patientResult = await client.query(patientQuery, [patientId, 'patient']);
+    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM patients WHERE id = $1';
+    const patientResult = await client.query(patientQuery, [patientId]);
     
     if (patientResult.rows.length === 0) {
       return res.status(404).json({
@@ -126,7 +141,7 @@ export const createDoctorVisit = asyncHandler(async (req: Request, res: Response
         record_type,
         chief_complaint,
         present_illness,
-        physical_examination,
+        physical_exam,
         diagnosis,
         treatment_plan,
         advice,
@@ -146,9 +161,9 @@ export const createDoctorVisit = asyncHandler(async (req: Request, res: Response
       'doctor_visit',
       chiefComplaint,
       presentIllness,
-      JSON.stringify(physicalExamination),
-      JSON.stringify(diagnosis),
-      JSON.stringify(treatmentPlan),
+      physicalExamination ? JSON.stringify(physicalExamination) : null,
+      diagnosis ? JSON.stringify(diagnosis) : null,
+      treatmentPlan ? JSON.stringify(treatmentPlan) : null,
       advice || null,
       followUp ? JSON.stringify(followUp) : null,
       notes || null,
@@ -165,6 +180,40 @@ export const createDoctorVisit = asyncHandler(async (req: Request, res: Response
       examinedBy
     });
 
+    // Safe JSON parsing with error handling
+    let parsedPhysicalExamination = {};
+    let parsedDiagnosis = {};
+    let parsedTreatmentPlan = {};
+    let parsedFollowUp = null;
+
+    try {
+      parsedPhysicalExamination = visitRecord.physical_exam ? JSON.parse(visitRecord.physical_exam) : {};
+    } catch (parseError) {
+      logger.error('Error parsing physical_exam:', { data: visitRecord.physical_exam, error: parseError });
+      parsedPhysicalExamination = {};
+    }
+
+    try {
+      parsedDiagnosis = visitRecord.diagnosis ? JSON.parse(visitRecord.diagnosis) : {};
+    } catch (parseError) {
+      logger.error('Error parsing diagnosis:', { data: visitRecord.diagnosis, error: parseError });
+      parsedDiagnosis = {};
+    }
+
+    try {
+      parsedTreatmentPlan = visitRecord.treatment_plan ? JSON.parse(visitRecord.treatment_plan) : {};
+    } catch (parseError) {
+      logger.error('Error parsing treatment_plan:', { data: visitRecord.treatment_plan, error: parseError });
+      parsedTreatmentPlan = {};
+    }
+
+    try {
+      parsedFollowUp = visitRecord.follow_up ? JSON.parse(visitRecord.follow_up) : null;
+    } catch (parseError) {
+      logger.error('Error parsing follow_up:', { data: visitRecord.follow_up, error: parseError });
+      parsedFollowUp = null;
+    }
+
     res.status(201).json({
       statusCode: 201,
       message: 'Doctor visit created successfully',
@@ -175,11 +224,11 @@ export const createDoctorVisit = asyncHandler(async (req: Request, res: Response
         recordType: visitRecord.record_type,
         chiefComplaint: visitRecord.chief_complaint,
         presentIllness: visitRecord.present_illness,
-        physicalExamination: JSON.parse(visitRecord.physical_examination || '{}'),
-        diagnosis: JSON.parse(visitRecord.diagnosis || '{}'),
-        treatmentPlan: JSON.parse(visitRecord.treatment_plan || '{}'),
+        physicalExamination: parsedPhysicalExamination,
+        diagnosis: parsedDiagnosis,
+        treatmentPlan: parsedTreatmentPlan,
         advice: visitRecord.advice,
-        followUp: visitRecord.follow_up ? JSON.parse(visitRecord.follow_up) : null,
+        followUp: parsedFollowUp,
         notes: visitRecord.notes,
         examinedBy: visitRecord.recorded_by,
         examinedTime: visitRecord.recorded_time,
@@ -220,38 +269,74 @@ export const getDoctorVisitsByPatient = asyncHandler(async (req: Request, res: R
     const client = await databaseManager.getClient();
     
     const query = `
-      SELECT mr.*, u.thai_name, u.national_id, u.hospital_number
+      SELECT mr.*, p.thai_name, p.national_id, p.hospital_number
       FROM medical_records mr
-      JOIN users u ON mr.patient_id = u.id
+      JOIN patients p ON mr.patient_id = p.id
       WHERE mr.patient_id = $1 AND mr.record_type = 'doctor_visit'
       ORDER BY mr.recorded_time DESC
     `;
 
     const result = await client.query(query, [patientId]);
 
-    const visitRecords = result.rows.map(record => ({
-      id: record.id,
-      patientId: record.patient_id,
-      visitId: record.visit_id,
-      recordType: record.record_type,
-      chiefComplaint: record.chief_complaint,
-      presentIllness: record.present_illness,
-      physicalExamination: JSON.parse(record.physical_examination || '{}'),
-      diagnosis: JSON.parse(record.diagnosis || '{}'),
-      treatmentPlan: JSON.parse(record.treatment_plan || '{}'),
-      advice: record.advice,
-      followUp: record.follow_up ? JSON.parse(record.follow_up) : null,
-      notes: record.notes,
-      examinedBy: record.recorded_by,
-      examinedTime: record.recorded_time,
-      createdAt: record.created_at,
-      updatedAt: record.updated_at,
-      patient: {
-        thaiName: record.thai_name,
-        nationalId: record.national_id,
-        hospitalNumber: record.hospital_number
+    const visitRecords = result.rows.map(record => {
+      // Safe JSON parsing for each record
+      let parsedPhysicalExamination = {};
+      let parsedDiagnosis = {};
+      let parsedTreatmentPlan = {};
+      let parsedFollowUp = null;
+
+      try {
+        parsedPhysicalExamination = record.physical_exam ? JSON.parse(record.physical_exam) : {};
+      } catch (parseError) {
+        logger.error('Error parsing physical_exam in getDoctorVisitsByPatient:', { data: record.physical_exam, error: parseError });
+        parsedPhysicalExamination = {};
       }
-    }));
+
+      try {
+        parsedDiagnosis = record.diagnosis ? JSON.parse(record.diagnosis) : {};
+      } catch (parseError) {
+        logger.error('Error parsing diagnosis in getDoctorVisitsByPatient:', { data: record.diagnosis, error: parseError });
+        parsedDiagnosis = {};
+      }
+
+      try {
+        parsedTreatmentPlan = record.treatment_plan ? JSON.parse(record.treatment_plan) : {};
+      } catch (parseError) {
+        logger.error('Error parsing treatment_plan in getDoctorVisitsByPatient:', { data: record.treatment_plan, error: parseError });
+        parsedTreatmentPlan = {};
+      }
+
+      try {
+        parsedFollowUp = record.follow_up ? JSON.parse(record.follow_up) : null;
+      } catch (parseError) {
+        logger.error('Error parsing follow_up in getDoctorVisitsByPatient:', { data: record.follow_up, error: parseError });
+        parsedFollowUp = null;
+      }
+
+      return {
+        id: record.id,
+        patientId: record.patient_id,
+        visitId: record.visit_id,
+        recordType: record.record_type,
+        chiefComplaint: record.chief_complaint,
+        presentIllness: record.present_illness,
+        physicalExamination: parsedPhysicalExamination,
+        diagnosis: parsedDiagnosis,
+        treatmentPlan: parsedTreatmentPlan,
+        advice: record.advice,
+        followUp: parsedFollowUp,
+        notes: record.notes,
+        examinedBy: record.recorded_by,
+        examinedTime: record.recorded_time,
+        createdAt: record.created_at,
+        updatedAt: record.updated_at,
+        patient: {
+          thaiName: record.thai_name,
+          nationalId: record.national_id,
+          hospitalNumber: record.hospital_number
+        }
+      };
+    });
 
     res.status(200).json({
       statusCode: 200,
@@ -286,9 +371,9 @@ export const getDoctorVisitById = asyncHandler(async (req: Request, res: Respons
     const client = await databaseManager.getClient();
     
     const query = `
-      SELECT mr.*, u.thai_name, u.national_id, u.hospital_number
+      SELECT mr.*, p.thai_name, p.national_id, p.hospital_number
       FROM medical_records mr
-      JOIN users u ON mr.patient_id = u.id
+      JOIN patients p ON mr.patient_id = p.id
       WHERE mr.id = $1 AND mr.record_type = 'doctor_visit'
     `;
 
@@ -308,6 +393,40 @@ export const getDoctorVisitById = asyncHandler(async (req: Request, res: Respons
 
     const record = result.rows[0];
 
+    // Safe JSON parsing
+    let parsedPhysicalExamination = {};
+    let parsedDiagnosis = {};
+    let parsedTreatmentPlan = {};
+    let parsedFollowUp = null;
+
+    try {
+      parsedPhysicalExamination = record.physical_exam ? JSON.parse(record.physical_exam) : {};
+    } catch (parseError) {
+      logger.error('Error parsing physical_exam in getDoctorVisitById:', { data: record.physical_exam, error: parseError });
+      parsedPhysicalExamination = {};
+    }
+
+    try {
+      parsedDiagnosis = record.diagnosis ? JSON.parse(record.diagnosis) : {};
+    } catch (parseError) {
+      logger.error('Error parsing diagnosis in getDoctorVisitById:', { data: record.diagnosis, error: parseError });
+      parsedDiagnosis = {};
+    }
+
+    try {
+      parsedTreatmentPlan = record.treatment_plan ? JSON.parse(record.treatment_plan) : {};
+    } catch (parseError) {
+      logger.error('Error parsing treatment_plan in getDoctorVisitById:', { data: record.treatment_plan, error: parseError });
+      parsedTreatmentPlan = {};
+    }
+
+    try {
+      parsedFollowUp = record.follow_up ? JSON.parse(record.follow_up) : null;
+    } catch (parseError) {
+      logger.error('Error parsing follow_up in getDoctorVisitById:', { data: record.follow_up, error: parseError });
+      parsedFollowUp = null;
+    }
+
     res.status(200).json({
       statusCode: 200,
       message: 'Doctor visit retrieved successfully',
@@ -318,11 +437,11 @@ export const getDoctorVisitById = asyncHandler(async (req: Request, res: Respons
         recordType: record.record_type,
         chiefComplaint: record.chief_complaint,
         presentIllness: record.present_illness,
-        physicalExamination: JSON.parse(record.physical_examination || '{}'),
-        diagnosis: JSON.parse(record.diagnosis || '{}'),
-        treatmentPlan: JSON.parse(record.treatment_plan || '{}'),
+        physicalExamination: parsedPhysicalExamination,
+        diagnosis: parsedDiagnosis,
+        treatmentPlan: parsedTreatmentPlan,
         advice: record.advice,
-        followUp: record.follow_up ? JSON.parse(record.follow_up) : null,
+        followUp: parsedFollowUp,
         notes: record.notes,
         examinedBy: record.recorded_by,
         examinedTime: record.recorded_time,
@@ -384,7 +503,7 @@ export const updateDoctorVisit = asyncHandler(async (req: Request, res: Response
     Object.entries(updateData).forEach(([key, value]) => {
       if (value !== undefined) {
         const dbField = key.replace(/([A-Z])/g, '_$1').toLowerCase();
-        if (typeof value === 'object') {
+        if (typeof value === 'object' && value !== null) {
           updateFields.push(`${dbField} = $${paramCount}`);
           values.push(JSON.stringify(value));
         } else {
@@ -425,6 +544,40 @@ export const updateDoctorVisit = asyncHandler(async (req: Request, res: Response
       updatedFields: Object.keys(updateData)
     });
 
+    // Safe JSON parsing
+    let parsedPhysicalExamination = {};
+    let parsedDiagnosis = {};
+    let parsedTreatmentPlan = {};
+    let parsedFollowUp = null;
+
+    try {
+      parsedPhysicalExamination = updatedRecord.physical_exam ? JSON.parse(updatedRecord.physical_exam) : {};
+    } catch (parseError) {
+      logger.error('Error parsing physical_exam in updateDoctorVisit:', { data: updatedRecord.physical_exam, error: parseError });
+      parsedPhysicalExamination = {};
+    }
+
+    try {
+      parsedDiagnosis = updatedRecord.diagnosis ? JSON.parse(updatedRecord.diagnosis) : {};
+    } catch (parseError) {
+      logger.error('Error parsing diagnosis in updateDoctorVisit:', { data: updatedRecord.diagnosis, error: parseError });
+      parsedDiagnosis = {};
+    }
+
+    try {
+      parsedTreatmentPlan = updatedRecord.treatment_plan ? JSON.parse(updatedRecord.treatment_plan) : {};
+    } catch (parseError) {
+      logger.error('Error parsing treatment_plan in updateDoctorVisit:', { data: updatedRecord.treatment_plan, error: parseError });
+      parsedTreatmentPlan = {};
+    }
+
+    try {
+      parsedFollowUp = updatedRecord.follow_up ? JSON.parse(updatedRecord.follow_up) : null;
+    } catch (parseError) {
+      logger.error('Error parsing follow_up in updateDoctorVisit:', { data: updatedRecord.follow_up, error: parseError });
+      parsedFollowUp = null;
+    }
+
     res.status(200).json({
       statusCode: 200,
       message: 'Doctor visit updated successfully',
@@ -435,11 +588,11 @@ export const updateDoctorVisit = asyncHandler(async (req: Request, res: Response
         recordType: updatedRecord.record_type,
         chiefComplaint: updatedRecord.chief_complaint,
         presentIllness: updatedRecord.present_illness,
-        physicalExamination: JSON.parse(updatedRecord.physical_examination || '{}'),
-        diagnosis: JSON.parse(updatedRecord.diagnosis || '{}'),
-        treatmentPlan: JSON.parse(updatedRecord.treatment_plan || '{}'),
+        physicalExamination: parsedPhysicalExamination,
+        diagnosis: parsedDiagnosis,
+        treatmentPlan: parsedTreatmentPlan,
         advice: updatedRecord.advice,
-        followUp: updatedRecord.follow_up ? JSON.parse(updatedRecord.follow_up) : null,
+        followUp: parsedFollowUp,
         notes: updatedRecord.notes,
         examinedBy: updatedRecord.recorded_by,
         examinedTime: updatedRecord.recorded_time,
