@@ -11,6 +11,7 @@ export const THAILAND_TIMEZONE_OFFSET = 7 * 60; // 7 hours in minutes
  */
 export function getThailandTime(): Date {
   const now = new Date();
+  // Convert to UTC first, then add Thailand timezone offset
   const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
   const thailandTime = new Date(utc + (THAILAND_TIMEZONE_OFFSET * 60000));
   return thailandTime;

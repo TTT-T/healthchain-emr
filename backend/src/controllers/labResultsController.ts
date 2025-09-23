@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { databaseManager } from '../database/connection';
 import { v4 as uuidv4 } from 'uuid';
 import { NotificationService } from '../services/notificationService';
+import { logger } from '../utils/logger';
 
 /**
  * Lab Results Controller
@@ -467,6 +468,35 @@ export const createPatientLabResult = async (req: Request, res: Response) => {
     `, [resultId]);
 
     const record = createdResult.rows[0];
+
+    // ส่งการแจ้งเตือนให้ผู้ป่วย
+    try {
+      const user = (req as any).user;
+      
+      await NotificationService.sendPatientNotification({
+        patientId: patient.id,
+        patientHn: patient.hospital_number || '',
+        patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+        patientPhone: patient.phone,
+        patientEmail: patient.email,
+        notificationType: 'lab_result_ready',
+        title: `ผลแลบพร้อม: ${testName}`,
+        message: `ผลการตรวจ "${testName}" ของคุณ ${patient.thai_name || patient.first_name} พร้อมแล้ว`,
+        recordType: 'lab_result',
+        recordId: resultId,
+        createdBy: user?.id,
+        createdByName: user?.thai_name || `${user?.first_name} ${user?.last_name}`,
+        metadata: {
+          testType,
+          testName,
+          overallResult,
+          testedTime: testedTime || new Date().toISOString()
+        }
+      });
+    } catch (notificationError) {
+      logger.error('Failed to send lab result notification:', notificationError);
+      // ไม่ throw error เพื่อไม่ให้กระทบการสร้างผลแลบ
+    }
 
     res.status(201).json({
       data: {

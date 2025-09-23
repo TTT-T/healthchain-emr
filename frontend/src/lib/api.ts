@@ -576,6 +576,23 @@ class APIClient {
       // Don't log 404 errors for notifications as they are expected for users not yet registered in EMR
       if (error?.response?.status === 404 && config.url?.includes('/notifications')) {
         logger.debug('🔍 Expected 404 for notifications (user not registered in EMR):', config.url);
+        // Return empty response for expected 404
+        return {
+          data: null,
+          meta: null,
+          error: null,
+          statusCode: 404
+        };
+      } else if (error?.response?.status === 200) {
+        // Don't log errors for successful responses (status 200)
+        logger.debug('✅ API request successful but caught in error handler:', config.url);
+        // Return the response data for successful 200 responses
+        return {
+          data: error?.response?.data?.data || error?.response?.data,
+          meta: error?.response?.data?.meta,
+          error: error?.response?.data?.error,
+          statusCode: 200
+        };
       } else {
         // Better error logging with proper serialization
         const errorInfo = {
@@ -590,9 +607,18 @@ class APIClient {
             timeout: config.timeout
           }
         };
-        logger.error('💥 API request failed:', errorInfo);
+        
+        // Log error details separately to avoid serialization issues
+        logger.error('💥 API request failed:');
+        logger.error('  - Message:', error?.message || 'Unknown error');
+        logger.error('  - Status:', error?.response?.status || 'No status');
+        logger.error('  - URL:', config.url || 'No URL');
+        logger.error('  - Method:', config.method || 'No method');
+        logger.error('  - Response data:', error?.response?.data || 'No response data');
+        logger.error('  - Full error:', error);
+        
+        throw error; // Will be handled by interceptor
       }
-      throw error; // Will be handled by interceptor
     }
   }
 

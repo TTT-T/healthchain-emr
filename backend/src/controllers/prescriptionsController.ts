@@ -129,6 +129,42 @@ export const createPrescription = async (req: Request, res: Response) => {
       prescriptionItems.push(itemResult.rows[0]);
     }
 
+    // ส่งการแจ้งเตือนให้ผู้ป่วย
+    try {
+      const user = (req as any).user;
+      
+      // Get patient information
+      const patientQuery = 'SELECT id, thai_name, first_name, last_name, hospital_number, phone, email FROM patients WHERE id = $1';
+      const patientResult = await databaseManager.query(patientQuery, [visit.patient_id]);
+      
+      if (patientResult.rows.length > 0) {
+        const patient = patientResult.rows[0];
+        
+        await NotificationService.sendPatientNotification({
+          patientId: patient.id,
+          patientHn: patient.hospital_number || '',
+          patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+          patientPhone: patient.phone,
+          patientEmail: patient.email,
+          notificationType: 'prescription_ready',
+          title: `ยาเตรียมพร้อม: ${prescriptionItems[0]?.medication_name || 'ยาตามใบสั่ง'}`,
+          message: `ยาเตรียมพร้อมสำหรับคุณ ${patient.thai_name || patient.first_name} แล้ว กรุณามารับยาได้ที่แผนกเภสัชกรรม`,
+          recordType: 'prescription',
+          recordId: prescriptionId,
+          createdBy: user.id,
+          createdByName: user.thai_name || `${user.first_name} ${user.last_name}`,
+          metadata: {
+            prescriptionNumber: prescriptionNumber,
+            itemsCount: prescriptionItems.length,
+            medications: prescriptionItems.map(item => item.medication_name)
+          }
+        });
+      }
+    } catch (notificationError) {
+      console.error('Failed to send prescription notification:', notificationError);
+      // ไม่ throw error เพื่อไม่ให้กระทบการสร้างใบสั่งยา
+    }
+
     res.status(201).json({
       data: {
         prescription: {

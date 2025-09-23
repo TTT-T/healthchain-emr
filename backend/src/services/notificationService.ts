@@ -67,7 +67,7 @@ export class NotificationService {
           id, patient_id, notification_type, title, message, 
           record_type, record_id, created_by, metadata, 
           created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW() AT TIME ZONE 'Asia/Bangkok', NOW() AT TIME ZONE 'Asia/Bangkok')`,
         [
           notificationId,
           data.patientId,

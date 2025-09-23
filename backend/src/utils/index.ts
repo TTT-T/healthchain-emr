@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import config from '../config';
+import config from '../config/index';
 import { JWTPayload, RefreshTokenPayload, TokenPair, ValidationError } from '../types';
 
 /**

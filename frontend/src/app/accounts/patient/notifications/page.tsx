@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, CheckCircle, Clock, FileText, Stethoscope, Pill, TestTube, Calendar, X, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { apiClient } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import AppLayout from '@/components/AppLayout';
@@ -25,6 +26,7 @@ interface Notification {
 
 export default function Notifications() {
   const { user, isAuthenticated } = useAuth();
+  const { refreshNotificationCount } = useNotifications();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,25 +45,78 @@ export default function Notifications() {
 
       console.log('🔍 Loading notifications for user:', user.id);
       
-      const response = await apiClient.request({
-        method: 'GET',
-        url: `/medical/patients/${user.id}/notifications-list?limit=100`
-      });
+      const response = await apiClient.getPatientNotifications(user.id);
 
       console.log('📡 API Response:', response);
 
-      if (response.statusCode === 200 && response.data) {
-        setNotifications(response.data);
-        console.log('✅ Notifications loaded successfully:', response.data);
-        logger.info('Notifications loaded successfully', { count: response.data.length });
+      if (response && response.statusCode === 200 && response.data) {
+        // Extract notifications from the response data structure
+        const notificationsData = Array.isArray(response.data) 
+          ? response.data 
+          : (response.data as any)?.notifications || [];
+        
+        setNotifications(notificationsData);
+        console.log('✅ Notifications loaded successfully:', notificationsData);
+        logger.info('Notifications loaded successfully', { count: notificationsData.length });
+
+        // Auto-mark all unread notifications as read when user visits the page
+        const unreadNotifications = notificationsData.filter((notif: any) => !notif.is_read);
+        if (unreadNotifications.length > 0) {
+          console.log('🔔 Auto-marking unread notifications as read:', unreadNotifications.length);
+          logger.info('Auto-marking unread notifications as read', { 
+            count: unreadNotifications.length,
+            patientId: user.id 
+          });
+          
+          // Mark all unread notifications as read
+          for (const notification of unreadNotifications) {
+            try {
+              await apiClient.request({
+                method: 'PUT',
+                url: `/medical/patients/${user.id}/notifications/${notification.id}/read`
+              });
+              console.log('✅ Auto-marked notification as read:', notification.id);
+              logger.info('Auto-marked notification as read', { notificationId: notification.id });
+            } catch (error: any) {
+              console.error('❌ Failed to auto-mark notification as read:', notification.id, error);
+              logger.error('Failed to auto-mark notification as read:', { 
+                notificationId: notification.id, 
+                error 
+              });
+              // Continue with other notifications even if one fails
+            }
+          }
+          
+          // Refresh notification count after marking all as read
+          refreshNotificationCount();
+        }
       } else {
         console.log('❌ Invalid response:', response);
-        setError('ไม่สามารถโหลดการแจ้งเตือนได้');
+        if (response && response.statusCode === 200) {
+          // If status is 200 but no data, set empty notifications
+          setNotifications([]);
+          setError(null);
+        } else {
+          setError('ไม่สามารถโหลดการแจ้งเตือนได้');
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error loading notifications:', error);
-      logger.error('Failed to load notifications:', error);
-      setError('เกิดข้อผิดพลาดในการโหลดการแจ้งเตือน');
+      
+      // Check if it's a 404 error (patient not found) - this is expected for users who haven't registered in EMR yet
+      if (error?.response?.status === 404 || error?.statusCode === 404) {
+        console.log('🔍 Patient record not found - this is expected for users who haven\'t registered in EMR yet');
+        setNotifications([]);
+        setError(null); // Don't show error for expected 404
+      } else if (error?.response?.status === 200) {
+        // Don't show error for successful responses (status 200)
+        console.log('✅ API request successful but caught in error handler');
+        setError(null);
+      } else {
+        console.error('❌ Error loading notifications:', error);
+        logger.error('Failed to load notifications:', error);
+        setError('เกิดข้อผิดพลาดในการโหลดการแจ้งเตือน');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -84,9 +139,14 @@ export default function Notifications() {
         )
       );
 
+      // Refresh notification count in header
+      refreshNotificationCount();
+
       logger.info('Notification marked as read', { notificationId });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('❌ Failed to mark notification as read:', notificationId, error);
       logger.error('Failed to mark notification as read:', error);
+      // Don't show error to user, just log it
     }
   };
 
@@ -130,10 +190,8 @@ export default function Notifications() {
   // Format date to Thai time
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    // Convert to Thai timezone (UTC+7)
-    const thaiDate = new Date(date.getTime() + (7 * 60 * 60 * 1000));
     
-    return thaiDate.toLocaleDateString('th-TH', {
+    return date.toLocaleDateString('th-TH', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -146,8 +204,10 @@ export default function Notifications() {
   useEffect(() => {
     if (isAuthenticated) {
       loadNotifications();
+      // Refresh notification count when user visits notifications page
+      refreshNotificationCount();
     }
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id, refreshNotificationCount]);
 
   if (!isAuthenticated) {
     return (
@@ -285,23 +345,31 @@ export default function Notifications() {
 
         {/* Notification Detail Modal */}
         {selectedNotification && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-xl">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-3">
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-300 shadow-lg">
+              {/* Header Bar */}
+              <div className="bg-gray-50 border-b border-gray-200 px-6 py-4 rounded-t-lg">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
                     {getNotificationIcon(selectedNotification.notification_type)}
-                    <h2 className="text-xl font-bold text-gray-900">
-                      {selectedNotification.title}
-                    </h2>
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">{selectedNotification.title}</h2>
+                      <p className="text-gray-600 text-sm">{getNotificationTypeLabel(selectedNotification.notification_type)}</p>
+                    </div>
                   </div>
                   <button
                     onClick={() => setSelectedNotification(null)}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-gray-500 hover:text-gray-700 transition-colors"
                   >
-                    <X className="w-6 h-6" />
+                    <span className="sr-only">ปิด</span>
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                   </button>
                 </div>
+              </div>
+              
+              <div className="p-6">
                 
                 <div className="space-y-4">
                   <div>
@@ -334,6 +402,15 @@ export default function Notifications() {
                       </div>
                     </div>
                   )}
+                </div>
+                
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => setSelectedNotification(null)}
+                    className="px-6 py-2 text-gray-600 border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors font-medium"
+                  >
+                    ปิด
+                  </button>
                 </div>
               </div>
             </div>

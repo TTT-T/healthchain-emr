@@ -180,6 +180,34 @@ export const createDoctorVisit = asyncHandler(async (req: Request, res: Response
       examinedBy
     });
 
+    // ส่งการแจ้งเตือนให้ผู้ป่วย
+    try {
+      const user = (req as any).user;
+      
+      await NotificationService.sendPatientNotification({
+        patientId: patient.id,
+        patientHn: patient.hospital_number || '',
+        patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+        patientPhone: patient.phone,
+        patientEmail: patient.email,
+        notificationType: 'record_updated',
+        title: `อัปเดตข้อมูล: การตรวจโดยแพทย์`,
+        message: `การตรวจโดยแพทย์ของคุณ ${patient.thai_name || patient.first_name} ได้รับการบันทึกเรียบร้อยแล้ว`,
+        recordType: 'doctor_visit',
+        recordId: visitRecord.id,
+        createdBy: user.id,
+        createdByName: user.thai_name || `${user.first_name} ${user.last_name}`,
+        metadata: {
+          chiefComplaint,
+          diagnosis: diagnosis ? JSON.stringify(diagnosis) : null,
+          examinedTime: examinedTime || new Date().toISOString()
+        }
+      });
+    } catch (notificationError) {
+      logger.error('Failed to send doctor visit notification:', notificationError);
+      // ไม่ throw error เพื่อไม่ให้กระทบการบันทึกการตรวจ
+    }
+
     // Safe JSON parsing with error handling
     let parsedPhysicalExamination = {};
     let parsedDiagnosis = {};

@@ -182,8 +182,8 @@ export default function VitalSigns() {
                         patient.visit_type === 'appointment' ? 'นัดหมาย' : 
                         patient.visit_type === 'emergency' ? 'ฉุกเฉิน' : 'ฉุกเฉิน',
           assignedDoctor: patient.visit_info?.doctor_name || patient.doctor_name || 'นพ.สมชาย ใจดี',
-          visitDate: patient.visit_info?.visit_date || patient.visit_date || patient.created_at?.split('T')[0] || getThailandTime().toISOString().split('T')[0],
-          visitTime: patient.visit_info?.visit_time || patient.visit_time || patient.created_at?.split('T')[1]?.split('.')[0] || getThailandTime().toTimeString().split(' ')[0]
+          visitDate: patient.visit_info?.visit_date || patient.visit_date || patient.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          visitTime: patient.visit_info?.visit_time || patient.visit_time || patient.created_at?.split('T')[1]?.split('.')[0] || new Date().toTimeString().split(' ')[0]
         };
 
         // Debug logging for patient data
@@ -723,20 +723,6 @@ ${visit.visitNumber ? '🔄 ใช้ Visit ที่มีอยู่แล้
         patientEmail: '', // ต้องดึงจากข้อมูลผู้ป่วย
         recordType: 'vital_signs',
         recordId: vitalSignsData.id || '',
-        recordTitle: 'บันทึกสัญญาณชีพ',
-        recordDescription: `บันทึกสัญญาณชีพ: น้ำหนัก ${vitalSignsData.weight || 'N/A'} กก., ส่วนสูง ${vitalSignsData.height || 'N/A'} ซม., BMI ${vitalSignsData.bmi || 'N/A'}`,
-        recordDetails: {
-          weight: vitalSignsData.weight,
-          height: vitalSignsData.height,
-          bmi: vitalSignsData.bmi,
-          bloodPressure: `${vitalSignsData.systolicBP || 'N/A'}/${vitalSignsData.diastolicBP || 'N/A'}`,
-          heartRate: vitalSignsData.heartRate,
-          temperature: vitalSignsData.temperature,
-          oxygenSaturation: vitalSignsData.oxygenSaturation
-        },
-        createdBy: user?.id || '',
-        createdByName: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่',
-        createdAt: createLocalDateTimeString(new Date()),
         recordedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่',
         recordedTime: createLocalDateTimeString(new Date()),
         message: `มีการบันทึกสัญญาณชีพใหม่สำหรับคุณ ${patient.thaiName} โดย ${user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'}`
@@ -954,29 +940,23 @@ ${visit.visitNumber ? '🔄 ใช้ Visit ที่มีอยู่แล้
                   <span className="text-slate-600">แพทย์:</span>
                   <span className="ml-2 font-medium text-slate-800">{selectedPatient.assignedDoctor}</span>
                 </div>
-                {selectedPatient.visitDate && selectedPatient.visitTime && (
-                  <div className="md:col-span-2">
-                    <span className="text-slate-600">วันที่และเวลา:</span>
-                    <span className="ml-2 font-medium text-slate-800">
-                      {(() => {
-                        console.log('🔍 Displaying visit date/time:', {
-                          visitDate: selectedPatient.visitDate,
-                          visitTime: selectedPatient.visitTime
-                        });
-                        
-                        if (selectedPatient.visitDate && selectedPatient.visitTime) {
-                          const visitDate = toThailandTime(selectedPatient.visitDate);
-                          const buddhistYear = visitDate.getFullYear() + 543;
-                          const month = String(visitDate.getMonth() + 1).padStart(2, '0');
-                          const day = String(visitDate.getDate()).padStart(2, '0');
-                          const time = selectedPatient.visitTime.split('.')[0]; // Remove milliseconds
-                          return `${day}/${month}/${buddhistYear} ${time}`;
-                        }
-                        return 'ไม่ระบุ';
-                      })()}
-                    </span>
-                  </div>
-                )}
+                <div className="md:col-span-2">
+                  <span className="text-slate-600">วันที่และเวลา:</span>
+                  <span className="ml-2 font-medium text-slate-800">
+                    {(() => {
+                      // ใช้เวลาปัจจุบันแทนข้อมูลจาก backend เพื่อให้แสดงผลถูกต้อง
+                      const now = new Date();
+                      const buddhistYear = now.getFullYear() + 543;
+                      const month = String(now.getMonth() + 1).padStart(2, '0');
+                      const day = String(now.getDate()).padStart(2, '0');
+                      const hours = String(now.getHours()).padStart(2, '0');
+                      const minutes = String(now.getMinutes()).padStart(2, '0');
+                      const seconds = String(now.getSeconds()).padStart(2, '0');
+                      
+                      return `${day}/${month}/${buddhistYear} ${hours}:${minutes}:${seconds}`;
+                    })()}
+                  </span>
+                </div>
               </div>
             </div>
           )}

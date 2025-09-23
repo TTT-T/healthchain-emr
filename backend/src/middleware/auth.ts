@@ -18,7 +18,7 @@ const db = {
     return result.rows[0] || null;
   }
 };
-import config from '../config';
+import config from '../config/index';
 import { User } from '../types';
 
 // Extend Request interface to include user

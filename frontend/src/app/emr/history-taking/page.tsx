@@ -8,6 +8,7 @@ import { NotificationService } from '@/services/notificationService';
 import { PatientDocumentService } from '@/services/patientDocumentService';
 import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
+import { getCurrentThailandDateTimeLocal } from '@/utils/thailandTime';
 
 interface Patient {
   hn: string;
@@ -165,7 +166,7 @@ export default function HistoryTaking() {
       dermatological: ""
     },
     recordedBy: "นพ.สมชาย วงศ์แพทย์",
-    recordedTime: new Date().toISOString().slice(0, 16),
+    recordedTime: getCurrentThailandDateTimeLocal(),
     notes: ""
   });
 
@@ -356,7 +357,7 @@ export default function HistoryTaking() {
             dermatological: ""
           },
           recordedBy: "นพ.สมชาย วงศ์แพทย์",
-          recordedTime: new Date().toISOString().slice(0, 16),
+          recordedTime: getCurrentThailandDateTimeLocal(),
           notes: ""
         });
       }, 3000);

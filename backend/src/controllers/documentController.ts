@@ -233,22 +233,50 @@ export const createDocument = asyncHandler(async (req: Request, res: Response) =
  * Get documents by patient ID
  */
 export const getDocumentsByPatient = asyncHandler(async (req: Request, res: Response) => {
-  const { patientId } = req.params;
+  let { patientId } = req.params;
   const { documentType } = req.query;
   const user = (req as any).user;
 
   try {
     // Check if patient is trying to access their own documents
-    if (user.role === 'patient' && user.id !== patientId) {
-      return res.status(403).json({
-        statusCode: 403,
-        message: 'Access denied',
-        data: null,
-        error: {
-          code: 'ACCESS_DENIED',
-          message: 'Patients can only access their own documents'
-        }
-      });
+    if (user.role === 'patient') {
+      // For patients, we need to find their patient record using user_id
+      const patientQuery = await databaseManager.query(
+        'SELECT id FROM patients WHERE user_id = $1',
+        [user.id]
+      );
+      
+      if (patientQuery.rows.length === 0) {
+        return res.status(404).json({
+          statusCode: 404,
+          message: 'Patient record not found',
+          data: null,
+          error: {
+            code: 'PATIENT_NOT_FOUND',
+            message: 'Patient record not found for this user'
+          }
+        });
+      }
+      
+      const actualPatientId = patientQuery.rows[0].id;
+      
+      // For patient role, use the actual patient ID from database instead of URL parameter
+      // This allows frontend to send user.id and backend will find the correct patient.id
+      if (patientId === user.id) {
+        // Frontend sent user.id, use the actual patient.id from database
+        patientId = actualPatientId;
+      } else if (patientId !== actualPatientId) {
+        // Frontend sent a different patient ID, check if it matches the user's patient record
+        return res.status(403).json({
+          statusCode: 403,
+          message: 'Access denied',
+          data: null,
+          error: {
+            code: 'ACCESS_DENIED',
+            message: 'Patients can only access their own documents'
+          }
+        });
+      }
     }
 
     const client = await databaseManager.getClient();

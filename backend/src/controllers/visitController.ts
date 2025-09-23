@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { databaseManager } from '../database/connection';
 import { v4 as uuidv4 } from 'uuid';
 import { getThailandTime, getCurrentThailandDateString, getCurrentThailandTimeOnlyString } from '../utils/thailandTime';
+import { NotificationService } from '../services/notificationService';
 
 // Create a database helper that combines databaseManager and DatabaseSchema
 const db = {
@@ -31,7 +32,7 @@ import {
 /**
  * Send notification to patient when visit is created
  */
-async function sendPatientVisitNotification(visit: any, doctorId: string) {
+async function sendPatientVisitNotification(visit: any, doctorId: string, createdBy: string) {
   try {
     console.log('📱 Sending patient visit notification...');
     
@@ -82,63 +83,49 @@ async function sendPatientVisitNotification(visit: any, doctorId: string) {
     
     const doctor = doctorResult.rows[0];
     
-    // Create notification data
-    const notificationData = {
-      id: uuidv4(),
-      patient_id: patient.id,
-      user_id: patient.user_id,
-      type: 'visit_created',
-      title: `ได้รับหมายเลขคิว ${visit.visit_number}`,
-      message: `คุณ ${patient.thai_name || `${patient.first_name} ${patient.last_name}`} ได้รับหมายเลขคิว ${visit.visit_number} สำหรับตรวจกับ ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`,
-      data: {
-        visit_id: visit.id,
-        visit_number: visit.visit_number,
-        hospital_number: patient.hospital_number,
-        doctor_name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
-        department: doctor.department_name,
-        visit_date: visit.visit_date,
-        visit_time: visit.visit_time,
-        visit_type: visit.visit_type,
-        chief_complaint: visit.chief_complaint
-      },
-      is_read: false,
-      created_at: new Date().toISOString()
-    };
-    
-    // Insert notification into database
-    const insertNotificationQuery = `
-      INSERT INTO notifications (
-        id, patient_id, title, message, notification_type, priority, is_read, created_by, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    // Get creator information
+    const creatorQuery = `
+      SELECT 
+        u.id,
+        u.first_name,
+        u.last_name,
+        u.thai_name
+      FROM users u
+      WHERE u.id = $1
     `;
+    const creatorResult = await db.query(creatorQuery, [createdBy]);
+    const creator = creatorResult.rows[0];
     
-    await db.query(insertNotificationQuery, [
-      notificationData.id,
-      notificationData.patient_id,
-      notificationData.title,
-      notificationData.message,
-      notificationData.type,
-      'normal', // priority
-      notificationData.is_read,
-      notificationData.user_id, // created_by
-      notificationData.created_at
-    ]);
+    // Use NotificationService to send notification
+    await NotificationService.sendPatientNotification({
+      patientId: patient.id,
+      patientHn: patient.hospital_number || '',
+      patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+      patientPhone: patient.phone,
+      patientEmail: patient.email || patient.user_email,
+      notificationType: 'queue_created',
+      title: `ได้รับหมายเลขคิว ${visit.visit_number}`,
+      message: `คุณ ${patient.thai_name || patient.first_name} ได้รับหมายเลขคิว ${visit.visit_number} สำหรับตรวจกับ ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`,
+      recordType: 'visit',
+      recordId: visit.id,
+      createdBy: createdBy,
+      createdByName: creator ? (creator.thai_name || `${creator.first_name} ${creator.last_name}`) : 'ระบบ',
+      metadata: {
+        visitNumber: visit.visit_number,
+        hospitalNumber: patient.hospital_number,
+        doctorName: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
+        department: doctor.department_name,
+        visitDate: visit.visit_date,
+        visitTime: visit.visit_time,
+        visitType: visit.visit_type,
+        chiefComplaint: visit.chief_complaint
+      }
+    });
     
     console.log('✅ Patient notification sent successfully', {
       patientHn: patient.hospital_number,
-      visitNumber: visit.visit_number,
-      notificationId: notificationData.id
+      visitNumber: visit.visit_number
     });
-    
-    // TODO: Send SMS/Email if patient has phone/email
-    if (patient.phone) {
-      console.log(`📱 Would send SMS to ${patient.phone}: คุณได้รับหมายเลขคิว ${visit.visit_number} สำหรับตรวจกับ ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`);
-    }
-    
-    if (patient.email || patient.user_email) {
-      const email = patient.email || patient.user_email;
-      console.log(`📧 Would send email to ${email}: คุณได้รับหมายเลขคิว ${visit.visit_number} สำหรับตรวจกับ ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`);
-    }
     
   } catch (error) {
     console.error('❌ Error sending patient visit notification:', error);
@@ -423,7 +410,7 @@ export const createVisit = async (req: Request, res: Response) => {
     // Send notification to patient
     try {
       console.log('📱 Sending patient visit notification...');
-      await sendPatientVisitNotification(result, finalDoctorId);
+      await sendPatientVisitNotification(result, finalDoctorId, req.user?.id);
       console.log('✅ Patient notification sent successfully');
     } catch (notificationError) {
       console.error('❌ Failed to send patient notification:', notificationError);

@@ -249,7 +249,7 @@ export default function Pharmacy() {
         chiefComplaint: `จ่ายยา ${dispensingRecord.medications.length} รายการ`,
         recordedBy: user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'เภสัชกร',
         recordedTime: dispensingRecord.dispensedTime,
-        message: `มีการจ่ายยาใหม่สำหรับคุณ ${patient.thai_name || `${patient.first_name} ${patient.last_name}`} โดย ${user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'เภสัชกร'}`
+        message: `มีการจ่ายยาใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เภสัชกร'}`
       };
 
       await NotificationService.notifyPatientRecordUpdate(notificationData);

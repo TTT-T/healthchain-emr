@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { databaseManager } from '../database/connection';
 import { asyncHandler } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
+import { NotificationService } from '../services/notificationService';
 
 interface CreatePharmacyRequest {
   patientId: string;
@@ -124,6 +125,35 @@ export const createPharmacyDispensing = asyncHandler(async (req: Request, res: R
       recordId: dispensingRecord.id,
       dispensedBy
     });
+
+    // ส่งการแจ้งเตือนให้ผู้ป่วย
+    try {
+      const user = (req as any).user;
+      
+      await NotificationService.sendPatientNotification({
+        patientId: patient.id,
+        patientHn: patient.hospital_number || '',
+        patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+        patientPhone: patient.phone,
+        patientEmail: patient.email,
+        notificationType: 'prescription_ready',
+        title: `ยาเตรียมพร้อม: ${medications[0]?.medication_name || 'ยาตามใบสั่ง'}`,
+        message: `ยาเตรียมพร้อมสำหรับคุณ ${patient.thai_name || patient.first_name} แล้ว กรุณามารับยาได้ที่แผนกเภสัชกรรม`,
+        recordType: 'pharmacy_dispensing',
+        recordId: dispensingRecord.id,
+        createdBy: user?.id,
+        createdByName: user?.thai_name || `${user?.first_name} ${user?.last_name}`,
+        metadata: {
+          medications: medications.map((med: any) => med.medication_name),
+          totalAmount,
+          paymentMethod,
+          dispensedTime: dispensedTime || new Date().toISOString()
+        }
+      });
+    } catch (notificationError) {
+      logger.error('Failed to send pharmacy notification:', notificationError);
+      // ไม่ throw error เพื่อไม่ให้กระทบการจ่ายยา
+    }
 
     res.status(201).json({
       statusCode: 201,

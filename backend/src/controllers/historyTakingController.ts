@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { databaseManager } from '../database/connection';
 import { asyncHandler } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
+import { NotificationService } from '../services/notificationService';
+import { getThailandTime } from '../utils/thailandTime';
 
 interface CreateHistoryTakingRequest {
   patientId: string;
@@ -141,7 +143,7 @@ export const createHistoryTaking = asyncHandler(async (req: Request, res: Respon
       currentMedications || null,
       notes || null,
       recordedBy,
-      recordedTime || new Date().toISOString()
+      recordedTime || getThailandTime().toISOString()
     ];
 
     // Log all received data for debugging
@@ -173,6 +175,52 @@ export const createHistoryTaking = asyncHandler(async (req: Request, res: Respon
       recordId: historyRecord.id,
       recordedBy
     });
+
+    // ส่งการแจ้งเตือนให้ผู้ป่วย
+    try {
+      const user = (req as any).user;
+      
+      // ดึงข้อมูลผู้ป่วยเพิ่มเติม
+      const patientDetailQuery = `
+        SELECT p.id, p.hospital_number, p.first_name, p.last_name, p.thai_name, p.phone, p.email
+        FROM patients p
+        WHERE p.id = $1
+      `;
+      const patientDetailResult = await client.query(patientDetailQuery, [patientId]);
+      
+      if (patientDetailResult.rows.length > 0) {
+        const patientDetail = patientDetailResult.rows[0];
+        
+        await NotificationService.sendPatientNotification({
+          patientId: patientDetail.id,
+          patientHn: patientDetail.hospital_number || '',
+          patientName: patientDetail.thai_name || `${patientDetail.first_name} ${patientDetail.last_name}`,
+          patientPhone: patientDetail.phone,
+          patientEmail: patientDetail.email,
+          notificationType: 'history_taking_recorded',
+          title: `บันทึกประวัติการซักประวัติ: ${patientDetail.hospital_number || 'HN'}`,
+          message: `มีการบันทึกประวัติการซักประวัติใหม่สำหรับคุณ ${patientDetail.thai_name || patientDetail.first_name} โดย ${user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'เจ้าหน้าที่'}`,
+          recordType: 'history_taking',
+          recordId: historyRecord.id,
+          createdBy: user?.id || recordedBy,
+          createdByName: user?.thai_name || `${user?.first_name} ${user?.last_name}` || recordedBy,
+          metadata: {
+            chiefComplaint: historyRecord.chief_complaint,
+            presentIllness: historyRecord.present_illness,
+            recordedTime: historyRecord.recorded_time,
+            recordedBy: historyRecord.recorded_by
+          }
+        });
+        
+        console.log('✅ History taking notification sent successfully', {
+          patientHn: patientDetail.hospital_number,
+          historyRecordId: historyRecord.id
+        });
+      }
+    } catch (notificationError) {
+      console.error('❌ Failed to send history taking notification:', notificationError);
+      // ไม่ throw error เพื่อไม่ให้กระทบการบันทึกประวัติ
+    }
 
     res.status(201).json({
       statusCode: 201,

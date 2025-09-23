@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { databaseManager } from '../database/connection';
 import { v4 as uuidv4 } from 'uuid';
+import { NotificationService } from '../services/notificationService';
 
 /**
  * Vital Signs Controller
@@ -275,6 +276,55 @@ export const createVitalSignsWithVisitId = async (req: Request, res: Response) =
     ]);
 
     const newVitalSigns = vitalSignsResult.rows[0];
+
+    // ส่งการแจ้งเตือนให้ผู้ป่วย
+    try {
+      const user = (req as any).user;
+      
+      // ดึงข้อมูลผู้ป่วย
+      const patientResult = await databaseManager.query(`
+        SELECT p.id, p.hospital_number, p.first_name, p.last_name, p.thai_name, p.phone, p.email
+        FROM patients p
+        WHERE p.id = $1
+      `, [visit.patient_id]);
+      
+      if (patientResult.rows.length > 0) {
+        const patient = patientResult.rows[0];
+        
+        await NotificationService.sendPatientNotification({
+          patientId: patient.id,
+          patientHn: patient.hospital_number || '',
+          patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+          patientPhone: patient.phone,
+          patientEmail: patient.email,
+          notificationType: 'vital_signs_recorded',
+          title: `บันทึกสัญญาณชีพ: ${patient.hospital_number || 'HN'}`,
+          message: `มีการบันทึกสัญญาณชีพใหม่สำหรับคุณ ${patient.thai_name || patient.first_name} โดย ${user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'เจ้าหน้าที่'}`,
+          recordType: 'vital_signs',
+          recordId: newVitalSigns.id,
+          createdBy: user?.id || validUserId,
+          createdByName: user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'เจ้าหน้าที่',
+          metadata: {
+            weight: newVitalSigns.weight,
+            height: newVitalSigns.height,
+            bmi: newVitalSigns.bmi,
+            bloodPressure: `${newVitalSigns.systolic_bp || 'N/A'}/${newVitalSigns.diastolic_bp || 'N/A'}`,
+            heartRate: newVitalSigns.heart_rate,
+            temperature: newVitalSigns.temperature,
+            oxygenSaturation: newVitalSigns.oxygen_saturation,
+            measurementTime: newVitalSigns.measurement_time
+          }
+        });
+        
+        console.log('✅ Vital signs notification sent successfully', {
+          patientHn: patient.hospital_number,
+          vitalSignsId: newVitalSigns.id
+        });
+      }
+    } catch (notificationError) {
+      console.error('❌ Failed to send vital signs notification:', notificationError);
+      // ไม่ throw error เพื่อไม่ให้กระทบการบันทึกสัญญาณชีพ
+    }
 
     res.status(201).json({
       data: {

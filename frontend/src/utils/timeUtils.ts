@@ -22,7 +22,7 @@ export const createLocalDateTimeString = (date: Date): string => {
 };
 
 /**
- * Format date to Buddhist Era (DD/MM/YYYY HH:MM)
+ * Format date to Buddhist Era (DD/MM/YYYY HH:MM:SS)
  */
 export const formatToBuddhistEra = (date: Date): string => {
   const buddhistYear = date.getFullYear() + 543;
@@ -30,7 +30,8 @@ export const formatToBuddhistEra = (date: Date): string => {
   const day = String(date.getDate()).padStart(2, '0');
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${day}/${month}/${buddhistYear} ${hours}:${minutes}`;
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${day}/${month}/${buddhistYear} ${hours}:${minutes}:${seconds}`;
 };
 
 /**

@@ -239,7 +239,7 @@ export default function LabResult() {
       const notificationData = {
         patientHn: patient.hospital_number || patient.hn || '',
         patientNationalId: patient.national_id || '',
-        patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+        patientName: patient.thaiName || `${patient.firstName} ${patient.lastName}`,
         patientPhone: patient.phone || '',
         patientEmail: patient.email || '',
         recordType: 'lab_result',
@@ -247,7 +247,7 @@ export default function LabResult() {
         chiefComplaint: `ผลแลบ: ${labResultRecord.testName}`,
         recordedBy: labResultRecord.testedBy,
         recordedTime: labResultRecord.testedTime,
-        message: `มีผลแลบใหม่สำหรับคุณ ${patient.thai_name || `${patient.first_name} ${patient.last_name}`} โดย ${labResultRecord.testedBy}`
+        message: `มีผลแลบใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${labResultRecord.testedBy}`
       };
 
       await NotificationService.notifyPatientRecordUpdate(notificationData);

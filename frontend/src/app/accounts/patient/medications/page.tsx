@@ -118,9 +118,28 @@ const PatientMedications = () => {
     medication.visit?.diagnosis?.toLowerCase().includes(searchTerm.toLowerCase())
   ) : [];
 
-  const activeMedications = filteredMedications.filter(med => med.status === 'prescribed' || med.status === 'active');
-  const expiringSoon = activeMedications.filter(med => med.duration_days && med.duration_days <= 7);
-  const controlledMedications = activeMedications.filter(med => med.notes?.toLowerCase().includes('ควบคุม') || med.medication_name?.toLowerCase().includes('morphine') || med.medication_name?.toLowerCase().includes('tramadol'));
+  // ใช้ medications ทั้งหมดแทน activeMedications เพื่อให้ได้จำนวนที่ถูกต้อง
+  const allMedications = filteredMedications;
+  const activeMedications = filteredMedications.filter(med => med.status === 'prescribed' || med.status === 'active' || med.status === 'dispensed');
+  
+  // แก้ไขการคำนวณยาที่ใกล้หมด - ใช้ข้อมูลที่ถูกต้อง
+  const expiringSoon = activeMedications.filter(med => {
+    // ตรวจสอบว่ามี duration_days ที่สมเหตุสมผล (1-365 วัน)
+    const duration = med.duration_days;
+    return duration && duration > 0 && duration <= 365 && duration <= 7;
+  });
+  
+  // แก้ไขการคำนวณยาควบคุม - ใช้ข้อมูลที่ถูกต้อง
+  const controlledMedications = activeMedications.filter(med => {
+    const name = med.medication_name?.toLowerCase() || '';
+    const notes = med.notes?.toLowerCase() || '';
+    return notes.includes('ควบคุม') || 
+           name.includes('morphine') || 
+           name.includes('tramadol') ||
+           name.includes('oxycodone') ||
+           name.includes('fentanyl') ||
+           name.includes('codeine');
+  });
 
   const showMedicationDetails = (medication: Medication) => {
     setSelectedMedication(medication);
@@ -178,7 +197,7 @@ const PatientMedications = () => {
               <Pill className="h-8 w-8 text-blue-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">ยาทั้งหมด</p>
-                <p className="text-2xl font-bold text-gray-900">{activeMedications.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{allMedications.length}</p>
               </div>
             </div>
           </div>
@@ -317,17 +336,31 @@ const PatientMedications = () => {
 
         {/* Medication Details Modal */}
         {showModal && selectedMedication && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto shadow-xl">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-900">{selectedMedication.medication_name}</h2>
-                <button 
-                  onClick={() => setShowModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  ✕
-                </button>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-300 shadow-lg">
+              {/* Header Bar */}
+              <div className="bg-gray-50 border-b border-gray-200 px-6 py-4 rounded-t-lg">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <Pill className="h-6 w-6 text-gray-600" />
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">{selectedMedication.medication_name}</h2>
+                      <p className="text-gray-600 text-sm">รายละเอียดยา</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    <span className="sr-only">ปิด</span>
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
+              
+              <div className="p-6">
               
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -387,6 +420,16 @@ const PatientMedications = () => {
                   <p>วันที่สั่งจ่าย: {new Date(selectedMedication.prescription.date).toLocaleDateString('th-TH')}</p>
                   <p>เลขที่ใบสั่งยา: {selectedMedication.prescription.number}</p>
                 </div>
+                
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="px-6 py-2 text-gray-600 border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors font-medium"
+                  >
+                    ปิด
+                  </button>
+                </div>
+              </div>
               </div>
             </div>
           </div>

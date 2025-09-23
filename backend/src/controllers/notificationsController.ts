@@ -221,13 +221,36 @@ export const getPatientNotifications = async (req: Request, res: Response) => {
 export const markNotificationAsRead = async (req: Request, res: Response) => {
   try {
     const { id: patientId, notifId } = req.params;
-    const userId = (req as any).user.id;
+    const user = (req as any).user;
+
+    // For patient role, find patient record by user's email
+    // For other roles, use the patientId from URL
+    let actualPatientId = patientId;
+    
+    if (user?.role === 'patient') {
+      // Find patient record by user's email
+      const patientByEmail = await databaseManager.query(
+        'SELECT id, first_name, last_name FROM patients WHERE email = $1',
+        [user.email]
+      );
+      
+      if (patientByEmail.rows.length === 0) {
+        return res.status(404).json({
+          data: null,
+          meta: null,
+          error: { message: 'Patient record not found' },
+          statusCode: 404
+        });
+      }
+      
+      actualPatientId = patientByEmail.rows[0].id;
+    }
 
     // Validate notification exists and belongs to patient
     const notificationExists = await databaseManager.query(`
       SELECT id, is_read FROM notifications 
       WHERE id = $1 AND patient_id = $2
-    `, [notifId, patientId]);
+    `, [notifId, actualPatientId]);
 
     if (notificationExists.rows.length === 0) {
       return res.status(404).json({
@@ -250,10 +273,10 @@ export const markNotificationAsRead = async (req: Request, res: Response) => {
     }
 
     // Mark notification as read
-    console.log('🔔 Backend - Marking notification as read:', { notifId, patientId });
+    console.log('🔔 Backend - Marking notification as read:', { notifId, actualPatientId, patientId });
     await databaseManager.query(`
       UPDATE notifications 
-      SET is_read = true, read_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      SET is_read = true, read_at = NOW() AT TIME ZONE 'Asia/Bangkok', updated_at = NOW() AT TIME ZONE 'Asia/Bangkok'
       WHERE id = $1
     `, [notifId]);
     console.log('🔔 Backend - Notification marked as read successfully');
@@ -275,7 +298,7 @@ export const markNotificationAsRead = async (req: Request, res: Response) => {
       },
       meta: {
         timestamp: new Date().toISOString(),
-        markedBy: userId
+        markedBy: user?.id
       },
       error: null,
       statusCode: 200

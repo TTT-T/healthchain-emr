@@ -101,6 +101,25 @@ export function getCurrentThailandTimeString(): string {
 }
 
 /**
+ * Get current datetime-local format for input fields (YYYY-MM-DDTHH:MM)
+ */
+export function getCurrentThailandDateTimeLocal(): string {
+  // ใช้ toLocaleString เพื่อให้ได้เวลาปัจจุบันใน timezone ของ browser
+  const now = new Date();
+  
+  // แปลงเป็นเวลาไทยโดยการเพิ่ม 7 ชั่วโมง
+  const thaiTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+  
+  const year = thaiTime.getUTCFullYear();
+  const month = String(thaiTime.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(thaiTime.getUTCDate()).padStart(2, '0');
+  const hours = String(thaiTime.getUTCHours()).padStart(2, '0');
+  const minutes = String(thaiTime.getUTCMinutes()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+/**
  * Parse time string and return Thailand time
  */
 export function parseThailandTime(timeString: string): Date {
