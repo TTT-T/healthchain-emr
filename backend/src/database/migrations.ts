@@ -185,6 +185,13 @@ export class MigrationManager {
         up: async () => {
           await this.runSqlMigration('018_create_database_management_tables.sql');
         }
+      },
+      {
+        name: '021_add_current_address_to_users',
+        description: 'Add current_address field to users table',
+        up: async () => {
+          await this.runSqlMigration('021_add_current_address_to_users.sql');
+        }
       }
     ];
 

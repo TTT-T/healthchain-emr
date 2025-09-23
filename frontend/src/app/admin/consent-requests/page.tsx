@@ -461,6 +461,7 @@ export default function ConsentRequestsPage() {
                   </td>
                   <td className="py-4 px-4 text-sm text-gray-500">
                     {new Date(request.created_at).toLocaleDateString('th-TH', {
+                      timeZone: 'Asia/Bangkok',
                       year: 'numeric',
                       month: 'short',
                       day: 'numeric',

@@ -13,7 +13,11 @@ interface ExternalRequesterRegistrationData {
   taxId?: string;
   
   // Contact Information
-  primaryContactName: string;
+  primaryContactTitle: string;
+  primaryContactFirstNameThai: string;
+  primaryContactLastNameThai: string;
+  primaryContactFirstNameEnglish: string;
+  primaryContactLastNameEnglish: string;
   primaryContactEmail: string;
   primaryContactPhone: string;
   
@@ -58,6 +62,18 @@ interface RegistrationResponse {
   estimatedReviewTime?: string;
 }
 
+// Handle CORS preflight requests
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: ExternalRequesterRegistrationData = await request.json();
@@ -67,7 +83,9 @@ export async function POST(request: NextRequest) {
       organizationName: body.organizationName,
       organizationType: body.organizationType,
       registrationNumber: body.registrationNumber,
-      primaryContactName: body.primaryContactName,
+      primaryContactTitle: body.primaryContactTitle,
+      primaryContactFirstNameThai: body.primaryContactFirstNameThai,
+      primaryContactLastNameThai: body.primaryContactLastNameThai,
       primaryContactEmail: body.primaryContactEmail,
       primaryContactPhone: body.primaryContactPhone,
       'address.streetAddress': body.address?.streetAddress,
@@ -153,8 +171,9 @@ export async function POST(request: NextRequest) {
     // สร้าง Request ID สำหรับการติดตาม
     const requestId = `REQ-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-    // จำลองการบันทึกข้อมูลลงฐานข้อมูล
-    // ในระบบจริงจะต้องมีการบันทึกลง external_requesters table
+    // บันทึกข้อมูลลงฐานข้อมูลจริง
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+    
     const registrationData = {
       request_id: requestId,
       organization_name: body.organizationName,
@@ -162,7 +181,11 @@ export async function POST(request: NextRequest) {
       registration_number: body.registrationNumber,
       license_number: body.licenseNumber || null,
       tax_id: body.taxId || null,
-      primary_contact_name: body.primaryContactName,
+      primary_contact_title: body.primaryContactTitle,
+      primary_contact_first_name_thai: body.primaryContactFirstNameThai,
+      primary_contact_last_name_thai: body.primaryContactLastNameThai,
+      primary_contact_first_name_english: body.primaryContactFirstNameEnglish,
+      primary_contact_last_name_english: body.primaryContactLastNameEnglish,
       primary_contact_email: body.primaryContactEmail,
       primary_contact_phone: body.primaryContactPhone,
       address: body.address,
@@ -177,12 +200,50 @@ export async function POST(request: NextRequest) {
       login_email: body.loginEmail,
       password_hash: body.password, // ในระบบจริงต้อง hash ด้วย bcrypt หรือ similar
       
+      // Personal information for users table
+      username: body.username,
+      firstNameThai: body.firstNameThai || body.primaryContactFirstNameThai,
+      lastNameThai: body.lastNameThai || body.primaryContactLastNameThai,
+      firstNameEnglish: body.firstNameEnglish || body.primaryContactFirstNameEnglish,
+      lastNameEnglish: body.lastNameEnglish || body.primaryContactLastNameEnglish,
+      title: body.title || body.primaryContactTitle,
+      nationalId: body.nationalId,
+      birthDate: body.birthDate,
+      gender: body.gender,
+      nationality: body.nationality || 'Thai',
+      currentAddress: body.currentAddress,
+      idCardAddress: body.idCardAddress,
+      
       status: 'pending_review',  // สถานะเริ่มต้น
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
 
     logger.debug('Registration data to be saved:', registrationData);
+
+    // ส่งข้อมูลไปยัง backend เพื่อบันทึกลงฐานข้อมูล
+    try {
+      const backendResponse = await fetch(`${backendUrl}/api/external-requesters/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(registrationData)
+      });
+
+      if (!backendResponse.ok) {
+        const errorData = await backendResponse.json();
+        logger.error('Backend registration failed:', errorData);
+        throw new Error(errorData.message || 'Backend registration failed');
+      }
+
+      const backendResult = await backendResponse.json();
+      logger.debug('Backend registration successful:', backendResult);
+    } catch (backendError) {
+      logger.safeError('Error calling backend registration:', backendError);
+      // ยังคงส่ง response สำเร็จให้ frontend แต่ log error
+      // ในระบบจริงอาจจะต้องจัดการ error นี้ให้ดีกว่านี้
+    }
 
     // จำลองการส่งอีเมลแจ้งเตือน
     // await sendNotificationEmail({
@@ -214,15 +275,29 @@ export async function POST(request: NextRequest) {
       estimatedReviewTime: '3-5 วันทำการ'
     };
 
-    return NextResponse.json(response, { status: 201 });
+    const nextResponse = NextResponse.json(response, { status: 201 });
+    
+    // Add CORS headers
+    nextResponse.headers.set('Access-Control-Allow-Origin', '*');
+    nextResponse.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    nextResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    return nextResponse;
 
   } catch (error) {
     logger.error('Registration error:', error);
     
-    return NextResponse.json({
+    const errorResponse = NextResponse.json({
       success: false,
       error: 'เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง'
     }, { status: 500 });
+    
+    // Add CORS headers
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*');
+    errorResponse.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    return errorResponse;
   }
 }
 

@@ -1,10 +1,12 @@
 /**
  * Thailand Time Utilities for Backend
- * จัดการเวลาในประเทศไทย (UTC+7)
+ * จัดการเวลาในประเทศไทย (UTC+7) - Asia/Bangkok
+ * All times are displayed in Thailand timezone only
  */
 
 // Thailand timezone offset (UTC+7)
 export const THAILAND_TIMEZONE_OFFSET = 7 * 60; // 7 hours in minutes
+export const THAILAND_TIMEZONE = 'Asia/Bangkok';
 
 /**
  * Get current time in Thailand
@@ -15,6 +17,15 @@ export function getThailandTime(): Date {
   const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
   const thailandTime = new Date(utc + (THAILAND_TIMEZONE_OFFSET * 60000));
   return thailandTime;
+}
+
+/**
+ * Get current time in Thailand using Intl API (more accurate)
+ */
+export function getThailandTimeIntl(): Date {
+  const now = new Date();
+  const thailandTimeString = now.toLocaleString('en-US', { timeZone: THAILAND_TIMEZONE });
+  return new Date(thailandTimeString);
 }
 
 /**
@@ -103,4 +114,49 @@ export function getCurrentThailandDateString(): string {
  */
 export function getCurrentThailandTimeOnlyString(): string {
   return formatThailandTime(getThailandTime());
+}
+
+/**
+ * Format timestamp to Thailand timezone with custom options
+ */
+export function formatThailandTimestamp(timestamp: string | Date, options?: {
+  includeTime?: boolean;
+  includeSeconds?: boolean;
+  buddhistYear?: boolean;
+}): string {
+  const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+  const thaiDate = toThailandTime(date);
+  
+  const defaultOptions = {
+    includeTime: true,
+    includeSeconds: false,
+    buddhistYear: false,
+    ...options
+  };
+  
+  const day = String(thaiDate.getDate()).padStart(2, '0');
+  const month = String(thaiDate.getMonth() + 1).padStart(2, '0');
+  const year = defaultOptions.buddhistYear ? thaiDate.getFullYear() + 543 : thaiDate.getFullYear();
+  
+  let result = `${day}/${month}/${year}`;
+  
+  if (defaultOptions.includeTime) {
+    const hours = String(thaiDate.getHours()).padStart(2, '0');
+    const minutes = String(thaiDate.getMinutes()).padStart(2, '0');
+    result += ` ${hours}:${minutes}`;
+    
+    if (defaultOptions.includeSeconds) {
+      const seconds = String(thaiDate.getSeconds()).padStart(2, '0');
+      result += `:${seconds}`;
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * Get current Thailand time for database operations
+ */
+export function getCurrentThailandTimeForDB(): Date {
+  return getThailandTimeIntl();
 }

@@ -43,19 +43,34 @@ class Logger {
     const timestamp = new Date().toISOString();
     const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
     
-    switch (level) {
-      case 'debug':
-        console.debug(prefix, message, ...args);
-        break;
-      case 'info':
-        console.info(prefix, message, ...args);
-        break;
-      case 'warn':
-        console.warn(prefix, message, ...args);
-        break;
-      case 'error':
-        console.error(prefix, message, ...args);
-        break;
+    // Handle undefined or null message and args
+    const safeMessage = message || 'No message provided';
+    const safeArgs = args.map(arg => {
+      if (arg === undefined) return 'undefined';
+      if (arg === null) return 'null';
+      if (typeof arg === 'string') return arg;
+      if (arg instanceof Error) return arg.message;
+      return String(arg);
+    });
+    
+    try {
+      switch (level) {
+        case 'debug':
+          console.debug(prefix, safeMessage, ...safeArgs);
+          break;
+        case 'info':
+          console.info(prefix, safeMessage, ...safeArgs);
+          break;
+        case 'warn':
+          console.warn(prefix, safeMessage, ...safeArgs);
+          break;
+        case 'error':
+          console.error(prefix, safeMessage, ...safeArgs);
+          break;
+      }
+    } catch (error) {
+      // Fallback if console methods fail
+      console.log(prefix, safeMessage, ...safeArgs);
     }
   }
 
@@ -96,6 +111,18 @@ class Logger {
   // Auth logging
   authAction(action: string, details?: unknown): void {
     this.info(`🔑 Auth: ${action}`, details || '');
+  }
+
+  // Safe error logging - handles undefined/null errors
+  safeError(message: string, error?: unknown): void {
+    try {
+      const safeError = error instanceof Error ? error.message : 
+                       error ? String(error) : 'Unknown error';
+      this.formatMessage('error', message, safeError);
+    } catch (logError) {
+      // Ultimate fallback - just use console.log
+      console.log('[SAFE ERROR]', message, error);
+    }
   }
 
   // Navigation logging

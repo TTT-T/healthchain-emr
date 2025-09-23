@@ -15,6 +15,18 @@ import {
   getExternalRequestersDashboardOverview
 } from '../controllers/externalRequestersController';
 
+// Import external requester registration controllers
+import {
+  registerExternalRequester,
+  getRegistrationStatus
+} from '../controllers/externalRequesterRegistrationController';
+
+// Import external requester status controllers
+import {
+  getRegistrationStatus as getStatus,
+  updateRegistrationStatus
+} from '../controllers/externalRequesterStatusController';
+
 // Import external requesters profile controllers
 import {
   getExternalRequesterProfile,
@@ -33,7 +45,18 @@ import {
 
 const router = express.Router();
 
-// Apply authentication to all routes
+/**
+ * Public Registration Routes (No authentication required)
+ */
+router.post('/register', asyncHandler(registerExternalRequester));
+router.get('/register/:requestId', asyncHandler(getRegistrationStatus));
+
+/**
+ * Public Status Routes (No authentication required)
+ */
+router.get('/status', asyncHandler(getStatus));
+
+// Apply authentication to all other routes
 router.use(authenticate);
 
 /**
@@ -49,6 +72,11 @@ router.put('/requests/:id', authorize(['external_requester', 'admin']), asyncHan
  */
 router.post('/requests/:id/approve', authorize(['admin']), asyncHandler(approveDataRequest));
 router.post('/requests/:id/reject', authorize(['admin']), asyncHandler(rejectDataRequest));
+
+/**
+ * Registration Status Management Routes (Admin only)
+ */
+router.put('/status/:requestId', authorize(['admin']), asyncHandler(updateRegistrationStatus));
 
 /**
  * Search and Report Routes

@@ -225,3 +225,26 @@ test-results.xml
 # Local development
 .local
 .cache
+
+# Cleanup additions - EMR System
+# Debug and test files
+debug-*.js
+test-*.html
+test-*.js
+check-*.js
+create-test-*.js
+
+# Console logs and debug statements
+# Note: These should be removed from production builds
+# console.log statements are handled by build process
+
+# Additional cache directories
+node_modules/.cache/
+backend/dist/
+frontend/.next/
+frontend/out/
+
+# Temporary files
+*.tmp
+*.temp
+*.log

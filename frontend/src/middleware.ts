@@ -19,14 +19,19 @@ const publicRoutes = [
   '/medical-staff/register',
   '/external-requesters/login',
   '/external-requesters/register',
-  '/api/health'
+  '/api/health',
+  '/api/external-requesters/register',
+  '/api/external-requesters/login'
 ]
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  console.log('🔍 Middleware - Processing path:', pathname)
+
   // Allow public routes (exact match or starts with)
   if (publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))) {
+    console.log('🔍 Middleware - Allowing public route:', pathname)
     return NextResponse.next()
   }
 
@@ -47,10 +52,11 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Check for external requester routes (but not login/register)
+  // Check for external requester routes (but not login/register or API routes)
   if (pathname.startsWith('/external-requesters') && 
       !pathname.startsWith('/external-requesters/login') && 
-      !pathname.startsWith('/external-requesters/register')) {
+      !pathname.startsWith('/external-requesters/register') &&
+      !pathname.startsWith('/api/external-requesters')) {
     const externalToken = request.cookies.get('external-requester-token')?.value
     if (!externalToken) {
       return NextResponse.redirect(new URL('/external-requesters/login', request.url))

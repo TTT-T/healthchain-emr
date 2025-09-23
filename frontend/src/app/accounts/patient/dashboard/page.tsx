@@ -573,7 +573,12 @@ const PatientDashboard = () => {
                     <div>
                       <p className="font-medium text-gray-900 text-sm">{doc.documentTitle}</p>
                       <p className="text-xs text-gray-500">
-                        {new Date(doc.createdAt).toLocaleDateString('th-TH')} • {doc.doctorName || 'ระบบ'}
+                        {new Date(doc.createdAt).toLocaleDateString('th-TH', {
+                          timeZone: 'Asia/Bangkok',
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })} • {doc.doctorName || 'ระบบ'}
                       </p>
                     </div>
                   </div>

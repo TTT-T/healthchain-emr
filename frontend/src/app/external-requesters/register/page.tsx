@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api'
@@ -38,11 +39,16 @@ interface ExternalRequesterRegistration {
   taxId: string
   
   // Contact Information
-  primaryContactName: string
+  primaryContactTitle: string         // คำนำหน้า
+  primaryContactFirstNameThai: string // ชื่อไทย
+  primaryContactLastNameThai: string  // นามสกุลไทย
+  primaryContactFirstNameEnglish: string // ชื่ออังกฤษ
+  primaryContactLastNameEnglish: string  // นามสกุลอังกฤษ
   primaryContactEmail: string
   primaryContactPhone: string
   
   // Login Credentials
+  username: string                     // username สำหรับ login
   loginEmail: string
   password: string
   confirmPassword: string
@@ -73,9 +79,26 @@ interface ExternalRequesterRegistration {
     fileSize: number
     uploadDate: string
   }[]
+  
+  // เพิ่มฟิลด์สำหรับตาราง users
+  // Personal Information
+  firstNameThai?: string     // ชื่อไทย
+  lastNameThai?: string      // นามสกุลไทย
+  firstNameEnglish?: string  // ชื่ออังกฤษ
+  lastNameEnglish?: string   // นามสกุลอังกฤษ
+  title?: string             // คำนำหน้า
+  nationalId?: string        // เลขบัตรประชาชน
+  birthDate?: string         // วันเกิด
+  gender?: 'male' | 'female' | 'other'  // เพศ
+  nationality?: string       // สัญชาติ
+  
+  // Address Details (แยกจาก address หลัก)
+  currentAddress?: string    // ที่อยู่ปัจจุบัน
+  idCardAddress?: string     // ที่อยู่ตามบัตรประชาชน
 }
 
 export default function ExternalRequesterRegistration() {
+  const router = useRouter()
   const [formData, setFormData] = useState<ExternalRequesterRegistration>({
     // Organization Information
     organizationName: '',
@@ -87,11 +110,16 @@ export default function ExternalRequesterRegistration() {
     taxId: '',
     
     // Contact Information
-    primaryContactName: '',
+    primaryContactTitle: '',
+    primaryContactFirstNameThai: '',
+    primaryContactLastNameThai: '',
+    primaryContactFirstNameEnglish: '',
+    primaryContactLastNameEnglish: '',
     primaryContactEmail: '',
     primaryContactPhone: '',
     
     // Login Credentials
+    username: '',
     loginEmail: '',
     password: '',
     confirmPassword: '',
@@ -111,6 +139,22 @@ export default function ExternalRequesterRegistration() {
     complianceCertifications: [],
     dataProtectionCertification: '',
     verificationDocuments: [],
+    
+    // เพิ่มฟิลด์สำหรับตาราง users
+    // Personal Information
+    firstNameThai: '',
+    lastNameThai: '',
+    firstNameEnglish: '',
+    lastNameEnglish: '',
+    title: '',
+    nationalId: '',
+    birthDate: '',
+    gender: 'male' as const,
+    nationality: 'Thai',
+    
+    // Address Details
+    currentAddress: '',
+    idCardAddress: '',
   })
 
   const organizationTypes = [
@@ -259,7 +303,8 @@ export default function ExternalRequesterRegistration() {
       const requiredFields = [
         formData.organizationName,
         formData.registrationNumber,
-        formData.primaryContactName,
+        formData.primaryContactFirstNameThai,
+        formData.primaryContactLastNameThai,
         formData.primaryContactEmail,
         formData.primaryContactPhone,
         formData.address.streetAddress,
@@ -267,12 +312,13 @@ export default function ExternalRequesterRegistration() {
         formData.address.district,
         formData.address.province,
         formData.address.postalCode,
+        formData.username,
         formData.loginEmail,
         formData.password,
         formData.confirmPassword
       ]
       
-      if (requiredFields.some(field => !field.trim())) {
+      if (requiredFields.some(field => !field || (typeof field === 'string' && field.trim() === ''))) {
         setSubmitResult({
           success: false,
           message: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน'
@@ -281,7 +327,7 @@ export default function ExternalRequesterRegistration() {
       }
 
       // Basic validation
-      if (!formData.organizationName || !formData.primaryContactName || !formData.primaryContactEmail) {
+      if (!formData.organizationName || !formData.primaryContactFirstNameThai || !formData.primaryContactLastNameThai || !formData.primaryContactEmail) {
         setSubmitResult({
           success: false,
           message: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน'
@@ -334,16 +380,53 @@ export default function ExternalRequesterRegistration() {
 
       // Submit to API
       const response = await apiClient.registerExternalRequester(formData)
+      
+      console.log('🔍 Registration response:', response)
 
-      if (response.statusCode === 200) {
+      if (response.statusCode === 200 || response.statusCode === 201) {
+        const data = response.data;
+        let message = 'ลงทะเบียนสำเร็จ!\n\n';
+        
+        if (data?.requestId || data?.id) {
+          message += `รหัสคำขอ: ${data.requestId || data.id}\n`;
+        }
+        
+        if (data?.requiresEmailVerification) {
+          message += '\n📧 กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี';
+        }
+        
+        if (data?.requiresAdminApproval) {
+          message += '\n👨‍💼 บัญชีของคุณอยู่ระหว่างการตรวจสอบจากผู้ดูแลระบบ';
+        }
+        
+        message += '\n\n⏰ ระยะเวลาตรวจสอบโดยประมาณ: 3-5 วันทำการ';
+        message += '\n\n🎯 ขั้นตอนต่อไป:';
+        message += '\n1. ตรวจสอบอีเมลและยืนยันบัญชี';
+        message += '\n2. รอการอนุมัติจากผู้ดูแลระบบ';
+        message += '\n3. เข้าสู่ระบบด้วย Username และ Password ที่ตั้งไว้';
+        
         setSubmitResult({
           success: true,
-          message: `ลงทะเบียนสำเร็จ\n\nรหัสคำขอ: ${response.data?.requestId || response.data?.id}\nระยะเวลาตรวจสอบโดยประมาณ: 3-5 วันทำการ`,
-          requestId: response.data?.requestId || response.data?.id
+          message: message,
+          requestId: data?.requestId || data?.id
         })
         
-        // เคลียร์ฟอร์มหลังจากส่งสำเร็จ
-        // (อาจจะเก็บไว้ให้ผู้ใช้ดูข้อมูลที่ส่งไป)
+        // บันทึกข้อมูลลง localStorage และ redirect ไปหน้า success
+        const successData = {
+          success: true,
+          message: message,
+          requestId: data?.requestId || data?.id,
+          email: formData.loginEmail,
+          requiresEmailVerification: true,
+          requiresAdminApproval: true
+        }
+        
+        localStorage.setItem('registrationStatus', JSON.stringify(successData))
+        
+        // Redirect ไปหน้า status หลังจาก 2 วินาที
+        setTimeout(() => {
+          router.push(`/external-requesters/status?requestId=${data?.requestId || data?.id}&email=${formData.loginEmail}`)
+        }, 2000)
       } else {
         setSubmitResult({
           success: false,
@@ -352,7 +435,7 @@ export default function ExternalRequesterRegistration() {
       }
 
     } catch (error) {
-      logger.error('Submit error:', error)
+      logger.safeError('Submit error:', error)
       setSubmitResult({
         success: false,
         message: 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง'
@@ -386,6 +469,83 @@ export default function ExternalRequesterRegistration() {
 
         {/* Single Form */}
         <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4 sm:space-y-6 lg:space-y-8">
+          
+          {/* Development helper */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-700 mb-2">Development Mode - Quick Fill:</p>
+              <button
+                type="button"
+                onClick={() => {
+                  const timestamp = Date.now();
+                  setFormData({
+                    // Organization Information
+                    organizationName: 'โรงพยาบาลทดสอบระบบ',
+                    organizationType: 'hospital' as const,
+                    
+                    // Registration Details
+                    registrationNumber: `REG-${timestamp}`,
+                    licenseNumber: `LIC-${timestamp}`,
+                    taxId: `1234567890${timestamp.toString().slice(-3)}`,
+                    
+                    // Contact Information
+                    primaryContactTitle: 'นาย',
+                    primaryContactFirstNameThai: 'ทดสอบ',
+                    primaryContactLastNameThai: 'ระบบ',
+                    primaryContactFirstNameEnglish: 'Test',
+                    primaryContactLastNameEnglish: 'System',
+                    primaryContactEmail: `test${timestamp}@hospital.com`,
+                    primaryContactPhone: '0812345678',
+                    
+                    // Login Credentials
+                    username: `testuser${timestamp}`,
+                    loginEmail: `test${timestamp}@hospital.com`,
+                    password: 'TestPassword123!',
+                    confirmPassword: 'TestPassword123!',
+                    
+                    // Address
+                    address: {
+                      streetAddress: '123 ถนนทดสอบ แขวงทดสอบ',
+                      subDistrict: 'แขวงทดสอบ',
+                      district: 'เขตทดสอบ',
+                      province: 'กรุงเทพมหานคร',
+                      postalCode: '10110',
+                      country: 'Thailand'
+                    },
+                    
+                    // Access Permissions
+                    dataAccessLevel: 'standard' as const,
+                    allowedRequestTypes: ['hospital_transfer', 'insurance_claim', 'research', 'emergency'],
+                    maxConcurrentRequests: 20,
+                    
+                    // Compliance Information
+                    complianceCertifications: ['HA Certificate', 'ISO 9001'],
+                    dataProtectionCertification: 'ISO27001',
+                    verificationDocuments: [],
+                    
+                    // เพิ่มฟิลด์สำหรับตาราง users
+                    // Personal Information
+                    firstNameThai: 'ทดสอบ',
+                    lastNameThai: 'ระบบ',
+                    firstNameEnglish: 'Test',
+                    lastNameEnglish: 'System',
+                    title: 'นาย',
+                    nationalId: `1234567890${timestamp.toString().slice(-3)}`,
+                    birthDate: '1990-01-01',
+                    gender: 'male' as const,
+                    nationality: 'Thai',
+                    
+                    // Address Details
+                    currentAddress: '123 ถนนทดสอบ แขวงทดสอบ เขตทดสอบ กรุงเทพมหานคร 10110',
+                    idCardAddress: '456 ถนนบัตรประชาชน แขวงบัตร เขตบัตร กรุงเทพมหานคร 10120'
+                  });
+                }}
+                className="px-3 py-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700"
+              >
+                เติมข้อมูลทดสอบ
+              </button>
+            </div>
+          )}
           
           {/* Section 1: Organization Information */}
           <Card className="shadow-lg border-0 bg-white">
@@ -494,18 +654,81 @@ export default function ExternalRequesterRegistration() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8 p-6 lg:p-8">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Personal Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-3">ชื่อผู้ติดต่อหลัก *</label>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3">คำนำหน้า *</label>
+                  <select
+                    value={formData.primaryContactTitle}
+                    onChange={(e) => handleInputChange('primaryContactTitle', e.target.value)}
+                    className="w-full p-4 text-gray-900 font-medium border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-white shadow-sm"
+                    required
+                  >
+                    <option value="">เลือกคำนำหน้า</option>
+                    <option value="นาย">นาย</option>
+                    <option value="นาง">นาง</option>
+                    <option value="นางสาว">นางสาว</option>
+                    <option value="ดร.">ดร.</option>
+                    <option value="ศ.ดร.">ศ.ดร.</option>
+                    <option value="รศ.ดร.">รศ.ดร.</option>
+                    <option value="ผศ.ดร.">ผศ.ดร.</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3">ชื่อไทย *</label>
                   <input
                     type="text"
                     className="w-full p-4 text-gray-900 font-medium border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-white shadow-sm"
-                    placeholder="เช่น นายสมชาย ใจดี"
-                    value={formData.primaryContactName}
-                    onChange={(e) => handleInputChange('primaryContactName', e.target.value)}
+                    placeholder="เช่น สมชาย"
+                    value={formData.primaryContactFirstNameThai}
+                    onChange={(e) => handleInputChange('primaryContactFirstNameThai', e.target.value)}
                     required
                   />
                 </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3">นามสกุลไทย *</label>
+                  <input
+                    type="text"
+                    className="w-full p-4 text-gray-900 font-medium border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-white shadow-sm"
+                    placeholder="เช่น ใจดี"
+                    value={formData.primaryContactLastNameThai}
+                    onChange={(e) => handleInputChange('primaryContactLastNameThai', e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3">ชื่ออังกฤษ *</label>
+                  <input
+                    type="text"
+                    className="w-full p-4 text-gray-900 font-medium border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-white shadow-sm"
+                    placeholder="เช่น Somchai"
+                    value={formData.primaryContactFirstNameEnglish}
+                    onChange={(e) => handleInputChange('primaryContactFirstNameEnglish', e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3">นามสกุลอังกฤษ *</label>
+                  <input
+                    type="text"
+                    className="w-full p-4 text-gray-900 font-medium border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors bg-white shadow-sm"
+                    placeholder="เช่น Jaidee"
+                    value={formData.primaryContactLastNameEnglish}
+                    onChange={(e) => handleInputChange('primaryContactLastNameEnglish', e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-3">อีเมล *</label>
                   <input
@@ -601,6 +824,199 @@ export default function ExternalRequesterRegistration() {
                   </select>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 2.5: Personal Information (สำหรับตาราง users) */}
+          <Card className="shadow-lg border-0 bg-white">
+            <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50 border-b border-orange-100">
+              <CardTitle className="flex items-center space-x-3 text-xl text-gray-900">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <Users className="h-6 w-6 text-orange-600" />
+                </div>
+                <span>ข้อมูลส่วนตัวผู้ติดต่อหลัก</span>
+              </CardTitle>
+              <CardDescription className="text-gray-700 text-base mt-2">
+                ข้อมูลส่วนตัวของผู้ติดต่อหลัก (สำหรับการสร้างบัญชีผู้ใช้)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 p-6 lg:p-8">
+              {/* Copy from Contact Button */}
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-semibold text-blue-800 mb-1">ตัวช่วยกรอกข้อมูล</h4>
+                    <p className="text-xs text-blue-600">กดปุ่มด้านล่างเพื่อคัดลอกข้อมูลจากผู้ติดต่อหลัก</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        firstNameThai: prev.primaryContactFirstNameThai,
+                        lastNameThai: prev.primaryContactLastNameThai,
+                        firstNameEnglish: prev.primaryContactFirstNameEnglish,
+                        lastNameEnglish: prev.primaryContactLastNameEnglish,
+                        title: prev.primaryContactTitle,
+                        nationality: 'Thai'
+                      }));
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                  >
+                    <Users className="h-4 w-4" />
+                    <span>ข้อมูลเดียวกับผู้ติดต่อหลัก</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Personal Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3">คำนำหน้า</label>
+                  <select
+                    value={formData.title || ''}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  >
+                    <option value="">เลือกคำนำหน้า</option>
+                    <option value="นาย">นาย</option>
+                    <option value="นาง">นาง</option>
+                    <option value="นางสาว">นางสาว</option>
+                    <option value="ดร.">ดร.</option>
+                    <option value="ศ.ดร.">ศ.ดร.</option>
+                    <option value="รศ.ดร.">รศ.ดร.</option>
+                    <option value="ผศ.ดร.">ผศ.ดร.</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3">ชื่อไทย</label>
+                  <input
+                    type="text"
+                    value={formData.firstNameThai || ''}
+                    onChange={(e) => setFormData({ ...formData, firstNameThai: e.target.value })}
+                    placeholder="ชื่อ ภาษาไทย"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3">นามสกุลไทย</label>
+                  <input
+                    type="text"
+                    value={formData.lastNameThai || ''}
+                    onChange={(e) => setFormData({ ...formData, lastNameThai: e.target.value })}
+                    placeholder="นามสกุล ภาษาไทย"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3">ชื่ออังกฤษ</label>
+                  <input
+                    type="text"
+                    value={formData.firstNameEnglish || ''}
+                    onChange={(e) => setFormData({ ...formData, firstNameEnglish: e.target.value })}
+                    placeholder="ชื่อ ภาษาอังกฤษ"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3">นามสกุลอังกฤษ</label>
+                  <input
+                    type="text"
+                    value={formData.lastNameEnglish || ''}
+                    onChange={(e) => setFormData({ ...formData, lastNameEnglish: e.target.value })}
+                    placeholder="นามสกุล ภาษาอังกฤษ"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Additional Personal Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3">เลขบัตรประชาชน</label>
+                  <input
+                    type="text"
+                    value={formData.nationalId || ''}
+                    onChange={(e) => setFormData({ ...formData, nationalId: e.target.value })}
+                    placeholder="1234567890123"
+                    maxLength={13}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3">วันเกิด</label>
+                  <input
+                    type="date"
+                    value={formData.birthDate || ''}
+                    onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3">เพศ</label>
+                  <select
+                    value={formData.gender || ''}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value as 'male' | 'female' | 'other' })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  >
+                    <option value="">เลือกเพศ</option>
+                    <option value="male">ชาย</option>
+                    <option value="female">หญิง</option>
+                    <option value="other">อื่นๆ</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3">สัญชาติ</label>
+                  <input
+                    type="text"
+                    value={formData.nationality || ''}
+                    onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+                    placeholder="ไทย"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+
+              {/* Additional Address Information */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">ข้อมูลที่อยู่เพิ่มเติม</h3>
+                <div className="grid grid-cols-1 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-800 mb-3">ที่อยู่ปัจจุบัน</label>
+                    <textarea
+                      value={formData.currentAddress || ''}
+                      onChange={(e) => setFormData({ ...formData, currentAddress: e.target.value })}
+                      placeholder="ที่อยู่ปัจจุบัน (ถ้าต่างจากที่อยู่องค์กร)"
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-800 mb-3">ที่อยู่ตามบัตรประชาชน</label>
+                    <textarea
+                      value={formData.idCardAddress || ''}
+                      onChange={(e) => setFormData({ ...formData, idCardAddress: e.target.value })}
+                      placeholder="ที่อยู่ตามบัตรประชาชน"
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
             </CardContent>
           </Card>
 
@@ -854,17 +1270,32 @@ export default function ExternalRequesterRegistration() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8 p-6 lg:p-8">
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3">อีเมลสำหรับเข้าสู่ระบบ *</label>
-                <input
-                  type="email"
-                  name="loginEmail"
-                  className="w-full p-4 text-gray-900 font-medium border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors bg-white shadow-sm"
-                  placeholder="อีเมลที่ใช้สำหรับเข้าสู่ระบบ"
-                  value={formData.loginEmail}
-                  onChange={handleChange}
-                  required
-                />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3">Username สำหรับเข้าสู่ระบบ *</label>
+                  <input
+                    type="text"
+                    name="username"
+                    className="w-full p-4 text-gray-900 font-medium border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors bg-white shadow-sm"
+                    placeholder="username ที่ใช้สำหรับเข้าสู่ระบบ"
+                    value={formData.username}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3">อีเมลสำหรับเข้าสู่ระบบ *</label>
+                  <input
+                    type="email"
+                    name="loginEmail"
+                    className="w-full p-4 text-gray-900 font-medium border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors bg-white shadow-sm"
+                    placeholder="อีเมลที่ใช้สำหรับเข้าสู่ระบบ"
+                    value={formData.loginEmail}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

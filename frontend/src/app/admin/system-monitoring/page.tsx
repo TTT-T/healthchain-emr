@@ -237,7 +237,7 @@ export default function SystemMonitoringPage() {
     if (timestamp.includes('/') && timestamp.includes(':')) {
       return timestamp
     }
-    // Otherwise, format it properly
+    // Otherwise, format it properly using Thailand timezone
     return new Date(timestamp).toLocaleString('th-TH', {
       timeZone: 'Asia/Bangkok',
       year: 'numeric',

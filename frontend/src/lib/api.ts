@@ -1082,11 +1082,25 @@ class APIClient {
    * Register external requester (alias for compatibility)
    */
   async registerExternalRequester(data: unknown): Promise<APIResponse<AuthResponse>> {
-    return this.request<AuthResponse>({
+    // Use frontend API route instead of backend
+    const response = await fetch('/api/external-requesters/register', {
       method: 'POST',
-      url: '/external-requesters/register',
-      data
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
     });
+
+    const result = await response.json();
+    
+    console.log('🔍 API Client - Raw response:', { status: response.status, ok: response.ok, result });
+    
+    return {
+      success: response.ok,
+      data: result,
+      statusCode: response.status,
+      error: response.ok ? null : { message: result.error || 'Registration failed' }
+    };
   }
 
   /**
