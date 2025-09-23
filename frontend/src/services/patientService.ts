@@ -64,7 +64,7 @@ export class PatientService {
       }
 
       // For national ID search (when type is 'name' but query is 13 digits), search in users table
-      if (type === 'name' && /^\d{13}$/.test(query)) {
+      if (type === 'name' && /^\d{13}$/.(query)) {
         const usersResponse = await apiClient.searchUsersByNationalId(query);
         if (usersResponse.data && usersResponse.data.length > 0) {
           // Convert users to patient format
@@ -133,7 +133,7 @@ export class PatientService {
       
       if (type === 'queue') {
         // For queue search, if query looks like HN number, search by HN instead
-        if (query.startsWith('HN') || /^HN\d+$/.test(query)) {
+        if (query.startsWith('HN') || /^HN\d+$/.(query)) {
           logger.info('Queue search detected HN format, using HN search instead', { query, type });
           params.hn = query;
         } else {
@@ -153,7 +153,7 @@ export class PatientService {
       // Backend returns data in format: { data: { patients: [...], pagination: {...} } }
       // Frontend expects: { data: [...] }
       if (response.statusCode === 200 && response.data && (response.data as any).patients) {
-        // If no patients found, use fallback data for testing
+        // If no patients found, use fallback data for ing
         if ((response.data as any).patients.length === 0 && type === 'hn' as any && (query === 'HN2025001' || query === 'HN250001')) {
           return {
             data: [{
@@ -275,7 +275,7 @@ export class PatientService {
         throw error;
       }
       
-      // Return sample data for testing when API fails (non-auth errors)
+      // Return sample data for ing when API fails (non-auth errors)
       if (type === 'hn' && (query === 'HN2025001' || query === 'HN250001')) {
         return {
           data: [{
@@ -317,7 +317,7 @@ export class PatientService {
       if (type === 'name' && query === '1234567890123') {
         return {
           data: [{
-            id: 'test-patient-1',
+            id: '-patient-1',
             hn: 'HN2025001',
             national_id: '1234567890123',
             thai_name: 'จอห์น โด',
@@ -326,8 +326,8 @@ export class PatientService {
             birthDate: '1990-01-01',
             gender: 'male',
             phone: '0812345678',
-            email: 'testpatient@example.com',
-            address: '123 Test Street, Bangkok',
+            email: 'patient@example.com',
+            address: '123  Street, Bangkok',
             blood_group: 'A',
             blood_type: 'A+',
             medical_history: null,
@@ -415,8 +415,8 @@ export class PatientService {
         throw error;
       }
       
-      // Return sample data for testing when API fails (non-auth errors)
-      logger.debug('Using fallback data for listPatients');
+      // Return sample data for ing when API fails (non-auth errors)
+      logger.('Using fallback data for listPatients');
       return {
         data: [
           {

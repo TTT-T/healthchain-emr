@@ -12,13 +12,13 @@ export default function PatientPage() {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      logger.debug("🔒 Patient page: Not authenticated, redirecting to login");
+      logger.("🔒 Patient page: Not authenticated, redirecting to login");
       router.push("/login");
       return;
     }
 
     if (user && isAuthenticated) {
-      logger.debug("✅ Patient page: Authenticated, redirecting to dashboard");
+      logger.("✅ Patient page: Authenticated, redirecting to dashboard");
       router.push("/accounts/patient/dashboard");
       return;
     }

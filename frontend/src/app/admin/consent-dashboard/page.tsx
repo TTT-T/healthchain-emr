@@ -314,7 +314,7 @@ export default function ConsentDashboardPage() {
                     {request.urgency_level === 'normal' && 'ปกติ'}
                   </span>
                   <span className="text-xs text-gray-500">
-                    {new Date(request.created_at).toLocaleDateString('th-TH')}
+                    {new Date(request.created_at).toLocaleDaring('th-TH')}
                   </span>
                 </div>
               </div>
@@ -357,7 +357,7 @@ export default function ConsentDashboardPage() {
                         {alert.severity === 'low' && 'ต่ำ'}
                       </span>
                       <span className="text-xs text-gray-500">
-                        {new Date(alert.created_at).toLocaleDateString('th-TH')}
+                        {new Date(alert.created_at).toLocaleDaring('th-TH')}
                       </span>
                     </div>
                   </div>
@@ -418,7 +418,7 @@ export default function ConsentDashboardPage() {
                     </div>
                   </td>
                   <td className="py-3 px-3 text-sm text-gray-900">
-                    {new Date(contract.valid_until).toLocaleDateString('th-TH')}
+                    {new Date(contract.valid_until).toLocaleDaring('th-TH')}
                   </td>
                   <td className="py-3 px-3">
                     <div className="flex items-center gap-1">

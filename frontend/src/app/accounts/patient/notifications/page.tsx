@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Bell, CheckCircle, Clock, FileText, Stethoscope, Pill, TestTube, Calendar, X, RefreshCw } from 'lucide-react';
+import { Bell, CheckCircle, Clock, FileText, Stethoscope, Pill, Tube, Calendar, X, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { apiClient } from '@/lib/api';
@@ -35,20 +35,13 @@ export default function Notifications() {
   // Load notifications
   const loadNotifications = async () => {
     if (!isAuthenticated || !user?.id) {
-      console.log('❌ Not authenticated or no user ID:', { isAuthenticated, userId: user?.id });
       return;
     }
 
     try {
       setIsLoading(true);
       setError(null);
-
-      console.log('🔍 Loading notifications for user:', user.id);
-      
       const response = await apiClient.getPatientNotifications(user.id);
-
-      console.log('📡 API Response:', response);
-
       if (response && response.statusCode === 200 && response.data) {
         // Extract notifications from the response data structure
         const notificationsData = Array.isArray(response.data) 
@@ -56,13 +49,11 @@ export default function Notifications() {
           : (response.data as any)?.notifications || [];
         
         setNotifications(notificationsData);
-        console.log('✅ Notifications loaded successfully:', notificationsData);
         logger.info('Notifications loaded successfully', { count: notificationsData.length });
 
         // Auto-mark all unread notifications as read when user visits the page
         const unreadNotifications = notificationsData.filter((notif: any) => !notif.is_read);
         if (unreadNotifications.length > 0) {
-          console.log('🔔 Auto-marking unread notifications as read:', unreadNotifications.length);
           logger.info('Auto-marking unread notifications as read', { 
             count: unreadNotifications.length,
             patientId: user.id 
@@ -75,7 +66,6 @@ export default function Notifications() {
                 method: 'PUT',
                 url: `/medical/patients/${user.id}/notifications/${notification.id}/read`
               });
-              console.log('✅ Auto-marked notification as read:', notification.id);
               logger.info('Auto-marked notification as read', { notificationId: notification.id });
             } catch (error: any) {
               console.error('❌ Failed to auto-mark notification as read:', notification.id, error);
@@ -91,7 +81,6 @@ export default function Notifications() {
           refreshNotificationCount();
         }
       } else {
-        console.log('❌ Invalid response:', response);
         if (response && response.statusCode === 200) {
           // If status is 200 but no data, set empty notifications
           setNotifications([]);
@@ -105,12 +94,10 @@ export default function Notifications() {
       
       // Check if it's a 404 error (patient not found) - this is expected for users who haven't registered in EMR yet
       if (error?.response?.status === 404 || error?.statusCode === 404) {
-        console.log('🔍 Patient record not found - this is expected for users who haven\'t registered in EMR yet');
         setNotifications([]);
         setError(null); // Don't show error for expected 404
       } else if (error?.response?.status === 200) {
         // Don't show error for successful responses (status 200)
-        console.log('✅ API request successful but caught in error handler');
         setError(null);
       } else {
         console.error('❌ Error loading notifications:', error);
@@ -160,7 +147,7 @@ export default function Notifications() {
       case 'appointment_created':
         return <Calendar className="w-5 h-5 text-purple-600" />;
       case 'lab_result_ready':
-        return <TestTube className="w-5 h-5 text-orange-600" />;
+        return <Tube className="w-5 h-5 text-orange-600" />;
       case 'prescription_ready':
         return <Pill className="w-5 h-5 text-red-600" />;
       case 'queue_assigned':
@@ -188,10 +175,10 @@ export default function Notifications() {
   };
 
   // Format date to Thai time
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (daring: string) => {
+    const date = new Date(daring);
     
-    return date.toLocaleDateString('th-TH', {
+    return date.toLocaleDaring('th-TH', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

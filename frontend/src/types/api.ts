@@ -555,9 +555,9 @@ export interface MedicalLabOrder {
   patient_id: string;
   visit_id: string;
   order_number: string;
-  test_category: 'blood' | 'urine' | 'stool' | 'imaging' | 'other';
-  test_name: string;
-  test_code?: string;
+  _category: 'blood' | 'urine' | 'stool' | 'imaging' | 'other';
+  _name: string;
+  _code?: string;
   clinical_indication?: string;
   specimen_type?: string;
   collection_instructions?: string;
@@ -575,9 +575,9 @@ export interface MedicalLabOrder {
 export interface CreateLabOrderRequest {
   patientId: string;
   visitId: string;
-  testCategory: 'blood' | 'urine' | 'stool' | 'imaging' | 'other';
-  testName: string;
-  testCode?: string;
+  Category: 'blood' | 'urine' | 'stool' | 'imaging' | 'other';
+  Name: string;
+  Code?: string;
   clinicalIndication?: string;
   specimenType?: string;
   collectionInstructions?: string;
@@ -656,7 +656,7 @@ export interface CreateDocumentRequest {
 export interface Appointment {
   id: string;
   title: string;
-  type: 'consultation' | 'follow-up' | 'procedure' | 'test' | 'vaccination' | 'checkup';
+  type: 'consultation' | 'follow-up' | 'procedure' | '' | 'vaccination' | 'checkup';
   status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no-show' | 'rescheduled';
   date: string;
   time: string;

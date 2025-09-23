@@ -186,7 +186,7 @@ export const updateExternalRequesterProfile = async (req: Request, res: Response
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(primaryContactEmail)) {
+    if (!emailRegex.(primaryContactEmail)) {
       return res.status(400).json({
         data: null,
         meta: null,

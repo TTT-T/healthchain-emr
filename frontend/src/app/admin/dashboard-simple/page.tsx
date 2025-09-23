@@ -7,15 +7,11 @@ export default function AdminDashboardSimple() {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    console.log('🎉 Admin Dashboard Simple loaded successfully!');
     setIsClient(true);
     
     // Check for access token
     const accessToken = localStorage.getItem('access_token');
     setToken(accessToken);
-    
-    console.log('🔍 Access token in localStorage:', !!accessToken);
-    console.log('🔍 Token value:', accessToken ? accessToken.substring(0, 20) + '...' : 'null');
   }, []);
 
   return (
@@ -29,7 +25,7 @@ export default function AdminDashboardSimple() {
         </p>
         
         <div className="bg-gray-50 p-4 rounded-lg mb-6 text-left">
-          <h3 className="font-semibold mb-2">Debug Information:</h3>
+          <h3 className="font-semibold mb-2"> Information:</h3>
           <div className="space-y-2 text-sm text-gray-600">
             <p><strong>URL:</strong> {isClient ? window.location.href : 'Loading...'}</p>
             <p><strong>Timestamp:</strong> {isClient ? new Date().toLocaleString() : 'Loading...'}</p>
@@ -47,21 +43,18 @@ export default function AdminDashboardSimple() {
           </a>
           
           <a 
-            href="/test-dashboard" 
+            href="/-dashboard" 
             className="block bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600 transition-colors"
           >
-            กลับไป Test Dashboard
+            กลับไป  Dashboard
           </a>
           
           <button 
             onClick={() => {
-              console.log('🔍 Checking localStorage...');
-              console.log('🔍 All localStorage keys:', Object.keys(localStorage));
-              console.log('🔍 Access token:', localStorage.getItem('access_token'));
             }}
             className="block w-full bg-gray-500 text-white px-6 py-3 rounded hover:bg-gray-600 transition-colors"
           >
-            Debug LocalStorage (Check Console)
+             LocalStorage (Check Console)
           </button>
           
           <a 

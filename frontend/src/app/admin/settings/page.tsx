@@ -120,7 +120,7 @@ export default function SettingsPage() {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));
-      logger.debug('Settings saved:', settings);
+      logger.('Settings saved:', settings);
       // Show success message
       alert('Settings saved successfully!');
     } catch (error) {
@@ -176,8 +176,8 @@ export default function SettingsPage() {
     }
   };
 
-  const handleTestEmail = () => {
-    alert('Test email sent! Check your inbox.');
+  const handleEmail = () => {
+    alert(' email sent! Check your inbox.');
   };
 
   const renderGeneralSettings = () => (
@@ -526,14 +526,14 @@ export default function SettingsPage() {
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-center gap-2 mb-2">
           <Mail className="text-blue-600" size={16} />
-          <h4 className="font-medium text-blue-900">Test Email Configuration</h4>
+          <h4 className="font-medium text-blue-900"> Email Configuration</h4>
         </div>
-        <p className="text-sm text-blue-700 mb-3">Send a test email to verify your SMTP settings</p>
+        <p className="text-sm text-blue-700 mb-3">Send a  email to verify your SMTP settings</p>
         <button 
-          onClick={handleTestEmail}
+          onClick={handleEmail}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
         >
-          Send Test Email
+          Send  Email
         </button>
       </div>
     </div>

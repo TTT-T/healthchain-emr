@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen, waitFor } from '@ing-library/react'
+import userEvent from '@ing-library/user-event'
 import { AppLayout } from '../../components/AppLayout'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -67,7 +67,7 @@ jest.mock('../../lib/api', () => ({
   }
 }))
 
-describe('Patient Workflow E2E Tests', () => {
+describe('Patient Workflow E2E s', () => {
   it('should complete patient profile update workflow', async () => {
     const user = userEvent.setup()
     render(<AppLayout />)

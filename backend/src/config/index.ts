@@ -16,7 +16,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const envSchema = z.object({
   // Server Configuration
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NODE_ENV: z.enum(['development', 'production', '']).default('development'),
   PORT: z.string().transform(Number).default('3001'),
   
   // Database Configuration
@@ -65,7 +65,7 @@ const envSchema = z.object({
   RATE_LIMIT_MAX_REQUESTS: z.string().transform(Number).default('100'),
   
   // Logging
-  LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
+  LOG_LEVEL: z.enum(['error', 'warn', 'info', '']).default('info'),
   LOG_FILE: z.string().default('logs/app.log'),
 });
 
@@ -98,7 +98,7 @@ export const config = {
     nodeEnv: env.NODE_ENV,
     isDevelopment: env.NODE_ENV === 'development',
     isProduction: env.NODE_ENV === 'production',
-    isTest: env.NODE_ENV === 'test',
+    is: env.NODE_ENV === '',
   },
   
   // Database Configuration
@@ -191,8 +191,6 @@ export const config = {
  * Validate configuration on startup
  */
 export const validateConfig = (): void => {
-  console.log('🔧 Validating configuration...');
-  
   // Check required configurations
   if (!config.jwt.secret || config.jwt.secret.length < 32) {
     throw new Error('JWT_SECRET must be at least 32 characters long');
@@ -211,8 +209,6 @@ export const validateConfig = (): void => {
   if (config.cors.origins.length === 0) {
     throw new Error('CORS origins must be specified');
   }
-  
-  console.log('✅ Configuration validation passed');
 };
 
 // =============================================================================
@@ -268,12 +264,4 @@ export default config;
 // =============================================================================
 
 if (config.server.isDevelopment) {
-  console.log('🔧 Configuration Summary:');
-  console.log(`  - Environment: ${config.server.nodeEnv}`);
-  console.log(`  - Port: ${config.server.port}`);
-  console.log(`  - Database: ${config.database.host}:${config.database.port}/${config.database.database}`);
-  console.log(`  - CORS Origins: ${config.cors.origins.join(', ')}`);
-  console.log(`  - Frontend URL: ${config.app.frontendUrl}`);
-  console.log(`  - JWT Expires In: ${config.jwt.expiresIn}`);
-  console.log(`  - Rate Limit: ${config.rateLimit.maxRequests} requests per ${config.rateLimit.windowMs}ms`);
 }

@@ -53,9 +53,9 @@ export function formatThailandTime(date: Date | string): string {
  */
 export function formatThailandDateTime(date: Date | string): string {
   const thaiDate = typeof date === 'string' ? toThailandTime(date) : date;
-  const dateStr = formatThailandDate(thaiDate);
+  const dar = formatThailandDate(thaiDate);
   const timeStr = formatThailandTime(thaiDate);
-  return `${dateStr} ${timeStr}`;
+  return `${dar} ${timeStr}`;
 }
 
 /**
@@ -74,9 +74,9 @@ export function formatBuddhistDate(date: Date | string): string {
  */
 export function formatBuddhistDateTime(date: Date | string): string {
   const thaiDate = typeof date === 'string' ? toThailandTime(date) : date;
-  const dateStr = formatBuddhistDate(thaiDate);
+  const dar = formatBuddhistDate(thaiDate);
   const timeStr = formatThailandTime(thaiDate);
-  return `${dateStr} ${timeStr}`;
+  return `${dar} ${timeStr}`;
 }
 
 /**
@@ -131,8 +131,8 @@ export function parseThailandTime(timeString: string): Date {
 /**
  * Parse date string and return Thailand time
  */
-export function parseThailandDate(dateString: string): Date {
-  const [day, month, year] = dateString.split('/').map(Number);
+export function parseThailandDate(daring: string): Date {
+  const [day, month, year] = daring.split('/').map(Number);
   return createThailandDate(year, month, day);
 }
 

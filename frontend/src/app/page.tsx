@@ -13,8 +13,6 @@ export default function Home() {
   useEffect(() => {
     // If user is authenticated, redirect to appropriate dashboard
     if (!isLoading && isAuthenticated && user) {
-      console.log('🔍 Home - User is authenticated, redirecting to dashboard');
-      
       // Determine redirect path based on user role
       let redirectPath = '/';
       
@@ -27,8 +25,6 @@ export default function Home() {
       } else if (user.role === 'external_user' || user.role === 'external_admin') {
         redirectPath = '/external-requesters/dashboard';
       }
-      
-      console.log('🔍 Home - Redirecting to:', redirectPath);
       window.location.href = redirectPath;
     }
   }, [isAuthenticated, isLoading, user, router]);
@@ -859,7 +855,7 @@ export default function Home() {
                 <li><Link href="/setup-profile" className="hover:text-white transition">ตั้งค่าโปรไฟล์</Link></li>
                 <li><Link href="/verify-email" className="hover:text-white transition">ยืนยันอีเมล</Link></li>
                 <li><Link href="/logout" className="hover:text-white transition">ออกจากระบบ</Link></li>
-                <li><Link href="/debug-auth" className="hover:text-white transition">Debug Auth</Link></li>
+                <li><Link href="/-auth" className="hover:text-white transition"> Auth</Link></li>
               </ul>
             </div>
             

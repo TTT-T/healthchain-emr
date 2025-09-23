@@ -111,12 +111,6 @@ const db = {
     if (session) {
       // Ensure user_id is properly mapped
       session.userId = session.user_id;
-      console.log('🔍 Session mapping result:', {
-        id: session.id,
-        user_id: session.user_id,
-        userId: session.userId,
-        userIdType: typeof session.userId
-      });
     }
     return session;
   },
@@ -297,8 +291,6 @@ export const register = async (req: Request, res: Response) => {
             sunday: false
           }
         });
-        
-        console.log('👨‍⚕️ Doctor profile created for user:', newUser.id);
       } catch (doctorError) {
         console.error('❌ Failed to create doctor profile:', doctorError);
         // Don't fail registration if doctor profile creation fails
@@ -317,8 +309,6 @@ export const register = async (req: Request, res: Response) => {
           department: validatedData.department || null,
           position: validatedData.position || null
         });
-        
-        console.log('👩‍⚕️ Nurse profile created for user:', newUser.id);
       } catch (nurseError) {
         console.error('❌ Failed to create nurse profile:', nurseError);
         // Don't fail registration if nurse profile creation fails
@@ -340,8 +330,6 @@ export const register = async (req: Request, res: Response) => {
           validatedData.firstName,
           verificationToken
         );
-        
-        console.log('📧 Verification email sent to:', validatedData.email, 'Success:', emailSent);
       } catch (emailError) {
         console.error('❌ Failed to send verification email:', emailError);
         // Don't fail registration if email sending fails
@@ -468,7 +456,6 @@ export const resendVerification = async (req: Request, res: Response) => {
     );
     
     if (emailSent) {
-      console.log('📧 Verification email resent successfully:', user.email);
       res.status(200).json(
         successResponse('Verification email sent successfully', { message: 'Verification email sent successfully' })
       );
@@ -499,25 +486,16 @@ export const login = async (req: Request, res: Response) => {
         errorResponse('Username is required', 400)
       );
     }
-    
-    console.log('🔍 Login attempt for username:', username);
-    
     // Find user by username only
     const user = await db.getUserByUsername(username);
-    
-    console.log('🔍 User found:', user ? user.email : 'Not found');
-    
     if (!user) {
-      console.log('❌ User not found');
       return res.status(401).json(
         errorResponse('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 401)
       );
     }
     
     // Check if user is active
-    console.log('🔍 User check - is_active:', user.is_active);
     if (!user.is_active) {
-      console.log('❌ User is not active');
       // For medical staff, inactive usually means pending admin approval
       if (['doctor', 'nurse', 'staff'].includes(user.role)) {
         return res.status(401).json(
@@ -535,9 +513,7 @@ export const login = async (req: Request, res: Response) => {
     }
     
     // Check email verification for all users except admin
-    console.log('🔍 User check - role:', user.role, 'email_verified:', user.email_verified);
     if (user.role !== 'admin' && !user.email_verified) {
-      console.log('❌ Email not verified for role:', user.role);
       return res.status(401).json(
         errorResponse('กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ ตรวจสอบอีเมลของคุณเพื่อคลิกลิงก์ยืนยัน', 401, null, {
           requiresEmailVerification: true,
@@ -545,15 +521,10 @@ export const login = async (req: Request, res: Response) => {
         })
       );
     }
-    
-    
+
     // Validate password
-    console.log('🔍 Password validation - input length:', validatedData.password.length, 'hash length:', user.password_hash.length);
     const isPasswordValid = await validatePassword(validatedData.password, user.password_hash);
-    console.log('🔍 Password validation result:', isPasswordValid);
-    
     if (!isPasswordValid) {
-      console.log('❌ Password validation failed for user:', user.email);
       // Log failed login attempt
       await db.createAuditLog({
         userId: user.id,
@@ -569,9 +540,6 @@ export const login = async (req: Request, res: Response) => {
         errorResponse('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 401)
       );
     }
-    
-    console.log('✅ Password validation successful for user:', user.email);
-    
     // Update last login
     await db.updateUserLastLogin(user.id);
     
@@ -675,14 +643,8 @@ export const refreshToken = async (req: Request, res: Response) => {
         errorResponse('Invalid or expired refresh token', 401)
       );
     }
-    
-    console.log('🔍 Session found:', { id: session.id, userId: session.userId, userIdType: typeof session.userId });
-    
     // Get user
     const user = await db.getUserById(session.userId);
-    
-    console.log('🔍 User lookup result:', { user: user ? 'found' : 'not found', userId: session.userId });
-    
     if (!user || !user.is_active) {
       return res.status(401).json(
         errorResponse('User not found or inactive', 401)
@@ -1044,8 +1006,6 @@ export const resendVerificationEmail = async (req: Request, res: Response) => {
       );
       
       if (emailSent) {
-        console.log('📧 Verification email resent to:', user.email);
-        
         res.json(
           successResponse('Verification email sent successfully. Please check your email.', {
             emailSent: true,
@@ -1055,8 +1015,6 @@ export const resendVerificationEmail = async (req: Request, res: Response) => {
       } else {
         // In development mode, still return success even if email fails
         if (process.env.NODE_ENV === 'development') {
-          console.log('📧 [DEV MODE] Email verification token generated:', verificationToken);
-          
           res.json(
             successResponse('Verification email sent successfully. Please check your email.', {
               emailSent: true,
@@ -1077,8 +1035,6 @@ export const resendVerificationEmail = async (req: Request, res: Response) => {
       
       // In development mode, still return success
       if (process.env.NODE_ENV === 'development') {
-        console.log('📧 [DEV MODE] Email error ignored in development mode');
-        
         res.json(
           successResponse('Verification email sent successfully. Please check your email.', {
             emailSent: true,
@@ -1114,9 +1070,6 @@ export const forgotPassword = async (req: Request, res: Response) => {
         errorResponse('Email is required', 400)
       );
     }
-
-    console.log('🔍 Forgot password request for:', email);
-
     // Find user by email
     const user = await db.getUserByEmail(email);
     
@@ -1158,8 +1111,6 @@ export const forgotPassword = async (req: Request, res: Response) => {
     );
 
     if (emailSent) {
-      console.log('📧 Password reset email sent to:', user.email);
-      
       res.json(
         successResponse('Password reset link has been sent to your email.', {
           emailSent: true,
@@ -1171,8 +1122,6 @@ export const forgotPassword = async (req: Request, res: Response) => {
       
       // In development mode, still return success
       if (process.env.NODE_ENV === 'development') {
-        console.log('📧 [DEV MODE] Email error ignored in development mode');
-        
         res.json(
           successResponse('Password reset link has been sent to your email.', {
             emailSent: true,
@@ -1215,9 +1164,6 @@ export const resetPassword = async (req: Request, res: Response) => {
         errorResponse('Password must be at least 8 characters long', 400)
       );
     }
-
-    console.log('🔍 Reset password request with token:', token.substring(0, 10) + '...');
-
     // Validate reset token
     const tokenValidation = await DatabaseSchema.validatePasswordResetToken(token);
     
@@ -1251,9 +1197,6 @@ export const resetPassword = async (req: Request, res: Response) => {
     } catch (error) {
       console.warn('Failed to invalidate user sessions:', error);
     }
-
-    console.log('✅ Password reset successful for user:', userId);
-
     res.json(
       successResponse('Password has been reset successfully. Please login with your new password.', {
         passwordReset: true

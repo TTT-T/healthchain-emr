@@ -138,8 +138,8 @@ export default function NotificationsPage() {
 
   const unreadCount = notifications.filter(n => !n.isRead).length
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('th-TH', {
+  const formatDate = (daring: string) => {
+    return new Date(daring).toLocaleDaring('th-TH', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

@@ -1,13 +1,13 @@
 /**
- * Integration Tests for Auth API Endpoints
+ * Integration s for Auth API Endpoints
  */
 
-import request from 'supertest';
+import request from 'super';
 import Application from '../../../app';
 import { databaseInitializer } from '../../../database/init';
 import { databaseManager } from '../../../database/connection';
 
-describe('Auth API Integration Tests', () => {
+describe('Auth API Integration s', () => {
   let app: Application;
   let server: any;
 
@@ -21,15 +21,14 @@ describe('Auth API Integration Tests', () => {
   });
 
   afterAll(async () => {
-    // Cleanup test data - delete in correct order to avoid foreign key constraints
+    // Cleanup  data - delete in correct order to avoid foreign key constraints
     try {
-      await databaseManager.query('DELETE FROM audit_logs WHERE user_id::text LIKE $1', ['test-%']);
-      await databaseManager.query('DELETE FROM user_sessions WHERE user_id::text LIKE $1', ['test-%']);
-      await databaseManager.query('DELETE FROM email_verification_tokens WHERE user_id::text LIKE $1', ['test-%']);
-      await databaseManager.query('DELETE FROM password_reset_tokens WHERE user_id::text LIKE $1', ['test-%']);
-      await databaseManager.query('DELETE FROM users WHERE email LIKE $1', ['%test.com']);
+      await databaseManager.query('DELETE FROM audit_logs WHERE user_id::text LIKE $1', ['-%']);
+      await databaseManager.query('DELETE FROM user_sessions WHERE user_id::text LIKE $1', ['-%']);
+      await databaseManager.query('DELETE FROM email_verification_tokens WHERE user_id::text LIKE $1', ['-%']);
+      await databaseManager.query('DELETE FROM password_reset_tokens WHERE user_id::text LIKE $1', ['-%']);
+      await databaseManager.query('DELETE FROM users WHERE email LIKE $1', ['%.com']);
     } catch (error) {
-      console.log('Cleanup error (ignored):', error);
     }
   });
 
@@ -37,7 +36,7 @@ describe('Auth API Integration Tests', () => {
     it('should register a new user successfully', async () => {
       // Arrange
       const userData = {
-        email: 'newuser@test.com',
+        email: 'newuser@.com',
         password: 'password123',
         firstName: 'John',
         lastName: 'Doe',
@@ -76,7 +75,7 @@ describe('Auth API Integration Tests', () => {
     it('should return error for duplicate email', async () => {
       // Arrange
       const userData = {
-        email: 'duplicate@test.com',
+        email: 'duplicate@.com',
         password: 'password123',
         firstName: 'Jane',
         lastName: 'Doe'
@@ -105,7 +104,7 @@ describe('Auth API Integration Tests', () => {
       const userData = {
         email: 'invalid-email',
         password: 'password123',
-        firstName: 'Test',
+        firstName: '',
         lastName: 'User'
       };
 
@@ -125,9 +124,9 @@ describe('Auth API Integration Tests', () => {
     it('should return error for weak password', async () => {
       // Arrange
       const userData = {
-        email: 'weakpass@test.com',
+        email: 'weakpass@.com',
         password: '123',
-        firstName: 'Test',
+        firstName: '',
         lastName: 'User'
       };
 
@@ -147,7 +146,7 @@ describe('Auth API Integration Tests', () => {
     it('should return error for missing required fields', async () => {
       // Arrange
       const userData = {
-        email: 'missing@test.com',
+        email: 'missing@.com',
         // Missing password, firstName, lastName
       };
 
@@ -166,15 +165,15 @@ describe('Auth API Integration Tests', () => {
   });
 
   describe('POST /api/auth/login', () => {
-    let testUser: any;
+    let User: any;
 
     beforeAll(async () => {
-      // Create test user for login tests
+      // Create  user for login s
       const userData = {
-        email: 'logintest@test.com',
+        email: 'login@.com',
         password: 'password123',
         firstName: 'Login',
-        lastName: 'Test'
+        lastName: ''
       };
 
       await request(server)
@@ -185,13 +184,13 @@ describe('Auth API Integration Tests', () => {
         'SELECT * FROM users WHERE email = $1',
         [userData.email]
       );
-      testUser = userResult.rows[0];
+      User = userResult.rows[0];
     });
 
     it('should login user successfully', async () => {
       // Arrange
       const loginData = {
-        email: 'logintest@test.com',
+        email: 'login@.com',
         password: 'password123'
       };
 
@@ -213,7 +212,7 @@ describe('Auth API Integration Tests', () => {
     it('should return error for invalid credentials', async () => {
       // Arrange
       const loginData = {
-        email: 'logintest@test.com',
+        email: 'login@.com',
         password: 'wrongpassword'
       };
 
@@ -233,7 +232,7 @@ describe('Auth API Integration Tests', () => {
     it('should return error for non-existent user', async () => {
       // Arrange
       const loginData = {
-        email: 'nonexistent@test.com',
+        email: 'nonexistent@.com',
         password: 'password123'
       };
 
@@ -253,7 +252,7 @@ describe('Auth API Integration Tests', () => {
     it('should return error for missing credentials', async () => {
       // Arrange
       const loginData = {
-        email: 'logintest@test.com'
+        email: 'login@.com'
         // Missing password
       };
 
@@ -275,15 +274,15 @@ describe('Auth API Integration Tests', () => {
 
   describe('POST /api/auth/refresh', () => {
     let refreshToken: string;
-    let testUser: any;
+    let User: any;
 
     beforeAll(async () => {
-      // Create test user and get refresh token
+      // Create  user and get refresh token
       const userData = {
-        email: 'refreshtest@test.com',
+        email: 'refresh@.com',
         password: 'password123',
         firstName: 'Refresh',
-        lastName: 'Test'
+        lastName: ''
       };
 
       await request(server)
@@ -300,7 +299,7 @@ describe('Auth API Integration Tests', () => {
       if (loginResponse.body.data && loginResponse.body.data.refreshToken) {
         refreshToken = loginResponse.body.data.refreshToken;
       } else {
-        // If login failed, create a mock refresh token for testing
+        // If login failed, create a mock refresh token for ing
         refreshToken = 'mock-refresh-token';
       }
 
@@ -308,7 +307,7 @@ describe('Auth API Integration Tests', () => {
         'SELECT * FROM users WHERE email = $1',
         [userData.email]
       );
-      testUser = userResult.rows[0];
+      User = userResult.rows[0];
     });
 
     it('should refresh token successfully', async () => {
@@ -371,15 +370,15 @@ describe('Auth API Integration Tests', () => {
 
   describe('POST /api/auth/logout', () => {
     let refreshToken: string;
-    let testUser: any;
+    let User: any;
 
     beforeAll(async () => {
-      // Create test user and get refresh token
+      // Create  user and get refresh token
       const userData = {
-        email: 'logouttest@test.com',
+        email: 'logout@.com',
         password: 'password123',
         firstName: 'Logout',
-        lastName: 'Test'
+        lastName: ''
       };
 
       await request(server)
@@ -396,7 +395,7 @@ describe('Auth API Integration Tests', () => {
       if (loginResponse.body.data && loginResponse.body.data.refreshToken) {
         refreshToken = loginResponse.body.data.refreshToken;
       } else {
-        // If login failed, create a mock refresh token for testing
+        // If login failed, create a mock refresh token for ing
         refreshToken = 'mock-refresh-token';
       }
 
@@ -404,7 +403,7 @@ describe('Auth API Integration Tests', () => {
         'SELECT * FROM users WHERE email = $1',
         [userData.email]
       );
-      testUser = userResult.rows[0];
+      User = userResult.rows[0];
     });
 
     it('should logout user successfully', async () => {
@@ -428,7 +427,7 @@ describe('Auth API Integration Tests', () => {
       // Verify session was deleted
       const sessionResult = await databaseManager.query(
         'SELECT * FROM user_sessions WHERE user_id = $1',
-        [testUser.id]
+        [User.id]
       );
       expect(sessionResult.rows).toHaveLength(0);
     });
@@ -453,15 +452,15 @@ describe('Auth API Integration Tests', () => {
 
   describe('GET /api/auth/profile', () => {
     let accessToken: string;
-    let testUser: any;
+    let User: any;
 
     beforeAll(async () => {
-      // Create test user and get access token
+      // Create  user and get access token
       const userData = {
-        email: 'profiletest@test.com',
+        email: 'profile@.com',
         password: 'password123',
         firstName: 'Profile',
-        lastName: 'Test'
+        lastName: ''
       };
 
       await request(server)
@@ -478,7 +477,7 @@ describe('Auth API Integration Tests', () => {
       if (loginResponse.body.data && loginResponse.body.data.accessToken) {
         accessToken = loginResponse.body.data.accessToken;
       } else {
-        // If login failed, create a mock access token for testing
+        // If login failed, create a mock access token for ing
         accessToken = 'mock-access-token';
       }
 
@@ -486,7 +485,7 @@ describe('Auth API Integration Tests', () => {
         'SELECT * FROM users WHERE email = $1',
         [userData.email]
       );
-      testUser = userResult.rows[0];
+      User = userResult.rows[0];
     });
 
     it('should get user profile successfully', async () => {

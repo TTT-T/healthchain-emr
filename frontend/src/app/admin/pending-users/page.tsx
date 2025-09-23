@@ -341,7 +341,7 @@ export default function PendingUsersPage() {
                           </div>
                         </div>
                         <p className="text-sm text-gray-500 mt-2">
-                          สมัครเมื่อ: {new Date(user.createdAt).toLocaleDateString('th-TH')}
+                          สมัครเมื่อ: {new Date(user.createdAt).toLocaleDaring('th-TH')}
                         </p>
                       </div>
                       <div className="flex gap-2 ml-4">

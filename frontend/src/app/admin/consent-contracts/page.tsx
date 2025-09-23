@@ -149,7 +149,6 @@ export default function ConsentContracts() {
     }
   };
 
-
   return (
     <div className="w-full h-full bg-gray-50 p-3 sm:p-4 lg:p-6 overflow-auto">
       {/* Header */}
@@ -349,7 +348,7 @@ export default function ConsentContracts() {
                         </div>
                       </td>
                       <td className="py-4 px-3 sm:px-6 text-sm text-gray-900">
-                        {contract.valid_until ? new Date(contract.valid_until).toLocaleDateString('th-TH') : 'ไม่จำกัด'}
+                        {contract.valid_until ? new Date(contract.valid_until).toLocaleDaring('th-TH') : 'ไม่จำกัด'}
                       </td>
                       <td className="py-4 px-3 sm:px-6">
                         <span className={`px-2 py-1 text-xs rounded-full font-medium ${getStatusColor(contract.status)}`}>

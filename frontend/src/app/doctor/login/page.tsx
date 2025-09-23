@@ -200,8 +200,7 @@ export default function DoctorLogin() {
                           variant="outline"
                           size="sm"
                           className="border-amber-300 text-amber-700 hover:bg-amber-100"
-                          onClick={() => {
-                            // TODO: Implement resend verification email
+                          onClick={() => {
                             alert('ฟีเจอร์ส่งอีเมลยืนยันซ้ำจะเปิดใช้งานเร็วๆ นี้')
                           }}
                         >

@@ -225,13 +225,13 @@ export default function RegisterPatient() {
       newErrors.birthDate = "กรุณาเลือกวันเกิด";
     }
     if (!formData.nationalId.trim()) newErrors.nationalId = "กรุณากรอกเลขบัตรประชาชน";
-    else if (!/^\d{13}$/.test(formData.nationalId)) newErrors.nationalId = "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก";
+    else if (!/^\d{13}$/.(formData.nationalId)) newErrors.nationalId = "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก";
     else if (nationalIdStatus === 'taken') newErrors.nationalId = "เลขบัตรประชาชนนี้ลงทะเบียนในระบบ EMR ไปแล้ว";
     
     // ข้อมูลติดต่อ
     if (!formData.phone.trim()) newErrors.phone = "กรุณากรอกเบอร์โทรศัพท์";
-    else if (!/^[0-9]{10}$/.test(formData.phone)) newErrors.phone = "เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก";
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    else if (!/^[0-9]{10}$/.(formData.phone)) newErrors.phone = "เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก";
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.(formData.email)) {
       newErrors.email = "รูปแบบอีเมลไม่ถูกต้อง";
     }
     // Address validation removed as we only have one address field now
@@ -280,8 +280,7 @@ export default function RegisterPatient() {
       if (usersData.data && Array.isArray(usersData.data) && usersData.data.length > 0) {
         const results = usersData.data;
         const isExistingPatient = (usersData.meta as any)?.isExistingPatient || false;
-        
-        
+
         // แปลงข้อมูลให้ตรงกับ format ที่ต้องการ
         const formattedResults = results.map((item: any) => {
           // สร้าง birthDate จาก birth_day, birth_month, birth_year หรือ birth_date
@@ -292,7 +291,6 @@ export default function RegisterPatient() {
             // เก็บปีเป็น พ.ศ. ไว้สำหรับการแสดงผล
             birthDate = `${item.birth_year}-${String(item.birth_month).padStart(2, '0')}-${String(item.birth_day).padStart(2, '0')}`;
           }
-          
 
           // สร้าง title จาก gender
           let title = item.title || "";
@@ -476,7 +474,7 @@ export default function RegisterPatient() {
       return;
     }
 
-    if (!/^\d{13}$/.test(searchId)) {
+    if (!/^\d{13}$/.(searchId)) {
       alert("เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก");
       return;
     }
@@ -674,7 +672,7 @@ export default function RegisterPatient() {
         throw new Error('ไม่พบข้อมูลผู้ใช้ที่เลือก กรุณาเลือกผู้ใช้ใหม่');
       }
       
-      logger.debug('Using selected user ID:', selectedUserData.id);
+      logger.('Using selected user ID:', selectedUserData.id);
       
       // เตรียมข้อมูลสำหรับ API - ใช้ format ที่ backend ต้องการ
       const patientData = {
@@ -739,7 +737,7 @@ export default function RegisterPatient() {
         handleClearForm();
         
         // อาจจะ redirect หรือแสดงข้อมูลผู้ป่วยที่สร้างใหม่
-        logger.debug('Patient created successfully:', patient);
+        logger.('Patient created successfully:', patient);
       } else {
         throw new Error('การลงทะเบียนไม่สำเร็จ');
       }
@@ -1116,7 +1114,7 @@ export default function RegisterPatient() {
                             const [year, month, day] = user.birthDate.split('-');
                             return `${day}/${month}/${year}`;
                           }
-                          return new Date(user.birthDate).toLocaleDateString('th-TH');
+                          return new Date(user.birthDate).toLocaleDaring('th-TH');
                         })() : 
                       (user.birthDay && user.birthMonth && user.birthYear) ? 
                         `${user.birthDay}/${user.birthMonth}/${user.birthYear}` : 

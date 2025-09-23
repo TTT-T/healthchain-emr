@@ -176,8 +176,8 @@ export default function Appointments() {
   const handleSubmit = async () => {
     if (!selectedPatient) return;
     
-    // Debug logging
-    logger.info('Debug selectedPatient data:', {
+    //  logging
+    logger.info(' selectedPatient data:', {
       selectedPatientId: selectedPatient.id,
       selectedPatientHn: selectedPatient.hospital_number,
       selectedPatientName: selectedPatient.thai_name || `${selectedPatient.first_name} ${selectedPatient.last_name}`
@@ -219,7 +219,7 @@ export default function Appointments() {
         user?.id || 'system'
       );
       
-      logger.info('Debug formatted data:', formattedData);
+      logger.info(' formatted data:', formattedData);
       
       const response = await AppointmentService.createAppointment(formattedData);
       

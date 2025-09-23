@@ -19,7 +19,6 @@ export function useTokenExpiry() {
   const router = useRouter();
 
   const handleTokenExpiry = useCallback((error?: string) => {
-    console.log('🔒 Token expired, showing modal');
     setState({
       isExpired: true,
       showModal: true,
@@ -28,13 +27,11 @@ export function useTokenExpiry() {
   }, []);
 
   const handleLogin = useCallback(() => {
-    console.log('🔑 User chose to login again');
     setState(prev => ({ ...prev, showModal: false }));
     router.push('/login');
   }, [router]);
 
   const handleLogout = useCallback(async () => {
-    console.log('🚪 User chose to logout');
     try {
       // Clear all authentication data
       apiClient.clearTokens();

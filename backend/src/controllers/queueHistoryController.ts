@@ -551,7 +551,7 @@ export const downloadQueueReport = asyncHandler(async (req: Request, res: Respon
 /**
  * สร้างรายงานสถิติ
  */
-export const generateStatisticsReport = asyncHandler(async (req: Request, res: Response) => {
+export const generaatisticsReport = asyncHandler(async (req: Request, res: Response) => {
   try {
     const { 
       dateFrom, 

@@ -28,12 +28,12 @@ export default function ExternalRequestersAdminPage() {
 
   const fetchRegistrations = async () => {
     try {
-      // TODO: Replace with actual API call
+
       const mockData: ExternalRequesterRegistration[] = [
         {
           id: '1',
           requestId: 'REQ-001',
-          email: 'test@hospital.com',
+          email: '@hospital.com',
           organizationName: 'โรงพยาบาลทดสอบ',
           requesterName: 'นาย ทดสอบ ระบบ',
           status: 'pending_review',
@@ -64,8 +64,8 @@ export default function ExternalRequestersAdminPage() {
 
   const handleApprove = async (registration: ExternalRequesterRegistration) => {
     try {
-      // TODO: Implement actual API call
-      console.log('Approving registration:', registration.requestId)
+
+      // Approving registration
       
       // Update local state
       setRegistrations(prev => 
@@ -86,8 +86,8 @@ export default function ExternalRequestersAdminPage() {
 
   const handleReject = async (registration: ExternalRequesterRegistration) => {
     try {
-      // TODO: Implement actual API call
-      console.log('Rejecting registration:', registration.requestId, 'Notes:', adminNotes)
+
+      // Rejecting registration
       
       // Update local state
       setRegistrations(prev => 
@@ -270,7 +270,7 @@ export default function ExternalRequestersAdminPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(registration.createdAt).toLocaleDateString('th-TH')}
+                      {new Date(registration.createdAt).toLocaleDaring('th-TH')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">

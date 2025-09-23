@@ -16,7 +16,7 @@ import { logger } from '../utils/logger';
 export const getPatientLabResults = async (req: Request, res: Response) => {
   try {
     const { id: patientId } = req.params;
-    const { page = 1, limit = 10, testCategory, startDate, endDate, status } = req.query;
+    const { page = 1, limit = 10, Category, startDate, endDate, status } = req.query;
     const user = (req as any).user;
 
     // Get patient ID based on user role
@@ -92,9 +92,9 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
     let whereClause = 'WHERE mr.patient_id = $1 AND mr.record_type = \'lab_result\'';
     const queryParams: any[] = [actualPatientId];
 
-    if (testCategory) {
-      whereClause += ` AND mr.test_type ILIKE $${queryParams.length + 1}`;
-      queryParams.push(`%${testCategory}%`);
+    if (Category) {
+      whereClause += ` AND mr._type ILIKE $${queryParams.length + 1}`;
+      queryParams.push(`%${Category}%`);
     }
 
     if (startDate) {
@@ -118,9 +118,9 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
     const labResultsQuery = `
       SELECT 
         mr.id as lab_result_id,
-        mr.test_type,
-        mr.test_name,
-        mr.test_results,
+        mr._type,
+        mr._name,
+        mr._results,
         mr.overall_result,
         mr.interpretation,
         mr.recommendations,
@@ -130,8 +130,8 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
         mr.recorded_by,
         mr.created_at,
         mr.updated_at,
-        u.first_name as tested_by_first_name,
-        u.last_name as tested_by_last_name,
+        u.first_name as ed_by_first_name,
+        u.last_name as ed_by_last_name,
         v.visit_number,
         v.visit_date,
         v.diagnosis
@@ -144,16 +144,8 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
     `;
 
     queryParams.push(Number(limit), offset);
-
-    console.log('🔍 Lab results query:', labResultsQuery);
-    console.log('🔍 Query params:', queryParams);
-    
     const labResultsResult = await databaseManager.query(labResultsQuery, queryParams);
     const labResults = labResultsResult.rows;
-    
-    console.log('📊 Found lab results records:', labResults.length);
-    console.log('📊 Sample lab result record:', labResults[0] || 'No records found');
-
     // Get total count for pagination
     const countQuery = `
       SELECT COUNT(*) as total
@@ -164,26 +156,21 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
     const total = parseInt(countResult.rows[0].total);
 
     // Format lab results from medical_records
-    console.log('🔄 Formatting lab results...');
-    
     const formattedResults = labResults.map((result: any) => {
-      console.log('🔍 Processing lab result:', result.lab_result_id);
-      console.log('🔍 Test results data:', result.test_results);
-      console.log('🔍 Test results type:', typeof result.test_results);
-      // Parse test_results JSON
-      let testResults = [];
-      if (result.test_results) {
+      // Parse _results JSON
+      let Results = [];
+      if (result._results) {
         try {
-          if (typeof result.test_results === 'string') {
-            testResults = JSON.parse(result.test_results);
-          } else if (Array.isArray(result.test_results)) {
-            testResults = result.test_results;
-          } else if (typeof result.test_results === 'object') {
-            testResults = [result.test_results];
+          if (typeof result._results === 'string') {
+            Results = JSON.parse(result._results);
+          } else if (Array.isArray(result._results)) {
+            Results = result._results;
+          } else if (typeof result._results === 'object') {
+            Results = [result._results];
           }
         } catch (error) {
-          console.error('Error parsing test_results JSON:', error);
-          testResults = [];
+          console.error('Error parsing _results JSON:', error);
+          Results = [];
         }
       }
 
@@ -206,17 +193,17 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
 
       return {
         id: result.lab_result_id,
-        test_type: result.test_type,
-        test_name: result.test_name,
-        test_results: testResults,
+        _type: result._type,
+        _name: result._name,
+        _results: Results,
         overall_result: result.overall_result,
         interpretation: result.interpretation,
         recommendations: result.recommendations,
         attachments: attachments,
         notes: result.notes,
         result_date: result.result_date,
-        tested_by: {
-          name: `${result.tested_by_first_name || ''} ${result.tested_by_last_name || ''}`.trim() || 'ไม่ระบุ'
+        ed_by: {
+          name: `${result.ed_by_first_name || ''} ${result.ed_by_last_name || ''}`.trim() || 'ไม่ระบุ'
         },
         visit: {
           number: result.visit_number || 'ไม่ระบุ',
@@ -227,10 +214,6 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
         updated_at: result.updated_at
       };
     });
-
-    console.log('✅ Formatted lab results count:', formattedResults.length);
-    console.log('✅ Sample formatted lab result:', formattedResults[0] || 'No formatted results');
-
     res.json({
       data: {
         patient: {
@@ -312,8 +295,8 @@ export const getPatientLabResult = async (req: Request, res: Response) => {
         lo.id as lab_order_id,
         lo.order_number,
         lo.order_date,
-        lo.test_name,
-        lo.test_category,
+        lo._name,
+        lo._category,
         lo.clinical_indication,
         u1.first_name as ordered_by_first_name,
         u1.last_name as ordered_by_last_name,
@@ -371,8 +354,8 @@ export const getPatientLabResult = async (req: Request, res: Response) => {
             id: labResult.lab_order_id,
             order_number: labResult.order_number,
             order_date: labResult.order_date,
-            test_name: labResult.test_name,
-            test_category: labResult.test_category,
+            _name: labResult._name,
+            _category: labResult._category,
             clinical_indication: labResult.clinical_indication,
             ordered_by: {
               name: `${labResult.ordered_by_first_name} ${labResult.ordered_by_last_name}`
@@ -406,15 +389,15 @@ export const createPatientLabResult = async (req: Request, res: Response) => {
   try {
     const { id: patientId } = req.params;
     const {
-      testType,
-      testName,
-      testResults,
+      Type,
+      Name,
+      Results,
       overallResult,
       interpretation,
       recommendations,
       attachments,
-      testedBy,
-      testedTime,
+      edBy,
+      edTime,
       notes
     } = req.body;
 
@@ -442,23 +425,23 @@ export const createPatientLabResult = async (req: Request, res: Response) => {
 
     await databaseManager.query(`
       INSERT INTO medical_records (
-        id, patient_id, record_type, test_type, test_name, test_results,
+        id, patient_id, record_type, _type, _name, _results,
         overall_result, interpretation, recommendations, attachments,
         notes, recorded_by, recorded_time, created_at, updated_at
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
       RETURNING *
     `, [
-      resultId, patientId, 'lab_result', testType, testName, JSON.stringify(testResults || []),
+      resultId, patientId, 'lab_result', Type, Name, JSON.stringify(Results || []),
       overallResult, interpretation, recommendations, JSON.stringify(attachments || []),
-      notes, userId, testedTime || new Date().toISOString()
+      notes, userId, edTime || new Date().toISOString()
     ]);
 
     // Get created lab result
     const createdResult = await databaseManager.query(`
       SELECT 
-        mr.id, mr.patient_id, mr.record_type, mr.test_type, mr.test_name,
-        mr.test_results, mr.overall_result, mr.interpretation, mr.recommendations,
+        mr.id, mr.patient_id, mr.record_type, mr._type, mr._name,
+        mr._results, mr.overall_result, mr.interpretation, mr.recommendations,
         mr.attachments, mr.notes, mr.recorded_by, mr.recorded_time,
         mr.created_at, mr.updated_at,
         p.thai_name, p.hospital_number, p.national_id
@@ -480,17 +463,17 @@ export const createPatientLabResult = async (req: Request, res: Response) => {
         patientPhone: patient.phone,
         patientEmail: patient.email,
         notificationType: 'lab_result_ready',
-        title: `ผลแลบพร้อม: ${testName}`,
-        message: `ผลการตรวจ "${testName}" ของคุณ ${patient.thai_name || patient.first_name} พร้อมแล้ว`,
+        title: `ผลแลบพร้อม: ${Name}`,
+        message: `ผลการตรวจ "${Name}" ของคุณ ${patient.thai_name || patient.first_name} พร้อมแล้ว`,
         recordType: 'lab_result',
         recordId: resultId,
         createdBy: user?.id,
         createdByName: user?.thai_name || `${user?.first_name} ${user?.last_name}`,
         metadata: {
-          testType,
-          testName,
+          Type,
+          Name,
           overallResult,
-          testedTime: testedTime || new Date().toISOString()
+          edTime: edTime || new Date().toISOString()
         }
       });
     } catch (notificationError) {
@@ -503,11 +486,11 @@ export const createPatientLabResult = async (req: Request, res: Response) => {
         id: record.id,
         patientId: record.patient_id,
         recordType: record.record_type,
-        testType: record.test_type,
-        testName: record.test_name,
-        testResults: typeof record.test_results === 'string' 
-          ? JSON.parse(record.test_results || '[]') 
-          : record.test_results || [],
+        Type: record._type,
+        Name: record._name,
+        Results: typeof record._results === 'string' 
+          ? JSON.parse(record._results || '[]') 
+          : record._results || [],
         overallResult: record.overall_result,
         interpretation: record.interpretation,
         recommendations: record.recommendations,
@@ -515,8 +498,8 @@ export const createPatientLabResult = async (req: Request, res: Response) => {
           ? JSON.parse(record.attachments || '[]') 
           : record.attachments || [],
         notes: record.notes,
-        testedBy: record.recorded_by,
-        testedTime: record.recorded_time,
+        edBy: record.recorded_by,
+        edTime: record.recorded_time,
         createdAt: record.created_at,
         updatedAt: record.updated_at,
         patient: {
@@ -665,7 +648,7 @@ export const updatePatientLabResult = async (req: Request, res: Response) => {
         lr.id, lr.result_value, lr.result_unit, lr.reference_range,
         lr.abnormal_flag, lr.interpretation, lr.validated, lr.validated_at,
         lr.result_date, lr.result_time, lr.updated_at,
-        lo.order_number, lo.test_name, lo.test_category
+        lo.order_number, lo._name, lo._category
       FROM lab_results lr
       INNER JOIN lab_orders lo ON lr.lab_order_id = lo.id
       WHERE lr.id = $1

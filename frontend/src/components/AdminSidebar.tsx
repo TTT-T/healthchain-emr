@@ -198,10 +198,7 @@ export default function AdminSidebar({
 
   const handleLogout = async () => {
     try {
-      console.log('🔍 AdminSidebar: Logging out...');
       await logout();
-      console.log('✅ AdminSidebar: Logout successful');
-      
       // Clear localStorage
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');

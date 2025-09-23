@@ -2,13 +2,9 @@ import { databaseManager } from '../database/connection';
 import { hashPassword } from '../utils';
 import { v4 as uuidv4 } from 'uuid';
 
-async function createTestPatient() {
+async function createPatient() {
   try {
-    console.log('Initializing database...');
     await databaseManager.initialize();
-    
-    console.log('Creating test patient...');
-    
     // Hash password
     const hashedPassword = await hashPassword('patient123');
     
@@ -25,8 +21,8 @@ async function createTestPatient() {
       ) RETURNING id, username, email, first_name, last_name, thai_name, national_id, role
     `, [
       userId,
-      'testpatient',
-      'testpatient@example.com',
+      'patient',
+      'patient@example.com',
       hashedPassword,
       'John',
       'Doe',
@@ -35,7 +31,7 @@ async function createTestPatient() {
       '1990-01-01',
       'male',
       '0812345678',
-      '123 Test Street, Bangkok',
+      '123  Street, Bangkok',
       'patient',
       true,
       true,
@@ -43,10 +39,6 @@ async function createTestPatient() {
       new Date(),
       new Date()
     ]);
-    
-    console.log('Test patient user created successfully:');
-    console.log(userResult.rows[0]);
-    
     // Create patient record in patients table
     const patientId = uuidv4();
     const patientResult = await databaseManager.query(`
@@ -68,30 +60,19 @@ async function createTestPatient() {
       '1990-01-01',
       'male',
       '0812345678',
-      'testpatient@example.com',
-      '123 Test Street, Bangkok',
+      'patient@example.com',
+      '123  Street, Bangkok',
       'A',
       'A+',
       true,
       new Date(),
       new Date()
     ]);
-    
-    console.log('Test patient record created successfully:');
-    console.log(patientResult.rows[0]);
-    
-    console.log('\nTest patient created with:');
-    console.log('HN: HN2025001');
-    console.log('National ID: 1234567890123');
-    console.log('Name: จอห์น โด (John Doe)');
-    console.log('Email: testpatient@example.com');
-    console.log('Password: patient123');
-    
   } catch (error) {
-    console.error('Error creating test patient:', error);
+    console.error('Error creating  patient:', error);
   } finally {
     await databaseManager.close();
   }
 }
 
-createTestPatient();
+createPatient();

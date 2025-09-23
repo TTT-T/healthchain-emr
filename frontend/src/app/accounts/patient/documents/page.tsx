@@ -176,7 +176,7 @@ export default function PatientDocuments() {
       'medical_certificate': '📜',
       'referral': '📤',
       'xray': '📷',
-      'blood_test': '🩸'
+      'blood_': '🩸'
     };
     return icons[type] || '📄';
   };
@@ -192,7 +192,7 @@ export default function PatientDocuments() {
       'medical_certificate': 'ใบรับรองแพทย์',
       'referral': 'ใบส่งตัว',
       'xray': 'ผล X-ray',
-      'blood_test': 'ผลตรวจเลือด'
+      'blood_': 'ผลตรวจเลือด'
     };
     return labels[type] || 'เอกสารทางการแพทย์';
   };
@@ -205,8 +205,8 @@ export default function PatientDocuments() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('th-TH', {
+  const formatDateTime = (daring: string) => {
+    return new Date(daring).toLocaleString('th-TH', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',

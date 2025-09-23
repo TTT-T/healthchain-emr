@@ -55,19 +55,19 @@ function ResetPasswordPageContent() {
       errors.push('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร');
     }
     
-    if (!/[A-Z]/.test(password)) {
+    if (!/[A-Z]/.(password)) {
       errors.push('รหัสผ่านต้องมีตัวอักษรพิมพ์ใหญ่อย่างน้อย 1 ตัว');
     }
     
-    if (!/[a-z]/.test(password)) {
+    if (!/[a-z]/.(password)) {
       errors.push('รหัสผ่านต้องมีตัวอักษรพิมพ์เล็กอย่างน้อย 1 ตัว');
     }
     
-    if (!/[0-9]/.test(password)) {
+    if (!/[0-9]/.(password)) {
       errors.push('รหัสผ่านต้องมีตัวเลขอย่างน้อย 1 ตัว');
     }
     
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    if (!/[!@#$%^&*(),.?":{}|<>]/.(password)) {
       errors.push('รหัสผ่านต้องมีอักขระพิเศษอย่างน้อย 1 ตัว');
     }
     

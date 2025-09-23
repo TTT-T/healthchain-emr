@@ -224,13 +224,6 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
       req.ip || 'unknown',
       req.get('User-Agent') || 'unknown'
     ]);
-    
-    console.log('🏥 Patient registered in EMR system:', {
-      userId: validatedData.userId,
-      hospitalNumber: newPatient.hospital_number,
-      patientName: `${newPatient.first_name} ${newPatient.last_name}`
-    });
-    
     res.status(201).json(
       successResponse('Patient successfully registered in EMR system', {
         patient: {

@@ -9,11 +9,11 @@ import {
 // Validation schemas
 const createLabOrderSchema = z.object({
   visitId: z.string().uuid("Visit ID ต้องเป็น UUID"),
-  testCategory: z.enum(['blood', 'urine', 'stool', 'imaging', 'other'], {
+  Category: z.enum(['blood', 'urine', 'stool', 'imaging', 'other'], {
     errorMap: () => ({ message: "ประเภทการตรวจไม่ถูกต้อง" })
   }),
-  testName: z.string().min(1, "กรุณาระบุชื่อการตรวจ").max(200),
-  testCode: z.string().min(1, "กรุณาระบุรหัสการตรวจ").max(50),
+  Name: z.string().min(1, "กรุณาระบุชื่อการตรวจ").max(200),
+  Code: z.string().min(1, "กรุณาระบุรหัสการตรวจ").max(50),
   clinicalIndication: z.string().max(1000, "ข้อบ่งชี้ทางคลินิกต้องไม่เกิน 1000 ตัวอักษร").optional(),
   priority: z.enum(['routine', 'urgent', 'stat'], {
     errorMap: () => ({ message: "ระดับความเร่งด่วนไม่ถูกต้อง" })
@@ -23,7 +23,7 @@ const createLabOrderSchema = z.object({
 
 const createLabResultSchema = z.object({
   labOrderId: z.string().uuid("Lab Order ID ต้องเป็น UUID"),
-  testParameter: z.string().min(1, "กรุณาระบุพารามิเตอร์การตรวจ").max(200),
+  Parameter: z.string().min(1, "กรุณาระบุพารามิเตอร์การตรวจ").max(200),
   result: z.string().min(1, "กรุณาระบุผลการตรวจ").max(500),
   unit: z.string().max(50, "หน่วยต้องไม่เกิน 50 ตัวอักษร").optional(),
   referenceRange: z.string().max(200, "ช่วงค่าปกติต้องไม่เกิน 200 ตัวอักษร").optional(),
@@ -69,16 +69,16 @@ export const createLabOrder = async (req: Request, res: Response) => {
     // Insert lab order
     const result = await db.query(`
       INSERT INTO lab_orders (
-        visit_id, patient_id, order_number, test_category, test_name, test_code, 
+        visit_id, patient_id, order_number, _category, _name, _code, 
         clinical_indication, priority, ordered_by
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *    `, [
       validatedData.visitId,
       patientId,
       orderNumber,
-      validatedData.testCategory, // This will be mapped to test_category
-      validatedData.testName,
-      validatedData.testCode,
+      validatedData.Category, // This will be mapped to _category
+      validatedData.Name,
+      validatedData.Code,
       validatedData.clinicalIndication, // This will be mapped to clinical_indication
       validatedData.priority,
       (req as any).user?.id // From auth middleware
@@ -90,9 +90,9 @@ export const createLabOrder = async (req: Request, res: Response) => {
       visitId: result.rows[0].visit_id,
       patientId: result.rows[0].patient_id,
       orderNumber: result.rows[0].order_number,
-      testCategory: result.rows[0].test_category,
-      testName: result.rows[0].test_name,
-      testCode: result.rows[0].test_code,
+      Category: result.rows[0]._category,
+      Name: result.rows[0]._name,
+      Code: result.rows[0]._code,
       clinicalIndication: result.rows[0].clinical_indication,
       priority: result.rows[0].priority,
       status: result.rows[0].status,
@@ -162,9 +162,9 @@ export const getLabOrder = async (req: Request, res: Response) => {
       id: row.id,
       visitId: row.visit_id,
       orderNumber: row.order_number,
-      testType: row.test_type,
-      testName: row.test_name,
-      testCode: row.test_code,
+      Type: row._type,
+      Name: row._name,
+      Code: row._code,
       instructions: row.instructions,
       priority: row.priority,
       status: row.status,
@@ -274,9 +274,9 @@ export const updateLabOrder = async (req: Request, res: Response) => {
       id: result.rows[0].id,
       visitId: result.rows[0].visit_id,
       orderNumber: result.rows[0].order_number,
-      testType: result.rows[0].test_type,
-      testName: result.rows[0].test_name,
-      testCode: result.rows[0].test_code,
+      Type: result.rows[0]._type,
+      Name: result.rows[0]._name,
+      Code: result.rows[0]._code,
       instructions: result.rows[0].instructions,
       priority: result.rows[0].priority,
       status: result.rows[0].status,
@@ -330,12 +330,12 @@ export const createLabResult = async (req: Request, res: Response) => {
     // Insert lab result
     const result = await db.query(`
       INSERT INTO lab_results (
-        lab_order_id, test_parameter, result, unit, reference_range, flag, notes, reported_by
+        lab_order_id, _parameter, result, unit, reference_range, flag, notes, reported_by
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `, [
       validatedData.labOrderId,
-      validatedData.testParameter,
+      validatedData.Parameter,
       validatedData.result,
       validatedData.unit,
       validatedData.referenceRange,
@@ -355,7 +355,7 @@ export const createLabResult = async (req: Request, res: Response) => {
     const labResult = {
       id: result.rows[0].id,
       labOrderId: result.rows[0].lab_order_id,
-      testParameter: result.rows[0].test_parameter,
+      Parameter: result.rows[0]._parameter,
       result: result.rows[0].result,
       unit: result.rows[0].unit,
       referenceRange: result.rows[0].reference_range,
@@ -415,7 +415,7 @@ export const getLabResults = async (req: Request, res: Response) => {
     const labResults = result.rows.map(row => ({
       id: row.id,
       labOrderId: row.lab_order_id,
-      testParameter: row.test_parameter,
+      Parameter: row._parameter,
       result: row.result,
       unit: row.unit,
       referenceRange: row.reference_range,
@@ -473,9 +473,9 @@ export const getLabOrdersByVisit = async (req: Request, res: Response) => {
       visitId: row.visit_id,
       patientId: row.patient_id,
       orderNumber: row.order_number,
-      testCategory: row.test_category,
-      testName: row.test_name,
-      testCode: row.test_code,
+      Category: row._category,
+      Name: row._name,
+      Code: row._code,
       clinicalIndication: row.clinical_indication,
       priority: row.priority,
       status: row.status,

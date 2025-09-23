@@ -80,17 +80,17 @@ export interface EmergencyContact {
 export const validateUser = {
   email: (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    return emailRegex.(email);
   },
   
   phone: (phone: string): boolean => {
     const phoneRegex = /^[0-9]{10}$/;
-    return phoneRegex.test(phone.replace(/[-\s]/g, ''));
+    return phoneRegex.(phone.replace(/[-\s]/g, ''));
   },
   
   nationalId: (id: string): boolean => {
     const cleanId = id.replace(/[-\s]/g, '');
-    return /^\d{13}$/.test(cleanId);
+    return /^\d{13}$/.(cleanId);
   },
   
   bloodType: (type: string): boolean => {

@@ -42,7 +42,6 @@ class QueryOptimizationService {
       if (cacheKey) {
         const cached = cacheService.getCachedQueryResult<T[]>(query, params);
         if (cached) {
-          console.log(`💾 Cache HIT for query: ${query.substring(0, 50)}...`);
           return cached;
         }
       }

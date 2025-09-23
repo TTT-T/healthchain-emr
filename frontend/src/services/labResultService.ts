@@ -6,9 +6,9 @@ export interface CreateLabResultRequest {
   patientId: string;
   visitId?: string;
   labOrderId?: string;
-  testType: string;
-  testName: string;
-  testResults: Array<{
+  Type: string;
+  Name: string;
+  Results: Array<{
     parameter: string;
     value: string;
     unit?: string;
@@ -25,21 +25,21 @@ export interface CreateLabResultRequest {
     fileType: string;
     fileSize: number;
   }>;
-  testedBy: string;
-  testedTime?: string;
+  edBy: string;
+  edTime?: string;
   reviewedBy?: string;
   reviewedTime?: string;
   notes?: string;
 }
 
 export interface UpdateLabResultRequest {
-  testResults?: any[];
+  Results?: any[];
   overallResult?: string;
   interpretation?: string;
   recommendations?: string;
   attachments?: any[];
-  testedBy?: string;
-  testedTime?: string;
+  edBy?: string;
+  edTime?: string;
   reviewedBy?: string;
   reviewedTime?: string;
   notes?: string;
@@ -52,16 +52,16 @@ export interface LabResultRecord {
   visitId?: string;
   labOrderId?: string;
   recordType: string;
-  testType: string;
-  testName: string;
-  testResults: any[];
+  Type: string;
+  Name: string;
+  Results: any[];
   overallResult: string;
   interpretation?: string;
   recommendations?: string;
   attachments: any[];
   notes?: string;
-  testedBy: string;
-  testedTime: string;
+  edBy: string;
+  edTime: string;
   reviewedBy?: string;
   reviewedTime?: string;
   createdAt: string;
@@ -146,20 +146,20 @@ export class LabResultService {
   /**
    * แปลงข้อมูลจาก UI form เป็น API format
    */
-  static formatLabResultDataForAPI(labResultData: any, patientId: string, testedBy: string): CreateLabResultRequest {
+  static formatLabResultDataForAPI(labResultData: any, patientId: string, edBy: string): CreateLabResultRequest {
     return {
       patientId,
       visitId: labResultData.visitId,
       labOrderId: labResultData.labOrderId,
-      testType: labResultData.testType,
-      testName: labResultData.testName,
-      testResults: labResultData.testResults || [],
+      Type: labResultData.Type,
+      Name: labResultData.Name,
+      Results: labResultData.Results || [],
       overallResult: labResultData.overallResult,
       interpretation: labResultData.interpretation,
       recommendations: labResultData.recommendations,
       attachments: labResultData.attachments || [],
-      testedBy,
-      testedTime: labResultData.testedTime || new Date().toISOString(),
+      edBy,
+      edTime: labResultData.edTime || new Date().toISOString(),
       reviewedBy: labResultData.reviewedBy,
       reviewedTime: labResultData.reviewedTime,
       notes: labResultData.notes
@@ -175,16 +175,16 @@ export class LabResultService {
       patientId: record.patientId,
       visitId: record.visitId,
       labOrderId: record.labOrderId,
-      testType: record.testType,
-      testName: record.testName,
-      testResults: record.testResults || [],
+      Type: record.Type,
+      Name: record.Name,
+      Results: record.Results || [],
       overallResult: record.overallResult,
       interpretation: record.interpretation,
       recommendations: record.recommendations,
       attachments: record.attachments || [],
       notes: record.notes,
-      testedBy: record.testedBy,
-      testedTime: record.testedTime,
+      edBy: record.edBy,
+      edTime: record.edTime,
       reviewedBy: record.reviewedBy,
       reviewedTime: record.reviewedTime,
       createdAt: record.createdAt,
@@ -198,24 +198,24 @@ export class LabResultService {
    */
   static createEmptyLabResultData(): any {
     return {
-      testType: '',
-      testName: '',
-      testResults: [],
+      Type: '',
+      Name: '',
+      Results: [],
       overallResult: 'normal',
       interpretation: '',
       recommendations: '',
       attachments: [],
       notes: '',
-      testedTime: new Date().toISOString().slice(0, 16)
+      edTime: new Date().toISOString().slice(0, 16)
     };
   }
 
   /**
    * เพิ่มผลการตรวจลงในรายการ
    */
-  static addTestResult(testResults: any[]): any[] {
+  static addResult(Results: any[]): any[] {
     return [
-      ...testResults,
+      ...Results,
       {
         parameter: '',
         value: '',
@@ -230,23 +230,23 @@ export class LabResultService {
   /**
    * ลบผลการตรวจออกจากรายการ
    */
-  static removeTestResult(testResults: any[], index: number): any[] {
-    return testResults.filter((_, i) => i !== index);
+  static removeResult(Results: any[], index: number): any[] {
+    return Results.filter((_, i) => i !== index);
   }
 
   /**
    * ตรวจสอบความถูกต้องของข้อมูลผลการตรวจ
    */
-  static validateTestResult(testResult: any): { isValid: boolean; errors: string[] } {
+  static validateResult(Result: any): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
 
-    if (!testResult.parameter?.trim()) {
+    if (!Result.parameter?.trim()) {
       errors.push('กรุณากรอกชื่อพารามิเตอร์');
     }
-    if (!testResult.value?.trim()) {
+    if (!Result.value?.trim()) {
       errors.push('กรุณากรอกค่าผลการตรวจ');
     }
-    if (!testResult.status) {
+    if (!Result.status) {
       errors.push('กรุณาเลือกสถานะผลการตรวจ');
     }
 
@@ -262,17 +262,17 @@ export class LabResultService {
   static validateLabResultData(data: any): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
 
-    if (!data.testType?.trim()) {
+    if (!data.Type?.trim()) {
       errors.push('กรุณากรอกประเภทการตรวจ');
     }
-    if (!data.testName?.trim()) {
+    if (!data.Name?.trim()) {
       errors.push('กรุณากรอกชื่อการตรวจ');
     }
-    if (!data.testResults || data.testResults.length === 0) {
+    if (!data.Results || data.Results.length === 0) {
       errors.push('กรุณาเพิ่มผลการตรวจอย่างน้อย 1 รายการ');
     } else {
-      data.testResults.forEach((result: any, index: number) => {
-        const validation = this.validateTestResult(result);
+      data.Results.forEach((result: any, index: number) => {
+        const validation = this.validateResult(result);
         if (!validation.isValid) {
           validation.errors.forEach(error => {
             errors.push(`ผลการตรวจ ${index + 1}: ${error}`);
@@ -283,7 +283,7 @@ export class LabResultService {
     if (!data.overallResult) {
       errors.push('กรุณาเลือกผลการตรวจโดยรวม');
     }
-    if (!data.testedBy?.trim()) {
+    if (!data.edBy?.trim()) {
       errors.push('กรุณากรอกชื่อผู้ตรวจ');
     }
 

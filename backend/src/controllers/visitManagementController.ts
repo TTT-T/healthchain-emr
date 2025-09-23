@@ -13,8 +13,6 @@ import { NotificationService } from '../services/notificationService';
  */
 async function sendPatientVisitNotification(visit: any, doctorId: string, queueCount: number, createdBy: string) {
   try {
-    console.log('📱 Sending patient visit notification...');
-    
     // Get patient information
     const patientQuery = `
       SELECT 
@@ -35,7 +33,6 @@ async function sendPatientVisitNotification(visit: any, doctorId: string, queueC
     const patientResult = await databaseManager.query(patientQuery, [visit.patient_id]);
     
     if (patientResult.rows.length === 0) {
-      console.log('❌ Patient not found for notification');
       return;
     }
     
@@ -56,7 +53,6 @@ async function sendPatientVisitNotification(visit: any, doctorId: string, queueC
     const doctorResult = await databaseManager.query(doctorQuery, [doctorId]);
     
     if (doctorResult.rows.length === 0) {
-      console.log('❌ Doctor not found for notification');
       return;
     }
     
@@ -102,12 +98,6 @@ async function sendPatientVisitNotification(visit: any, doctorId: string, queueC
         chiefComplaint: visit.chief_complaint
       }
     });
-    
-    console.log('✅ Patient notification sent successfully', {
-      patientHn: patient.hospital_number,
-      visitNumber: visit.visit_number
-    });
-    
   } catch (error) {
     console.error('❌ Error sending patient visit notification:', error);
     throw error;
@@ -314,9 +304,6 @@ export const getAllVisits = async (req: Request, res: Response) => {
  */
 export const createVisit = async (req: Request, res: Response) => {
   try {
-    console.log('🔍 Create visit request body:', req.body);
-    console.log('🔍 User from request:', req.user);
-    
     const {
       patient_id,
       patientId, // Support camelCase from frontend
@@ -357,20 +344,9 @@ export const createVisit = async (req: Request, res: Response) => {
       doctor_notes: doctor_notes || doctorNotes,
       priority: priority
     };
-    
-    console.log('✅ Normalized data:', normalizedData);
-
     const userId = (req as any).user.id;
-    console.log('🔍 Current user ID:', userId);
-
     // Validate required fields using normalized data
     if (!normalizedData.patient_id || !normalizedData.doctor_id || !normalizedData.visit_type) {
-      console.log('❌ Missing required fields:', {
-        patient_id: normalizedData.patient_id,
-        doctor_id: normalizedData.doctor_id,
-        visit_type: normalizedData.visit_type,
-        department_id: normalizedData.department_id
-      });
       return res.status(400).json({
         data: null,
         meta: null,
@@ -381,26 +357,16 @@ export const createVisit = async (req: Request, res: Response) => {
 
     // Get a valid user ID if not provided
     let validUserId = normalizedData.doctor_id || userId;
-    console.log(`🔍 Initial validUserId: ${validUserId}`);
-    console.log(`🔍 normalizedData.doctor_id: ${normalizedData.doctor_id}`);
-    console.log(`🔍 userId: ${userId}`);
-    console.log(`🔍 About to check if ${validUserId} is doctor_id or user_id`);
-    
     // Check if validUserId is a doctor_id or user_id
-    console.log(`🔍 Checking if ${validUserId} is doctor_id or user_id`);
     let isDoctorId = false;
     try {
       // First check if it's a doctor_id
       const doctorCheckQuery = 'SELECT user_id FROM doctors WHERE id = $1';
-      console.log(`🔍 Executing doctor check query: ${doctorCheckQuery} with param: ${validUserId}`);
       const doctorCheckResult = await databaseManager.query(doctorCheckQuery, [validUserId]);
-      console.log(`🔍 Doctor check result:`, doctorCheckResult.rows);
       if (doctorCheckResult.rows.length > 0) {
         validUserId = doctorCheckResult.rows[0].user_id;
         isDoctorId = true;
-        console.log(`🔄 Converted doctor_id to user_id: ${validUserId}`);
       } else {
-        console.log(`🔍 ${validUserId} is not a doctor_id, checking as user_id`);
       }
     } catch (error) {
       console.error('Error checking doctor_id:', error);
@@ -408,16 +374,11 @@ export const createVisit = async (req: Request, res: Response) => {
     
     // Validate user ID exists
     if (validUserId) {
-      console.log(`🔍 Validating user_id: ${validUserId}`);
       const userExists = await databaseManager.query('SELECT id FROM users WHERE id = $1 AND role = $2 AND is_active = true', [validUserId, 'doctor']);
-      console.log(`🔍 User validation result:`, userExists.rows);
       if (userExists.rows.length === 0) {
-        console.log(`❌ Doctor not found: ${validUserId}`);
         const fallbackUser = await databaseManager.query('SELECT id FROM users WHERE role = $1 AND is_active = true LIMIT 1', ['doctor']);
-        console.log(`🔍 Fallback doctor result:`, fallbackUser.rows);
         if (fallbackUser.rows.length > 0) {
           validUserId = fallbackUser.rows[0].id;
-          console.log(`🔄 Using fallback doctor: ${validUserId}`);
         } else {
           return res.status(404).json({
             data: null,
@@ -427,19 +388,16 @@ export const createVisit = async (req: Request, res: Response) => {
           });
         }
       } else {
-        console.log(`✅ Doctor validation successful: ${validUserId}`);
       }
     } else {
       // If no validUserId, get a fallback doctor
       const userResult = await databaseManager.query('SELECT id FROM users WHERE role = $1 LIMIT 1', ['doctor']);
       validUserId = userResult.rows[0]?.id;
-      console.log(`🔄 Using fallback doctor: ${validUserId}`);
     }
     
     // Final fallback: if still no valid doctor, use the current user (who is a doctor)
     if (!validUserId) {
       validUserId = userId;
-      console.log(`🔄 Using current user as doctor: ${validUserId}`);
     }
 
     // Get a valid department ID if not provided
@@ -494,13 +452,6 @@ export const createVisit = async (req: Request, res: Response) => {
       visitDate = `${year}-${month}-${day}`;
       visitTimeStr = `${hours}:${minutes}:${seconds}`;
     }
-    
-    console.log('🕐 Visit time processing:', {
-      input: normalizedData.visit_time,
-      parsedDate: visitDate,
-      parsedTime: visitTimeStr
-    });
-
     // Check for duplicate visit (same patient, same day) - ห้ามเช็คอินผู้ป่วยซ้ำ
     try {
       const duplicateCheckQuery = `
@@ -517,7 +468,6 @@ export const createVisit = async (req: Request, res: Response) => {
       
       if (duplicateResult.rows.length > 0) {
         const existingVisit = duplicateResult.rows[0];
-        console.log('❌ Duplicate visit found:', existingVisit);
         return res.status(409).json({
           data: null,
           meta: null,
@@ -544,7 +494,6 @@ export const createVisit = async (req: Request, res: Response) => {
       `;
       const queueResult = await databaseManager.query(queueCheckQuery, [validUserId]);
       const currentQueue = parseInt(queueResult.rows[0]?.current_queue || '0');
-      console.log(`📊 Current queue for doctor ${validUserId}: ${currentQueue} patients`);
     } catch (error) {
       console.error('Error checking current queue:', error);
     }
@@ -571,7 +520,6 @@ export const createVisit = async (req: Request, res: Response) => {
       `;
       const updatedQueueResult = await databaseManager.query(updatedQueueQuery, [validUserId]);
       updatedQueueCount = parseInt(updatedQueueResult.rows[0]?.updated_queue || '0');
-      console.log(`📊 Updated queue for doctor ${validUserId}: ${updatedQueueCount} patients`);
     } catch (error) {
       console.error('Error checking updated queue:', error);
     }

@@ -2,13 +2,9 @@ import { databaseManager } from '../database/connection';
 import { hashPassword } from '../utils';
 import { v4 as uuidv4 } from 'uuid';
 
-async function createTestUser() {
+async function createUser() {
   try {
-    console.log('Initializing database...');
     await databaseManager.initialize();
-    
-    console.log('Creating test user...');
-    
     // Hash password
     const hashedPassword = await hashPassword('password123');
     
@@ -23,10 +19,10 @@ async function createTestUser() {
       ) RETURNING id, username, email, first_name, last_name, role
     `, [
       uuidv4(),
-      'testuser',
-      'test@example.com',
+      'user',
+      '@example.com',
       hashedPassword,
-      'Test',
+      '',
       'User',
       'patient',
       true,
@@ -35,20 +31,12 @@ async function createTestUser() {
       new Date(),
       new Date()
     ]);
-    
-    console.log('Test user created successfully:');
-    console.log(result.rows[0]);
-    
-    // Test login
-    console.log('\nTest login with:');
-    console.log('Email: test@example.com');
-    console.log('Password: password123');
-    
+    //  login
   } catch (error) {
-    console.error('Error creating test user:', error);
+    console.error('Error creating  user:', error);
   } finally {
     await databaseManager.close();
   }
 }
 
-createTestUser();
+createUser();

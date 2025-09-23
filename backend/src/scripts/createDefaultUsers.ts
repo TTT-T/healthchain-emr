@@ -2,8 +2,6 @@ import { hashPassword } from '../utils/index';
 import { databaseManager } from '../database/connection';
 
 async function createDefaultUsers() {
-  console.log('Creating default users...');
-  
   try {
     // Create admin user
     const adminPassword = await hashPassword('admin123');
@@ -37,7 +35,7 @@ async function createDefaultUsers() {
       'doctor@healthchain.com',
       doctorPassword,
       'Doctor',
-      'Test',
+      '',
       'doctor',
       true,
       true
@@ -56,18 +54,11 @@ async function createDefaultUsers() {
       'patient@healthchain.com',
       patientPassword,
       'Patient',
-      'Test',
+      '',
       'patient',
       true,
       true
     ]);
-
-    console.log('✅ Default users created successfully');
-    console.log('Login credentials:');
-    console.log('  Admin: admin / admin123');
-    console.log('  Doctor: doctor / doctor123');
-    console.log('  Patient: patient / patient123');
-    
   } catch (error) {
     console.error('❌ Error creating default users:', error);
   }

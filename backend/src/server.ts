@@ -17,7 +17,6 @@ let webSocketService: WebSocketService;
 app.start().then((httpServer) => {
   // Initialize WebSocket service
   webSocketService = new WebSocketService(httpServer as any);
-  console.log('🔌 WebSocket service initialized');
 }).catch((error) => {
   console.error('Failed to start server:', error);
   process.exit(1);
@@ -25,12 +24,10 @@ app.start().then((httpServer) => {
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully...');
   app.shutdown();
 });
 
 process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully...');
   app.shutdown();
 });
 

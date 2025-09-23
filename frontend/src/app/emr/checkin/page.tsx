@@ -9,8 +9,8 @@ import { NotificationService } from '@/services/notificationService';
 import { DoctorService, Doctor } from '@/services/doctorService';
 import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
-import { addTokenExpiryTestButton } from '@/utils/tokenExpiryTest';
-import { createLocalDateTimeString, formatToBuddhistEra, debugTimeInfo } from '@/utils/timeUtils';
+import { addTokenExpiryButton } from '@/utils/tokenExpiry';
+import { createLocalDateTimeString, formatToBuddhistEra, TimeInfo } from '@/utils/timeUtils';
 
 interface Patient {
   hn: string;
@@ -41,24 +41,10 @@ interface CheckInData {
 export default function CheckIn() {
   const { isAuthenticated, user } = useAuth();
   
-  // Debug logging for user data
+  //  logging for user data
   useEffect(() => {
-    console.log('🔍 Auth status check:', { isAuthenticated, user: !!user });
     if (user) {
-      console.log('🔍 User data in checkin page:', {
-        id: user.id,
-        username: user.username,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        thaiFirstName: user.thaiFirstName,
-        thaiLastName: user.thaiLastName,
-        position: user.position,
-        role: user.role,
-        departmentId: user.departmentId,
-        allFields: Object.keys(user)
-      });
     } else {
-      console.log('❌ No user data available');
     }
   }, [user, isAuthenticated]);
 
@@ -67,8 +53,8 @@ export default function CheckIn() {
     const updateCurrentTime = () => {
       const now = new Date();
       
-      // Debug time information
-      debugTimeInfo(now);
+      //  time information
+      TimeInfo(now);
       
       // Create local datetime string in YYYY-MM-DDTHH:MM format
       const currentTimeString = createLocalDateTimeString(now);
@@ -125,10 +111,8 @@ export default function CheckIn() {
   // Real doctors data - will be loaded from API
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   
-  // Debug doctors state changes
+  //  doctors state changes
   useEffect(() => {
-    console.log('🔍 Doctors state changed:', doctors.length, 'doctors');
-    console.log('🔍 Doctors data:', doctors);
   }, [doctors]);
 
   const treatmentTypes = [
@@ -142,13 +126,10 @@ export default function CheckIn() {
   // Load real doctors data from API
   const loadDoctors = async () => {
     try {
-      console.log('🔄 Loading doctors from API...');
-      logger.debug('🔄 Loading doctors from API...');
+      logger.('🔄 Loading doctors from API...');
       const response = await DoctorService.getAvailableDoctors();
-      console.log('📡 API Response:', response);
-      
       if (response.statusCode === 200 && response.data) {
-        logger.debug('✅ Doctors loaded successfully:', response.data);
+        logger.('✅ Doctors loaded successfully:', response.data);
         
         // Map API response to frontend Doctor interface
         const mappedDoctors: Doctor[] = response.data.map((doctor: any) => ({
@@ -168,10 +149,8 @@ export default function CheckIn() {
           availability: doctor.availability
         }));
         
-        logger.debug('📱 Mapped doctors:', mappedDoctors);
-        console.log('📱 Mapped doctors:', mappedDoctors);
+        logger.('📱 Mapped doctors:', mappedDoctors);
         setDoctors(mappedDoctors);
-        console.log('✅ Doctors state updated with', mappedDoctors.length, 'doctors');
         return;
       } else {
         throw new Error('Failed to load doctors');
@@ -189,8 +168,7 @@ export default function CheckIn() {
       });
       
       // Fallback to sample data if API fails
-      logger.debug('🔄 Using fallback sample doctors data...');
-      console.log('🔄 Using fallback sample doctors data...');
+      logger.('🔄 Using fallback sample doctors data...');
       const sampleDoctors: Doctor[] = [
         {
           id: 'doc-001',
@@ -245,26 +223,18 @@ export default function CheckIn() {
           consultationFee: 550
         }
       ];
-      
-      console.log('🔄 Setting fallback doctors:', sampleDoctors);
       setDoctors(sampleDoctors);
-      console.log('✅ Fallback doctors state updated with', sampleDoctors.length, 'doctors');
     }
   };
 
   useEffect(() => {
-    console.log('🔍 useEffect triggered, isAuthenticated:', isAuthenticated);
-    console.log('🔍 useEffect triggered, user:', !!user);
     if (isAuthenticated) {
-      console.log('🔄 Loading doctors...');
       loadDoctors();
     } else {
-      console.log('❌ Not authenticated, skipping doctors load');
-      console.log('❌ Auth details:', { isAuthenticated, user: !!user });
     }
     
-    // Add test button for development
-    addTokenExpiryTestButton();
+    // Add  button for development
+    addTokenExpiryButton();
   }, [isAuthenticated, user]);
 
   // Update visit time to current time when component mounts or when user is authenticated
@@ -284,7 +254,7 @@ export default function CheckIn() {
       return;
     }
 
-    if (searchType === "nationalId" && !/^\d{13}$/.test(searchQuery)) {
+    if (searchType === "nationalId" && !/^\d{13}$/.(searchQuery)) {
       setError("เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก");
       return;
     }
@@ -311,57 +281,15 @@ export default function CheckIn() {
             const hnMatch = (p as any).hn === searchQuery;
             const hospitalNumberMatch = (p as any).hospital_number === searchQuery;
             const hospitalNumberUpperMatch = (p as any).hospital_number === searchQuery.toUpperCase();
-            
-            console.log(`Checking patient ${p.id}:`, {
-              searchQuery,
-              hn: (p as any).hn,
-              hospital_number: (p as any).hospital_number,
-              hnMatch,
-              hospitalNumberMatch,
-              hospitalNumberUpperMatch,
-              finalMatch: hnMatch || hospitalNumberMatch || hospitalNumberUpperMatch
-            });
-            
             return hnMatch || hospitalNumberMatch || hospitalNumberUpperMatch;
           } else {
             return (p as any).national_id === searchQuery;
           }
         });
-        
-        console.log('Search response:', response);
-        console.log('Search query:', searchQuery);
-        console.log('Search type:', searchType);
-        console.log('Found patients:', response.data);
-        console.log('Number of patients found:', response.data.length);
-        
-        // Debug each patient's fields
+        //  each patient's fields
         response.data.forEach((patient: any, index: number) => {
-          console.log(`Patient ${index}:`, {
-            id: patient.id,
-            hn: patient.hn,
-            hospital_number: patient.hospital_number,
-            national_id: patient.national_id,
-            thai_name: patient.thai_name,
-            allFields: Object.keys(patient)
-          });
         });
-        
-        console.log('Exact match:', exactMatch);
-        
         if (exactMatch) {
-          console.log('🔍 Setting selected patient:', exactMatch);
-          console.log('🔍 Patient fields:', {
-            hn: exactMatch.hn,
-            hospital_number: exactMatch.hospital_number,
-            thai_name: exactMatch.thai_name,
-            first_name: exactMatch.first_name,
-            last_name: exactMatch.last_name,
-            gender: exactMatch.gender,
-            birth_date: exactMatch.birth_date,
-            birth_year: exactMatch.birth_year,
-            birth_month: exactMatch.birth_month,
-            birth_day: exactMatch.birth_day
-          });
           setSelectedPatient(exactMatch);
           // อัปเดตเวลาปัจจุบันเมื่อเลือกผู้ป่วย
           const currentTime = createLocalDateTimeString(new Date());
@@ -659,7 +587,6 @@ export default function CheckIn() {
     });
   };
 
-
   const validateForm = (): boolean => {
     const newErrors: Partial<CheckInData> = {};
 
@@ -690,14 +617,7 @@ export default function CheckIn() {
     setError(null);
     
     try {
-      // Debug selectedPatient data
-      console.log('🔍 Selected Patient Data:', {
-        id: selectedPatient?.id,
-        hn: selectedPatient?.hn,
-        hospital_number: selectedPatient?.hospitalNumber,
-        fullData: selectedPatient
-      });
-
+      //  selectedPatient data
       // Check for duplicate visit before creating
       const visitDate = new Date(checkInData.visitTime);
       const formattedDate = visitDate.toISOString().split('T')[0]; // YYYY-MM-DD format (keep UTC for API)
@@ -742,16 +662,7 @@ export default function CheckIn() {
         priority: 'normal' as const,
         attendingDoctorId: checkInData.assignedDoctor,
       };
-      
-      console.log('🔍 Visit Data being sent:', visitData);
-      
       const response = await VisitService.createVisit(visitData as any);
-      
-      console.log('🔍 Visit creation response:', {
-        statusCode: response.statusCode,
-        data: response.data
-      });
-      
       if (response.statusCode === 200 || response.statusCode === 201) {
         // Generate queue number (this would come from the API in real implementation)
         const queueNumber = `Q${String(Math.floor(Math.random() * 999) + 1).padStart(3, '0')}`;
@@ -811,16 +722,6 @@ export default function CheckIn() {
   };
 
   const calculateAge = (patient: any): number => {
-    console.log('🔍 Calculating age for patient:', {
-      id: patient.id,
-      birth_date: patient.birth_date,
-      birth_year: patient.birth_year,
-      birth_month: patient.birth_month,
-      birth_day: patient.birth_day,
-      age: patient.age,
-      allFields: Object.keys(patient)
-    });
-    
     // Try to calculate from birth_date first
     if (patient.birth_date) {
       const today = new Date();
@@ -831,8 +732,6 @@ export default function CheckIn() {
       if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
         age--;
       }
-      
-      console.log('📅 Calculated age from birth_date:', age);
       return age;
     }
     
@@ -848,25 +747,18 @@ export default function CheckIn() {
       if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
         age--;
       }
-      
-      console.log('📅 Calculated age from separate fields:', age, 'Buddhist year:', patient.birth_year, 'Christian year:', christianYear);
       return age;
     }
     
     // If patient already has age calculated, use it
     if (patient.age && patient.age > 0) {
-      console.log('📅 Using existing age:', patient.age);
       return patient.age;
     }
-    
-    console.log('❌ No birth date information available, returning 0');
     return 0; // Return 0 if no birth date information
   };
 
   const getAvailableDoctors = () => {
     // Return all doctors for now, can add filtering logic later
-    console.log('🔍 getAvailableDoctors called, doctors count:', doctors.length);
-    console.log('🔍 doctors data:', doctors);
     return doctors;
   };
 
@@ -1216,8 +1108,6 @@ export default function CheckIn() {
                     <button
                       type="button"
                       onClick={() => {
-                        console.log('🔍 Auth status:', { isAuthenticated, user: !!user });
-                        console.log('🔍 User data:', user);
                       }}
                       className="px-3 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
                     >
@@ -1226,7 +1116,6 @@ export default function CheckIn() {
                     <button
                       type="button"
                       onClick={() => {
-                        console.log('🔄 Manual load doctors button clicked');
                         loadDoctors();
                       }}
                       className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
@@ -1239,7 +1128,6 @@ export default function CheckIn() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {(() => {
                     const availableDoctors = getAvailableDoctors();
-                    console.log('🔍 Rendering doctors section, count:', availableDoctors.length);
                     return availableDoctors.length > 0;
                   })() ? (
                     getAvailableDoctors().map((doctor) => (
@@ -1292,7 +1180,7 @@ export default function CheckIn() {
                         </svg>
                         <p className="text-lg font-medium text-gray-900 mb-2">ไม่มีแพทย์ให้เลือก</p>
                         <p className="text-sm text-gray-500">กรุณาติดต่อผู้ดูแลระบบเพื่อเพิ่มข้อมูลแพทย์</p>
-                        <p className="text-xs text-gray-400 mt-2">Debug: Doctors count = {getAvailableDoctors().length}</p>
+                        <p className="text-xs text-gray-400 mt-2">: Doctors count = {getAvailableDoctors().length}</p>
                       </div>
                     </div>
                   )}
@@ -1509,7 +1397,7 @@ export default function CheckIn() {
                     </svg>
                   </button>
                   <span className="text-sm font-bold text-slate-800">
-                    {selectedDate.toLocaleDateString('th-TH', { month: 'long' })}
+                    {selectedDate.toLocaleDaring('th-TH', { month: 'long' })}
                   </span>
                   <button
                     onClick={() => navigateMonth('next')}

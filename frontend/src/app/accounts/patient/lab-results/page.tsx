@@ -8,9 +8,9 @@ import { logger } from '@/lib/logger';
 
 interface LabResult {
   id: string;
-  test_type: string;
-  test_name: string;
-  test_results: Array<{
+  _type: string;
+  _name: string;
+  _results: Array<{
     parameter: string;
     value: string;
     unit: string;
@@ -24,7 +24,7 @@ interface LabResult {
   attachments: any[];
   notes: string;
   result_date: string;
-  tested_by: {
+  ed_by: {
     name: string;
   };
   visit: {
@@ -146,10 +146,10 @@ export default function LabResults() {
   };
 
   const filteredResults = results.filter(result => {
-    const matchesSearch = result.test_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         result.tested_by.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = result._name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         result.ed_by.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (result.interpretation && result.interpretation.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCategory = selectedCategory === "all" || result.test_type === selectedCategory;
+    const matchesCategory = selectedCategory === "all" || result._type === selectedCategory;
     const matchesStatus = selectedStatus === "all" || result.overall_result === selectedStatus;
     
     return matchesSearch && matchesCategory && matchesStatus;
@@ -160,9 +160,8 @@ export default function LabResults() {
     setIsModalOpen(true);
   };
 
-  const handleDownload = (result: LabResult) => {
-    // TODO: Implement download functionality
-    logger.debug('Download result:', result.lab_order.id);
+  const handleDownload = (result: LabResult) => {
+    logger.('Download result:', result.lab_order.id);
   };
 
   if (isLoading) {
@@ -258,7 +257,7 @@ export default function LabResults() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">ผิดปกติ</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {results.filter(r => r.overall_result === 'abnormal' && r.test_results.some(v => v.status === 'abnormal')).length}
+                  {results.filter(r => r.overall_result === 'abnormal' && r._results.some(v => v.status === 'abnormal')).length}
                 </p>
               </div>
             </div>
@@ -339,19 +338,19 @@ export default function LabResults() {
               >
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{result.test_name}</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{result._name}</h3>
                     <div className="flex items-center gap-4 text-sm text-gray-600">
                       <div className="flex items-center gap-1">
                         <FileText className="h-4 w-4" />
-                        <span>{result.test_type}</span>
+                        <span>{result._type}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
-                        <span>{new Date(result.result_date).toLocaleDateString('th-TH')}</span>
+                        <span>{new Date(result.result_date).toLocaleDaring('th-TH')}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <User className="h-4 w-4" />
-                        <span>{result.tested_by.name}</span>
+                        <span>{result.ed_by.name}</span>
                       </div>
                     </div>
                   </div>
@@ -373,11 +372,11 @@ export default function LabResults() {
                   </div>
                 </div>
                 
-                {(result.overall_result === 'normal' || result.overall_result === 'abnormal') && result.test_results.length > 0 && (
+                {(result.overall_result === 'normal' || result.overall_result === 'abnormal') && result._results.length > 0 && (
                   <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                     <h4 className="text-sm font-medium text-gray-700 mb-2">ผลการตรวจ (แสดงบางส่วน)</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                      {result.test_results.slice(0, 3).map((value, index) => (
+                      {result._results.slice(0, 3).map((value, index) => (
                         <div key={index} className="text-sm">
                           <span className="font-medium">{value.parameter}:</span>
                           <span className={`ml-1 ${getValueStatusColor(value.status || 'normal')}`}>
@@ -407,7 +406,7 @@ export default function LabResults() {
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-3">
                     <FileText className="h-6 w-6 text-gray-600" />
-                    <h2 className="text-xl font-bold text-gray-900">{selectedResult.test_name}</h2>
+                    <h2 className="text-xl font-bold text-gray-900">{selectedResult._name}</h2>
                   </div>
                   <button
                     onClick={() => setIsModalOpen(false)}
@@ -427,12 +426,12 @@ export default function LabResults() {
                   <div className="flex items-center gap-2">
                     <FileText className="h-5 w-5 text-gray-500" />
                     <span className="font-medium">ประเภท:</span>
-                    <span>{selectedResult.test_type}</span>
+                    <span>{selectedResult._type}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-gray-500" />
                     <span className="font-medium">วันที่ตรวจ:</span>
-                    <span>{new Date(selectedResult.result_date).toLocaleDateString('th-TH')}</span>
+                    <span>{new Date(selectedResult.result_date).toLocaleDaring('th-TH')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-5 w-5 text-gray-500" />
@@ -442,7 +441,7 @@ export default function LabResults() {
                   <div className="flex items-center gap-2">
                     <User className="h-5 w-5 text-gray-500" />
                     <span className="font-medium">แพทย์ผู้ตรวจ:</span>
-                    <span>{selectedResult.tested_by.name}</span>
+                    <span>{selectedResult.ed_by.name}</span>
                   </div>
                 </div>
 
@@ -459,7 +458,7 @@ export default function LabResults() {
                   </div>
                 </div>
 
-                {selectedResult.test_results.length > 0 && (
+                {selectedResult._results.length > 0 && (
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                       <FileText className="h-5 w-5 text-blue-600" />
@@ -478,7 +477,7 @@ export default function LabResults() {
                           </tr>
                         </thead>
                         <tbody>
-                          {selectedResult.test_results.map((value, index) => (
+                          {selectedResult._results.map((value, index) => (
                             <tr key={index} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
                               <td className="px-4 py-3 font-medium border-b border-gray-200">
                                 {value.parameter}
@@ -519,11 +518,11 @@ export default function LabResults() {
                     </div>
                     <div>
                       <span className="font-medium">วันที่สร้าง:</span>
-                      <span className="ml-2">{new Date(selectedResult.created_at).toLocaleDateString('th-TH')}</span>
+                      <span className="ml-2">{new Date(selectedResult.created_at).toLocaleDaring('th-TH')}</span>
                     </div>
                     <div>
                       <span className="font-medium">วันที่อัปเดต:</span>
-                      <span className="ml-2">{new Date(selectedResult.updated_at).toLocaleDateString('th-TH')}</span>
+                      <span className="ml-2">{new Date(selectedResult.updated_at).toLocaleDaring('th-TH')}</span>
                     </div>
                     <div>
                       <span className="font-medium">สถานะ:</span>

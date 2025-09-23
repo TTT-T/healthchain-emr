@@ -7,7 +7,7 @@ const levels = {
   warn: 1,
   info: 2,
   http: 3,
-  debug: 4,
+  : 4,
 };
 
 // Define colors for each level
@@ -16,7 +16,7 @@ const colors = {
   warn: 'yellow',
   info: 'green',
   http: 'magenta',
-  debug: 'white',
+  : 'white',
 };
 
 // Tell winston that you want to link the colors
@@ -26,7 +26,7 @@ winston.addColors(colors);
 const level = () => {
   const env = config.server.nodeEnv || 'development';
   const isDevelopment = env === 'development';
-  return isDevelopment ? 'debug' : 'warn';
+  return isDevelopment ? '' : 'warn';
 };
 
 // Define different log formats

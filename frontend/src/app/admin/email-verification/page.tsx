@@ -56,8 +56,8 @@ const mockEmailVerifications: EmailVerification[] = [
   },
   {
     id: '4',
-    email: 'admin.test@system.com',
-    userName: 'Test Admin',
+    email: 'admin.@system.com',
+    userName: ' Admin',
     userType: 'admin',
     status: 'failed',
     sentAt: '2024-12-19 12:00:00',

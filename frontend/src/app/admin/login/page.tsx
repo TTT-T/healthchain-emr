@@ -67,7 +67,7 @@ export default function AdminLogin() {
 
       const result = await response.json()
       
-      // Debug logging
+      //  logging
       console.log('🔍 Admin login response:', result)
       console.log('🔍 Response status:', response.status)
       console.log('🔍 Result statusCode:', result.statusCode)

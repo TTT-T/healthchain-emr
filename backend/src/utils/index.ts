@@ -36,28 +36,28 @@ export class PasswordUtils {
       });
     }
 
-    if (!/[a-z]/.test(password)) {
+    if (!/[a-z]/.(password)) {
       errors.push({
         field: 'password',
         message: 'Password must contain at least one lowercase letter'
       });
     }
 
-    if (!/[A-Z]/.test(password)) {
+    if (!/[A-Z]/.(password)) {
       errors.push({
         field: 'password',
         message: 'Password must contain at least one uppercase letter'
       });
     }
 
-    if (!/[0-9]/.test(password)) {
+    if (!/[0-9]/.(password)) {
       errors.push({
         field: 'password',
         message: 'Password must contain at least one number'
       });
     }
 
-    if (!/[^a-zA-Z0-9]/.test(password)) {
+    if (!/[^a-zA-Z0-9]/.(password)) {
       errors.push({
         field: 'password',
         message: 'Password must contain at least one special character'
@@ -223,7 +223,7 @@ export class ValidationUtils {
    */
   static isValidEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    return emailRegex.(email);
   }
 
   /**
@@ -231,7 +231,7 @@ export class ValidationUtils {
    */
   static isValidThaiPhone(phone: string): boolean {
     const phoneRegex = /^[0-9]{10}$/;
-    return phoneRegex.test(phone.replace(/[-\s]/g, ''));
+    return phoneRegex.(phone.replace(/[-\s]/g, ''));
   }
 
   /**
@@ -239,7 +239,7 @@ export class ValidationUtils {
    */
   static isValidThaiNationalId(id: string): boolean {
     const cleanId = id.replace(/[-\s]/g, '');
-    if (!/^\d{13}$/.test(cleanId)) return false;
+    if (!/^\d{13}$/.(cleanId)) return false;
 
     // Validate checksum
     const digits = cleanId.split('').map(Number);
@@ -257,7 +257,7 @@ export class ValidationUtils {
   static isValidUsername(username: string): boolean {
     // Username: 3-50 characters, alphanumeric and underscore only
     const usernameRegex = /^[a-zA-Z0-9_]{3,50}$/;
-    return usernameRegex.test(username);
+    return usernameRegex.(username);
   }
 
   /**
@@ -272,7 +272,7 @@ export class ValidationUtils {
    */
   static isValidUUID(uuid: string): boolean {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(uuid);
+    return uuidRegex.(uuid);
   }
 }
 
@@ -290,8 +290,8 @@ export class DateUtils {
   /**
    * Parse date from various formats
    */
-  static parseDate(dateString: string): Date | null {
-    const date = new Date(dateString);
+  static parseDate(daring: string): Date | null {
+    const date = new Date(daring);
     return isNaN(date.getTime()) ? null : date;
   }
 
@@ -330,7 +330,7 @@ export class DateUtils {
    * Format date for Thai locale
    */
   static formatThaiDate(date: Date): string {
-    return date.toLocaleDateString('th-TH', {
+    return date.toLocaleDaring('th-TH', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'

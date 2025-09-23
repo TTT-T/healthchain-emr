@@ -84,7 +84,7 @@ interface MedicalHistory {
     general: string;
     cardiovascular: string;
     respiratory: string;
-    gastrointestinal: string;
+    gastroininal: string;
     genitourinary: string;
     neurological: string;
     musculoskeletal: string;
@@ -159,7 +159,7 @@ export default function HistoryTaking() {
       general: "",
       cardiovascular: "",
       respiratory: "",
-      gastrointestinal: "",
+      gastroininal: "",
       genitourinary: "",
       neurological: "",
       musculoskeletal: "",
@@ -350,7 +350,7 @@ export default function HistoryTaking() {
             general: "",
             cardiovascular: "",
             respiratory: "",
-            gastrointestinal: "",
+            gastroininal: "",
             genitourinary: "",
             neurological: "",
             musculoskeletal: "",
@@ -1407,7 +1407,7 @@ export default function HistoryTaking() {
                           { key: "general", label: "ทั่วไป (General)", placeholder: "น้ำหนักลด/เพิ่ม, เหนื่อยง่าย, ไข้" },
                           { key: "cardiovascular", label: "หัวใจและหลอดเลือด", placeholder: "เจ็บแน่นหน้าอก, หายใจลำบาก, บวม" },
                           { key: "respiratory", label: "ระบบหายใจ", placeholder: "ไอ, เสียงแหบ, หายใจลำบาก" },
-                          { key: "gastrointestinal", label: "ระบบทางเดินอาหาร", placeholder: "คลื่นไส้, อาเจียน, ท้องเสีย, ท้องผูก" },
+                          { key: "gastroininal", label: "ระบบทางเดินอาหาร", placeholder: "คลื่นไส้, อาเจียน, ท้องเสีย, ท้องผูก" },
                           { key: "genitourinary", label: "ระบบปัสสาวะและสืบพันธุ์", placeholder: "ปัสสาวะขัด, เจ็บปวด, เลือด" },
                           { key: "neurological", label: "ระบบประสาท", placeholder: "ปวดหัว, เวียนหัว, ชา, อ่อนแรง" },
                           { key: "musculoskeletal", label: "กล้ามเนื้อและกระดูก", placeholder: "ปวดข้อ, บวม, แข็งเกร็ง" },

@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date()
     };
 
-    logger.debug('Profile data to save:', profileData);
+    logger.('Profile data to save:', profileData);
 
     // บันทึกข้อมูล profile ลง database (จำลอง)
     // const profile = await db.userProfile.create({ data: profileData });

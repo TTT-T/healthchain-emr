@@ -469,7 +469,7 @@ export default function RoleManagementPage() {
                         </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {user.last_login ? new Date(user.last_login).toLocaleDateString('th-TH') : 'ไม่เคยเข้าสู่ระบบ'}
+                        {user.last_login ? new Date(user.last_login).toLocaleDaring('th-TH') : 'ไม่เคยเข้าสู่ระบบ'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center gap-2">

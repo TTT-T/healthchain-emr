@@ -24,12 +24,7 @@ function AdminLayoutContent({ children }: AdminLayoutProps) {
     // Add delay to allow AdminAuthContext to complete its session check
     const timeoutId = setTimeout(() => {
       if (!isLoading && !isAuthenticated && !isAuthPage) {
-        console.log('🔍 Admin not authenticated, redirecting to login');
-        console.log('🔍 isAuthenticated:', isAuthenticated);
-        console.log('🔍 isLoading:', isLoading);
-        console.log('🔍 isAuthPage:', isAuthPage);
-        console.log('🔍 pathname:', pathname);
-        
+
         router.push('/admin/login');
       }
     }, 1000); // Wait 1 second for AdminAuthContext to complete

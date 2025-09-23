@@ -135,8 +135,8 @@ export default function MyRequestsPage() {
     return matchesStatus && matchesSearch
   })
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('th-TH', {
+  const formatDate = (daring: string) => {
+    return new Date(daring).toLocaleDaring('th-TH', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -208,8 +208,8 @@ export default function MyRequestsPage() {
  สถานะ: ${(requestData as any).status}
  ประเภทคำขอ: ${(requestData as any).requestType}
  วัตถุประสงค์: ${(requestData as any).purpose}
- วันที่ส่ง: ${(requestData as any).createdAt ? new Date((requestData as any).createdAt).toLocaleDateString('th-TH') : 'ไม่ระบุ'}
- วันที่อัปเดต: ${(requestData as any).updatedAt ? new Date((requestData as any).updatedAt).toLocaleDateString('th-TH') : 'ไม่ระบุ'}
+ วันที่ส่ง: ${(requestData as any).createdAt ? new Date((requestData as any).createdAt).toLocaleDaring('th-TH') : 'ไม่ระบุ'}
+ วันที่อัปเดต: ${(requestData as any).updatedAt ? new Date((requestData as any).updatedAt).toLocaleDaring('th-TH') : 'ไม่ระบุ'}
         `
         
         // For now, we'll use alert but in a real app, this should be a modal

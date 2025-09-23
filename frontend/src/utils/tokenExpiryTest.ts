@@ -1,5 +1,5 @@
 /**
- * Utility functions for testing token expiry functionality
+ * Utility functions for ing token expiry functionality
  */
 
 /**
@@ -17,7 +17,7 @@ export function simulateTokenExpiry(message?: string) {
 }
 
 /**
- * Clear all authentication data (for testing)
+ * Clear all authentication data (for ing)
  */
 export function clearAllAuthData() {
   // Clear localStorage
@@ -32,26 +32,24 @@ export function clearAllAuthData() {
       .replace(/^ +/, "")
       .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
   });
-  
-  console.log('🧹 All authentication data cleared for testing');
 }
 
 /**
- * Add a test button to the page (for development only)
+ * Add a  button to the page (for development only)
  */
-export function addTokenExpiryTestButton() {
+export function addTokenExpiryButton() {
   if (typeof window === 'undefined' || process.env.NODE_ENV === 'production') {
     return;
   }
 
   // Check if button already exists
-  if (document.getElementById('token-expiry-test-btn')) {
+  if (document.getElementById('token-expiry--btn')) {
     return;
   }
 
   const button = document.createElement('button');
-  button.id = 'token-expiry-test-btn';
-  button.textContent = '🧪 Test Token Expiry';
+  button.id = 'token-expiry--btn';
+  button.textContent = '🧪  Token Expiry';
   button.style.cssText = `
     position: fixed;
     top: 10px;
@@ -72,6 +70,4 @@ export function addTokenExpiryTestButton() {
   });
   
   document.body.appendChild(button);
-  
-  console.log('🧪 Token expiry test button added (development mode only)');
 }

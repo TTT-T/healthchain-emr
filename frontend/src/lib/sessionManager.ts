@@ -201,7 +201,7 @@ class SessionManager {
     try {
       // This would typically call your API to refresh the token
       // For now, we'll just clear the session
-      logger.debug('Session expired, clearing...');
+      logger.('Session expired, clearing...');
       this.clearSession();
       return false;
     } catch (error) {

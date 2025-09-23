@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act } from '@ing-library/react'
 import { useAuth } from '../useAuth'
 import { useAuth as useAuthContext } from '../../contexts/AuthContext'
 
@@ -11,7 +11,7 @@ jest.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({
     user: {
       id: '1',
-      email: 'test@example.com',
+      email: '@example.com',
       firstName: 'John',
       lastName: 'Doe',
       role: 'patient'
@@ -35,7 +35,7 @@ describe('useAuth Hook', () => {
 
     expect(result.current.user).toEqual({
       id: '1',
-      email: 'test@example.com',
+      email: '@example.com',
       firstName: 'John',
       lastName: 'Doe',
       role: 'patient'
@@ -50,13 +50,13 @@ describe('useAuth Hook', () => {
 
     await act(async () => {
       await result.current.login({
-        email: 'test@example.com',
+        email: '@example.com',
         password: 'password123'
       })
     })
 
     expect(mockLogin).toHaveBeenCalledWith({
-      email: 'test@example.com',
+      email: '@example.com',
       password: 'password123'
     })
   })

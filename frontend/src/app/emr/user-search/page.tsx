@@ -41,7 +41,7 @@ export default function UserSearchPage() {
     setSuccess(null);
     
     try {
-      logger.debug(`🔍 Searching for user by ${searchType}:`, searchQuery);
+      logger.(`🔍 Searching for user by ${searchType}:`, searchQuery);
       
       // ค้นหา users จาก API
       const response = await apiClient.searchPatients(searchQuery);
@@ -49,7 +49,7 @@ export default function UserSearchPage() {
       if (response.statusCode === 200 && response.data) {
         setSearchResults(response.data as UserData[]);
         setSuccess(`พบ ${(response.data as UserData[]).length} รายการ`);
-        logger.debug('✅ Users found:', response.data);
+        logger.('✅ Users found:', response.data);
       } else {
         setSearchResults([]);
         setError("ไม่พบข้อมูลผู้ใช้ในระบบ กรุณาตรวจสอบข้อมูล");
@@ -85,8 +85,8 @@ export default function UserSearchPage() {
     router.push('/emr/register-patient');
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('th-TH');
+  const formatDate = (daring: string) => {
+    return new Date(daring).toLocaleDaring('th-TH');
   };
 
   const getGenderText = (gender: string) => {

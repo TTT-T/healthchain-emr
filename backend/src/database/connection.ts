@@ -23,29 +23,22 @@ export class DatabaseManager {
    */
   public async initialize(): Promise<void> {
     try {
-      console.log('🔄 Initializing database connection...');
-      
       // First, try to connect to the target database
       await this.connectToDatabase();
       
-      // Test the connection
-      await this.testConnection();
+      //  the connection
+      await this.Connection();
       
       this.isConnected = true;
-      console.log('✅ Database connection established successfully');
-      
     } catch (error) {
-      console.log('⚠️ Database connection failed, attempting to create database...');
-      
       // If connection fails, try to create the database
       await this.createDatabaseIfNotExists();
       
       // Try to connect again
       await this.connectToDatabase();
-      await this.testConnection();
+      await this.Connection();
       
       this.isConnected = true;
-      console.log('✅ Database created and connection established successfully');
     }
   }
 
@@ -67,7 +60,6 @@ export class DatabaseManager {
 
     // Handle pool events
     this.pool.on('connect', (client) => {
-      console.log('📡 New client connected to database');
     });
 
     this.pool.on('error', (err) => {
@@ -79,8 +71,6 @@ export class DatabaseManager {
    * Create database if it doesn't exist
    */
   private async createDatabaseIfNotExists(): Promise<void> {
-    console.log('🔨 Creating database if not exists...');
-    
     // Connect to default 'postgres' database to create our target database
     const adminPool = new Pool({
       host: config.database.host,
@@ -101,15 +91,10 @@ export class DatabaseManager {
       const result = await adminPool.query(checkQuery, [config.database.database]);
       
       if (result.rows.length === 0) {
-        console.log(`📦 Creating database: ${config.database.database}`);
-        
         // Create database
         const createQuery = `CREATE DATABASE "${config.database.database}"`;
         await adminPool.query(createQuery);
-        
-        console.log(`✅ Database '${config.database.database}' created successfully`);
       } else {
-        console.log(`ℹ️ Database '${config.database.database}' already exists`);
       }
       
     } catch (error) {
@@ -121,21 +106,17 @@ export class DatabaseManager {
   }
 
   /**
-   * Test database connection
+   *  database connection
    */
-  private async testConnection(): Promise<void> {
+  private async Connection(): Promise<void> {
     if (!this.pool) {
       throw new Error('Database pool not initialized');
     }
 
     try {
       const result = await this.pool.query('SELECT NOW() as current_time, version() as version');
-      console.log('🔍 Database connection test successful:', {
-        time: result.rows[0].current_time,
-        version: result.rows[0].version.split(' ')[0] + ' ' + result.rows[0].version.split(' ')[1]
-      });
     } catch (error) {
-      console.error('❌ Database connection test failed:', error);
+      console.error('❌ Database connection  failed:', error);
       throw error;
     }
   }
@@ -162,11 +143,6 @@ export class DatabaseManager {
     try {
       const result = await this.pool.query<T>(text, params);
       const duration = Date.now() - start;
-      console.log('📝 Executed query', { 
-        text: text.substring(0, 100) + (text.length > 100 ? '...' : ''), 
-        duration: `${duration}ms`, 
-        rows: result.rowCount 
-      });
       return result;
     } catch (error) {
       console.error('❌ Query error:', error);
@@ -210,7 +186,6 @@ export class DatabaseManager {
       await this.pool.end();
       this.pool = null;
       this.isConnected = false;
-      console.log('🔌 Database connection pool closed');
     }
   }
 
@@ -274,8 +249,6 @@ export class DatabaseManager {
    * Create database user if not exists
    */
   public async createDatabaseUserIfNotExists(): Promise<void> {
-    console.log('👤 Creating database user if not exists...');
-    
     const adminPool = new Pool({
       host: config.database.host,
       port: config.database.port,
@@ -295,8 +268,6 @@ export class DatabaseManager {
       const result = await adminPool.query(checkUserQuery, [config.database.username]);
       
       if (result.rows.length === 0) {
-        console.log(`👤 Creating user: ${config.database.username}`);
-        
         // Create user with password
         const createUserQuery = `
           CREATE USER "${config.database.username}" WITH PASSWORD $1
@@ -308,10 +279,7 @@ export class DatabaseManager {
           GRANT ALL PRIVILEGES ON DATABASE "${config.database.database}" TO "${config.database.username}"
         `;
         await adminPool.query(grantQuery);
-        
-        console.log(`✅ User '${config.database.username}' created successfully`);
       } else {
-        console.log(`ℹ️ User '${config.database.username}' already exists`);
       }
       
     } catch (error) {
@@ -326,8 +294,6 @@ export class DatabaseManager {
    * Reset database (drop and recreate)
    */
   public async resetDatabase(): Promise<void> {
-    console.log('🔄 Resetting database...');
-    
     const adminPool = new Pool({
       host: config.database.host,
       port: config.database.port,
@@ -347,15 +313,10 @@ export class DatabaseManager {
       `, [config.database.database]);
 
       // Drop database
-      console.log(`🗑️ Dropping database: ${config.database.database}`);
       await adminPool.query(`DROP DATABASE IF EXISTS "${config.database.database}"`);
       
       // Recreate database
-      console.log(`📦 Creating database: ${config.database.database}`);
       await adminPool.query(`CREATE DATABASE "${config.database.database}"`);
-      
-      console.log('✅ Database reset successfully');
-      
     } catch (error) {
       console.error('❌ Error resetting database:', error);
       throw error;

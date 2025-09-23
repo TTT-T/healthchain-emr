@@ -7,7 +7,7 @@ import {
   getQueueStatistics, 
   searchQueueByPatient, 
   downloadQueueReport, 
-  generateStatisticsReport, 
+  generaatisticsReport, 
   getSampleQueueData,
   QueueHistoryRecord, 
   QueueStatistics, 
@@ -104,8 +104,8 @@ export default function QueueHistory() {
         cancelledQueues: queueRecords.filter(r => r.status === 'cancelled').length,
         averageWaitTime: 45,
         todayQueues: queueRecords.filter(r => {
-          const today = new Date().toDateString();
-          return new Date(r.createdAt).toDateString() === today;
+          const today = new Date().toDaring();
+          return new Date(r.createdAt).toDaring() === today;
         }).length,
         weeklyQueues: queueRecords.length,
         monthlyQueues: queueRecords.length
@@ -204,7 +204,7 @@ export default function QueueHistory() {
 
   const handleDownloadStatistics = async () => {
     try {
-      await generateStatisticsReport({ format: 'pdf' });
+      await generaatisticsReport({ format: 'pdf' });
     } catch (error) {
       logger.error('Error downloading statistics:', error);
       alert('ไม่สามารถดาวน์โหลดรายงานสถิติได้');
@@ -229,8 +229,8 @@ export default function QueueHistory() {
     );
   };
 
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('th-TH', {
+  const formatDateTime = (daring: string) => {
+    return new Date(daring).toLocaleString('th-TH', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',

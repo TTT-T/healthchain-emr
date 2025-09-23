@@ -189,7 +189,7 @@ export default function Pharmacy() {
     setError(null);
     
     try {
-      logger.info('Debug user data:', {
+      logger.info(' user data:', {
         userId: user?.id,
         userFirstName: user?.first_name,
         userLastName: user?.last_name,
@@ -198,7 +198,7 @@ export default function Pharmacy() {
       });
       
       const dispensedByValue = user?.id || 'system';
-      logger.info('Debug dispensedBy value:', { dispensedByValue });
+      logger.info(' dispensedBy value:', { dispensedByValue });
       
       const formattedData = PharmacyService.formatPharmacyDataForAPI(
         pharmacyData,
@@ -206,7 +206,7 @@ export default function Pharmacy() {
         dispensedByValue
       );
       
-      logger.info('Debug formatted data:', formattedData);
+      logger.info(' formatted data:', formattedData);
       
       const response = await PharmacyService.createPharmacyDispensing(formattedData);
       

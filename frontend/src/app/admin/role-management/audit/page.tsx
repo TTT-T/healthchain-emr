@@ -238,8 +238,8 @@ export default function AuditLogPage() {
     return colors[role] || 'bg-gray-100 text-gray-800';
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('th-TH', {
+  const formatDate = (daring: string) => {
+    return new Date(daring).toLocaleDaring('th-TH', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

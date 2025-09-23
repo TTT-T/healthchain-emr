@@ -23,7 +23,7 @@ class EmailService {
           pass: config.smtp.password,
         },
         tls: {
-          rejectUnauthorized: false // For development/testing
+          rejectUnauthorized: false // For development/ing
         },
         connectionTimeout: 60000, // 60 seconds
         greetingTimeout: 30000, // 30 seconds
@@ -34,12 +34,7 @@ class EmailService {
         rateDelta: 20000, // 20 seconds
         rateLimit: 5 // max 5 emails per rateDelta
       });
-      
-      console.log('📧 Email service initialized with SMTP:', config.smtp.host);
-      console.log('📧 SMTP User:', config.smtp.user);
-      console.log('📧 SMTP Port:', config.smtp.port);
     } else {
-      console.log('📧 Email service initialized in development mode (no SMTP configured)');
     }
   }
 
@@ -50,19 +45,11 @@ class EmailService {
     try {
       // Check if transporter is available
       if (!this.transporter) {
-        console.log('📧 [NO SMTP] Email would be sent (no SMTP configured):');
-        console.log('  To:', emailData.to);
-        console.log('  Subject:', emailData.subject);
-        console.log('  Content:', emailData.html);
         return true; // Return true in development mode
       }
 
       // In development mode, still send email if SMTP is configured
       if (process.env.NODE_ENV === 'development' && (!config.smtp.user || !config.smtp.password)) {
-        console.log('📧 [DEV MODE] Email would be sent (no SMTP configured):');
-        console.log('  To:', emailData.to);
-        console.log('  Subject:', emailData.subject);
-        console.log('  Content:', emailData.html);
         return true;
       }
 
@@ -72,9 +59,6 @@ class EmailService {
         subject: emailData.subject,
         html: emailData.html,
       });
-
-      console.log('📧 Email sent successfully:', info.messageId);
-      console.log('📧 Email response:', info.response);
       return true;
     } catch (error: any) {
       console.error('❌ Email sending failed:', error.message);
@@ -95,20 +79,18 @@ class EmailService {
   }
 
   /**
-   * Test SMTP connection
+   *  SMTP connection
    */
-  async testConnection(): Promise<boolean> {
+  async Connection(): Promise<boolean> {
     try {
       if (!this.transporter) {
-        console.log('📧 No SMTP transporter configured');
         return false;
       }
 
       await this.transporter.verify();
-      console.log('📧 SMTP connection test successful');
       return true;
     } catch (error: any) {
-      console.error('❌ SMTP connection test failed:', error.message);
+      console.error('❌ SMTP connection  failed:', error.message);
       return false;
     }
   }
@@ -1507,28 +1489,28 @@ class EmailService {
   }
 
   /**
-   * Send test email
+   * Send  email
    */
-  async sendTestEmail(to: string): Promise<boolean> {
+  async sendEmail(to: string): Promise<boolean> {
     const emailData: EmailData = {
       to: to,
-      subject: '🧪 HealthChain EMR - Test Email',
+      subject: '🧪 HealthChain EMR -  Email',
       html: `
         <!DOCTYPE html>
         <html lang="th">
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Test Email</title>
+          <title> Email</title>
         </head>
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 20px; text-align: center; border-radius: 8px;">
-            <h1>🧪 Test Email</h1>
+            <h1>🧪  Email</h1>
             <p>HealthChain EMR System</p>
           </div>
           <div style="padding: 20px; background: #f8fafc; border-radius: 8px; margin-top: 20px;">
             <h2>✅ Email Service Working!</h2>
-            <p>This is a test email to verify that the email service is working correctly.</p>
+            <p>This is a  email to verify that the email service is working correctly.</p>
             <p><strong>Timestamp:</strong> ${new Date().toLocaleString('th-TH')}</p>
             <p><strong>Recipient:</strong> ${to}</p>
           </div>

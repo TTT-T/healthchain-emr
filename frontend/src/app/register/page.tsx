@@ -124,9 +124,9 @@ export default function Register() {
   const calculatePasswordStrength = (password: string): number => {
     let strength = 0;
     if (password.length >= 8) strength += 25;
-    if (/[a-z]/.test(password)) strength += 25;
-    if (/[A-Z]/.test(password)) strength += 25;
-    if (/[0-9]/.test(password)) strength += 25;
+    if (/[a-z]/.(password)) strength += 25;
+    if (/[A-Z]/.(password)) strength += 25;
+    if (/[0-9]/.(password)) strength += 25;
     return strength;
   };
 
@@ -155,7 +155,7 @@ export default function Register() {
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (formData.email && !emailRegex.test(formData.email)) {
+    if (formData.email && !emailRegex.(formData.email)) {
       newErrors.email = 'รูปแบบอีเมลไม่ถูกต้อง';
     }
 
@@ -166,28 +166,28 @@ export default function Register() {
 
     // Username validation
     const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
-    if (formData.username && !usernameRegex.test(formData.username)) {
+    if (formData.username && !usernameRegex.(formData.username)) {
       newErrors.username = 'ชื่อผู้ใช้ต้องเป็นตัวอักษรภาษาอังกฤษ ตัวเลข และ _ เท่านั้น (3-20 ตัวอักษร)';
     }
 
     // Phone validation
     const phoneRegex = /^[0-9]{10}$/;
-    if (formData.phone && !phoneRegex.test(formData.phone.replace(/[-\s]/g, ''))) {
+    if (formData.phone && !phoneRegex.(formData.phone.replace(/[-\s]/g, ''))) {
       newErrors.phone = 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก';
     }
 
     // National ID validation
     const nationalIdRegex = /^[0-9]{13}$/;
-    if (formData.nationalId && !nationalIdRegex.test(formData.nationalId.replace(/[-\s]/g, ''))) {
+    if (formData.nationalId && !nationalIdRegex.(formData.nationalId.replace(/[-\s]/g, ''))) {
       newErrors.nationalId = 'เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก';
     }
 
     // English name validation
     const englishNameRegex = /^[a-zA-Z\s]+$/;
-    if (formData.firstNameEn && !englishNameRegex.test(formData.firstNameEn)) {
+    if (formData.firstNameEn && !englishNameRegex.(formData.firstNameEn)) {
       newErrors.firstNameEn = 'ชื่อภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษเท่านั้น';
     }
-    if (formData.lastNameEn && !englishNameRegex.test(formData.lastNameEn)) {
+    if (formData.lastNameEn && !englishNameRegex.(formData.lastNameEn)) {
       newErrors.lastNameEn = 'นามสกุลภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษเท่านั้น';
     }
 
@@ -334,16 +334,16 @@ export default function Register() {
                     titlePrefix: 'นาย',
                     firstName: 'ทดสอบ',
                     lastName: 'ระบบ',
-                    firstNameEn: 'Test',
+                    firstNameEn: '',
                     lastNameEn: 'System',
                     nationalId: `1234567890${timestamp.toString().slice(-3)}`,
                     birthDay: '15',
                     birthMonth: '06',
                     birthYear: '2533',
                     gender: 'male',
-                    username: `testuser${timestamp}`,
-                    email: `test${timestamp}@example.com`,
-                    confirmEmail: `test${timestamp}@example.com`,
+                    username: `user${timestamp}`,
+                    email: `${timestamp}@example.com`,
+                    confirmEmail: `${timestamp}@example.com`,
                     phone: '0812345678',
                     address: '123 ถนนทดสอบ แขวงทดสอบ เขตทดสอบ กรุงเทพฯ 10110',
                     idCardAddress: '123 ถนนทดสอบ แขวงทดสอบ เขตทดสอบ กรุงเทพฯ 10110',

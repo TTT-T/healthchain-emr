@@ -89,8 +89,6 @@ class WebSocketService {
    */
   private setupEventHandlers(): void {
     this.io.on('connection', (socket: AuthenticatedSocket) => {
-      console.log(`🔌 User connected: ${socket.userEmail} (${socket.userRole})`);
-
       // Store connected user
       if (socket.userId) {
         this.connectedUsers.set(socket.userId, socket);
@@ -120,7 +118,6 @@ class WebSocketService {
         if (this.canJoinRoom(socket, roomName)) {
           socket.join(roomName);
           this.userRooms.get(socket.userId!)?.add(roomName);
-          console.log(`👥 User ${socket.userEmail} joined room: ${roomName}`);
         }
       });
 
@@ -128,7 +125,6 @@ class WebSocketService {
       socket.on('leave_room', (roomName: string) => {
         socket.leave(roomName);
         this.userRooms.get(socket.userId!)?.delete(roomName);
-        console.log(`👋 User ${socket.userEmail} left room: ${roomName}`);
       });
 
       // Handle typing indicators
@@ -150,8 +146,6 @@ class WebSocketService {
 
       // Handle disconnect
       socket.on('disconnect', () => {
-        console.log(`🔌 User disconnected: ${socket.userEmail}`);
-        
         if (socket.userId) {
           this.connectedUsers.delete(socket.userId);
           this.userRooms.delete(socket.userId);
@@ -320,7 +314,7 @@ class WebSocketService {
    */
   public sendLabResultNotification(userId: string, labResult: {
     id: string;
-    testName: string;
+    Name: string;
     result: string;
     status: 'normal' | 'abnormal' | 'critical';
   }): void {
@@ -329,7 +323,7 @@ class WebSocketService {
     this.sendNotificationToUser(userId, {
       type: 'user',
       title: 'Lab Result Available',
-      message: `Your ${labResult.testName} results are ready. Status: ${labResult.status}`,
+      message: `Your ${labResult.Name} results are ready. Status: ${labResult.status}`,
       priority,
       data: labResult
     });

@@ -179,7 +179,7 @@ const options = {
         },
         LabResult: {
           type: 'object',
-          required: ['id', 'patientId', 'testName', 'result', 'date'],
+          required: ['id', 'patientId', 'Name', 'result', 'date'],
           properties: {
             id: {
               type: 'string',
@@ -191,17 +191,17 @@ const options = {
               format: 'uuid',
               description: 'Patient ID'
             },
-            testName: {
+            Name: {
               type: 'string',
-              description: 'Lab test name'
+              description: 'Lab  name'
             },
             result: {
               type: 'string',
-              description: 'Test result'
+              description: ' result'
             },
             normalRange: {
               type: 'string',
-              description: 'Normal range for the test'
+              description: 'Normal range for the '
             },
             unit: {
               type: 'string',
@@ -210,7 +210,7 @@ const options = {
             date: {
               type: 'string',
               format: 'date-time',
-              description: 'Test date'
+              description: ' date'
             },
             labTechnicianId: {
               type: 'string',

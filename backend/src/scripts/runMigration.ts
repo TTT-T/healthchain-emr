@@ -4,13 +4,9 @@ import { MigrationManager } from '../database/migrations';
  * Run database migrations
  */
 async function runMigrations() {
-  console.log('🔄 Running database migrations...');
-  
   try {
     const migrationManager = MigrationManager.getInstance();
     await migrationManager.initialize();
-    
-    console.log('✅ All migrations completed successfully');
   } catch (error) {
     console.error('❌ Migration failed:', error);
     throw error;
@@ -21,7 +17,6 @@ async function runMigrations() {
 if (require.main === module) {
   runMigrations()
     .then(() => {
-      console.log('✅ Migration script completed successfully');
       process.exit(0);
     })
     .catch((error) => {

@@ -1,5 +1,5 @@
 /**
- * Contract Tests for API
+ * Contract s for API
  * Ensures API contracts match between frontend and backend
  */
 
@@ -16,7 +16,7 @@ import {
   VisitsResponseSchema
 } from '../../schemas/common';
 
-describe('API Contract Tests', () => {
+describe('API Contract s', () => {
   describe('Patient API Contract', () => {
     const validPatient = {
       id: '123e4567-e89b-12d3-a456-426614174000',
@@ -457,7 +457,7 @@ describe('API Contract Tests', () => {
 
   describe('Field Mapping Consistency', () => {
     it('should ensure consistent field naming between frontend and backend', () => {
-      // Test that frontend camelCase fields map to backend snake_case fields
+      //  that frontend camelCase fields map to backend snake_case fields
       const frontendFields = [
         'hospitalNumber',
         'firstName',

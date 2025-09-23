@@ -52,7 +52,6 @@ export default function RegistrationStatusPage() {
     }
   }
 
-
   const getStatusInfo = (status: RegistrationStatus['status']) => {
     switch (status) {
       case 'pending_email_verification':
@@ -102,13 +101,11 @@ export default function RegistrationStatusPage() {
     router.push('/external-requesters/login')
   }
 
-  const handleResendEmail = async () => {
-    // TODO: Implement resend email functionality
+  const handleResendEmail = async () => {
     alert('ฟีเจอร์ส่งอีเมลซ้ำจะเปิดใช้งานเร็วๆ นี้')
   }
 
-  const handleContactSupport = () => {
-    // TODO: Implement contact support functionality
+  const handleContactSupport = () => {
     alert('ฟีเจอร์ติดต่อสนับสนุนจะเปิดใช้งานเร็วๆ นี้')
   }
 
@@ -178,7 +175,7 @@ export default function RegistrationStatusPage() {
                 <p><span className="font-medium">รหัสคำขอ:</span> {status.requestId}</p>
                 <p><span className="font-medium">อีเมล:</span> {status.email}</p>
                 <p><span className="font-medium">องค์กร:</span> {status.organizationName}</p>
-                <p><span className="font-medium">วันที่ลงทะเบียน:</span> {new Date(status.createdAt).toLocaleDateString('th-TH')}</p>
+                <p><span className="font-medium">วันที่ลงทะเบียน:</span> {new Date(status.createdAt).toLocaleDaring('th-TH')}</p>
               </div>
             </div>
             

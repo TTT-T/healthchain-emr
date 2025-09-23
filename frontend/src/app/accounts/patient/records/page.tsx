@@ -139,7 +139,7 @@ export default function Records() {
               <h3>ข้อมูลการรักษา</h3>
               <div class="grid">
                 <div>
-                  <p><span class="label">วันที่:</span> <span class="value">${new Date(record.visit_date).toLocaleDateString('th-TH')}</span></p>
+                  <p><span class="label">วันที่:</span> <span class="value">${new Date(record.visit_date).toLocaleDaring('th-TH')}</span></p>
                   <p><span class="label">เวลา:</span> <span class="value">${record.visit_time}</span></p>
                   <p><span class="label">ประเภท:</span> <span class="value">${record.visit_type}</span></p>
                   <p><span class="label">สถานะ:</span> <span class="value">${getStatusText(record.visit_status)}</span></p>
@@ -169,7 +169,7 @@ export default function Records() {
             ${record.follow_up_date ? `
             <div class="section">
               <h3>นัดติดตาม</h3>
-              <p>วันที่: ${new Date(record.follow_up_date).toLocaleDateString('th-TH')}</p>
+              <p>วันที่: ${new Date(record.follow_up_date).toLocaleDaring('th-TH')}</p>
             </div>
             ` : ''}
             
@@ -234,7 +234,7 @@ export default function Records() {
               <div>
                 <p className="text-sm text-gray-600 mb-1">ครั้งล่าสุด</p>
                 <p className="text-lg font-semibold text-gray-900">
-                  {records.length > 0 ? new Date(records[0].visit_date).toLocaleDateString('th-TH') : '-'}
+                  {records.length > 0 ? new Date(records[0].visit_date).toLocaleDaring('th-TH') : '-'}
                 </p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center text-xl">🕒</div>
@@ -321,7 +321,7 @@ export default function Records() {
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-3">
                         <div>
-                          <p><span className="font-medium text-gray-700">วันที่:</span> <span className="text-gray-900">{new Date(record.visit_date).toLocaleDateString('th-TH')}</span></p>
+                          <p><span className="font-medium text-gray-700">วันที่:</span> <span className="text-gray-900">{new Date(record.visit_date).toLocaleDaring('th-TH')}</span></p>
                           <p><span className="font-medium text-gray-700">เวลา:</span> <span className="text-gray-900">{record.visit_time}</span></p>
                           <p><span className="font-medium text-gray-700">อาการหลัก:</span> <span className="text-gray-900">{record.chief_complaint}</span></p>
                         </div>
@@ -341,7 +341,7 @@ export default function Records() {
                       
                       {record.follow_up_date && (
                         <div className="mt-2 text-sm text-gray-600">
-                          <span className="font-medium">นัดติดตาม:</span> {new Date(record.follow_up_date).toLocaleDateString('th-TH')}
+                          <span className="font-medium">นัดติดตาม:</span> {new Date(record.follow_up_date).toLocaleDaring('th-TH')}
                         </div>
                       )}
                     </div>
@@ -400,7 +400,7 @@ export default function Records() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-700">วันที่:</span>
-                      <span className="text-gray-900">{new Date(selectedRecord.visit_date).toLocaleDateString('th-TH')}</span>
+                      <span className="text-gray-900">{new Date(selectedRecord.visit_date).toLocaleDaring('th-TH')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-700">เวลา:</span>
@@ -462,7 +462,7 @@ export default function Records() {
                     <h3 className="text-lg font-semibold mb-3 text-gray-900">นัดติดตาม</h3>
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                       <p className="text-gray-800">
-                        <span className="font-medium">วันที่:</span> {new Date(selectedRecord.follow_up_date).toLocaleDateString('th-TH')}
+                        <span className="font-medium">วันที่:</span> {new Date(selectedRecord.follow_up_date).toLocaleDaring('th-TH')}
                       </p>
                     </div>
                   </div>

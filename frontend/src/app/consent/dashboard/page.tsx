@@ -191,8 +191,8 @@ export default function ConsentDashboard() {
     )
   }
 
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('th-TH', {
+  const formatDateTime = (daring: string) => {
+    return new Date(daring).toLocaleString('th-TH', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

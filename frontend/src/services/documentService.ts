@@ -344,7 +344,7 @@ export class DocumentService {
     }
 
     // Replace current date
-    const currentDate = new Date().toLocaleDateString('th-TH');
+    const currentDate = new Date().toLocaleDaring('th-TH');
     content = content.replace(/\{\{currentDate\}\}/g, currentDate);
 
     return content;

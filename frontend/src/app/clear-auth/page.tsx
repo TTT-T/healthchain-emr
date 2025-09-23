@@ -24,9 +24,6 @@ export default function ClearAuth() {
             .replace(/^ +/, "")
             .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
         });
-        
-        console.log('✅ All authentication data cleared');
-        
         // Redirect to login page
         setTimeout(() => {
           router.push('/login');

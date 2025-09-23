@@ -112,7 +112,7 @@ export const getAllQueueHistory = async (query: QueueHistoryQuery = {}): Promise
 
     const response = await apiClient.get(`/medical/queue-history?${params.toString()}`);
     
-    logger.debug('Queue history fetched successfully', response.data as any);
+    logger.('Queue history fetched successfully', response.data as any);
     return response.data as any as QueueHistoryResponse;
   } catch (error) {
     logger.error('Error fetching queue history:', error);
@@ -139,7 +139,7 @@ export const getQueueHistoryByPatient = async (
 
     const response = await apiClient.get(`/medical/queue-history/patients/${patientId}?${params.toString()}`);
     
-    logger.debug('Patient queue history fetched successfully', response.data as any);
+    logger.('Patient queue history fetched successfully', response.data as any);
     return response.data as any;
   } catch (error) {
     logger.error('Error fetching patient queue history:', error);
@@ -166,7 +166,7 @@ export const getQueueHistoryByDoctor = async (
 
     const response = await apiClient.get(`/medical/queue-history/doctors/${doctorId}?${params.toString()}`);
     
-    logger.debug('Doctor queue history fetched successfully', response.data as any);
+    logger.('Doctor queue history fetched successfully', response.data as any);
     return response.data as any;
   } catch (error) {
     logger.error('Error fetching doctor queue history:', error);
@@ -183,7 +183,7 @@ export const getQueueHistoryById = async (id: string): Promise<SingleQueueRespon
     
     const response = await apiClient.get(`/medical/queue-history/${id}`);
     
-    logger.debug('Queue history by ID fetched successfully', response.data as any);
+    logger.('Queue history by ID fetched successfully', response.data as any);
     return response.data as any;
   } catch (error) {
     logger.error('Error fetching queue history by ID:', error);
@@ -208,7 +208,7 @@ export const getQueueStatistics = async (query: StatisticsQuery = {}): Promise<Q
 
     const response = await apiClient.get(`/medical/queue-history/statistics?${params.toString()}`);
     
-    logger.debug('Queue statistics fetched successfully', response.data as any);
+    logger.('Queue statistics fetched successfully', response.data as any);
     return response.data as any;
   } catch (error) {
     logger.error('Error fetching queue statistics:', error);
@@ -240,7 +240,7 @@ export const downloadQueueReport = async (id: string, format: 'json' | 'pdf' = '
       window.URL.revokeObjectURL(url);
     }
     
-    logger.debug('Queue report downloaded successfully', { id, format });
+    logger.('Queue report downloaded successfully', { id, format });
     return response.data as any;
   } catch (error) {
     logger.error('Error downloading queue report:', error);
@@ -251,7 +251,7 @@ export const downloadQueueReport = async (id: string, format: 'json' | 'pdf' = '
 /**
  * สร้างรายงานสถิติ
  */
-export const generateStatisticsReport = async (query: StatisticsQuery = {}): Promise<any> => {
+export const generaatisticsReport = async (query: StatisticsQuery = {}): Promise<any> => {
   try {
     logger.info('Generating statistics report', query);
     
@@ -280,7 +280,7 @@ export const generateStatisticsReport = async (query: StatisticsQuery = {}): Pro
       window.URL.revokeObjectURL(url);
     }
     
-    logger.debug('Statistics report generated successfully', query);
+    logger.('Statistics report generated successfully', query);
     return response.data as any;
   } catch (error) {
     logger.error('Error generating statistics report:', error);
@@ -297,7 +297,7 @@ export const searchQueueByPatient = async (searchTerm: string): Promise<QueueHis
     
     const response = await getAllQueueHistory({ search: searchTerm, limit: 50 });
     
-    logger.debug('Queue search completed', { searchTerm, results: (response.data as any).length });
+    logger.('Queue search completed', { searchTerm, results: (response.data as any).length });
     return response.data as any;
   } catch (error) {
     logger.error('Error searching queue by patient:', error);
@@ -317,7 +317,7 @@ export const getTodayQueueHistory = async (): Promise<QueueHistoryRecord[]> => {
       limit: 100 
     });
     
-    logger.debug('Today queue history fetched', { count: (response.data as any).length });
+    logger.('Today queue history fetched', { count: (response.data as any).length });
     return response.data as any;
   } catch (error) {
     logger.error('Error fetching today queue history:', error);
@@ -335,7 +335,7 @@ export const getWaitingQueues = async (): Promise<QueueHistoryRecord[]> => {
       limit: 100 
     });
     
-    logger.debug('Waiting queues fetched', { count: (response.data as any).length });
+    logger.('Waiting queues fetched', { count: (response.data as any).length });
     return response.data as any;
   } catch (error) {
     logger.error('Error fetching waiting queues:', error);
@@ -355,7 +355,7 @@ export const getCompletedQueues = async (dateFrom?: string, dateTo?: string): Pr
       limit: 100 
     });
     
-    logger.debug('Completed queues fetched', { count: (response.data as any).length });
+    logger.('Completed queues fetched', { count: (response.data as any).length });
     return response.data as any;
   } catch (error) {
     logger.error('Error fetching completed queues:', error);

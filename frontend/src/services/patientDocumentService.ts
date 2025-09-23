@@ -6,7 +6,7 @@ export interface PatientDocument {
   id: string;
   patientHn: string;
   patientNationalId: string;
-  documentType: 'vital_signs' | 'history_taking' | 'doctor_visit' | 'lab_result' | 'prescription' | 'appointment' | 'medical_certificate' | 'referral' | 'xray' | 'blood_test' | 'other';
+  documentType: 'vital_signs' | 'history_taking' | 'doctor_visit' | 'lab_result' | 'prescription' | 'appointment' | 'medical_certificate' | 'referral' | 'xray' | 'blood_' | 'other';
   documentTitle: string;
   documentDescription: string;
   fileName: string;
@@ -424,7 +424,7 @@ export class PatientDocumentService {
           <h3>ข้อมูลผู้ป่วย</h3>
           <p><strong>ชื่อ:</strong> ${patientInfo.patientName}</p>
           <p><strong>หมายเลข HN:</strong> ${patientInfo.patientHn}</p>
-          <p><strong>วันที่สร้าง:</strong> ${new Date().toLocaleDateString('th-TH')}</p>
+          <p><strong>วันที่สร้าง:</strong> ${new Date().toLocaleDaring('th-TH')}</p>
         </div>
         
         <div class="content">

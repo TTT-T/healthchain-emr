@@ -156,7 +156,7 @@ export class PDFService {
       ['Hospital Number:', patient.hn || 'N/A'],
       ['Name:', `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'N/A'],
       ['National ID:', patient.national_id || 'N/A'],
-      ['Birth Date:', patient.birth_date ? new Date(patient.birth_date).toLocaleDateString('en-US') : 'N/A'],
+      ['Birth Date:', patient.birth_date ? new Date(patient.birth_date).toLocaleDaring('en-US') : 'N/A'],
       ['Age:', patient.birth_date ? this.calculateAge(patient.birth_date) + ' years' : 'N/A'],
       ['Gender:', patient.gender === 'male' ? 'Male' : patient.gender === 'female' ? 'Female' : 'N/A'],
       ['Phone:', patient.phone || 'N/A'],
@@ -311,7 +311,7 @@ export class PDFService {
             <p><span class="label">หมายเลข HN:</span> <span class="value">${patient.hn || 'ไม่ระบุ'}</span></p>
             <p><span class="label">ชื่อ-นามสกุล:</span> <span class="value">${patient.firstName || ''} ${patient.lastName || ''}</span></p>
             <p><span class="label">เลขบัตรประชาชน:</span> <span class="value">${patient.national_id || 'ไม่ระบุ'}</span></p>
-            <p><span class="label">วันเกิด:</span> <span class="value">${patient.birth_date ? new Date(patient.birth_date).toLocaleDateString('th-TH') : 'ไม่ระบุ'}</span></p>
+            <p><span class="label">วันเกิด:</span> <span class="value">${patient.birth_date ? new Date(patient.birth_date).toLocaleDaring('th-TH') : 'ไม่ระบุ'}</span></p>
             <p><span class="label">อายุ:</span> <span class="value">${patient.birth_date ? this.calculateAge(patient.birth_date) + ' ปี' : 'ไม่ระบุ'}</span></p>
             <p><span class="label">เพศ:</span> <span class="value">${patient.gender === 'male' ? 'ชาย' : patient.gender === 'female' ? 'หญิง' : 'ไม่ระบุ'}</span></p>
             <p><span class="label">เบอร์โทรศัพท์:</span> <span class="value">${patient.phone || 'ไม่ระบุ'}</span></p>

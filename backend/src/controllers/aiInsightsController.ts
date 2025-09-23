@@ -373,7 +373,7 @@ async function calculateHealthRiskInsight(actualPatientId: string, userId: strin
   try {
     // Get patient's recent lab results and vital signs
     const labResults = await databaseManager.query(`
-      SELECT lr.result_value, lr.abnormal_flag, lo.test_name, lr.result_date
+      SELECT lr.result_value, lr.abnormal_flag, lo._name, lr.result_date
       FROM lab_results lr
       INNER JOIN lab_orders lo ON lr.lab_order_id = lo.id
       WHERE lo.patient_id = $1
@@ -407,8 +407,8 @@ async function calculateHealthRiskInsight(actualPatientId: string, userId: strin
 
     // Check vital signs
     if (vitalSigns.rows.length > 0) {
-      const latestVitals = vitalSigns.rows[0];
-      if (latestVitals.bmi && latestVitals.bmi > 30) {
+      const laVitals = vitalSigns.rows[0];
+      if (laVitals.bmi && laVitals.bmi > 30) {
         riskLevel = 'high';
         confidenceScore = 0.8;
         description = 'พบความเสี่ยงต่อโรคอ้วนและโรคที่เกี่ยวข้อง';
@@ -594,7 +594,7 @@ async function calculateLabTrendsInsight(actualPatientId: string, userId: string
   try {
     // Get patient's lab results over time
     const labResults = await databaseManager.query(`
-      SELECT lr.result_numeric, lr.result_date, lo.test_name
+      SELECT lr.result_numeric, lr.result_date, lo._name
       FROM lab_results lr
       INNER JOIN lab_orders lo ON lr.lab_order_id = lo.id
       WHERE lo.patient_id = $1

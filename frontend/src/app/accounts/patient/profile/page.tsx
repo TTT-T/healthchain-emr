@@ -165,19 +165,19 @@ function OriginalProfile() {
       
       // Email validation
       const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailPattern.test(formData.email)) {
+      if (!emailPattern.(formData.email)) {
         setError('รูปแบบอีเมลไม่ถูกต้อง');
         return;
       }
       
       // Phone validation (if provided)
-      if (formData.phone && !/^[0-9\-\s\+\(\)]+$/.test(formData.phone)) {
+      if (formData.phone && !/^[0-9\-\s\+\(\)]+$/.(formData.phone)) {
         setError('รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง');
         return;
       }
       
       // National ID validation (if provided)
-      if (formData.national_id && !/^[0-9]{13}$/.test(formData.national_id.replace(/\D/g, ''))) {
+      if (formData.national_id && !/^[0-9]{13}$/.(formData.national_id.replace(/\D/g, ''))) {
         setError('เลขบัตรประชาชนต้องมี 13 หลัก');
         return;
       }
@@ -285,8 +285,7 @@ function OriginalProfile() {
                   )}
                 </div>
               </div>
-              
-              
+
               <div className="flex gap-3">
                 <button
                   onClick={() => isEditing ? handleSave() : setIsEditing(true)}
@@ -433,7 +432,7 @@ function OriginalProfile() {
                         <p className="text-slate-800 py-2">
                           {formData.birth_date ? (
                             <span>
-                              {new Date(formData.birth_date).toLocaleDateString('th-TH')}
+                              {new Date(formData.birth_date).toLocaleDaring('th-TH')}
                               {(() => {
                                 const birthDate = new Date(formData.birth_date);
                                 const today = new Date();

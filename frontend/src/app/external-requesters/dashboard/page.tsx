@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Building2, FileText, Clock, CheckCircle, AlertCircle, TrendingUp, Loader2 } from 'lucide-react';
 import { logger } from '@/lib/logger';
 
-
 export default function ExternalRequesterDashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -215,7 +214,7 @@ export default function ExternalRequesterDashboard() {
                       {request.status === 'approved' ? 'อนุมัติแล้ว' :
                        request.status === 'pending' ? 'รอดำเนินการ' :
                        request.status === 'rejected' ? 'ปฏิเสธ' : request.status} - 
-                      ส่งเมื่อ {request.createdAt ? new Date(request.createdAt).toLocaleDateString('th-TH') : 'ไม่ระบุ'}
+                      ส่งเมื่อ {request.createdAt ? new Date(request.createdAt).toLocaleDaring('th-TH') : 'ไม่ระบุ'}
                     </div>
                   </div>
                   <span className={`px-2 py-1 text-xs rounded-full ${

@@ -19,7 +19,6 @@ export default function EMRTokenHandler({ children }: EMRTokenHandlerProps) {
   useEffect(() => {
     // Listen for token expiry events
     const handleTokenExpiredEvent = (event: CustomEvent) => {
-      console.log('🔒 Token expiry event received:', event.detail);
       handleTokenExpiry(event.detail?.message);
     };
 

@@ -1,5 +1,5 @@
 /**
- * Unit Tests for Auth Middleware
+ * Unit s for Auth Middleware
  */
 
 import { Request, Response, NextFunction } from 'express';
@@ -39,7 +39,7 @@ describe('Auth Middleware', () => {
       // Arrange
       const mockUser = {
         id: 'user-123',
-        email: 'test@example.com',
+        email: '@example.com',
         first_name: 'John',
         last_name: 'Doe',
         role: 'patient'
@@ -71,7 +71,7 @@ describe('Auth Middleware', () => {
       // Arrange
       const mockUser = {
         id: 'user-123',
-        email: 'test@example.com',
+        email: '@example.com',
         first_name: 'John',
         last_name: 'Doe',
         role: 'patient'
@@ -167,7 +167,7 @@ describe('Auth Middleware', () => {
       // Arrange
       const mockUser = {
         id: 'user-123',
-        email: 'test@example.com',
+        email: '@example.com',
         first_name: 'John',
         last_name: 'Doe',
         role: 'patient',
@@ -203,7 +203,7 @@ describe('Auth Middleware', () => {
       // Set up authenticated user
       mockRequest.user = {
         id: 'user-123',
-        email: 'test@example.com',
+        email: '@example.com',
         first_name: 'John',
         last_name: 'Doe',
         role: 'patient'
@@ -276,7 +276,7 @@ describe('Auth Middleware', () => {
       // Arrange
       const mockUser = {
         id: 'user-123',
-        email: 'test@example.com',
+        email: '@example.com',
         first_name: 'John',
         last_name: 'Doe',
         role: 'patient'

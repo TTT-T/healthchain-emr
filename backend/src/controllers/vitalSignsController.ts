@@ -315,11 +315,6 @@ export const createVitalSignsWithVisitId = async (req: Request, res: Response) =
             measurementTime: newVitalSigns.measurement_time
           }
         });
-        
-        console.log('✅ Vital signs notification sent successfully', {
-          patientHn: patient.hospital_number,
-          vitalSignsId: newVitalSigns.id
-        });
       }
     } catch (notificationError) {
       console.error('❌ Failed to send vital signs notification:', notificationError);

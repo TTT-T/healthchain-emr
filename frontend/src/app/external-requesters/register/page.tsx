@@ -362,7 +362,7 @@ export default function ExternalRequesterRegistration() {
 
       // Email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(formData.loginEmail)) {
+      if (!emailRegex.(formData.loginEmail)) {
         setSubmitResult({
           success: false,
           message: 'รูปแบบอีเมลสำหรับเข้าสู่ระบบไม่ถูกต้อง'
@@ -492,16 +492,16 @@ export default function ExternalRequesterRegistration() {
                     primaryContactTitle: 'นาย',
                     primaryContactFirstNameThai: 'ทดสอบ',
                     primaryContactLastNameThai: 'ระบบ',
-                    primaryContactFirstNameEnglish: 'Test',
+                    primaryContactFirstNameEnglish: '',
                     primaryContactLastNameEnglish: 'System',
-                    primaryContactEmail: `test${timestamp}@hospital.com`,
+                    primaryContactEmail: `${timestamp}@hospital.com`,
                     primaryContactPhone: '0812345678',
                     
                     // Login Credentials
-                    username: `testuser${timestamp}`,
-                    loginEmail: `test${timestamp}@hospital.com`,
-                    password: 'TestPassword123!',
-                    confirmPassword: 'TestPassword123!',
+                    username: `user${timestamp}`,
+                    loginEmail: `${timestamp}@hospital.com`,
+                    password: 'Password123!',
+                    confirmPassword: 'Password123!',
                     
                     // Address
                     address: {
@@ -527,7 +527,7 @@ export default function ExternalRequesterRegistration() {
                     // Personal Information
                     firstNameThai: 'ทดสอบ',
                     lastNameThai: 'ระบบ',
-                    firstNameEnglish: 'Test',
+                    firstNameEnglish: '',
                     lastNameEnglish: 'System',
                     title: 'นาย',
                     nationalId: `1234567890${timestamp.toString().slice(-3)}`,
@@ -987,7 +987,6 @@ export default function ExternalRequesterRegistration() {
                   />
                 </div>
               </div>
-
 
               {/* Additional Address Information */}
               <div className="border-t pt-6">

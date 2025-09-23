@@ -45,14 +45,7 @@ export default function PatientSummary() {
     
     try {
       const response = await PatientService.searchPatients(searchQuery, searchType);
-      
-      console.log('Patient search response:', response);
-      console.log('Search type:', searchType);
-      console.log('Search query:', searchQuery);
-      
       if (response.statusCode === 200 && response.data && response.data.length > 0) {
-        console.log('Patient found:', response.data[0]);
-        
         // Backend sends data in nested format, extract the patient data
         const patientData = response.data[0];
         const formattedPatient: MedicalPatient = {
@@ -83,7 +76,6 @@ export default function PatientSummary() {
         await loadPatientSummary(formattedPatient.id);
         setError(null);
       } else {
-        console.log('No patient found or empty data');
         setError("ไม่พบข้อมูลผู้ป่วย");
         setSelectedPatient(null);
         setPatientSummary(null);
@@ -109,8 +101,6 @@ export default function PatientSummary() {
       ]);
 
       if (summaryResponse.statusCode === 200 && summaryResponse.data) {
-        console.log('Patient summary data:', summaryResponse.data);
-        console.log('Patient age from summary:', summaryResponse.data.patient?.age);
         setPatientSummary(summaryResponse.data);
       }
 
@@ -509,7 +499,7 @@ export default function PatientSummary() {
                         <div className="space-y-2">
                           {patientSummary.records.labResults.slice(0, 3).map((lab: any, index: number) => (
                             <div key={index} className="p-2 bg-gray-50 rounded text-sm">
-                              <p className="font-medium">{lab.data.testName}</p>
+                              <p className="font-medium">{lab.data.Name}</p>
                               <p className="text-gray-600">{lab.data.overallResult}</p>
                               <p className="text-xs text-gray-500">
                                 {PatientSummaryService.formatDateTime(lab.recordedTime)}

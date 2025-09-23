@@ -137,16 +137,8 @@ export const getPatientMedications = async (req: Request, res: Response) => {
     `;
 
     queryParams.push(Number(limit), offset);
-
-    console.log('🔍 Medications query:', medicationsQuery);
-    console.log('🔍 Query params:', queryParams);
-    
     const medicationsResult = await databaseManager.query(medicationsQuery, queryParams);
     const medications = medicationsResult.rows;
-    
-    console.log('📊 Found medications records:', medications.length);
-    console.log('📊 Sample medication record:', medications[0] || 'No records found');
-
     // Get total count for pagination
     const countQuery = `
       SELECT COUNT(*) as total
@@ -158,16 +150,8 @@ export const getPatientMedications = async (req: Request, res: Response) => {
 
     // Format medications from medical_records
     const formattedMedications = [];
-    
-    console.log('🔄 Formatting medications...');
-    
     for (const med of medications) {
       try {
-        console.log('🔍 Processing medication record:', med.medication_id);
-        console.log('🔍 Medications data:', med.medications);
-        console.log('🔍 Medications type:', typeof med.medications);
-        console.log('🔍 Is array:', Array.isArray(med.medications));
-        
         // Parse medications JSON array
         let medicationsArray = [];
         if (med.medications) {
@@ -186,11 +170,8 @@ export const getPatientMedications = async (req: Request, res: Response) => {
             medicationsArray = med.medications;
           }
         }
-        console.log('🔍 Parsed medications array:', medicationsArray);
-        
         // If no medications array or empty, create a fallback entry
         if (!medicationsArray || medicationsArray.length === 0) {
-          console.log('⚠️ No medications found in array, creating fallback entry');
           formattedMedications.push({
             id: med.medication_id,
             medication_name: 'ข้อมูลยา (ไม่สามารถแยกวิเคราะห์ได้)',
@@ -298,10 +279,6 @@ export const getPatientMedications = async (req: Request, res: Response) => {
         });
       }
     }
-
-    console.log('✅ Formatted medications count:', formattedMedications.length);
-    console.log('✅ Sample formatted medication:', formattedMedications[0] || 'No formatted medications');
-
     res.json({
       data: {
         patient: {

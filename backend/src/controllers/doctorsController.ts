@@ -20,14 +20,10 @@ export const getAllDoctors = async (req: Request, res: Response) => {
       specialization,
       is_available = true
     } = req.query;
-
-    console.log('🔍 getAllDoctors called with params:', { page, limit, department, specialization, is_available });
-
     const offset = (Number(page) - 1) * Number(limit);
 
     // Build query conditions
     let whereClause = 'WHERE 1=1 AND u.id IS NOT NULL'; // Ensure user exists
-    console.log('🔍 whereClause initialized:', whereClause);
     const queryParams: any[] = [];
     let paramCount = 0;
 
@@ -79,16 +75,8 @@ export const getAllDoctors = async (req: Request, res: Response) => {
     `;
 
     queryParams.push(Number(limit), offset);
-    
-    console.log('🔍 Final whereClause:', whereClause);
-    console.log('🔍 Final query:', doctorsQuery);
-    console.log('🔍 Query params:', queryParams);
-    
     const result = await databaseManager.query(doctorsQuery, queryParams);
     const doctors = result.rows;
-    
-    console.log('🔍 Query result:', doctors.length, 'doctors found');
-
     // Get total count
     const countQuery = `
       SELECT COUNT(*) as total
@@ -101,7 +89,6 @@ export const getAllDoctors = async (req: Request, res: Response) => {
 
     // Format doctors data for frontend
     // Get real queue counts for each doctor from visits table
-    console.log('🔍 Processing', doctors.length, 'doctors for queue data...');
     const doctorsWithQueue = await Promise.all(doctors.map(async (doctor) => {
       try {
         // Count patients waiting for this doctor today
@@ -121,8 +108,6 @@ export const getAllDoctors = async (req: Request, res: Response) => {
 
         // Auto-update doctor data if incomplete
         if (!doctor.medical_license_number || !doctor.specialization || !doctor.department) {
-          console.log(`🔧 Auto-updating incomplete doctor profile for ${doctor.thai_name || doctor.first_name}`);
-          
           // Generate default values based on user data
           const defaultData = {
             medical_license_number: doctor.medical_license_number || `MD${doctor.user_id.substring(0, 3).toUpperCase()}`,
@@ -163,8 +148,6 @@ export const getAllDoctors = async (req: Request, res: Response) => {
             doctor.position = defaultData.position;
             doctor.years_of_experience = defaultData.years_of_experience;
             doctor.consultation_fee = defaultData.consultation_fee;
-            
-            console.log(`✅ Updated doctor profile for ${doctor.thai_name || doctor.first_name}`);
           } catch (updateError) {
             console.error('Error updating doctor profile:', updateError);
           }
@@ -215,13 +198,8 @@ export const getAllDoctors = async (req: Request, res: Response) => {
     }));
 
     const formattedDoctors = doctorsWithQueue;
-
-    console.log('🔍 Formatted doctors count:', formattedDoctors.length);
-    console.log('🔍 Sample formatted doctor:', formattedDoctors[0]);
-
     // Log if no doctors found
     if (formattedDoctors.length === 0) {
-      console.log('⚠️ No doctors found in database');
     }
 
     const response = {
@@ -236,8 +214,6 @@ export const getAllDoctors = async (req: Request, res: Response) => {
       error: null,
       statusCode: 200
     };
-
-    console.log('🔍 Sending response:', response);
     res.status(200).json(response);
 
   } catch (error) {
@@ -248,7 +224,6 @@ export const getAllDoctors = async (req: Request, res: Response) => {
     // Handle specific database errors
     if (error.message?.includes('relation "doctors" does not exist') || 
         error.code === '42P01') {
-      console.log('⚠️ Doctors table not found');
       return res.status(500).json({
         data: null,
         meta: null,

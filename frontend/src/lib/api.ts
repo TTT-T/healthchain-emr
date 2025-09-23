@@ -278,19 +278,19 @@ class APIClient {
     
     // Check remember me preference to determine storage type
     const isRemembered = localStorage.getItem('rememberMe') === 'true';
-    logger.debug('🔍 getAccessToken - rememberMe preference:', isRemembered);
+    logger.('🔍 getAccessToken - rememberMe preference:', isRemembered);
     let token = null;
     
     if (isRemembered) {
       // If user chose to be remembered, check localStorage first, then cookie
       try {
         token = localStorage.getItem(TOKEN_KEY);
-        logger.debug('🔒 Checking localStorage for token:', !!token);
+        logger.('🔒 Checking localStorage for token:', !!token);
         if (!token) {
           token = Cookies.get(TOKEN_KEY);
-          logger.debug('🍪 Checking cookie for token:', !!token);
+          logger.('🍪 Checking cookie for token:', !!token);
         }
-        logger.debug('🔒 Token retrieved from persistent storage (remembered):', !!token);
+        logger.('🔒 Token retrieved from persistent storage (remembered):', !!token);
       } catch (error) {
         logger.error('❌ Persistent storage retrieval failed:', error);
       }
@@ -298,24 +298,24 @@ class APIClient {
       // If user didn't choose to be remembered, check sessionStorage first
       try {
         token = sessionStorage.getItem(TOKEN_KEY);
-        logger.debug('🔓 Checking sessionStorage for token:', !!token);
+        logger.('🔓 Checking sessionStorage for token:', !!token);
         if (!token) {
           // Fallback to cookie or localStorage (migration case)
           token = Cookies.get(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
-          logger.debug('🍪 Checking cookie/localStorage fallback for token:', !!token);
+          logger.('🍪 Checking cookie/localStorage fallback for token:', !!token);
         }
-        logger.debug('🔓 Token retrieved from session storage (not remembered):', !!token);
+        logger.('🔓 Token retrieved from session storage (not remembered):', !!token);
       } catch (error) {
         logger.error('❌ Session storage retrieval failed:', error);
       }
     }
     
-    // Debug: Log all storage types
-    logger.debug('🔍 Debug - Storage check:');
-    logger.debug('  - localStorage token:', !!localStorage.getItem(TOKEN_KEY));
-    logger.debug('  - sessionStorage token:', !!sessionStorage.getItem(TOKEN_KEY));
-    logger.debug('  - cookie token:', !!Cookies.get(TOKEN_KEY));
-    logger.debug('  - rememberMe:', localStorage.getItem('rememberMe'));
+    // : Log all storage types
+    logger.('🔍  - Storage check:');
+    logger.('  - localStorage token:', !!localStorage.getItem(TOKEN_KEY));
+    logger.('  - sessionStorage token:', !!sessionStorage.getItem(TOKEN_KEY));
+    logger.('  - cookie token:', !!Cookies.get(TOKEN_KEY));
+    logger.('  - rememberMe:', localStorage.getItem('rememberMe'));
     
     // Validate token format (basic check)
     if (token && !token.startsWith('eyJ')) {
@@ -346,24 +346,24 @@ class APIClient {
 
   public setAccessToken(token: string): void {
     if (typeof window === 'undefined') return;
-    logger.debug('🔑 Setting access token:', token.substring(0, 30) + '...');
+    logger.('🔑 Setting access token:', token.substring(0, 30) + '...');
     
     // Check remember me preference to determine storage type
     const isRemembered = localStorage.getItem('rememberMe') === 'true';
-    logger.debug('🔍 rememberMe preference:', isRemembered);
+    logger.('🔍 rememberMe preference:', isRemembered);
     
     if (isRemembered) {
       // If user chose to be remembered, store in localStorage and cookie
-      logger.debug('🔒 Storing token in persistent storage (remembered)');
+      logger.('🔒 Storing token in persistent storage (remembered)');
       
       // Store in localStorage
       try {
         localStorage.setItem(TOKEN_KEY, token);
-        logger.debug('💾 Token stored in localStorage');
+        logger.('💾 Token stored in localStorage');
         
         // Verify storage
         const verifyToken = localStorage.getItem(TOKEN_KEY);
-        logger.debug('✅ localStorage verification:', !!verifyToken);
+        logger.('✅ localStorage verification:', !!verifyToken);
       } catch (error) {
         logger.error('❌ LocalStorage storage failed:', error);
       }
@@ -377,27 +377,27 @@ class APIClient {
           secure: false
         };
         Cookies.set(TOKEN_KEY, token, cookieOptions);
-        logger.debug('🍪 Token stored in cookie (backup)');
+        logger.('🍪 Token stored in cookie (backup)');
       } catch (error) {
         logger.error('❌ Cookie storage failed:', error);
       }
     } else {
       // If user didn't choose to be remembered, store in sessionStorage only
-      logger.debug('🔓 Storing token in session storage (not remembered)');
+      logger.('🔓 Storing token in session storage (not remembered)');
       
       try {
         sessionStorage.setItem(TOKEN_KEY, token);
-        logger.debug('💾 Token stored in sessionStorage');
+        logger.('💾 Token stored in sessionStorage');
         
         // Verify storage
         const verifyToken = sessionStorage.getItem(TOKEN_KEY);
-        logger.debug('✅ sessionStorage verification:', !!verifyToken);
+        logger.('✅ sessionStorage verification:', !!verifyToken);
       } catch (error) {
         logger.error('❌ SessionStorage storage failed:', error);
         // Fallback to cookie with session expiry
         try {
           Cookies.set(TOKEN_KEY, token, { path: '/' }); // No expires = session cookie
-          logger.debug('🍪 Token stored in session cookie (fallback)');
+          logger.('🍪 Token stored in session cookie (fallback)');
         } catch (cookieError) {
           logger.error('❌ Cookie fallback failed:', cookieError);
         }
@@ -447,7 +447,7 @@ class APIClient {
       // If user chose to be remembered, store in localStorage and cookie
       try {
         localStorage.setItem(REFRESH_TOKEN_KEY, token);
-        logger.debug('💾 Refresh token stored in localStorage');
+        logger.('💾 Refresh token stored in localStorage');
       } catch (error) {
         logger.error('❌ LocalStorage refresh token storage failed:', error);
       }
@@ -461,7 +461,7 @@ class APIClient {
           secure: false
         };
         Cookies.set(REFRESH_TOKEN_KEY, token, cookieOptions);
-        logger.debug('🍪 Refresh token stored in cookie (backup)');
+        logger.('🍪 Refresh token stored in cookie (backup)');
       } catch (error) {
         logger.error('❌ Cookie refresh token storage failed:', error);
       }
@@ -469,13 +469,13 @@ class APIClient {
       // If user didn't choose to be remembered, store in sessionStorage only
       try {
         sessionStorage.setItem(REFRESH_TOKEN_KEY, token);
-        logger.debug('💾 Refresh token stored in sessionStorage');
+        logger.('💾 Refresh token stored in sessionStorage');
       } catch (error) {
         logger.error('❌ SessionStorage refresh token storage failed:', error);
         // Fallback to cookie with session expiry
         try {
           Cookies.set(REFRESH_TOKEN_KEY, token, { path: '/' }); // No expires = session cookie
-          logger.debug('🍪 Refresh token stored in session cookie (fallback)');
+          logger.('🍪 Refresh token stored in session cookie (fallback)');
         } catch (cookieError) {
           logger.error('❌ Cookie refresh token fallback failed:', cookieError);
         }
@@ -486,7 +486,7 @@ class APIClient {
   public clearTokens(): void {
     if (typeof window === 'undefined') return;
     
-    logger.debug('🧹 Clearing all tokens and session data...');
+    logger.('🧹 Clearing all tokens and session data...');
     
     // Clear cookies with all possible configurations
     Cookies.remove(TOKEN_KEY);
@@ -502,7 +502,7 @@ class APIClient {
       localStorage.removeItem(REFRESH_TOKEN_KEY);
       localStorage.removeItem('rememberMe');
       localStorage.removeItem('user');
-      logger.debug('💾 Tokens cleared from localStorage');
+      logger.('💾 Tokens cleared from localStorage');
     } catch (error) {
       logger.error('❌ LocalStorage cleanup failed:', error);
     }
@@ -512,7 +512,7 @@ class APIClient {
       sessionStorage.removeItem(TOKEN_KEY);
       sessionStorage.removeItem(REFRESH_TOKEN_KEY);
       sessionStorage.removeItem('user');
-      logger.debug('💾 Tokens cleared from sessionStorage');
+      logger.('💾 Tokens cleared from sessionStorage');
     } catch (error) {
       logger.error('❌ SessionStorage cleanup failed:', error);
     }
@@ -525,27 +525,27 @@ class APIClient {
         localStorage.removeItem(key);
         sessionStorage.removeItem(key);
       });
-      logger.debug('🧹 User data cleared from storage');
+      logger.('🧹 User data cleared from storage');
     } catch (error) {
       logger.error('❌ User data cleanup failed:', error);
     }
     
     // Force reload to clear any cached state
     if (typeof window !== 'undefined') {
-      logger.debug('🔄 Forcing page reload to clear cached state...');
+      logger.('🔄 Forcing page reload to clear cached state...');
       setTimeout(() => {
         window.location.href = '/login';
       }, 100);
     }
     
-    logger.debug('✅ All tokens and session data cleared');
+    logger.('✅ All tokens and session data cleared');
   }
 
   public setAuthTokens(accessToken: string, refreshToken: string): void {
-    logger.debug('🔑 Setting auth tokens...');
+    logger.('🔑 Setting auth tokens...');
     this.setAccessToken(accessToken);
     this.setRefreshToken(refreshToken);
-    logger.debug('🔑 Auth tokens set complete');
+    logger.('🔑 Auth tokens set complete');
   }
 
   /**
@@ -553,7 +553,7 @@ class APIClient {
    */
   private async request<T>(config: AxiosRequestConfig): Promise<APIResponse<T>> {
     try {
-      logger.debug('🌐 Making API request:', {
+      logger.('🌐 Making API request:', {
         method: config.method,
         url: config.url,
         baseURL: this.axiosInstance.defaults.baseURL,
@@ -561,7 +561,7 @@ class APIClient {
       });
       
       const response: AxiosResponse<APIResponse<T>> = await this.axiosInstance(config);
-      logger.debug('✅ API response received:', response.status, response.data);
+      logger.('✅ API response received:', response.status, response.data);
       
       // Transform backend response to frontend format
       const transformedResponse: APIResponse<T> = {
@@ -575,7 +575,7 @@ class APIClient {
     } catch (error: any) {
       // Don't log 404 errors for notifications as they are expected for users not yet registered in EMR
       if (error?.response?.status === 404 && config.url?.includes('/notifications')) {
-        logger.debug('🔍 Expected 404 for notifications (user not registered in EMR):', config.url);
+        logger.('🔍 Expected 404 for notifications (user not registered in EMR):', config.url);
         // Return empty response for expected 404
         return {
           data: null,
@@ -585,7 +585,7 @@ class APIClient {
         };
       } else if (error?.response?.status === 200) {
         // Don't log errors for successful responses (status 200)
-        logger.debug('✅ API request successful but caught in error handler:', config.url);
+        logger.('✅ API request successful but caught in error handler:', config.url);
         // Return the response data for successful 200 responses
         return {
           data: error?.response?.data?.data || error?.response?.data,
@@ -670,7 +670,7 @@ class APIClient {
    * Register user
    */
   async register(data: RegisterRequest): Promise<APIResponse<AuthResponse>> {
-    logger.debug('🆕 Attempting registration with:', { ...data, password: '[HIDDEN]' });
+    logger.('🆕 Attempting registration with:', { ...data, password: '[HIDDEN]' });
     
     const response = await this.request<AuthResponse>({
       method: 'POST',
@@ -678,7 +678,7 @@ class APIClient {
       data
     });
     
-    logger.debug('📥 Registration response:', response);
+    logger.('📥 Registration response:', response);
     
     // Store tokens if registration successful
     if (response.data && !response.error) {
@@ -747,13 +747,13 @@ class APIClient {
    * Get current user profile
    */
   async getProfile(): Promise<APIResponse<User>> {
-    logger.debug('📱 getProfile called');
+    logger.('📱 getProfile called');
     try {
       const response = await this.request<User>({
         method: 'GET',
         url: '/auth/profile'
       });
-      logger.debug('✅ getProfile success:', response);
+      logger.('✅ getProfile success:', response);
       return response;
     } catch (error) {
       logger.error('❌ getProfile error:', error);
@@ -765,13 +765,13 @@ class APIClient {
    * Get doctor profile
    */
   async getDoctorProfile(): Promise<APIResponse<User>> {
-    logger.debug('👨‍⚕️ getDoctorProfile called');
+    logger.('👨‍⚕️ getDoctorProfile called');
     try {
       const response = await this.request<User>({
         method: 'GET',
         url: '/auth/profile/doctor'
       });
-      logger.debug('✅ getDoctorProfile success:', response);
+      logger.('✅ getDoctorProfile success:', response);
       return response;
     } catch (error) {
       logger.error('❌ getDoctorProfile error:', error);
@@ -783,13 +783,13 @@ class APIClient {
    * Get nurse profile
    */
   async getNurseProfile(): Promise<APIResponse<User>> {
-    logger.debug('👩‍⚕️ getNurseProfile called');
+    logger.('👩‍⚕️ getNurseProfile called');
     try {
       const response = await this.request<User>({
         method: 'GET',
         url: '/auth/profile/nurse'
       });
-      logger.debug('✅ getNurseProfile success:', response);
+      logger.('✅ getNurseProfile success:', response);
       return response;
     } catch (error) {
       logger.error('❌ getNurseProfile error:', error);
@@ -801,14 +801,14 @@ class APIClient {
    * Validate password strength
    */
   async validatePasswordStrength(password: string): Promise<APIResponse<{ isValid: boolean; score: number; feedback: string[] }>> {
-    logger.debug('🔒 validatePasswordStrength called');
+    logger.('🔒 validatePasswordStrength called');
     try {
       const response = await this.request<{ isValid: boolean; score: number; feedback: string[] }>({
         method: 'POST',
         url: '/auth/validate-password',
         data: { password }
       });
-      logger.debug('✅ validatePasswordStrength success:', response);
+      logger.('✅ validatePasswordStrength success:', response);
       return response;
     } catch (error) {
       logger.error('❌ validatePasswordStrength error:', error);
@@ -1092,9 +1092,6 @@ class APIClient {
     });
 
     const result = await response.json();
-    
-    console.log('🔍 API Client - Raw response:', { status: response.status, ok: response.ok, result });
-    
     return {
       success: response.ok,
       data: result,
@@ -1221,13 +1218,11 @@ class APIClient {
    * Mark patient notification as read
    */
   async markPatientNotificationAsRead(notificationId: string, patientId: string): Promise<APIResponse<unknown>> {
-    console.log('🔔 API Client - markPatientNotificationAsRead called:', { notificationId, patientId });
     try {
       const response = await this.request<unknown>({
         method: 'PUT',
         url: `/medical/patients/${patientId}/notifications/${notificationId}/read`
       });
-      console.log('🔔 API Client - markPatientNotificationAsRead response:', response);
       return response;
     } catch (error) {
       console.error('🔔 API Client - markPatientNotificationAsRead error:', error);

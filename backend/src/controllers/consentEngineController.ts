@@ -525,7 +525,6 @@ export const logConsentAccess = async (req: Request, res: Response) => {
   }
 };
 
-
 /**
  * Execute smart contract rules
  */
@@ -687,7 +686,6 @@ async function executeRuleAction(
 
     case 'send_notification':
       // In a real implementation, send notification
-      console.log(`Notification sent for contract ${contract.contract_id}: ${rule.parameters.message || 'Smart contract action executed'}`);
       break;
   }
 

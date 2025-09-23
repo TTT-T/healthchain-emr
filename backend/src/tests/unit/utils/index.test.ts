@@ -1,5 +1,5 @@
 /**
- * Unit Tests for Utility Functions
+ * Unit s for Utility Functions
  */
 
 import {
@@ -131,7 +131,7 @@ describe('Utility Functions', () => {
   describe('successResponse', () => {
     it('should create success response with data', () => {
       // Arrange
-      const data = { id: '123', name: 'Test' };
+      const data = { id: '123', name: '' };
       const message = 'Success message';
 
       // Act
@@ -354,10 +354,10 @@ describe('Utility Functions', () => {
     it('should validate correct email format', () => {
       // Arrange
       const validEmails = [
-        'test@example.com',
+        '@example.com',
         'user.name@domain.co.uk',
         'user+tag@example.org',
-        '123@test.com'
+        '123@.com'
       ];
 
       // Act & Assert
@@ -371,10 +371,10 @@ describe('Utility Functions', () => {
       const invalidEmails = [
         'invalid-email',
         '@example.com',
-        'test@',
-        'test..test@example.com',
-        'test@.com',
-        'test@example.',
+        '@',
+        '..@example.com',
+        '@.com',
+        '@example.',
         ''
       ];
 

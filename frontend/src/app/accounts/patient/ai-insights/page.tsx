@@ -131,7 +131,7 @@ export default function AIInsights() {
     if (labData && Array.isArray(labData.labResults)) {
       // Process lab results to extract health metrics
       labData.labResults.forEach((result: any) => {
-        if (result.test_name?.toLowerCase().includes('glucose') || result.test_name?.toLowerCase().includes('sugar')) {
+        if (result._name?.toLowerCase().includes('glucose') || result._name?.toLowerCase().includes('sugar')) {
           metrics.push({
             name: "น้ำตาลในเลือด",
             value: `${result.result_value} ${result.unit || 'mg/dL'}`,
@@ -139,7 +139,7 @@ export default function AIInsights() {
             trend: "stable"
           });
         }
-        if (result.test_name?.toLowerCase().includes('cholesterol')) {
+        if (result._name?.toLowerCase().includes('cholesterol')) {
           metrics.push({
             name: "คอเลสเตอรอล",
             value: `${result.result_value} ${result.unit || 'mg/dL'}`,

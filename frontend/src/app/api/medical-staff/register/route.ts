@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('Medical staff registration request:', body);
-    
     // Validate required fields
     const requiredFields = [
       'titlePrefix', 'firstName', 'lastName', 'email', 'confirmEmail', 
@@ -82,13 +80,6 @@ export async function POST(request: NextRequest) {
     // Call backend API
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
     const backendEndpoint = `${backendUrl}/api/auth/register`;
-    
-    console.log('Calling backend:', {
-      url: backendUrl,
-      endpoint: backendEndpoint,
-      data: registrationData
-    });
-    
     let response;
     try {
       response = await fetch(backendEndpoint, {
@@ -119,9 +110,6 @@ export async function POST(request: NextRequest) {
         details: textResponse
       }, { status: 500 });
     }
-    
-    console.log('Backend response:', { status: response.status, result });
-    
     if (response.ok) {
       // Check if registration was successful based on status code and data
       const isSuccess = response.status === 200 || response.status === 201;

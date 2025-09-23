@@ -100,7 +100,7 @@ export const createDoctorVisit = asyncHandler(async (req: Request, res: Response
 
   // Validate UUID format for examinedBy
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(examinedBy)) {
+  if (!uuidRegex.(examinedBy)) {
     return res.status(400).json({
       statusCode: 400,
       message: 'Invalid examinedBy format. Must be a valid UUID.',

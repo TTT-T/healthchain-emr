@@ -21,7 +21,7 @@ export const corsOptions: CorsOptions = {
       return callback(null, true);
     }
     
-    // Log rejected origins for debugging
+    // Log rejected origins for ging
     console.warn(`CORS: Origin ${origin} not allowed. Allowed origins: ${allowedOrigins.join(', ')}`);
     callback(new Error('Not allowed by CORS'));
   },

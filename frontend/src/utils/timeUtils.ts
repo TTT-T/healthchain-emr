@@ -107,25 +107,9 @@ export const getCurrentLocalTime = (): Date => {
 };
 
 /**
- * Debug time information for troubleshooting
+ *  time information for troubleshooting
  */
-export const debugTimeInfo = (date: Date = new Date()) => {
-  console.log('🕐 Time Debug Info (Thailand Timezone):', {
-    originalTime: date.toString(),
-    thailandTimeString: date.toLocaleString('th-TH', { timeZone: getThailandTimezone() }),
-    thailandTimeStringUTC: date.toLocaleString('th-TH', { timeZone: 'UTC' }),
-    isoString: date.toISOString(),
-    thailandDateTimeString: createThailandDateTimeString(date),
-    buddhistEra: formatToBuddhistEra(date),
-    thailandTimeFormatted: formatThailandTime(date),
-    thailandDateTimeFormatted: formatThailandDateTime(date),
-    timezoneOffset: date.getTimezoneOffset(),
-    timezone: getThailandTimezone(),
-    thailandHours: new Date(date.toLocaleString("en-US", {timeZone: getThailandTimezone()})).getHours(),
-    thailandMinutes: new Date(date.toLocaleString("en-US", {timeZone: getThailandTimezone()})).getMinutes(),
-    utcHours: date.getUTCHours(),
-    utcMinutes: date.getUTCMinutes()
-  });
+export const TimeInfo = (date: Date = new Date()) => {
 };
 
 /**

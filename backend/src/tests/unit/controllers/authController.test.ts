@@ -1,5 +1,5 @@
 /**
- * Unit Tests for Auth Controller
+ * Unit s for Auth Controller
  */
 
 import { Request, Response } from 'express';
@@ -38,7 +38,7 @@ describe('Auth Controller', () => {
     it('should register a new user successfully', async () => {
       // Arrange
       const userData = {
-        email: 'test@example.com',
+        email: '@example.com',
         password: 'password123',
         firstName: 'John',
         lastName: 'Doe',
@@ -134,7 +134,7 @@ describe('Auth Controller', () => {
     it('should return error for weak password', async () => {
       // Arrange
       const userData = {
-        email: 'test@example.com',
+        email: '@example.com',
         password: '123', // Too short
         firstName: 'John',
         lastName: 'Doe'
@@ -160,13 +160,13 @@ describe('Auth Controller', () => {
     it('should login user successfully', async () => {
       // Arrange
       const loginData = {
-        email: 'test@example.com',
+        email: '@example.com',
         password: 'password123'
       };
 
       const mockUser = {
         id: 'user-123',
-        email: 'test@example.com',
+        email: '@example.com',
         password_hash: 'hashed-password',
         first_name: 'John',
         last_name: 'Doe',
@@ -217,13 +217,13 @@ describe('Auth Controller', () => {
     it('should return error for invalid credentials', async () => {
       // Arrange
       const loginData = {
-        email: 'test@example.com',
+        email: '@example.com',
         password: 'wrong-password'
       };
 
       const mockUser = {
         id: 'user-123',
-        email: 'test@example.com',
+        email: '@example.com',
         password_hash: 'hashed-password',
         first_name: 'John',
         last_name: 'Doe',
@@ -253,13 +253,13 @@ describe('Auth Controller', () => {
     it('should return error for inactive user', async () => {
       // Arrange
       const loginData = {
-        email: 'test@example.com',
+        email: '@example.com',
         password: 'password123'
       };
 
       const mockUser = {
         id: 'user-123',
-        email: 'test@example.com',
+        email: '@example.com',
         password_hash: 'hashed-password',
         first_name: 'John',
         last_name: 'Doe',
@@ -320,7 +320,7 @@ describe('Auth Controller', () => {
 
       const mockUser = {
         id: 'user-123',
-        email: 'test@example.com',
+        email: '@example.com',
         first_name: 'John',
         last_name: 'Doe',
         role: 'patient'

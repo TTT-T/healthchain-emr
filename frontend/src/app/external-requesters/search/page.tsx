@@ -26,7 +26,7 @@ import {
   Activity,
   Stethoscope,
   Pill,
-  TestTube,
+  Tube,
   Heart
 } from 'lucide-react'
 
@@ -123,7 +123,7 @@ export default function PatientSearchPage() {
   const dataTypeOptions = [
     { value: 'basic_info', label: 'ข้อมูลพื้นฐาน', icon: <User className="h-4 w-4 text-blue-600" /> },
     { value: 'medical_history', label: 'ประวัติการรักษา', icon: <FileText className="h-4 w-4 text-green-600" /> },
-    { value: 'lab_results', label: 'ผลตรวจทางห้องปฏิบัติการ', icon: <TestTube className="h-4 w-4 text-purple-600" /> },
+    { value: 'lab_results', label: 'ผลตรวจทางห้องปฏิบัติการ', icon: <Tube className="h-4 w-4 text-purple-600" /> },
     { value: 'medications', label: 'ข้อมูลการจ่ายยา', icon: <Pill className="h-4 w-4 text-orange-600" /> },
     { value: 'vital_signs', label: 'สัญญาณชีพ', icon: <Activity className="h-4 w-4 text-red-600" /> },
     { value: 'imaging', label: 'ผลการตรวจทางภาพ', icon: <Eye className="h-4 w-4 text-indigo-600" /> },
@@ -324,7 +324,7 @@ export default function PatientSearchPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-800 font-medium">
                           <div className="flex items-center space-x-2">
                             <Calendar className="h-4 w-4 text-blue-600" />
-                            <span>เกิด: {new Date(patient.dateOfBirth).toLocaleDateString('th-TH')}</span>
+                            <span>เกิด: {new Date(patient.dateOfBirth).toLocaleDaring('th-TH')}</span>
                           </div>
                           {patient.phone && (
                             <div className="flex items-center space-x-2">
@@ -341,7 +341,7 @@ export default function PatientSearchPage() {
                           {patient.lastVisit && (
                             <div className="flex items-center space-x-2">
                               <Activity className="h-4 w-4 text-purple-600" />
-                              <span>เยี่ยมล่าสุด: {new Date(patient.lastVisit).toLocaleDateString('th-TH')}</span>
+                              <span>เยี่ยมล่าสุด: {new Date(patient.lastVisit).toLocaleDaring('th-TH')}</span>
                             </div>
                           )}
                         </div>

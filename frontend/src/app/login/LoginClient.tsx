@@ -38,8 +38,7 @@ function LoginClientContent() {
       password: "",
       rememberMe: false
     });
-    
-    
+
   }, []);
 
   // Clear auth error when component mounts - don't redirect here
@@ -126,20 +125,12 @@ function LoginClientContent() {
 
       const result = await response.json();
       
-      // Debug logging
-      console.log('🔍 Login response:', result);
-      console.log('🔍 Response status:', response.status);
-      console.log('🔍 Result success:', result.success);
-      console.log('🔍 Result statusCode:', result.statusCode);
-      console.log('🔍 Result data:', result.data);
-
+      //  logging
       if ((result.success === true || result.statusCode === 200) && result.data) {
         // Login successful
         
         // Get user role first
         const userRole = result.data.user?.role;
-        console.log('🔍 User role:', userRole);
-        
         // Store tokens in both localStorage and cookies for compatibility
         if (result.data.accessToken) {
           localStorage.setItem('access_token', result.data.accessToken);
@@ -189,18 +180,12 @@ function LoginClientContent() {
             redirectPath = '/accounts/patient/dashboard';
             break;
         }
-        
-        console.log('🔍 Redirecting to:', redirectPath);
         window.location.href = redirectPath;
         
       } else {
         // Login failed - Enhanced error handling
         const errorMessage = result.message || result.error?.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
         const statusCode = result.statusCode || response.status;
-        
-        console.log('🔍 Login failed - Status:', statusCode, 'Message:', errorMessage);
-        console.log('🔍 Full response:', result);
-        
         // Check if it's an unverified email error
         if (errorMessage.includes('verify your email') || 
             errorMessage.includes('email verification') ||
@@ -251,8 +236,6 @@ function LoginClientContent() {
       }
 
     } catch (error: any) {
-      console.log('💥 Login catch error:', error);
-      
       let errorMessage = 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง';
       
       if (error.name === 'TypeError' && error.message.includes('fetch')) {

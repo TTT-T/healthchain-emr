@@ -21,15 +21,11 @@ export class MigrationManager {
    */
   public async initialize(): Promise<void> {
     try {
-      console.log('🔄 Initializing migration system...');
-      
       // Create migrations table if not exists
       await this.createMigrationsTable();
       
       // Run pending migrations
       await this.runPendingMigrations();
-      
-      console.log('✅ Migration system initialized successfully');
     } catch (error) {
       console.error('❌ Error initializing migration system:', error);
       throw error;
@@ -52,7 +48,6 @@ export class MigrationManager {
     `;
 
     await databaseManager.query(createTableQuery);
-    console.log('📋 Migrations table created/verified');
   }
 
   /**
@@ -216,11 +211,8 @@ export class MigrationManager {
       );
 
       if (existingMigration.rows.length > 0) {
-        console.log(`⏭️ Migration ${migration.name} already executed, skipping`);
         return;
       }
-
-      console.log(`🔄 Running migration: ${migration.name} - ${migration.description}`);
       const startTime = Date.now();
 
       // Execute migration
@@ -234,9 +226,6 @@ export class MigrationManager {
          VALUES ($1, $2, $3)`,
         [migration.name, executionTime, true]
       );
-
-      console.log(`✅ Migration ${migration.name} completed in ${executionTime}ms`);
-
     } catch (error) {
       console.error(`❌ Migration ${migration.name} failed:`, error);
       
@@ -298,7 +287,6 @@ export class MigrationManager {
     `;
 
     await databaseManager.query(createTablesQuery);
-    console.log('🤖 AI risk assessment tables created');
   }
 
   /**
@@ -365,7 +353,6 @@ export class MigrationManager {
     `;
 
     await databaseManager.query(createTablesQuery);
-    console.log('🔒 Consent management tables created');
   }
 
   /**
@@ -381,7 +368,7 @@ export class MigrationManager {
         title VARCHAR(200) NOT NULL,
         description TEXT,
         appointment_type VARCHAR(50) NOT NULL DEFAULT 'consultation'
-            CHECK (appointment_type IN ('consultation', 'follow_up', 'procedure', 'test', 'emergency')),
+            CHECK (appointment_type IN ('consultation', 'follow_up', 'procedure', '', 'emergency')),
         status VARCHAR(20) NOT NULL DEFAULT 'scheduled'
             CHECK (status IN ('scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show')),
         priority VARCHAR(10) DEFAULT 'normal'
@@ -440,7 +427,6 @@ export class MigrationManager {
     `;
 
     await databaseManager.query(createTablesQuery);
-    console.log('📅 Appointment management tables created');
   }
 
   /**
@@ -499,7 +485,7 @@ export class MigrationManager {
         user_agent TEXT,
         request_body JSONB,
         severity VARCHAR(20) DEFAULT 'error'
-            CHECK (severity IN ('debug', 'info', 'warn', 'error', 'fatal')),
+            CHECK (severity IN ('', 'info', 'warn', 'error', 'fatal')),
         resolved BOOLEAN DEFAULT FALSE,
         resolved_at TIMESTAMP,
         resolved_by UUID REFERENCES users(id),
@@ -518,7 +504,6 @@ export class MigrationManager {
     `;
 
     await databaseManager.query(createTablesQuery);
-    console.log('📊 Audit and logging tables created');
   }
 
   /**
@@ -585,21 +570,15 @@ export class MigrationManager {
     
     // Execute the SQL
     await databaseManager.query(sql);
-    console.log(`✅ SQL migration executed: ${filename}`);
   }
 
   /**
    * Reset all migrations (for development only)
    */
   public async resetMigrations(): Promise<void> {
-    console.log('⚠️ Resetting all migrations...');
-    
     await databaseManager.query('DROP TABLE IF EXISTS migrations CASCADE');
-    console.log('🗑️ Migrations table dropped');
-    
     // Recreate and run migrations
     await this.initialize();
-    console.log('✅ Migrations reset and re-executed');
   }
 }
 

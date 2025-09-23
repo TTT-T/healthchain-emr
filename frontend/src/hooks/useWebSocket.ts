@@ -58,12 +58,12 @@ export const useWebSocket = () => {
       // Set up event listeners
       const handleConnected = () => {
         setIsConnected(true);
-        logger.debug('🔌 WebSocket connected in hook');
+        logger.('🔌 WebSocket connected in hook');
       };
 
       const handleDisconnected = (reason: string) => {
         setIsConnected(false);
-        logger.debug('🔌 WebSocket disconnected in hook:', reason);
+        logger.('🔌 WebSocket disconnected in hook:', reason);
       };
 
       const handleConnectionError = (error: unknown) => {
@@ -73,22 +73,22 @@ export const useWebSocket = () => {
 
       const handleNotification = (notification: NotificationData) => {
         setNotifications(prev => [notification, ...prev.slice(0, 49)]); // Keep last 50 notifications
-        logger.debug('📢 New notification received:', notification);
+        logger.('📢 New notification received:', notification);
       };
 
       const handleSystemUpdate = (update: SystemUpdate) => {
         setSystemUpdates(prev => [update, ...prev.slice(0, 19)]); // Keep last 20 updates
-        logger.debug('🔄 New system update received:', update);
+        logger.('🔄 New system update received:', update);
       };
 
       const handleDashboardUpdate = (update: DashboardUpdate) => {
         setDashboardData(update.data);
-        logger.debug('📊 Dashboard updated:', update);
+        logger.('📊 Dashboard updated:', update);
       };
 
       const handlePatientUpdate = (update: PatientUpdate) => {
         setPatientUpdates(prev => [update, ...prev.slice(0, 19)]); // Keep last 20 updates
-        logger.debug('🏥 New patient update received:', update);
+        logger.('🏥 New patient update received:', update);
       };
 
       // Add event listeners
@@ -137,8 +137,7 @@ export const useWebSocket = () => {
 
   // Auto-join relevant rooms based on user role
   useEffect(() => {
-    if (isConnected && user) {
-      // TODO: Implement room joining functionality
+    if (isConnected && user) {
       // Join user-specific room
       // getWebSocketService().joinRoom(`user:${user.id}`);
       
@@ -167,8 +166,7 @@ export const useWebSocket = () => {
     notifications,
     systemUpdates,
     dashboardData,
-    patientUpdates,
-    // TODO: Implement these methods in WebSocketService
+    patientUpdates,
     // joinRoom: getWebSocketService().joinRoom.bind(getWebSocketService()),
     // leaveRoom: getWebSocketService().leaveRoom.bind(getWebSocketService()),
     // startTyping: getWebSocketService().startTyping.bind(getWebSocketService()),

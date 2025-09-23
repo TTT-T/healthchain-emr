@@ -296,7 +296,7 @@ const PatientMedications = () => {
                       <div className="space-y-1">
                         <p><span className="font-medium text-gray-700">สถานะ:</span> <span className="text-gray-900">{medication.status}</span></p>
                         <p><span className="font-medium text-gray-700">แพทย์:</span> <span className="text-gray-900">{medication.prescription.prescribed_by.name}</span></p>
-                        <p><span className="font-medium text-gray-700">วันที่สั่งจ่าย:</span> <span className="text-gray-900">{new Date(medication.prescription.date).toLocaleDateString('th-TH')}</span></p>
+                        <p><span className="font-medium text-gray-700">วันที่สั่งจ่าย:</span> <span className="text-gray-900">{new Date(medication.prescription.date).toLocaleDaring('th-TH')}</span></p>
                         {medication.visit.diagnosis && (
                           <p><span className="font-medium text-gray-700">การวินิจฉัย:</span> <span className="text-gray-900">{medication.visit.diagnosis}</span></p>
                         )}
@@ -417,7 +417,7 @@ const PatientMedications = () => {
                 )}
                 
                 <div className="text-sm text-gray-500 pt-4 border-t border-gray-200">
-                  <p>วันที่สั่งจ่าย: {new Date(selectedMedication.prescription.date).toLocaleDateString('th-TH')}</p>
+                  <p>วันที่สั่งจ่าย: {new Date(selectedMedication.prescription.date).toLocaleDaring('th-TH')}</p>
                   <p>เลขที่ใบสั่งยา: {selectedMedication.prescription.number}</p>
                 </div>
                 

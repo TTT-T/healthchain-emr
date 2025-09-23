@@ -306,10 +306,8 @@ export const createDatabaseBackup = async (req: Request, res: Response) => {
           ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
         `, [backupId, filename, type, description || 'Manual backup', 'in_progress', userId]);
       } else {
-        console.log(`Backup logged: ${backupId} - ${filename}`);
       }
     } catch (error) {
-      console.log(`Backup logged: ${backupId} - ${filename}`);
     }
 
     // In a real implementation, this would trigger an actual backup process
@@ -329,7 +327,6 @@ export const createDatabaseBackup = async (req: Request, res: Response) => {
             WHERE id = $3
           `, [2684354560, 2560, backupId]);
         }
-        console.log(`Backup completed: ${backupId}`);
       } catch (error) {
         console.error('Error updating backup status:', error);
       }
@@ -391,7 +388,6 @@ export const optimizeDatabase = async (req: Request, res: Response) => {
         maintenanceLogId = logResult.rows[0].id;
       }
     } catch (error) {
-      console.log('Could not log maintenance operation:', error.message);
     }
 
     // Perform database optimization
@@ -425,7 +421,6 @@ export const optimizeDatabase = async (req: Request, res: Response) => {
           WHERE id = $4
         `, [errorMessage ? 'failed' : 'completed', duration, errorMessage, maintenanceLogId]);
       } catch (error) {
-        console.log('Could not update maintenance log:', error.message);
       }
     }
 
@@ -532,7 +527,6 @@ export const getDatabasePerformance = async (req: Request, res: Response) => {
         }
       }
     } catch (error) {
-      console.log('Could not store performance metrics:', error.message);
     }
 
     res.status(200).json({

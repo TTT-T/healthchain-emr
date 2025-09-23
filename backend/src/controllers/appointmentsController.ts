@@ -446,7 +446,7 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
       'ตรวจสุขภาพ': 'consultation',
       'ตรวจติดตาม': 'follow_up',
       'ตรวจรักษา': 'procedure',
-      'ตรวจเลือด': 'test',
+      'ตรวจเลือด': '',
       'ฉุกเฉิน': 'emergency',
       'ปรึกษา': 'consultation',
       'นัดหมาย': 'consultation'

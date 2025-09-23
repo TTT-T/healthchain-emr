@@ -78,7 +78,7 @@ export default function EMRDashboard() {
     setError(null);
     
     try {
-      logger.debug('📊 Loading dashboard data...');
+      logger.('📊 Loading dashboard data...');
 
       // Fetch real data from API
       const promises = [
@@ -88,55 +88,15 @@ export default function EMRDashboard() {
       ];
 
       const [patientsResponse, visitsResponse, appointmentsResponse] = await Promise.all(promises);
-
-      console.log('🔍 Dashboard - API Responses:', {
-        patientsResponse: {
-          statusCode: patientsResponse.statusCode,
-          dataLength: patientsResponse.data ? (Array.isArray(patientsResponse.data) ? patientsResponse.data.length : 'not array') : 'no data',
-          data: patientsResponse.data
-        },
-        visitsResponse: {
-          statusCode: visitsResponse.statusCode,
-          dataLength: visitsResponse.data ? (Array.isArray(visitsResponse.data) ? visitsResponse.data.length : 'not array') : 'no data',
-          data: visitsResponse.data
-        },
-        appointmentsResponse: {
-          statusCode: appointmentsResponse.statusCode,
-          dataLength: appointmentsResponse.data ? (Array.isArray(appointmentsResponse.data) ? appointmentsResponse.data.length : 'not array') : 'no data',
-          data: appointmentsResponse.data
-        }
-      });
-
       // Calculate stats from real data
       const patientsData = Array.isArray(patientsResponse.data) ? patientsResponse.data : [];
       const visitsData = Array.isArray(visitsResponse.data) ? visitsResponse.data : [];
       const appointmentsData = Array.isArray(appointmentsResponse.data) ? appointmentsResponse.data : [];
-
-      console.log('📊 Dashboard data loaded:', {
-        patientsCount: patientsData.length,
-        visitsCount: visitsData.length,
-        appointmentsCount: appointmentsData.length,
-        patientsResponse: patientsResponse,
-        visitsResponse: visitsResponse,
-        appointmentsResponse: appointmentsResponse,
-        patientsData: patientsData.slice(0, 2), // Show first 2 patients
-        visitsData: visitsData.slice(0, 2), // Show first 2 visits
-        appointmentsData: appointmentsData.slice(0, 2) // Show first 2 appointments
-      });
-
       // Calculate today's patients (users with patient role created today)
       const today = getThailandTime().toISOString().split('T')[0];
       const todayPatientsCount = patientsData.filter(patient => {
         const isPatient = patient.role === 'patient';
         const isToday = patient.created_at && patient.created_at.startsWith(today);
-        console.log('🔍 Checking patient for today count:', {
-          id: patient.id,
-          role: patient.role,
-          created_at: patient.created_at,
-          today: today,
-          isPatient,
-          isToday
-        });
         return isPatient && isToday;
       }).length;
 
@@ -144,35 +104,16 @@ export default function EMRDashboard() {
       const totalPatientsCount = patientsData.filter(patient => {
         const isPatient = patient.role === 'patient';
         const isActive = patient.is_active;
-        console.log('🔍 Checking patient for total count:', {
-          id: patient.id,
-          role: patient.role,
-          is_active: patient.is_active,
-          isPatient,
-          isActive
-        });
         return isPatient && isActive;
       }).length;
 
       // Calculate active queues (visits with in_progress status today)
-      console.log('🔍 Dashboard - All visits data:', visitsData);
       const activeQueueCount = visitsData.filter(visit => {
-        console.log('🔍 Checking visit for active queue:', {
-          id: visit.id,
-          status: visit.status,
-          visit_date: visit.visit_date,
-          today: today,
-          statusMatch: visit.status === 'in_progress',
-          dateMatch: visit.visit_date && visit.visit_date.startsWith(today),
-          hasVisitDate: !!visit.visit_date,
-          visitDateString: visit.visit_date ? visit.visit_date.toString() : 'null'
-        });
         // More flexible matching - check if visit is in_progress and created today or visit_date is today
         const isInProgress = visit.status === 'in_progress';
         const isToday = (visit.visit_date && visit.visit_date.startsWith(today)) || 
                        (visit.created_at && visit.created_at.startsWith(today));
         const shouldInclude = isInProgress && (visit.visit_date ? isToday : true);
-        console.log('🔍 Visit match result:', { isInProgress, isToday, shouldInclude });
         return shouldInclude;
       }).length;
 
@@ -185,57 +126,29 @@ export default function EMRDashboard() {
       }).length;
 
       // Calculate upcoming appointments
-      console.log('🔍 Dashboard - All appointments data:', appointmentsData);
       const upcomingAppointmentsCount = appointmentsData.filter(appointment => {
         const isUpcoming = appointment.status === 'scheduled' || appointment.status === 'confirmed';
-        console.log('🔍 Checking appointment for upcoming count:', {
-          id: appointment.id,
-          status: appointment.status,
-          isUpcoming
-        });
         return isUpcoming;
       }).length;
-
-      console.log('📊 Calculated stats:', {
-        todayPatientsCount,
-        totalPatientsCount,
-        activeQueueCount,
-        completedVisitsCount,
-        upcomingAppointmentsCount,
-        today
-      });
-      
       // Set real stats from actual data
       const finalStats = {
         todayPatients: totalPatientsCount, // Total active patients
         todayRegistrations: todayPatientsCount, // New registrations today
         activeQueues: activeQueueCount, // Active queues (in_progress visits)
         completedVisits: completedVisitsCount, // Completed visits today
-        pendingLabs: 0, // TODO: Implement lab results API
+        pendingLabs: 0, // Lab results API to be implemented
         upcomingAppointments: upcomingAppointmentsCount, // Upcoming appointments
-        activeMedications: 0, // TODO: Implement medications API
-        criticalAlerts: 0 // TODO: Implement alerts system
+        activeMedications: 0, // Medications API to be implemented
+        criticalAlerts: 0 // Alerts system to be implemented
       };
-      
-      console.log('🔍 Dashboard - Final stats being set:', finalStats);
       setStats(finalStats);
 
       // Generate queue data from real visits
-      console.log('🔍 All visits data for queue generation:', visitsData);
       const queueData: QueueItem[] = visitsData
         .filter(visit => {
           const isToday = (visit.visit_date && visit.visit_date.startsWith(today)) || 
                          (visit.created_at && visit.created_at.startsWith(today));
           const isActive = visit.status === 'in_progress' || visit.status === 'waiting';
-          console.log('🔍 Queue filter - visit:', {
-            id: visit.id,
-            status: visit.status,
-            visit_date: visit.visit_date,
-            created_at: visit.created_at,
-            isToday,
-            isActive,
-            shouldInclude: isActive && isToday
-          });
           return isActive && isToday;
         })
         .map(visit => {
@@ -248,7 +161,6 @@ export default function EMRDashboard() {
             waitTime: 15, // Default 15 minutes
             priority: visit.priority || 'normal'
           };
-          console.log('🔍 Queue item created:', queueItem);
           return queueItem;
         });
       // If no active queues, show completed visits as queue items
@@ -271,10 +183,7 @@ export default function EMRDashboard() {
           }));
         
         queueData.push(...completedQueues);
-        console.log('🔍 Added completed visits to queue:', completedQueues);
       }
-      
-      console.log('🔍 Final queue data:', queueData);
       setQueues(queueData);
 
       // Generate recent activities from real data
@@ -319,8 +228,6 @@ export default function EMRDashboard() {
       // Sort by timestamp (newest first) and limit to 5
       activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       const finalActivities = activities.slice(0, 5);
-      
-      console.log('🔍 Generated activities data:', finalActivities);
       setRecentActivities(finalActivities);
 
       // Generate patient-related alerts and notifications
@@ -408,9 +315,6 @@ export default function EMRDashboard() {
             isRead: false
           });
         }
-        
-        console.log('🔍 Generated alerts data:', alertsData);
-
       } else {
         // No patients alert
         alertsData.push({
@@ -425,7 +329,7 @@ export default function EMRDashboard() {
       
       setAlerts(alertsData);
 
-      logger.debug('✅ Dashboard data loaded successfully');
+      logger.('✅ Dashboard data loaded successfully');
     } catch (err: any) {
       console.error('❌ Error loading dashboard data:', err);
       logger.error('❌ Error loading dashboard data:', err);
@@ -453,14 +357,12 @@ export default function EMRDashboard() {
     }
   }, [selectedTimeRange, isAuthenticated, loadDashboardData]);
 
-  // Debug logging for stats changes
+  //  logging for stats changes
   useEffect(() => {
-    console.log('🔍 Dashboard - Stats state changed:', stats);
   }, [stats]);
 
-  // Debug logging for loading state
+  //  logging for loading state
   useEffect(() => {
-    console.log('🔍 Dashboard - Loading state changed:', isLoading);
   }, [isLoading]);
 
   const getStatusColor = (status: string) => {

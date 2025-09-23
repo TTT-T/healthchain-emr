@@ -34,7 +34,7 @@ export default function NurseDashboard() {
             ยินดีต้อนรับ, พ.{getDisplayName()}
           </h1>
           <p className="text-sm sm:text-base text-slate-600">
-            วันนี้ {new Date().toLocaleDateString('th-TH')} • {new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+            วันนี้ {new Date().toLocaleDaring('th-TH')} • {new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
           </p>
           {user?.id && (
             <p className="text-xs text-slate-500 mt-1">

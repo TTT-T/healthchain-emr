@@ -670,12 +670,12 @@ export default function Documents() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Calendar className="h-3 w-3" />
-                          <span>วันที่ออก: {new Date(document.issuedDate).toLocaleDateString('th-TH')}</span>
+                          <span>วันที่ออก: {new Date(document.issuedDate).toLocaleDaring('th-TH')}</span>
                         </div>
                         {document.validUntil && (
                           <div className="flex items-center gap-2">
                             <AlertCircle className="h-3 w-3" />
-                            <span>หมดอายุ: {new Date(document.validUntil).toLocaleDateString('th-TH')}</span>
+                            <span>หมดอายุ: {new Date(document.validUntil).toLocaleDaring('th-TH')}</span>
                           </div>
                         )}
                       </div>

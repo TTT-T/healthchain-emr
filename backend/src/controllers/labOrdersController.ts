@@ -15,9 +15,9 @@ export const createLabOrder = async (req: Request, res: Response) => {
   try {
     const { id: visitId } = req.params;
     const {
-      test_name,
-      test_code,
-      test_category,
+      _name,
+      _code,
+      _category,
       clinical_indication,
       specimen_type,
       priority = 'routine',
@@ -28,11 +28,11 @@ export const createLabOrder = async (req: Request, res: Response) => {
     const userId = (req as any).user.id;
 
     // Validate required fields
-    if (!test_name || !test_category || !specimen_type) {
+    if (!_name || !_category || !specimen_type) {
       return res.status(400).json({
         data: null,
         meta: null,
-        error: { message: 'Missing required fields: test_name, test_category, specimen_type' },
+        error: { message: 'Missing required fields: _name, _category, specimen_type' },
         statusCode: 400
       });
     }
@@ -77,8 +77,8 @@ export const createLabOrder = async (req: Request, res: Response) => {
     const labOrderId = uuidv4();
     const createLabOrderQuery = `
       INSERT INTO lab_orders (
-        id, patient_id, visit_id, order_number, test_name, test_code,
-        test_category, clinical_indication, specimen_type, priority,
+        id, patient_id, visit_id, order_number, _name, _code,
+        _category, clinical_indication, specimen_type, priority,
         requested_completion, notes, ordered_by, order_date, order_time, status
       )
       VALUES (
@@ -89,8 +89,8 @@ export const createLabOrder = async (req: Request, res: Response) => {
 
     const now = new Date();
     const labOrderResult = await databaseManager.query(createLabOrderQuery, [
-      labOrderId, visit.patient_id, visitId, orderNumber, test_name, test_code,
-      test_category, clinical_indication, specimen_type, priority,
+      labOrderId, visit.patient_id, visitId, orderNumber, _name, _code,
+      _category, clinical_indication, specimen_type, priority,
       requested_completion, notes, validUserId, now.toISOString().split('T')[0], 
       now.toTimeString().split(' ')[0], 'ordered'
     ]);
@@ -104,9 +104,9 @@ export const createLabOrder = async (req: Request, res: Response) => {
           order_number: newLabOrder.order_number,
           patient_id: newLabOrder.patient_id,
           visit_id: newLabOrder.visit_id,
-          test_name: newLabOrder.test_name,
-          test_code: newLabOrder.test_code,
-          test_category: newLabOrder.test_category,
+          _name: newLabOrder._name,
+          _code: newLabOrder._code,
+          _category: newLabOrder._category,
           clinical_indication: newLabOrder.clinical_indication,
           specimen_type: newLabOrder.specimen_type,
           priority: newLabOrder.priority,
@@ -142,7 +142,7 @@ export const createLabOrder = async (req: Request, res: Response) => {
 export const getLabOrders = async (req: Request, res: Response) => {
   try {
     const { id: visitId } = req.params;
-    const { page = 1, limit = 10, status, test_category } = req.query;
+    const { page = 1, limit = 10, status, _category } = req.query;
 
     const offset = (Number(page) - 1) * Number(limit);
 
@@ -174,10 +174,10 @@ export const getLabOrders = async (req: Request, res: Response) => {
       queryParams.push(status);
     }
 
-    if (test_category) {
+    if (_category) {
       paramCount++;
-      whereClause += ` AND lo.test_category = $${paramCount}`;
-      queryParams.push(test_category);
+      whereClause += ` AND lo._category = $${paramCount}`;
+      queryParams.push(_category);
     }
 
     // Get lab orders for the visit
@@ -187,9 +187,9 @@ export const getLabOrders = async (req: Request, res: Response) => {
         lo.patient_id,
         lo.visit_id,
         lo.order_number,
-        lo.test_name,
-        lo.test_code,
-        lo.test_category,
+        lo._name,
+        lo._code,
+        lo._category,
         lo.clinical_indication,
         lo.specimen_type,
         lo.priority,
@@ -259,9 +259,9 @@ export const getLabOrders = async (req: Request, res: Response) => {
           order_number: order.order_number,
           patient_id: order.patient_id,
           visit_id: order.visit_id,
-          test_name: order.test_name,
-          test_code: order.test_code,
-          test_category: order.test_category,
+          _name: order._name,
+          _code: order._code,
+          _category: order._category,
           clinical_indication: order.clinical_indication,
           specimen_type: order.specimen_type,
           priority: order.priority,
@@ -297,7 +297,7 @@ export const getLabOrders = async (req: Request, res: Response) => {
         labOrdersCount: labOrdersWithResults.length,
         filters: {
           status,
-          test_category
+          _category
         }
       },
       error: null,
@@ -357,7 +357,7 @@ export const updateLabOrder = async (req: Request, res: Response) => {
     let paramCount = 0;
 
     const allowedFields = [
-      'test_name', 'test_code', 'test_category', 'clinical_indication',
+      '_name', '_code', '_category', 'clinical_indication',
       'specimen_type', 'priority', 'requested_completion', 'notes', 'status'
     ];
 
@@ -396,8 +396,8 @@ export const updateLabOrder = async (req: Request, res: Response) => {
         lab_order: {
           id: updatedLabOrder.id,
           order_number: updatedLabOrder.order_number,
-          test_name: updatedLabOrder.test_name,
-          test_category: updatedLabOrder.test_category,
+          _name: updatedLabOrder._name,
+          _category: updatedLabOrder._category,
           status: updatedLabOrder.status,
           updated_at: updatedLabOrder.updated_at
         }

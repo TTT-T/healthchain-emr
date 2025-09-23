@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     // Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(body.email)) {
+    if (!emailRegex.(body.email)) {
       return NextResponse.json({
         success: false,
         message: 'รูปแบบอีเมลไม่ถูกต้อง'

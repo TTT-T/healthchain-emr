@@ -323,7 +323,7 @@ export default function ConsentCompliancePage() {
                         </span>
                       </div>
                       <span className="text-xs text-gray-500">
-                        {new Date(alert.created_at).toLocaleDateString('th-TH')}
+                        {new Date(alert.created_at).toLocaleDaring('th-TH')}
                       </span>
                     </div>
                     <h4 className="font-medium text-gray-900 mb-1">{alert.title}</h4>
@@ -380,7 +380,7 @@ export default function ConsentCompliancePage() {
                     )}
                   </div>
                   <div className="flex items-center justify-between text-sm text-gray-600">
-                    <span>{new Date(report.date).toLocaleDateString('th-TH')}</span>
+                    <span>{new Date(report.date).toLocaleDaring('th-TH')}</span>
                     <div className="flex items-center gap-4">
                       {report.findings > 0 && (
                         <span>{report.findings} การพบ</span>

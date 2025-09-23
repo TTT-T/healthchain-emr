@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen } from '@ing-library/react'
 import { Sidebar } from '../Sidebar'
 
 // Mock the useAuth hook
@@ -6,7 +6,7 @@ jest.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({
     user: {
       id: '1',
-      email: 'test@example.com',
+      email: '@example.com',
       firstName: 'John',
       lastName: 'Doe',
       role: 'patient'

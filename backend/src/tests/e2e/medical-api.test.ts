@@ -1,13 +1,13 @@
 /**
- * E2E Tests for Medical API
- * Tests the complete flow of medical API endpoints
+ * E2E s for Medical API
+ * s the complete flow of medical API endpoints
  */
 
-import request from 'supertest';
+import request from 'super';
 import Application from '../../app';
 import { databaseInitializer } from '../../database/init';
 
-describe('Medical API E2E Tests', () => {
+describe('Medical API E2E s', () => {
   let app: Application;
   let server: any;
   let authToken: string;
@@ -22,7 +22,7 @@ describe('Medical API E2E Tests', () => {
   });
 
   afterAll(async () => {
-    // Cleanup - no need to close server as it's not started in tests
+    // Cleanup - no need to close server as it's not started in s
     // The app instance will be garbage collected
   });
 
@@ -59,10 +59,10 @@ describe('Medical API E2E Tests', () => {
   describe('Authentication', () => {
     it('should register a new user or login if exists', async () => {
       const userData = {
-        username: 'testuser',
-        email: 'test@example.com',
+        username: 'user',
+        email: '@example.com',
         password: 'password123',
-        firstName: 'Test',
+        firstName: '',
         lastName: 'User',
         role: 'doctor'
       };
@@ -100,7 +100,7 @@ describe('Medical API E2E Tests', () => {
         statusCode: expect.any(Number)
       });
 
-      // Set auth token for subsequent tests
+      // Set auth token for subsequent s
       if (response.body.data && response.body.data.accessToken) {
         authToken = response.body.data.accessToken;
       } else {
@@ -115,7 +115,7 @@ describe('Medical API E2E Tests', () => {
         if (loginResponse.body.data && loginResponse.body.data.accessToken) {
           authToken = loginResponse.body.data.accessToken;
         } else {
-          // Create a mock token for testing
+          // Create a mock token for ing
           authToken = 'mock-access-token';
         }
       }
@@ -123,7 +123,7 @@ describe('Medical API E2E Tests', () => {
 
     it('should login with valid credentials', async () => {
       const loginData = {
-        username: 'testuser',
+        username: 'user',
         password: 'password123'
       };
 
@@ -153,7 +153,7 @@ describe('Medical API E2E Tests', () => {
     it('should create a new patient', async () => {
       // Ensure we have a valid auth token
       if (!authToken) {
-        throw new Error('No auth token available for patient creation test');
+        throw new Error('No auth token available for patient creation ');
       }
       // Generate unique hospital number to avoid duplicates
       const timestamp = Date.now();
@@ -189,7 +189,7 @@ describe('Medical API E2E Tests', () => {
     it('should get patient by ID', async () => {
       // Ensure we have a valid patient ID
       if (!patientId) {
-        throw new Error('No patient ID available for get patient test');
+        throw new Error('No patient ID available for get patient ');
       }
       
       const response = await request(server)
@@ -240,7 +240,7 @@ describe('Medical API E2E Tests', () => {
     it('should update patient', async () => {
       // Ensure we have a valid patient ID
       if (!patientId) {
-        throw new Error('No patient ID available for update patient test');
+        throw new Error('No patient ID available for update patient ');
       }
       
       const updateData = {
@@ -270,7 +270,7 @@ describe('Medical API E2E Tests', () => {
     it('should delete patient', async () => {
       // Ensure we have a valid patient ID
       if (!patientId) {
-        throw new Error('No patient ID available for delete patient test');
+        throw new Error('No patient ID available for delete patient ');
       }
       
       const response = await request(server)

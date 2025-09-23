@@ -159,9 +159,9 @@ export const getPatientSummary = asyncHandler(async (req: Request, res: Response
         
         case 'lab_result':
           recordData.data = {
-            testType: record.test_type,
-            testName: record.test_name,
-            testResults: record.test_results ? (typeof record.test_results === 'string' ? JSON.parse(record.test_results) : record.test_results) : [],
+            Type: record._type,
+            Name: record._name,
+            Results: record._results ? (typeof record._results === 'string' ? JSON.parse(record._results) : record._results) : [],
             overallResult: record.overall_result,
             interpretation: record.interpretation,
             recommendations: record.recommendations,
@@ -351,7 +351,7 @@ function getRecordTitle(record: any): string {
     case 'pharmacy_dispensing':
       return 'การจ่ายยา';
     case 'lab_result':
-      return `ผลแลบ - ${record.test_name || 'ไม่ระบุ'}`;
+      return `ผลแลบ - ${record._name || 'ไม่ระบุ'}`;
     case 'appointment':
       return `นัดหมาย - ${record.appointment_type || 'ไม่ระบุ'}`;
     case 'document':
@@ -445,9 +445,9 @@ function getRecordData(record: any): any {
     case 'lab_result':
       return {
         ...baseData,
-        testType: record.test_type,
-        testName: record.test_name,
-        testResults: record.test_results ? (typeof record.test_results === 'string' ? JSON.parse(record.test_results) : record.test_results) : [],
+        Type: record._type,
+        Name: record._name,
+        Results: record._results ? (typeof record._results === 'string' ? JSON.parse(record._results) : record._results) : [],
         overallResult: record.overall_result,
         interpretation: record.interpretation,
         recommendations: record.recommendations

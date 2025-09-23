@@ -711,7 +711,7 @@ export const getPatient = async (req: Request, res: Response) => {
     const user = (req as any).user;
 
     // Check if identifier is UUID (patient ID) or HN
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.(identifier);
     
     let whereClause = '';
     if (isUUID) {

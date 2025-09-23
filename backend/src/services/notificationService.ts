@@ -95,11 +95,6 @@ export class NotificationService {
       const smsMessage = this.generateSMSMessage(data);
       
       // ในระบบจริงจะเชื่อมต่อกับ SMS Gateway
-      console.log('📱 SMS Notification:', {
-        to: data.patientPhone,
-        message: smsMessage
-      });
-      
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
       
@@ -124,11 +119,6 @@ export class NotificationService {
       };
       
       // ในระบบจริงจะเชื่อมต่อกับ Email Service
-      console.log('📧 Email Notification:', {
-        to: data.patientEmail?.substring(0, 3) + '***',
-        subject: emailData.subject
-      });
-      
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
       
@@ -164,8 +154,6 @@ export class NotificationService {
       };
 
       // ในระบบจริงจะใช้ WebSocket หรือ Server-Sent Events
-      console.log('🔔 In-App Notification:', notificationEvent);
-      
       logger.info('In-app notification sent', { 
         patientId: data.patientId,
         notificationType: data.notificationType

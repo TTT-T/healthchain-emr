@@ -23,8 +23,6 @@ class DatabaseSeeder {
    */
   public async seed(): Promise<void> {
     try {
-      console.log('🌱 Starting database seeding...');
-
       // Initialize database connection
       await databaseManager.initialize();
 
@@ -39,9 +37,6 @@ class DatabaseSeeder {
       await this.seedAppointments();
       await this.seedRiskAssessments();
       await this.seedConsentContracts();
-
-      console.log('✅ Database seeding completed successfully!');
-      
     } catch (error) {
       console.error('❌ Database seeding failed:', error);
       throw error;
@@ -52,8 +47,6 @@ class DatabaseSeeder {
    * Seed users
    */
   private async seedUsers(): Promise<void> {
-    console.log('👥 Seeding users...');
-
     const users = [
       {
         username: 'admin',
@@ -147,16 +140,12 @@ class DatabaseSeeder {
         true
       ]);
     }
-
-    console.log(`✅ Seeded ${users.length} users`);
   }
 
   /**
    * Seed patients
    */
   private async seedPatients(): Promise<void> {
-    console.log('🏥 Seeding patients...');
-
     const patients = [
       {
         hospitalNumber: '68-123456',
@@ -274,16 +263,12 @@ class DatabaseSeeder {
         patient.currentMedications
       ]);
     }
-
-    console.log(`✅ Seeded ${patients.length} patients`);
   }
 
   /**
    * Seed departments
    */
   private async seedDepartments(): Promise<void> {
-    console.log('🏢 Seeding departments...');
-
     const departments = [
       { code: 'OPD', name: 'Out Patient Department', type: 'clinical' },
       { code: 'ER', name: 'Emergency Room', type: 'clinical' },
@@ -302,23 +287,18 @@ class DatabaseSeeder {
         ON CONFLICT (department_code) DO NOTHING
       `, [dept.code, dept.name, dept.type]);
     }
-
-    console.log(`✅ Seeded ${departments.length} departments`);
   }
 
   /**
    * Seed visits
    */
   private async seedVisits(): Promise<void> {
-    console.log('📋 Seeding visits...');
-
     // Get patient and doctor IDs
     const patients = await databaseManager.query('SELECT id FROM patients LIMIT 2');
     const doctors = await databaseManager.query('SELECT id FROM users WHERE role = \'doctor\' LIMIT 1');
     const nurses = await databaseManager.query('SELECT id FROM users WHERE role = \'nurse\' LIMIT 1');
 
     if (patients.rows.length === 0 || doctors.rows.length === 0) {
-      console.log('⚠️ No patients or doctors found, skipping visits');
       return;
     }
 
@@ -405,21 +385,16 @@ class DatabaseSeeder {
         visit.assignedNurseId
       ]);
     }
-
-    console.log(`✅ Seeded ${visits.length} visits`);
   }
 
   /**
    * Seed vital signs
    */
   private async seedVitalSigns(): Promise<void> {
-    console.log('📊 Seeding vital signs...');
-
     const visits = await databaseManager.query('SELECT id, patient_id FROM visits LIMIT 2');
     const nurses = await databaseManager.query('SELECT id FROM users WHERE role = \'nurse\' LIMIT 1');
 
     if (visits.rows.length === 0) {
-      console.log('⚠️ No visits found, skipping vital signs');
       return;
     }
 
@@ -489,21 +464,16 @@ class DatabaseSeeder {
         vital.measuredBy
       ]);
     }
-
-    console.log(`✅ Seeded ${vitalSigns.length} vital signs records`);
   }
 
   /**
    * Seed lab orders
    */
   private async seedLabOrders(): Promise<void> {
-    console.log('🧪 Seeding lab orders...');
-
     const visits = await databaseManager.query('SELECT id, patient_id FROM visits LIMIT 1');
     const doctors = await databaseManager.query('SELECT id FROM users WHERE role = \'doctor\' LIMIT 1');
 
     if (visits.rows.length === 0) {
-      console.log('⚠️ No visits found, skipping lab orders');
       return;
     }
 
@@ -512,9 +482,9 @@ class DatabaseSeeder {
         visitId: visits.rows[0].id,
         patientId: visits.rows[0].patient_id,
         orderNumber: 'LAB-2025-001',
-        testCategory: 'blood',
-        testName: 'Complete Blood Count',
-        testCode: 'CBC',
+        Category: 'blood',
+        Name: 'Complete Blood Count',
+        Code: 'CBC',
         clinicalIndication: 'Routine check-up for hypertension',
         specimenType: 'blood',
         priority: 'routine',
@@ -526,8 +496,8 @@ class DatabaseSeeder {
     for (const order of labOrders) {
       await databaseManager.query(`
         INSERT INTO lab_orders (
-          visit_id, patient_id, order_number, test_category, test_name,
-          test_code, clinical_indication, specimen_type, priority, status, ordered_by
+          visit_id, patient_id, order_number, _category, _name,
+          _code, clinical_indication, specimen_type, priority, status, ordered_by
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         ON CONFLICT (order_number) DO NOTHING
@@ -535,9 +505,9 @@ class DatabaseSeeder {
         order.visitId,
         order.patientId,
         order.orderNumber,
-        order.testCategory,
-        order.testName,
-        order.testCode,
+        order.Category,
+        order.Name,
+        order.Code,
         order.clinicalIndication,
         order.specimenType,
         order.priority,
@@ -545,21 +515,16 @@ class DatabaseSeeder {
         order.orderedBy
       ]);
     }
-
-    console.log(`✅ Seeded ${labOrders.length} lab orders`);
   }
 
   /**
    * Seed prescriptions
    */
   private async seedPrescriptions(): Promise<void> {
-    console.log('💊 Seeding prescriptions...');
-
     const visits = await databaseManager.query('SELECT id, patient_id FROM visits LIMIT 1');
     const doctors = await databaseManager.query('SELECT id FROM users WHERE role = \'doctor\' LIMIT 1');
 
     if (visits.rows.length === 0) {
-      console.log('⚠️ No visits found, skipping prescriptions');
       return;
     }
 
@@ -591,21 +556,16 @@ class DatabaseSeeder {
         prescription.status
       ]);
     }
-
-    console.log(`✅ Seeded ${prescriptions.length} prescriptions`);
   }
 
   /**
    * Seed appointments
    */
   private async seedAppointments(): Promise<void> {
-    console.log('📅 Seeding appointments...');
-
     const patients = await databaseManager.query('SELECT id FROM patients LIMIT 2');
     const doctors = await databaseManager.query('SELECT id FROM users WHERE role = \'doctor\' LIMIT 1');
 
     if (patients.rows.length === 0) {
-      console.log('⚠️ No patients found, skipping appointments');
       return;
     }
 
@@ -658,21 +618,16 @@ class DatabaseSeeder {
         appointment.reminderSent
       ]);
     }
-
-    console.log(`✅ Seeded ${appointments.length} appointments`);
   }
 
   /**
    * Seed risk assessments
    */
   private async seedRiskAssessments(): Promise<void> {
-    console.log('🤖 Seeding risk assessments...');
-
     const patients = await databaseManager.query('SELECT id FROM patients LIMIT 2');
     const doctors = await databaseManager.query('SELECT id FROM users WHERE role = \'doctor\' LIMIT 1');
 
     if (patients.rows.length === 0) {
-      console.log('⚠️ No patients found, skipping risk assessments');
       return;
     }
 
@@ -714,21 +669,16 @@ class DatabaseSeeder {
         assessment.assessedBy
       ]);
     }
-
-    console.log(`✅ Seeded ${riskAssessments.length} risk assessments`);
   }
 
   /**
    * Seed consent contracts
    */
   private async seedConsentContracts(): Promise<void> {
-    console.log('🔒 Seeding consent contracts...');
-
     const patients = await databaseManager.query('SELECT id FROM patients LIMIT 1');
     const users = await databaseManager.query('SELECT id FROM users WHERE role = \'admin\' LIMIT 1');
 
     if (patients.rows.length === 0) {
-      console.log('⚠️ No patients found, skipping consent contracts');
       return;
     }
 
@@ -783,8 +733,6 @@ class DatabaseSeeder {
         contract.smartContractRules
       ]);
     }
-
-    console.log(`✅ Seeded ${consentContracts.length} consent contracts`);
   }
 }
 
@@ -793,7 +741,6 @@ if (require.main === module) {
   const seeder = DatabaseSeeder.getInstance();
   seeder.seed()
     .then(() => {
-      console.log('🎉 Database seeding completed successfully!');
       process.exit(0);
     })
     .catch((error) => {

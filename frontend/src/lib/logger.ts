@@ -5,7 +5,7 @@
  * that can be disabled in production
  */
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+type LogLevel = '' | 'info' | 'warn' | 'error';
 
 interface LoggerConfig {
   enabled: boolean;
@@ -19,7 +19,7 @@ class Logger {
   constructor() {
     this.config = {
       enabled: process.env.NODE_ENV !== 'production',
-      level: 'debug',
+      level: '',
       production: process.env.NODE_ENV === 'production'
     };
   }
@@ -28,7 +28,7 @@ class Logger {
     if (!this.config.enabled) return false;
     
     const levels: Record<LogLevel, number> = {
-      debug: 0,
+      : 0,
       info: 1,
       warn: 2,
       error: 3
@@ -55,11 +55,9 @@ class Logger {
     
     try {
       switch (level) {
-        case 'debug':
-          console.debug(prefix, safeMessage, ...safeArgs);
+        case '':
           break;
         case 'info':
-          console.info(prefix, safeMessage, ...safeArgs);
           break;
         case 'warn':
           console.warn(prefix, safeMessage, ...safeArgs);
@@ -70,12 +68,11 @@ class Logger {
       }
     } catch (error) {
       // Fallback if console methods fail
-      console.log(prefix, safeMessage, ...safeArgs);
     }
   }
 
-  debug(message: string, ...args: unknown[]): void {
-    this.formatMessage('debug', message, ...args);
+  (message: string, ...args: unknown[]): void {
+    this.formatMessage('', message, ...args);
   }
 
   info(message: string, ...args: unknown[]): void {
@@ -97,14 +94,14 @@ class Logger {
 
   // API request logging
   apiRequest(method: string, url: string, data?: unknown): void {
-    this.debug(`🌐 API ${method}`, url, data ? { data } : '');
+    this.(`🌐 API ${method}`, url, data ? { data } : '');
   }
 
   apiResponse(status: number, url: string, data?: unknown): void {
     if (status >= 400) {
       this.error(`💥 API Error ${status}`, url, data);
     } else {
-      this.debug(`✅ API ${status}`, url);
+      this.(`✅ API ${status}`, url);
     }
   }
 
@@ -121,13 +118,12 @@ class Logger {
       this.formatMessage('error', message, safeError);
     } catch (logError) {
       // Ultimate fallback - just use console.log
-      console.log('[SAFE ERROR]', message, error);
     }
   }
 
   // Navigation logging
   navigation(from: string, to: string): void {
-    this.debug(`🧭 Navigation: ${from} → ${to}`);
+    this.(`🧭 Navigation: ${from} → ${to}`);
   }
 
   // Configuration
@@ -149,7 +145,7 @@ export const logger = new Logger();
 
 // Export convenience functions for backward compatibility
 export const log = logger.log.bind(logger);
-export const debug = logger.debug.bind(logger);
+export const  = logger..bind(logger);
 export const info = logger.info.bind(logger);
 export const warn = logger.warn.bind(logger);
 export const error = logger.error.bind(logger);

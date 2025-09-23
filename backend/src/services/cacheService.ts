@@ -30,19 +30,15 @@ class CacheService {
    */
   private setupEventListeners(): void {
     this.cache.on('set', (key, value) => {
-      console.log(`💾 Cache SET: ${key}`);
     });
 
     this.cache.on('del', (key, value) => {
-      console.log(`🗑️ Cache DEL: ${key}`);
     });
 
     this.cache.on('expired', (key, value) => {
-      console.log(`⏰ Cache EXPIRED: ${key}`);
     });
 
     this.cache.on('flush', () => {
-      console.log('🧹 Cache FLUSHED');
     });
   }
 
@@ -332,11 +328,8 @@ class CacheService {
    * Warm up cache with frequently accessed data
    */
   public async warmUpCache(): Promise<void> {
-    console.log('🔥 Warming up cache...');
-    
     // This would typically load frequently accessed data
     // For now, we'll just log that warming up is complete
-    console.log('✅ Cache warm-up complete');
   }
 }
 

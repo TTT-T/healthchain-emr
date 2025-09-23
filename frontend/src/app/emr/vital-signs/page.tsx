@@ -144,23 +144,23 @@ export default function VitalSigns() {
     setSuccess(null);
     
     try {
-      logger.debug(`🔍 Searching for patient by ${searchType}:`, searchQuery);
+      logger.(`🔍 Searching for patient by ${searchType}:`, searchQuery);
       
       // ค้นหาผู้ป่วยจาก API
       const response = await PatientService.searchPatients(searchQuery, searchType);
       
-      logger.debug('🔍 Search response:', response);
-      logger.debug('🔍 Response data:', response.data);
-      logger.debug('🔍 Data length:', response.data?.length);
-      logger.debug('🔍 Search type:', searchType);
-      logger.debug('🔍 Search query:', searchQuery);
+      logger.('🔍 Search response:', response);
+      logger.('🔍 Response data:', response.data);
+      logger.('🔍 Data length:', response.data?.length);
+      logger.('🔍 Search type:', searchType);
+      logger.('🔍 Search query:', searchQuery);
       
       if (response.data && response.data.length > 0) {
         const patient = response.data[0];
         
-        // Debug: Log the raw patient data
-        logger.debug('🔍 Raw patient data from API:', patient);
-        logger.debug('🔍 Patient ID from API:', patient.id);
+        // : Log the raw patient data
+        logger.('🔍 Raw patient data from API:', patient);
+        logger.('🔍 Patient ID from API:', patient.id);
         
         // Map ข้อมูลผู้ป่วยจาก API response - ใช้ direct fields (flat structure)
         const mappedPatient: Patient = {
@@ -186,42 +186,11 @@ export default function VitalSigns() {
           visitTime: patient.visit_info?.visit_time || patient.visit_time || patient.created_at?.split('T')[1]?.split('.')[0] || new Date().toTimeString().split(' ')[0]
         };
 
-        // Debug logging for patient data
-        console.log('🔍 RAW PATIENT DATA FROM API:', patient);
-        console.log('🔍 PATIENT VISIT INFO:', patient.visit_info);
-        console.log('🔍 VISIT DATE/TIME MAPPING:', {
-          visitDate: patient.visit_info?.visit_date || patient.visit_date || patient.created_at?.split('T')[0],
-          visitTime: patient.visit_info?.visit_time || patient.visit_time || patient.created_at?.split('T')[1]?.split('.')[0],
-          created_at: patient.created_at,
-          visit_info: patient.visit_info,
-          raw_visit_date: patient.visit_date,
-          raw_visit_time: patient.visit_time,
-          raw_created_at: patient.created_at
-        });
-        
-        // Debug the actual time values being used
+        //  logging for patient data
+        //  the actual time values being used
         const actualVisitDate = patient.visit_info?.visit_date || patient.visit_date || patient.created_at?.split('T')[0];
         const actualVisitTime = patient.visit_info?.visit_time || patient.visit_time || patient.created_at?.split('T')[1]?.split('.')[0];
-        console.log('🔍 ACTUAL TIME VALUES:', {
-          actualVisitDate,
-          actualVisitTime,
-          isVisitDateValid: !!actualVisitDate,
-          isVisitTimeValid: !!actualVisitTime
-        });
-        console.log('🔍 PATIENT PERSONAL INFO:', patient.personal_info);
-        console.log('🔍 HAS VISIT INFO?', !!patient.visit_info);
-        console.log('🔍 VISIT INFO KEYS:', patient.visit_info ? Object.keys(patient.visit_info) : 'No visit_info');
-        console.log('🔍 DIRECT VISIT FIELDS:', {
-          visit_number: patient.visit_number,
-          visit_type: patient.visit_type,
-          visit_date: patient.visit_date,
-          visit_time: patient.visit_time,
-          doctor_name: patient.doctor_name
-        });
-        console.log('🔍 ALL PATIENT KEYS:', Object.keys(patient));
-        console.log('🔍 PATIENT VALUES:', Object.values(patient));
-        
-        logger.debug('🔍 Patient data mapping:', {
+        logger.('🔍 Patient data mapping:', {
           originalPatient: patient,
           mappedPatient: mappedPatient,
           birthDate: patient.birth_date,
@@ -244,9 +213,9 @@ export default function VitalSigns() {
 
         setSelectedPatient(mappedPatient);
         setSuccess('พบข้อมูลผู้ป่วยแล้ว');
-        logger.debug('✅ Patient found:', mappedPatient);
-        logger.debug('🔍 Raw patient data:', patient);
-        logger.debug('🔍 Mapped patient details:', {
+        logger.('✅ Patient found:', mappedPatient);
+        logger.('🔍 Raw patient data:', patient);
+        logger.('🔍 Mapped patient details:', {
           hn: mappedPatient.hn,
           thaiName: mappedPatient.thaiName,
           birthDate: mappedPatient.birthDate,
@@ -257,7 +226,7 @@ export default function VitalSigns() {
         });
       } else {
         // ถ้าไม่พบข้อมูลในคิว ลองค้นหาผู้ป่วยในระบบโดยตรง
-        logger.debug('🔍 No patient in queue, searching in system...');
+        logger.('🔍 No patient in queue, searching in system...');
         
         try {
           const systemResponse = await PatientService.searchPatients(searchQuery, 'hn');
@@ -265,9 +234,9 @@ export default function VitalSigns() {
           if (systemResponse.data && systemResponse.data.length > 0) {
             const patient = systemResponse.data[0];
             
-            // Debug: Log the fallback patient data
-            logger.debug('🔍 Fallback patient data from API:', patient);
-            logger.debug('🔍 Fallback Patient ID from API:', patient.id);
+            // : Log the fallback patient data
+            logger.('🔍 Fallback patient data from API:', patient);
+            logger.('🔍 Fallback Patient ID from API:', patient.id);
             
             // Map ข้อมูลผู้ป่วยจากระบบ (ใช้ข้อมูลจริงจาก API)
             const mappedPatient: Patient = {
@@ -293,8 +262,8 @@ export default function VitalSigns() {
               visitTime: patient.visit_info?.visit_time || patient.visit_time || patient.created_at?.split('T')[1]?.split('.')[0] || getThailandTime().toTimeString().split(' ')[0]
             };
 
-            // Debug logging for fallback search
-            logger.debug('🔍 Fallback search patient data mapping:', {
+            //  logging for fallback search
+            logger.('🔍 Fallback search patient data mapping:', {
               originalPatient: patient,
               mappedPatient: mappedPatient,
               birthDate: patient.birth_date,
@@ -307,17 +276,10 @@ export default function VitalSigns() {
                 birth_day: patient.birth_day
               }
             });
-            console.log('🔍 FALLBACK VISIT DATE/TIME MAPPING:', {
-              visitDate: patient.visit_info?.visit_date || patient.visit_date || patient.created_at?.split('T')[0],
-              visitTime: patient.visit_info?.visit_time || patient.visit_time || patient.created_at?.split('T')[1]?.split('.')[0],
-              created_at: patient.created_at,
-              visit_info: patient.visit_info
-            });
-
             setSelectedPatient(mappedPatient);
             setSuccess('พบข้อมูลผู้ป่วยในระบบ (ไม่มีข้อมูลคิว)');
-            logger.debug('✅ Patient found in system:', mappedPatient);
-            logger.debug('🔍 Fallback mapped patient details:', {
+            logger.('✅ Patient found in system:', mappedPatient);
+            logger.('🔍 Fallback mapped patient details:', {
               hn: mappedPatient.hn,
               thaiName: mappedPatient.thaiName,
               birthDate: mappedPatient.birthDate,
@@ -404,7 +366,7 @@ export default function VitalSigns() {
       
       // ลองหา visit ที่มีอยู่ก่อน
       try {
-        logger.debug('🔍 Searching for existing visit for patient:', {
+        logger.('🔍 Searching for existing visit for patient:', {
           id: selectedPatient.id,
           hn: selectedPatient.hn,
           thaiName: selectedPatient.thaiName
@@ -421,15 +383,15 @@ export default function VitalSigns() {
           
           if (activeVisit) {
             visit = activeVisit;
-            logger.debug('🔍 Found existing active visit:', visit);
+            logger.('🔍 Found existing active visit:', visit);
           } else {
             // ใช้ visit ล่าสุด
             visit = visitsResponse.data[0];
-            logger.debug('🔍 Using latest visit:', visit);
+            logger.('🔍 Using la visit:', visit);
           }
         } else {
           // ไม่พบ visit ที่มีอยู่ สร้างใหม่
-          logger.debug('🔍 No existing visit found, creating new one...');
+          logger.('🔍 No existing visit found, creating new one...');
           
           const visitData = {
             patientId: selectedPatient.id,
@@ -446,14 +408,14 @@ export default function VitalSigns() {
           
           // Validate UUID format
           const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-          if (!uuidRegex.test(selectedPatient.id)) {
+          if (!uuidRegex.(selectedPatient.id)) {
             throw new Error(`Patient ID ไม่ถูกต้อง: ${selectedPatient.id}`);
           }
           
           // สร้าง visit ใหม่
           const visitResponse = await VisitService.createVisit(visitData);
           
-          logger.debug('🔍 Visit creation response:', visitResponse);
+          logger.('🔍 Visit creation response:', visitResponse);
           
           if (visitResponse.statusCode !== 200 && visitResponse.statusCode !== 201 || !visitResponse.data) {
             throw new Error(`ไม่สามารถสร้าง visit ได้: ${visitResponse.error?.message || 'Unknown error'}`);
@@ -461,7 +423,7 @@ export default function VitalSigns() {
           
           visit = visitResponse.data;
         }
-        logger.debug('🔍 Visit data after creation:', visit);
+        logger.('🔍 Visit data after creation:', visit);
       } catch (createError: any) {
         logger.error('❌ Error creating visit:', createError);
         
@@ -531,10 +493,10 @@ export default function VitalSigns() {
       };
       
       // บันทึก vital signs ใช้ endpoint ที่ถูกต้อง
-      logger.debug('🔍 Creating vital signs with data:', vitalSignsData);
+      logger.('🔍 Creating vital signs with data:', vitalSignsData);
       const vitalResponse = await VitalSignsService.createVitalSigns(vitalSignsData);
       
-      logger.debug('🔍 Vital signs response:', {
+      logger.('🔍 Vital signs response:', {
         statusCode: vitalResponse.statusCode,
         hasData: !!vitalResponse.data,
         error: vitalResponse.error
@@ -588,7 +550,7 @@ ${visit.visitNumber ? '🔄 ใช้ Visit ที่มีอยู่แล้
           measuredBy: "พยาบาลสมหญิง"
         });
         
-        logger.debug('Vital signs saved:', vitalResponse.data);
+        logger.('Vital signs saved:', vitalResponse.data);
       } else {
         logger.error('❌ Vital signs creation failed:', {
           statusCode: vitalResponse.statusCode,

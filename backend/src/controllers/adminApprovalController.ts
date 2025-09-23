@@ -194,7 +194,6 @@ export const approveUser = async (req: Request, res: Response) => {
         user.role,
         approvalNotes
       );
-      console.log('📧 Approval notification sent to:', user.email);
     } catch (emailError) {
       console.error('❌ Failed to send approval notification:', emailError);
       // Don't fail the approval if email fails
@@ -306,7 +305,6 @@ export const rejectUser = async (req: Request, res: Response) => {
         user.role,
         rejectionReason
       );
-      console.log('📧 Rejection notification sent to:', user.email);
     } catch (emailError) {
       console.error('❌ Failed to send rejection notification:', emailError);
       // Don't fail the rejection if email fails

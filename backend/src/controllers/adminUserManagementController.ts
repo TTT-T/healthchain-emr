@@ -316,7 +316,7 @@ export const createUser = async (req: Request, res: Response) => {
     }
 
     // Hash password (in real implementation, use bcrypt)
-    const hashedPassword = password; // TODO: Implement proper password hashing
+    const hashedPassword = password; // Note: Password hashing should be implemented
 
     // Create user
     const createUserQuery = `

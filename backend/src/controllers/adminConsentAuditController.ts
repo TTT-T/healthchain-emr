@@ -279,7 +279,7 @@ export class AdminConsentAuditController {
       `);
 
       const monthlyTrends = trends.rows.map(row => ({
-        month: new Date(row.month).toLocaleDateString('th-TH', { 
+        month: new Date(row.month).toLocaleDaring('th-TH', { 
           month: 'short', 
           year: 'numeric' 
         }),
@@ -518,7 +518,7 @@ export class AdminConsentAuditController {
     `);
 
     return trends.rows.map(row => ({
-      month: new Date(row.month).toLocaleDateString('th-TH', { 
+      month: new Date(row.month).toLocaleDaring('th-TH', { 
         month: 'short', 
         year: 'numeric' 
       }),

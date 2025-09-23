@@ -75,9 +75,7 @@ export default function ConsentRequests() {
             ? { ...request, request_status: "approved" }
             : request
         )
-      );
-      
-      // TODO: Call API to approve request
+      );
       // await apiClient.approveConsentRequest(requestId);
     } catch (err) {
       logger.error("Error approving consent request:", err);
@@ -92,9 +90,7 @@ export default function ConsentRequests() {
             ? { ...request, request_status: "rejected" }
             : request
         )
-      );
-      
-      // TODO: Call API to reject request
+      );
       // await apiClient.rejectConsentRequest(requestId);
     } catch (err) {
       logger.error("Error rejecting consent request:", err);
@@ -345,8 +341,8 @@ export default function ConsentRequests() {
                             <p><span className="font-medium text-gray-700">ระดับความลับ:</span> <span className={`font-medium ${getSensitivityColor(request.data_sensitivity)}`}>{request.data_sensitivity}</span></p>
                           </div>
                           <div>
-                            <p><span className="font-medium text-gray-700">วันที่ขอ:</span> <span className="text-gray-900">{new Date(request.requested_date).toLocaleDateString('th-TH')}</span></p>
-                            <p><span className="font-medium text-gray-700">กำหนดตอบกลับ:</span> <span className="text-gray-900">{new Date(request.response_deadline).toLocaleDateString('th-TH')}</span></p>
+                            <p><span className="font-medium text-gray-700">วันที่ขอ:</span> <span className="text-gray-900">{new Date(request.requested_date).toLocaleDaring('th-TH')}</span></p>
+                            <p><span className="font-medium text-gray-700">กำหนดตอบกลับ:</span> <span className="text-gray-900">{new Date(request.response_deadline).toLocaleDaring('th-TH')}</span></p>
                             <p><span className="font-medium text-gray-700">ระยะเวลาเก็บ:</span> <span className="text-gray-900">{request.retention_period}</span></p>
                           </div>
                         </div>

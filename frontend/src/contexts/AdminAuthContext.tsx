@@ -93,8 +93,6 @@ export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        console.log('🔍 AdminAuthContext: Checking session...');
-        
         // Check for access token in localStorage or cookies (same as normal user login)
         const localStorageToken = localStorage.getItem('access_token');
         const cookieToken = document.cookie
@@ -103,21 +101,10 @@ export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
           ?.split('=')[1];
         
         const token = localStorageToken || cookieToken;
-
-        console.log('🔍 AdminAuthContext: localStorage access_token:', !!localStorageToken);
-        console.log('🔍 AdminAuthContext: cookie access_token:', !!cookieToken);
-        console.log('🔍 AdminAuthContext: final token:', !!token);
-        console.log('🔍 AdminAuthContext: Token value:', token ? token.substring(0, 20) + '...' : 'null');
-        console.log('🔍 AdminAuthContext: localStorage keys:', Object.keys(localStorage));
-        console.log('🔍 AdminAuthContext: document.cookie:', document.cookie);
-
         if (token) {
-          console.log('✅ AdminAuthContext: Setting admin user from access_token');
           // Decode JWT token to get user info
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
-            console.log('🔍 AdminAuthContext: JWT payload:', payload);
-            
             // Only set admin user if role is admin
             if (payload.role === 'admin') {
               setUser({
@@ -127,20 +114,16 @@ export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
                 permissions: ['admin'],
                 organizationId: 'hospital',
               });
-              console.log('✅ AdminAuthContext: Admin user set from JWT');
             } else {
-              console.log('❌ AdminAuthContext: Token found but user is not admin, role:', payload.role);
             }
           } catch (error) {
             console.error('❌ AdminAuthContext: Error decoding JWT:', error);
           }
         } else {
-          console.log('❌ AdminAuthContext: No access_token found');
         }
         
         // Always set loading to false after session check
         setIsLoading(false);
-        console.log('🔍 AdminAuthContext: Session check completed, isLoading set to false');
       } catch (error) {
         logger.error('Session check error:', error);
         setIsLoading(false);

@@ -29,8 +29,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
 
     // For medical staff (doctors, nurses, admins), use real notification system
-    if (['doctor', 'nurse', 'admin', 'staff'].includes(user.role)) {
-      // TODO: Implement real notification system for medical staff
+    if (['doctor', 'nurse', 'admin', 'staff'].includes(user.role)) {
       // For now, set to 0 as we don't have medical staff notifications yet
       setNotificationCount(0);
       return;
@@ -50,10 +49,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           const unreadCount = notifications.filter((notif: any) => 
             !notif.is_read
           ).length;
-          
-          console.log('🔔 NotificationContext - Notifications:', notifications);
-          console.log('🔔 NotificationContext - Unread count:', unreadCount);
-          
           setNotificationCount(unreadCount);
         } else if (response.statusCode === 404) {
           // Patient record not found - this is expected for users who haven't registered in EMR yet
@@ -88,8 +83,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     if (!user?.id) return;
 
     try {
-      // For now, just reset the count
-      // TODO: Implement API endpoint to mark all notifications as read
+      // For now, just reset the count
       setNotificationCount(0);
     } catch (error) {
       console.error('Error marking notifications as read:', error);

@@ -78,10 +78,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           try {
             // Only try to get user profile if we're not on setup-profile page
             if (typeof window !== 'undefined' && !window.location.pathname.includes('/setup-profile')) {
-              console.log('🔍 AuthContext - Refreshing user data on init');
               await refreshUser();
             } else {
-              console.log('🔍 AuthContext - Skipping user refresh on setup-profile page');
               // Don't set user to null on setup-profile page to prevent redirect loops
               setUser(null);
             }
@@ -90,7 +88,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const apiError = error as { statusCode?: number; message?: string };
             if (apiError?.statusCode === 401 || apiError?.message?.includes('Authentication')) {
               // Auth error - dispatch token expiry event instead of clearing immediately
-              console.log('🔍 AuthContext - Auth error, dispatching token expiry event');
               if (typeof window !== 'undefined') {
                 window.dispatchEvent(new CustomEvent('tokenExpired', {
                   detail: {
@@ -101,14 +98,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
               }
             } else {
               // Network or other error - keep token but don't set user
-              console.log('🔍 AuthContext - Network error, keeping token');
               setUser(null);
               setError('Unable to connect to server. Please check your connection.');
             }
           }
         } else {
           // Ensure everything is cleared if no token
-          console.log('🔍 AuthContext - No token, clearing user data');
           setUser(null);
           setError(null);
         }
@@ -149,7 +144,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Listen for refresh user data events
     const handleRefreshUserData = async () => {
-      console.log('🔍 AuthContext - Refreshing user data');
       try {
         await refreshUser();
       } catch (error) {
@@ -308,33 +302,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const token = apiClient.getAccessToken();
       if (!token) {
-        console.log('🔍 AuthContext - No token for refresh, clearing user');
         setUser(null);
         return;
       }
-      
-      console.log('🔍 AuthContext - Refreshing user data from API');
       // Get fresh user data from API
       const response = await apiClient.getProfile();
       if (response.statusCode === 200 && response.data) {
-        console.log('🔍 AuthContext - User data refreshed successfully');
         setUser(response.data);
         setError(null);
       } else {
-        console.log('🔍 AuthContext - Failed to load user profile');
         setUser(null);
         setError('Failed to load user profile');
       }
       
     } catch (error) {
       logger.error('Refresh user error:', error);
-      console.log('🔍 AuthContext - Error refreshing user:', error);
-      
       // Check if it's an auth error
       const apiError = error as { statusCode?: number; message?: string };
       if (apiError?.statusCode === 401 || apiError?.message?.includes('Authentication')) {
         // Dispatch token expiry event instead of setting error
-        console.log('🔍 AuthContext - Auth error during refresh, dispatching token expiry event');
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('tokenExpired', {
             detail: {

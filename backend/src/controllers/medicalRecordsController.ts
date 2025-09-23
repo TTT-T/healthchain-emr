@@ -143,8 +143,8 @@ export const getPatientRecords = async (req: Request, res: Response) => {
         SELECT 
           lo.id as lab_order_id,
           lo.order_number,
-          lo.test_name,
-          lo.test_category,
+          lo._name,
+          lo._category,
           lo.status as order_status,
           lr.id as result_id,
           lr.result_value,
@@ -345,13 +345,13 @@ export const createPatientRecord = async (req: Request, res: Response) => {
 
           await databaseManager.query(`
             INSERT INTO lab_orders (
-              id, visit_id, patient_id, order_number, test_category, test_name,
-              test_code, clinical_indication, specimen_type, priority, status, ordered_by
+              id, visit_id, patient_id, order_number, _category, _name,
+              _code, clinical_indication, specimen_type, priority, status, ordered_by
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'ordered', $11)
           `, [
-            labOrderId, visitId, patientId, orderNumber, labOrder.test_category,
-            labOrder.test_name, labOrder.test_code, labOrder.clinical_indication,
+            labOrderId, visitId, patientId, orderNumber, labOrder._category,
+            labOrder._name, labOrder._code, labOrder.clinical_indication,
             labOrder.specimen_type, labOrder.priority || 'routine', userId
           ]);
         }

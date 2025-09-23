@@ -60,15 +60,15 @@ const mockTokens: Token[] = [
   },
   {
     id: '4',
-    name: 'Test Environment',
-    token: 'hc_sk_test_testtokenhere...',
+    name: ' Environment',
+    token: 'hc_sk__tokenhere...',
     type: 'api',
     status: 'revoked',
     createdAt: '2024-12-10 16:45:00',
     expiresAt: '2025-01-10 16:45:00',
     lastUsed: '2024-12-15 11:20:30',
     usageCount: 89,
-    permissions: ['read:test', 'write:test'],
+    permissions: ['read:', 'write:'],
     createdBy: 'Developer'
   },
   {
@@ -158,7 +158,7 @@ export default function TokenMonitorPage() {
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text);
-        logger.debug('Token copied to clipboard');
+        logger.('Token copied to clipboard');
       } else {
         // Fallback for non-secure contexts
         const textArea = document.createElement("textarea");
@@ -171,7 +171,7 @@ export default function TokenMonitorPage() {
         textArea.select();
         document.execCommand('copy');
         textArea.remove();
-        logger.debug('Token copied to clipboard (fallback method)');
+        logger.('Token copied to clipboard (fallback method)');
       }
     } catch (error) {
       logger.error('Failed to copy to clipboard:', error);

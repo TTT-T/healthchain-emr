@@ -294,7 +294,6 @@ export default function ExternalRequestersHomePage() {
           </div>
         </div>
 
-
         {/* Recent Requests */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
@@ -338,7 +337,7 @@ export default function ExternalRequestersHomePage() {
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-sm text-slate-600">
-                          {new Date(request.requestedAt).toLocaleDateString('th-TH')}
+                          {new Date(request.requestedAt).toLocaleDaring('th-TH')}
                         </span>
                       </td>
                       <td className="px-6 py-4">

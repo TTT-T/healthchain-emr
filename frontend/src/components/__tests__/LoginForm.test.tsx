@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen, waitFor } from '@ing-library/react'
+import userEvent from '@ing-library/user-event'
 import { LoginForm } from '../../app/login/LoginForm'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -65,13 +65,13 @@ describe('LoginForm Component', () => {
     const passwordInput = screen.getByLabelText(/password/i)
     const submitButton = screen.getByRole('button', { name: /login/i })
     
-    await user.type(emailInput, 'test@example.com')
+    await user.type(emailInput, '@example.com')
     await user.type(passwordInput, 'password123')
     await user.click(submitButton)
     
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalledWith({
-        email: 'test@example.com',
+        email: '@example.com',
         password: 'password123'
       })
     })

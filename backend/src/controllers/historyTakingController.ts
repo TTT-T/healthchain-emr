@@ -146,7 +146,7 @@ export const createHistoryTaking = asyncHandler(async (req: Request, res: Respon
       recordedTime || getThailandTime().toISOString()
     ];
 
-    // Log all received data for debugging
+    // Log all received data for ging
     logger.info('History Taking Data Received:', {
       patientId,
       visitId,
@@ -210,11 +210,6 @@ export const createHistoryTaking = asyncHandler(async (req: Request, res: Respon
             recordedTime: historyRecord.recorded_time,
             recordedBy: historyRecord.recorded_by
           }
-        });
-        
-        console.log('✅ History taking notification sent successfully', {
-          patientHn: patientDetail.hospital_number,
-          historyRecordId: historyRecord.id
         });
       }
     } catch (notificationError) {

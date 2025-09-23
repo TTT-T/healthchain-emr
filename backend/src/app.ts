@@ -19,7 +19,7 @@ import adminRoutes from './routes/admin';
 import securityRoutes from './routes/security';
 import externalRequestersRoutes from './routes/external-requesters';
 import healthRoutes from './routes/health';
-import emailTestRoutes from './routes/email-test';
+import emailRoutes from './routes/email-';
 import patientRegistrationRoutes from './routes/patientRegistration';
 
 // Middleware
@@ -162,7 +162,7 @@ class Application {
     // Profile routes are now included in /api/auth
     this.app.use('/api/security', securityRoutes);   // Security Settings     // Profile management
     this.app.use('/api/external-requesters', externalRequestersRoutes); // External Requesters
-    this.app.use('/api/email-test', emailTestRoutes); // Email Testing
+    this.app.use('/api/email-', emailRoutes); // Email ing
     this.app.use('/api/patient-registration', patientRegistrationRoutes); // Patient EMR Registration
 
     // 404 handler
@@ -192,30 +192,11 @@ class Application {
   public async start(): Promise<void> {
     try {
       // Initialize database system
-      console.log('🚀 Initializing database system...');
       await databaseInitializer.initialize();
-      console.log('✅ Database system initialized successfully');
-
       // Start server
       const port = config.server.port || 3001;
       
       this.app.listen(port, () => {
-        console.log(`
-🚀 EMR Backend Server Started Successfully!
-📍 Port: ${port}
-🌍 Environment: ${config.server.nodeEnv}
-🔧 API Base URL: http://localhost:${port}/api
-
-📋 Available Services:
-  1. 🏥 EMR Web Application - /api/medical
-  2. 🤖 AI Risk Assessment - /api/ai  
-  3. 📝 Consent Engine - /api/consent
-  4. 👤 Authentication - /api/auth
-  5. ⚙️  Admin Panel - /api/admin
-  6. 🌐 External Requesters - /api/external-requesters
-
-🔍 Health Check: http://localhost:${port}/health
-        `);
       });
 
     } catch (error) {
@@ -228,12 +209,8 @@ class Application {
    * Graceful shutdown
    */
   public async shutdown(): Promise<void> {
-    console.log('🔄 Shutting down server...');
-    
     try {
       // Database connections will be closed automatically by the pool
-      console.log('✅ Server shutdown completed');
-      
       process.exit(0);
     } catch (error) {
       console.error('❌ Error during shutdown:', error);

@@ -9,7 +9,7 @@ import { PatientDocumentService } from '@/services/patientDocumentService';
 import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
 
-interface TestResult {
+interface Result {
   parameter: string;
   value: string;
   unit: string;
@@ -85,15 +85,15 @@ export default function LabResult() {
   };
 
   const [labResultData, setLabResultData] = useState({
-    testType: '',
-    testName: '',
-    testResults: [] as TestResult[],
+    Type: '',
+    Name: '',
+    Results: [] as Result[],
     overallResult: 'normal',
     interpretation: '',
     recommendations: '',
     attachments: [] as any[],
     notes: '',
-    testedTime: new Date().toISOString().slice(0, 16)
+    edTime: new Date().toISOString().slice(0, 16)
   });
 
   const handleSearch = async () => {
@@ -122,8 +122,8 @@ export default function LabResult() {
     }
   };
 
-  const addTestResult = () => {
-    const newTestResult = {
+  const addResult = () => {
+    const newResult = {
       parameter: '',
       value: '',
       unit: '',
@@ -134,25 +134,25 @@ export default function LabResult() {
     
     setLabResultData(prev => ({
       ...prev,
-      testResults: [...prev.testResults, newTestResult]
+      Results: [...prev.Results, newResult]
     }));
   };
 
-  const removeTestResult = (index: number) => {
+  const removeResult = (index: number) => {
     setLabResultData(prev => ({
       ...prev,
-      testResults: prev.testResults.filter((_, i) => i !== index)
+      Results: prev.Results.filter((_, i) => i !== index)
     }));
   };
 
-  const updateTestResult = (index: number, field: string, value: any) => {
+  const updateResult = (index: number, field: string, value: any) => {
     setLabResultData(prev => {
-      const updatedTestResults = [...prev.testResults];
-      updatedTestResults[index] = { ...updatedTestResults[index], [field]: value };
+      const updatedResults = [...prev.Results];
+      updatedResults[index] = { ...updatedResults[index], [field]: value };
       
       return {
         ...prev,
-        testResults: updatedTestResults
+        Results: updatedResults
       };
     });
   };
@@ -188,7 +188,7 @@ export default function LabResult() {
     // Validate data
     const validation = LabResultService.validateLabResultData({
       ...labResultData,
-      testedBy: user?.id || 'system'
+      edBy: user?.id || 'system'
     });
     
     if (!validation.isValid) {
@@ -244,10 +244,10 @@ export default function LabResult() {
         patientEmail: patient.email || '',
         recordType: 'lab_result',
         recordId: labResultRecord.id,
-        chiefComplaint: `ผลแลบ: ${labResultRecord.testName}`,
-        recordedBy: labResultRecord.testedBy,
-        recordedTime: labResultRecord.testedTime,
-        message: `มีผลแลบใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${labResultRecord.testedBy}`
+        chiefComplaint: `ผลแลบ: ${labResultRecord.Name}`,
+        recordedBy: labResultRecord.edBy,
+        recordedTime: labResultRecord.edTime,
+        message: `มีผลแลบใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${labResultRecord.edBy}`
       };
 
       await NotificationService.notifyPatientRecordUpdate(notificationData);
@@ -384,7 +384,7 @@ export default function LabResult() {
           {/* Lab Result Form */}
           {selectedPatient && (
             <div className="space-y-6">
-              {/* Test Info */}
+              {/*  Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -392,8 +392,8 @@ export default function LabResult() {
                   </label>
                   <input
                     type="text"
-                    value={labResultData.testType}
-                    onChange={(e) => setLabResultData(prev => ({ ...prev, testType: e.target.value }))}
+                    value={labResultData.Type}
+                    onChange={(e) => setLabResultData(prev => ({ ...prev, Type: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="เช่น ตรวจเลือด, ตรวจปัสสาวะ"
                   />
@@ -404,20 +404,20 @@ export default function LabResult() {
                   </label>
                   <input
                     type="text"
-                    value={labResultData.testName}
-                    onChange={(e) => setLabResultData(prev => ({ ...prev, testName: e.target.value }))}
+                    value={labResultData.Name}
+                    onChange={(e) => setLabResultData(prev => ({ ...prev, Name: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="เช่น CBC, Urinalysis"
                   />
                 </div>
               </div>
 
-              {/* Test Results */}
+              {/*  Results */}
               <div>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">ผลการตรวจ</h3>
                   <button
-                    onClick={addTestResult}
+                    onClick={addResult}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
                   >
                     <Plus className="h-4 w-4" />
@@ -425,12 +425,12 @@ export default function LabResult() {
                   </button>
                 </div>
 
-                {labResultData.testResults.map((testResult, index) => (
+                {labResultData.Results.map((Result, index) => (
                   <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4">
                     <div className="flex justify-between items-center mb-4">
                       <h4 className="font-medium text-gray-900">ผลการตรวจ {index + 1}</h4>
                       <button
-                        onClick={() => removeTestResult(index)}
+                        onClick={() => removeResult(index)}
                         className="text-red-600 hover:text-red-800"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -442,8 +442,8 @@ export default function LabResult() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">พารามิเตอร์ *</label>
                         <input
                           type="text"
-                          value={testResult.parameter}
-                          onChange={(e) => updateTestResult(index, 'parameter', e.target.value)}
+                          value={Result.parameter}
+                          onChange={(e) => updateResult(index, 'parameter', e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           placeholder="เช่น Hemoglobin, Glucose"
                         />
@@ -453,8 +453,8 @@ export default function LabResult() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">ค่า *</label>
                         <input
                           type="text"
-                          value={testResult.value}
-                          onChange={(e) => updateTestResult(index, 'value', e.target.value)}
+                          value={Result.value}
+                          onChange={(e) => updateResult(index, 'value', e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           placeholder="เช่น 12.5, 95"
                         />
@@ -464,8 +464,8 @@ export default function LabResult() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">หน่วย</label>
                         <input
                           type="text"
-                          value={testResult.unit}
-                          onChange={(e) => updateTestResult(index, 'unit', e.target.value)}
+                          value={Result.unit}
+                          onChange={(e) => updateResult(index, 'unit', e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           placeholder="เช่น g/dL, mg/dL"
                         />
@@ -475,8 +475,8 @@ export default function LabResult() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">ค่าปกติ</label>
                         <input
                           type="text"
-                          value={testResult.normalRange}
-                          onChange={(e) => updateTestResult(index, 'normalRange', e.target.value)}
+                          value={Result.normalRange}
+                          onChange={(e) => updateResult(index, 'normalRange', e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           placeholder="เช่น 12-16 g/dL"
                         />
@@ -485,8 +485,8 @@ export default function LabResult() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">สถานะ *</label>
                         <select
-                          value={testResult.status}
-                          onChange={(e) => updateTestResult(index, 'status', e.target.value)}
+                          value={Result.status}
+                          onChange={(e) => updateResult(index, 'status', e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         >
                           <option value="normal">ปกติ</option>
@@ -499,8 +499,8 @@ export default function LabResult() {
                     <div className="mt-4">
                       <label className="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
                       <textarea
-                        value={testResult.notes}
-                        onChange={(e) => updateTestResult(index, 'notes', e.target.value)}
+                        value={Result.notes}
+                        onChange={(e) => updateResult(index, 'notes', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         rows={2}
                         placeholder="กรอกหมายเหตุเพิ่มเติม"
@@ -613,7 +613,7 @@ export default function LabResult() {
               <div className="flex justify-end">
                 <button
                   onClick={handleSubmit}
-                  disabled={isSubmitting || !labResultData.testType || !labResultData.testName || labResultData.testResults.length === 0}
+                  disabled={isSubmitting || !labResultData.Type || !labResultData.Name || labResultData.Results.length === 0}
                   className="px-8 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   <CheckCircle className="h-5 w-5" />

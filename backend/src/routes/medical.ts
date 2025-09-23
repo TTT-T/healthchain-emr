@@ -100,7 +100,7 @@ import {
   getQueueHistoryById,
   getQueueStatistics,
   downloadQueueReport,
-  generateStatisticsReport
+  generaatisticsReport
 } from '../controllers/queueHistoryController';
 
 // Patient Portal Controllers
@@ -317,7 +317,7 @@ router.get('/patients/:patientId/timeline', authorize(['doctor', 'nurse', 'admin
 // Queue History routes
 router.get('/queue-history', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAllQueueHistory));
 router.get('/queue-history/statistics', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getQueueStatistics));
-router.get('/queue-history/statistics/report', authorize(['doctor', 'nurse', 'admin']), asyncHandler(generateStatisticsReport));
+router.get('/queue-history/statistics/report', authorize(['doctor', 'nurse', 'admin']), asyncHandler(generaatisticsReport));
 router.get('/queue-history/patients/:patientId', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getQueueHistoryByPatient));
 router.get('/queue-history/doctors/:doctorId', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getQueueHistoryByDoctor));
 router.get('/queue-history/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getQueueHistoryById));

@@ -128,8 +128,8 @@ export default function SecuritySettingsPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('th-TH');
+  const formatDate = (daring: string) => {
+    return new Date(daring).toLocaleString('th-TH');
   };
 
   const getDeviceIcon = (userAgent: string) => {

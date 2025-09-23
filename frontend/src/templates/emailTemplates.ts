@@ -317,7 +317,7 @@ export const getRegistrationEmailTemplate = (data: RegistrationEmailData): strin
             </tr>
             <tr>
                 <th>วันที่ลงทะเบียน</th>
-                <td>${new Date(data.registrationDate).toLocaleDateString('th-TH')}</td>
+                <td>${new Date(data.registrationDate).toLocaleDaring('th-TH')}</td>
             </tr>
         </table>
     </div>

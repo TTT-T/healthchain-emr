@@ -109,13 +109,13 @@ export default function NurseProfilePage() {
       
       // Email validation
       const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailPattern.test(formData.email)) {
+      if (!emailPattern.(formData.email)) {
         setError('รูปแบบอีเมลไม่ถูกต้อง');
         return;
       }
       
       // Phone validation (if provided)
-      if (formData.phone && !/^[0-9\-\s\+\(\)]+$/.test(formData.phone)) {
+      if (formData.phone && !/^[0-9\-\s\+\(\)]+$/.(formData.phone)) {
         setError('รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง');
         return;
       }

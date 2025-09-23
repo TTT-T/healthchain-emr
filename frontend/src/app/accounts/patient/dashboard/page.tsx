@@ -103,7 +103,7 @@ const PatientDashboard = () => {
       try {
         // Check if user has valid token
         const token = apiClient.getAccessToken();
-        logger.debug('🔍 Patient Dashboard - Auth Check:', {
+        logger.('🔍 Patient Dashboard - Auth Check:', {
           user: !!user,
           token: !!token,
           userData: user,
@@ -115,30 +115,23 @@ const PatientDashboard = () => {
         });
         
         if (!token) {
-          logger.debug('🔍 Patient Dashboard - No token, redirecting to login');
+          logger.('🔍 Patient Dashboard - No token, redirecting to login');
           window.location.href = '/login';
           return;
         }
         
         // If no user data but have token, try to refresh user data
         if (!user && token) {
-          logger.debug('🔍 Patient Dashboard - No user data, refreshing...');
+          logger.('🔍 Patient Dashboard - No user data, refreshing...');
           window.dispatchEvent(new CustomEvent('refreshUserData'));
           return;
         }
         
         // If we have user data, load patient data
         if (user?.id) {
-          logger.debug('🔍 Patient Dashboard - Loading patient data for user:', user.id);
+          logger.('🔍 Patient Dashboard - Loading patient data for user:', user.id);
           const response = await apiClient.getCompleteProfile();
           if (response.statusCode === 200 && response.data) {
-            console.log('🔍 Patient Dashboard - Profile data:', response.data);
-            console.log('🔍 Patient Dashboard - Birth date info:', {
-              birthDate: response.data.birthDate,
-              birthDay: response.data.birthDay,
-              birthMonth: response.data.birthMonth,
-              birthYear: response.data.birthYear,
-            });
             setPatient(response.data as any);
             // โหลดเอกสารล่าสุด
             loadRecentDocuments();
@@ -238,16 +231,7 @@ const PatientDashboard = () => {
     ? calculateAgeFromParts(patient.birthDay, patient.birthMonth, patient.birthYear)
     : 0;
 
-  // Debug age calculation
-  console.log('🔍 Patient Dashboard - Age calculation:', {
-    patient: !!patient,
-    birthDate: patient?.birthDate,
-    birthDay: patient?.birthDay,
-    birthMonth: patient?.birthMonth,
-    birthYear: patient?.birthYear,
-    calculatedAge: age
-  });
-
+  //  age calculation
   return (
     <AppLayout title="แดชบอร์ด" userType="patient">
       <div className="p-4 md:p-6 space-y-6">
@@ -264,7 +248,7 @@ const PatientDashboard = () => {
             </div>
             <div className="text-right text-sm text-gray-700">
               <p>วันที่เข้าสู่ระบบล่าสุด</p>
-              <p className="font-medium">{new Date().toLocaleDateString('th-TH')}</p>
+              <p className="font-medium">{new Date().toLocaleDaring('th-TH')}</p>
             </div>
           </div>
           
@@ -573,7 +557,7 @@ const PatientDashboard = () => {
                     <div>
                       <p className="font-medium text-gray-900 text-sm">{doc.documentTitle}</p>
                       <p className="text-xs text-gray-500">
-                        {new Date(doc.createdAt).toLocaleDateString('th-TH', {
+                        {new Date(doc.createdAt).toLocaleDaring('th-TH', {
                           timeZone: 'Asia/Bangkok',
                           year: 'numeric',
                           month: 'short',

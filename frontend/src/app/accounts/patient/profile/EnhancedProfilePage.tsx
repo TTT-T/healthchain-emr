@@ -193,12 +193,7 @@ const EnhancedProfilePage: React.FC = () => {
     try {
       setIsSaving(true);
       setError(null);
-      
-      console.log('🔍 Enhanced Profile - Saving data:', JSON.stringify(editedData, null, 2));
       const response = await apiClient.updateCompleteProfile(editedData);
-      
-      console.log('🔍 Enhanced Profile - API response:', response);
-      
       if (response.statusCode === 200 && response.data) {
         setProfile(response.data);
         setSuccess('บันทึกข้อมูลสำเร็จ');

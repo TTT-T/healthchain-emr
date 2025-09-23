@@ -215,7 +215,7 @@ export class HistoryTakingService {
         general: '',
         cardiovascular: '',
         respiratory: '',
-        gastrointestinal: '',
+        gastroininal: '',
         genitourinary: '',
         neurological: '',
         musculoskeletal: '',

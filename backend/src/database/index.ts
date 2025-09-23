@@ -11,15 +11,11 @@ export class DatabaseSchema {
    */
   static async initialize(): Promise<void> {
     try {
-      console.log('🔄 Initializing database schema...');
-      
       // Create tables in order
       await this.createTables();
       
       // Insert default data
       await this.insertDefaultData();
-      
-      console.log('✅ Database schema initialized successfully');
     } catch (error) {
       console.error('❌ Error initializing database schema:', error);
       throw error;
@@ -349,9 +345,9 @@ export class DatabaseSchema {
         order_number VARCHAR(20) UNIQUE NOT NULL,
         order_date DATE NOT NULL DEFAULT CURRENT_DATE,
         order_time TIME NOT NULL DEFAULT CURRENT_TIME,
-        test_category VARCHAR(50) NOT NULL,
-        test_name VARCHAR(200) NOT NULL,
-        test_code VARCHAR(20),
+        _category VARCHAR(50) NOT NULL,
+        _name VARCHAR(200) NOT NULL,
+        _code VARCHAR(20),
         clinical_indication TEXT,
         specimen_type VARCHAR(50) DEFAULT 'blood' 
             CHECK (specimen_type IN ('blood', 'urine', 'stool', 'sputum', 'csf', 'other')),
@@ -373,8 +369,8 @@ export class DatabaseSchema {
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         lab_order_id UUID NOT NULL REFERENCES lab_orders(id) ON DELETE CASCADE,
         patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
-        test_name VARCHAR(200) NOT NULL,
-        test_code VARCHAR(20),
+        _name VARCHAR(200) NOT NULL,
+        _code VARCHAR(20),
         result_value VARCHAR(500),
         result_numeric DECIMAL(10,3),
         result_unit VARCHAR(20),
@@ -569,8 +565,6 @@ export class DatabaseSchema {
         console.warn(`Warning: Could not create trigger ${triggers[i]}:`, error);
       }
     }
-
-    console.log('✅ Medical functions and sequences created');
   }
 
   /**
@@ -578,7 +572,6 @@ export class DatabaseSchema {
    */
   private static async insertDefaultData(): Promise<void> {
     await this.insertDefaultDepartments();
-    console.log('✅ Default data inserted');
   }
 
   /**

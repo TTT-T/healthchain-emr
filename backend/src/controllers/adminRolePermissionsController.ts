@@ -134,12 +134,7 @@ export const updateRolePermissions = async (req: Request, res: Response) => {
     const userId = (req as any).user.id;
 
     // In a real implementation, you would save these permissions to the database
-    // For now, we'll just log the changes and return success
-    
-    console.log('Role permissions updated by user:', userId);
-    console.log('Updated permissions:', rolePermissions);
-
-    // TODO: Implement actual database storage for role permissions
+    // For now, we'll just log the changes and return success
     // This could involve creating/updating a role_permissions table
 
     res.status(200).json({

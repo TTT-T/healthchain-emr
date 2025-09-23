@@ -216,7 +216,6 @@ const formatDateDisplay = (day: string, month: string, year: string) => {
     return adjustedAge;
   };
 
-
 export default function SetupProfile() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
@@ -310,29 +309,6 @@ export default function SetupProfile() {
         
         if (response.statusCode === 200 && response.data) {
           const profile = response.data;
-          console.log('🔍 Setup Profile - Loaded profile data:', profile);
-      console.log('🔍 Birth Date from API:', {
-        birthDate: profile.birthDate,
-        birthDay: profile.birthDay,
-        birthMonth: profile.birthMonth,
-        birthYear: profile.birthYear,
-      });
-      console.log('🔍 Insurance Expiry Date from API:', {
-        insuranceExpiryDate: profile.insuranceExpiryDate,
-        insuranceExpiryDay: profile.insuranceExpiryDay,
-        insuranceExpiryMonth: profile.insuranceExpiryMonth,
-        insuranceExpiryYear: profile.insuranceExpiryYear,
-      });
-      console.log('🔍 Medical Info from API:', {
-        allergies: profile.allergies,
-        drugAllergies: profile.drugAllergies,
-        foodAllergies: profile.foodAllergies,
-        environmentAllergies: profile.environmentAllergies,
-        medicalHistory: profile.medicalHistory,
-        currentMedications: profile.currentMedications,
-        chronicDiseases: profile.chronicDiseases,
-      });
-          
           // Map existing data to form fields (using correct field names from API)
           setFormData({
             // Names (4 fields)
@@ -389,17 +365,6 @@ export default function SetupProfile() {
             insuranceExpiryMonth: profile.insuranceExpiryMonth ? profile.insuranceExpiryMonth.toString() : '',
             insuranceExpiryYear: profile.insuranceExpiryYear ? profile.insuranceExpiryYear.toString() : ''
           });
-          
-          console.log('🔍 Form Data after setting:', {
-            allergies: formData.allergies,
-            drugAllergies: formData.drugAllergies,
-            foodAllergies: formData.foodAllergies,
-            environmentAllergies: formData.environmentAllergies,
-            medicalHistory: formData.medicalHistory,
-            currentMedications: formData.currentMedications,
-            chronicDiseases: formData.chronicDiseases,
-          });
-          
         }
       } catch (error) {
         console.error('Error loading profile data:', error);
@@ -423,18 +388,12 @@ export default function SetupProfile() {
       [name]: value
     }));
     
-    // Debug date fields
+    //  date fields
     if (name === 'birthDay' || name === 'birthMonth' || name === 'birthYear') {
       const newFormData = {
         ...formData,
         [name]: value
       };
-      console.log('🔍 Birth Date Debug:', {
-        birthDay: newFormData.birthDay,
-        birthMonth: newFormData.birthMonth,
-        birthYear: newFormData.birthYear,
-        hasAllFields: newFormData.birthDay !== '' && newFormData.birthMonth !== '' && newFormData.birthYear !== ''
-      });
     }
     
     if (name === 'insuranceExpiryDay' || name === 'insuranceExpiryMonth' || name === 'insuranceExpiryYear') {
@@ -442,12 +401,6 @@ export default function SetupProfile() {
         ...formData,
         [name]: value
       };
-      console.log('🔍 Insurance Expiry Date Debug:', {
-        insuranceExpiryDay: newFormData.insuranceExpiryDay,
-        insuranceExpiryMonth: newFormData.insuranceExpiryMonth,
-        insuranceExpiryYear: newFormData.insuranceExpiryYear,
-        hasAllFields: newFormData.insuranceExpiryDay !== '' && newFormData.insuranceExpiryMonth !== '' && newFormData.insuranceExpiryYear !== ''
-      });
     }
 
     // Clear error when user starts typing
@@ -465,20 +418,12 @@ export default function SetupProfile() {
       [name]: value
     }));
     
-    // Debug date fields
+    //  date fields
     if (name === 'birthDay' || name === 'birthMonth' || name === 'birthYear') {
       const newFormData = {
         ...formData,
         [name]: value
       };
-      console.log('🔍 Birth Date Field Changed:', {
-        field: name,
-        value: value,
-        birthDay: newFormData.birthDay,
-        birthMonth: newFormData.birthMonth,
-        birthYear: newFormData.birthYear,
-        hasAllFields: newFormData.birthDay !== '' && newFormData.birthMonth !== '' && newFormData.birthYear !== ''
-      });
     }
     
     if (name === 'insuranceExpiryDay' || name === 'insuranceExpiryMonth' || name === 'insuranceExpiryYear') {
@@ -486,14 +431,6 @@ export default function SetupProfile() {
         ...formData,
         [name]: value
       };
-      console.log('🔍 Insurance Expiry Date Field Changed:', {
-        field: name,
-        value: value,
-        insuranceExpiryDay: newFormData.insuranceExpiryDay,
-        insuranceExpiryMonth: newFormData.insuranceExpiryMonth,
-        insuranceExpiryYear: newFormData.insuranceExpiryYear,
-        hasAllFields: newFormData.insuranceExpiryDay !== '' && newFormData.insuranceExpiryMonth !== '' && newFormData.insuranceExpiryYear !== ''
-      });
     }
 
     // Clear error when user starts typing
@@ -518,11 +455,11 @@ export default function SetupProfile() {
 
     // Phone validation
     const phoneRegex = /^[0-9]{10}$/;
-    if (formData.phone && !phoneRegex.test(formData.phone.replace(/[-\s]/g, ''))) {
+    if (formData.phone && !phoneRegex.(formData.phone.replace(/[-\s]/g, ''))) {
       newErrors.phone = 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก';
     }
 
-    if (formData.emergencyContactPhone && !phoneRegex.test(formData.emergencyContactPhone.replace(/[-\s]/g, ''))) {
+    if (formData.emergencyContactPhone && !phoneRegex.(formData.emergencyContactPhone.replace(/[-\s]/g, ''))) {
       newErrors.emergencyContactPhone = 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก';
     }
 
@@ -542,7 +479,6 @@ export default function SetupProfile() {
     
     // Check if user has completed profile already
     if (user?.profileCompleted) {
-      console.log('🔍 Setup Profile - User already completed profile, redirecting to dashboard');
       const redirectPath = getDashboardUrl(user);
       window.location.href = redirectPath;
       return;
@@ -551,16 +487,10 @@ export default function SetupProfile() {
     setIsSubmitting(true);
     
     try {
-      console.log('🔍 Setup Profile - Submitting:', formData);
-      console.log('🔍 Setup Profile - User:', user);
-      
       // Check token before proceeding
       const token = apiClient.getAccessToken();
-      console.log('🔍 Setup Profile - Token exists:', !!token);
-      
       // If no token, redirect to login
       if (!token) {
-        console.log('🔍 Setup Profile - No token, redirecting to login');
         window.location.href = '/login';
         return;
       }
@@ -568,19 +498,14 @@ export default function SetupProfile() {
       // Ensure token is also set in cookie for middleware
       if (token) {
         document.cookie = `access_token=${token}; path=/; max-age=${60 * 60}; SameSite=Lax`;
-        console.log('🔍 Setup Profile - Token set in cookie');
       }
       
       // Save profile data and mark as completed
-      console.log('🔍 Setup Profile - Saving profile data...');
-      
       try {
         // Check if there's any data to save
         const hasDataToSave = Object.values(formData).some(value => value && value.trim() !== '');
         
         if (hasDataToSave) {
-          console.log('🔍 Setup Profile - Updating profile data...');
-          
           // Transform all form data to backend format (using correct field names)
           const profileData = {
             // Names (4 fields)
@@ -646,15 +571,11 @@ export default function SetupProfile() {
           if (profileResponse.statusCode !== 200) {
             throw new Error(profileResponse.error?.message || 'Failed to update profile data');
           }
-          
-          console.log('🔍 Setup Profile - Profile data updated successfully');
         } else {
           // If no data to save, just mark profile as completed
-          console.log('🔍 Setup Profile - Marking profile as completed...');
           const response = await apiClient.completeProfileSetup();
           
           if (response.data && !response.error) {
-            console.log('🔍 Setup Profile - Profile marked as completed successfully');
           } else {
             throw new Error(response.error?.message || 'Failed to complete profile setup');
           }
@@ -668,14 +589,12 @@ export default function SetupProfile() {
       }
       
       // Show success message
-      console.log('🔍 Setup Profile - Profile saved successfully');
       setIsSuccess(true);
       setErrors({});
       
       // Wait a moment to show success message, then redirect
       setTimeout(() => {
         const redirectPath = getDashboardUrl(user);
-        console.log('🔍 Setup Profile - Redirecting to:', redirectPath);
         window.location.href = redirectPath;
       }, 2000); // Wait 2 seconds before redirect
     } catch (error) {
@@ -685,7 +604,6 @@ export default function SetupProfile() {
       setIsSubmitting(false);
     }
   };
-
 
   if (isLoading || isLoadingProfile) {
     return (
@@ -951,15 +869,6 @@ export default function SetupProfile() {
                     formData.birthDay !== '1' && 
                     formData.birthMonth !== '1' && 
                     formData.birthYear !== '2533';
-                  
-                  console.log('🔍 Birth Date Display Check:', {
-                    birthDay: formData.birthDay,
-                    birthMonth: formData.birthMonth,
-                    birthYear: formData.birthYear,
-                    hasAllFields,
-                    isValidDate
-                  });
-                  
                   return isValidDate ? (
                     <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                       <div className="flex items-center gap-2 text-blue-800">
@@ -1189,9 +1098,9 @@ export default function SetupProfile() {
                   rows={2}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500"
                 />
-                {/* Debug info */}
+                {/*  info */}
                 <div className="mt-1 text-xs text-gray-500">
-                  Debug: allergies value = "{formData.allergies}" (type: {typeof formData.allergies})
+                  : allergies value = "{formData.allergies}" (type: {typeof formData.allergies})
                 </div>
               </div>
 
@@ -1500,15 +1409,6 @@ export default function SetupProfile() {
                     formData.insuranceExpiryDay !== '1' && 
                     formData.insuranceExpiryMonth !== '1' && 
                     formData.insuranceExpiryYear !== '2533';
-                  
-                  console.log('🔍 Insurance Expiry Date Display Check:', {
-                    insuranceExpiryDay: formData.insuranceExpiryDay,
-                    insuranceExpiryMonth: formData.insuranceExpiryMonth,
-                    insuranceExpiryYear: formData.insuranceExpiryYear,
-                    hasAllFields,
-                    isValidDate
-                  });
-                  
                   return isValidDate ? (
                     <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
                       <div className="flex items-center gap-2 text-green-800">
@@ -1601,7 +1501,6 @@ export default function SetupProfile() {
               onClick={async () => {
                 // Check if user has completed profile already
                 if (user?.profileCompleted) {
-                  console.log('🔍 Setup Profile - User already completed profile, redirecting to dashboard');
                   const redirectPath = getDashboardUrl(user);
                   window.location.href = redirectPath;
                   return;
@@ -1611,12 +1510,9 @@ export default function SetupProfile() {
                   setIsSubmitting(true);
                   
                   // Call API to complete profile setup
-                  console.log('🔍 Setup Profile - Skipping setup, marking profile as completed...');
                   const response = await apiClient.completeProfileSetup();
                   
                   if (response.data && !response.error) {
-                    console.log('🔍 Setup Profile - Profile marked as completed successfully');
-                    
                     // Update user data in context
                     window.dispatchEvent(new CustomEvent('refreshUserData'));
                     

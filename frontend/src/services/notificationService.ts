@@ -79,9 +79,6 @@ export class NotificationService {
     try {
       // ในระบบจริงจะเชื่อมต่อกับ SMS Gateway
       const message = `โรงพยาบาลตัวอย่าง: คุณ ${data.patientName} ได้รับหมายเลขคิว ${data.queueNumber} สำหรับตรวจกับ ${data.doctorName} วันที่ ${formatLocalDateTime(new Date(data.visitTime))} เวลา ${formatLocalTime(new Date(data.visitTime))} คาดว่าจะรอประมาณ ${data.estimatedWaitTime} นาที`;
-      
-      console.log('SMS Notification:', message);
-      
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
@@ -102,9 +99,6 @@ export class NotificationService {
         subject: `หมายเลขคิว ${data.queueNumber} - โรงพยาบาลตัวอย่าง`,
         html: this.generateEmailTemplate(data)
       };
-      
-      console.log('Email Notification:', emailData);
-      
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
@@ -153,9 +147,6 @@ export class NotificationService {
         subject: this.getEmailSubject(templateType, data),
         html: htmlContent
       };
-      
-      console.log('Email with Template:', emailData);
-      
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
@@ -235,8 +226,6 @@ export class NotificationService {
       };
       
       // ในระบบจริงจะบันทึกในฐานข้อมูล
-      console.log('Notification logged:', logData);
-      
       logger.info('Notification logged', logData);
     } catch (error) {
       logger.error('Failed to log notification:', error);
@@ -383,9 +372,6 @@ export class NotificationService {
 📋 คิวที่รอ: ${data.currentQueue} คิว
 
 กรุณามาก่อนเวลานัด 15 นาที`;
-
-      console.log('📱 SMS Notification:', message);
-      
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
@@ -484,9 +470,6 @@ export class NotificationService {
         createdBy: data.createdBy,
         createdByName: data.createdByName
       };
-      
-      console.log('📝 Appointment notification logged:', logData);
-      
       logger.info('Appointment notification logged', logData);
     } catch (error) {
       logger.error('Failed to log appointment notification:', error);
@@ -612,7 +595,7 @@ export class NotificationService {
     };
 
     const recordTypeLabel = recordTypeLabels[data.recordType] || 'ข้อมูลทางการแพทย์';
-    const message = `โรงพยาบาลตัวอย่าง: มีการอัปเดต${recordTypeLabel}สำหรับคุณ ${data.patientName} โดย ${data.recordedBy} วันที่ ${new Date(data.recordedTime).toLocaleDateString('th-TH')}`;
+    const message = `โรงพยาบาลตัวอย่าง: มีการอัปเดต${recordTypeLabel}สำหรับคุณ ${data.patientName} โดย ${data.recordedBy} วันที่ ${new Date(data.recordedTime).toLocaleDaring('th-TH')}`;
     
     logger.info('SMS sent (simulated):', { to: data.patientPhone, message });
   }

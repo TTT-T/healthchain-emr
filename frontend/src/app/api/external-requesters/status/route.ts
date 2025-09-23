@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
     const backendData = await backendResponse.json()
     
-    logger.debug('Registration status requested:', { requestId, email, status: backendData.data?.status })
+    logger.('Registration status requested:', { requestId, email, status: backendData.data?.status })
 
     return NextResponse.json(backendData)
 

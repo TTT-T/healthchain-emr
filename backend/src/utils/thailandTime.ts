@@ -65,9 +65,9 @@ export function formatThailandTime(date: Date | string): string {
  */
 export function formatThailandDateTime(date: Date | string): string {
   const thaiDate = typeof date === 'string' ? toThailandTime(date) : date;
-  const dateStr = formatThailandDate(thaiDate);
+  const dar = formatThailandDate(thaiDate);
   const timeStr = formatThailandTime(thaiDate);
-  return `${dateStr} ${timeStr}`;
+  return `${dar} ${timeStr}`;
 }
 
 /**
@@ -86,9 +86,9 @@ export function formatBuddhistDate(date: Date | string): string {
  */
 export function formatBuddhistDateTime(date: Date | string): string {
   const thaiDate = typeof date === 'string' ? toThailandTime(date) : date;
-  const dateStr = formatBuddhistDate(thaiDate);
+  const dar = formatBuddhistDate(thaiDate);
   const timeStr = formatThailandTime(thaiDate);
-  return `${dateStr} ${timeStr}`;
+  return `${dar} ${timeStr}`;
 }
 
 /**
@@ -101,7 +101,7 @@ export function getCurrentThailandTimeString(): string {
 /**
  * Get current date string in Thailand format (YYYY-MM-DD)
  */
-export function getCurrentThailandDateString(): string {
+export function getCurrentThailandDaring(): string {
   const thaiDate = getThailandTime();
   const year = thaiDate.getFullYear();
   const month = String(thaiDate.getMonth() + 1).padStart(2, '0');

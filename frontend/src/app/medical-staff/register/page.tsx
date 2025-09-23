@@ -237,22 +237,22 @@ export default function MedicalStaffRegister() {
   const validateField = (field: keyof MedicalStaffRegistrationFormData, value: string): string => {
     switch (field) {
       case 'nationalId':
-        if (value && !/^\d{13}$/.test(value)) {
+        if (value && !/^\d{13}$/.(value)) {
           return 'เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลักเท่านั้น';
         }
         break;
       case 'phone':
-        if (value && !/^[0-9]{10}$/.test(value.replace(/[-\s]/g, ''))) {
+        if (value && !/^[0-9]{10}$/.(value.replace(/[-\s]/g, ''))) {
           return 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก';
         }
         break;
       case 'username':
-        if (value && !/^[a-zA-Z0-9_]{3,20}$/.test(value)) {
+        if (value && !/^[a-zA-Z0-9_]{3,20}$/.(value)) {
           return 'ชื่อผู้ใช้ต้องเป็นตัวอักษร ตัวเลข หรือ _ อย่างน้อย 3 ตัวอักษร';
         }
         break;
       case 'email':
-        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.(value)) {
           return 'รูปแบบอีเมลไม่ถูกต้อง';
         }
         break;
@@ -327,23 +327,23 @@ export default function MedicalStaffRegister() {
     if (!formData.confirmPassword || formData.confirmPassword.trim() === '') errors.push('กรุณายืนยันรหัสผ่าน');
 
     // National ID validation
-    if (formData.nationalId && !/^\d{13}$/.test(formData.nationalId)) {
+    if (formData.nationalId && !/^\d{13}$/.(formData.nationalId)) {
       errors.push('เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลักเท่านั้น');
     }
 
     // Phone validation
-    if (formData.phone && !/^[0-9]{10}$/.test(formData.phone.replace(/[-\s]/g, ''))) {
+    if (formData.phone && !/^[0-9]{10}$/.(formData.phone.replace(/[-\s]/g, ''))) {
       errors.push('เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก');
     }
 
     // Username validation
-    if (formData.username && !/^[a-zA-Z0-9_]{3,20}$/.test(formData.username)) {
+    if (formData.username && !/^[a-zA-Z0-9_]{3,20}$/.(formData.username)) {
       errors.push('ชื่อผู้ใช้ต้องเป็นตัวอักษร ตัวเลข หรือ _ อย่างน้อย 3 ตัวอักษร');
     }
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (formData.email && !emailRegex.test(formData.email)) {
+    if (formData.email && !emailRegex.(formData.email)) {
       errors.push('รูปแบบอีเมลไม่ถูกต้อง');
     }
 
@@ -416,18 +416,7 @@ export default function MedicalStaffRegister() {
         console.error('Raw response text:', textResponse);
         result = { error: 'Invalid JSON response', rawResponse: textResponse };
       }
-      
-      console.log('API Response:', { 
-        status: response.status, 
-        statusText: response.statusText,
-        ok: response.ok,
-        result: result,
-        resultType: typeof result,
-        resultKeys: result ? Object.keys(result) : 'null/undefined'
-      });
-      
       if (response.ok && result && result.success) {
-        console.log('Registration successful:', result);
         setRegistrationResult({
           success: true,
           message: result.message || 'สมัครสมาชิกสำเร็จ! กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี และรอการอนุมัติจาก admin'

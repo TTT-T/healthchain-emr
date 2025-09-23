@@ -319,7 +319,7 @@ async function getPatientDataForAssessment(patientId: string): Promise<RiskFacto
 
     const patient = patientResult.rows[0];
 
-    // Get latest vital signs
+    // Get la vital signs
     const vitalSignsResult = await databaseManager.query(`
       SELECT 
         systolic_bp, diastolic_bp, heart_rate, temperature,
@@ -332,14 +332,14 @@ async function getPatientDataForAssessment(patientId: string): Promise<RiskFacto
 
     const vitalSigns = vitalSignsResult.rows[0] || {};
 
-    // Get latest lab results
+    // Get la lab results
     const labResultsResult = await databaseManager.query(`
       SELECT 
-        lr.result_numeric, lr.result_unit, lo.test_name
+        lr.result_numeric, lr.result_unit, lo._name
       FROM lab_results lr
       INNER JOIN lab_orders lo ON lr.lab_order_id = lo.id
       WHERE lo.patient_id = $1
-      AND lo.test_name IN ('Cholesterol', 'HDL', 'LDL', 'Triglycerides', 'Blood Glucose')
+      AND lo._name IN ('Cholesterol', 'HDL', 'LDL', 'Triglycerides', 'Blood Glucose')
       ORDER BY lr.result_date DESC
       LIMIT 10
     `, [patientId]);
@@ -347,11 +347,11 @@ async function getPatientDataForAssessment(patientId: string): Promise<RiskFacto
     const labResults = labResultsResult.rows;
 
     // Extract cholesterol value (use total cholesterol if available)
-    const cholesterolResult = labResults.find(r => r.test_name === 'Cholesterol');
+    const cholesterolResult = labResults.find(r => r._name === 'Cholesterol');
     const cholesterol = cholesterolResult ? parseFloat(cholesterolResult.result_numeric) : 200;
 
     // Extract blood glucose
-    const glucoseResult = labResults.find(r => r.test_name === 'Blood Glucose');
+    const glucoseResult = labResults.find(r => r._name === 'Blood Glucose');
     const bloodGlucose = glucoseResult ? parseFloat(glucoseResult.result_numeric) : (vitalSigns.blood_glucose || 100);
 
     return {
@@ -396,7 +396,7 @@ async function calculateRiskForType(assessmentType: string, patientData: RiskFac
     case 'heart_disease':
       return calculateHeartDiseaseRisk(patientData);
     case 'stroke':
-      return calculateStrokeRisk(patientData);
+      return calcularokeRisk(patientData);
     case 'cancer':
       return calculateCancerRisk(patientData);
     default:
@@ -707,7 +707,7 @@ function calculateCancerRisk(patientData: RiskFactors): RiskAssessmentResult {
 /**
  * Calculate stroke risk
  */
-function calculateStrokeRisk(patientData: RiskFactors): RiskAssessmentResult {
+function calcularokeRisk(patientData: RiskFactors): RiskAssessmentResult {
   let riskScore = 0;
   let recommendations: string[] = [];
 
@@ -773,7 +773,6 @@ function calculateStrokeRisk(patientData: RiskFactors): RiskAssessmentResult {
     nextAssessmentDate: new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000) // 6 months
   };
 }
-
 
 /**
  * Update AI model performance

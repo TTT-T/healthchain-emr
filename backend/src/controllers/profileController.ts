@@ -98,10 +98,6 @@ export const updateCompleteProfile = async (req: Request, res: Response) => {
         errorResponse('User not authenticated', 401)
       );
     }
-
-    console.log('🔍 updateCompleteProfile - Request body:', JSON.stringify(req.body, null, 2));
-    console.log('🔍 updateCompleteProfile - User ID:', user.id);
-
     // Validate input
     const validatedData = UpdateProfileSchema.parse(req.body);
     
@@ -121,9 +117,6 @@ export const updateCompleteProfile = async (req: Request, res: Response) => {
 
     // Transform data to database format
     const dbData = ProfileTransformers.toDatabase(validatedData);
-    console.log('🔍 updateCompleteProfile - Validated data:', JSON.stringify(validatedData, null, 2));
-    console.log('🔍 updateCompleteProfile - DB data:', JSON.stringify(dbData, null, 2));
-    
     // Remove undefined fields
     const updateData: any = {};
     Object.keys(dbData).forEach(key => {
@@ -131,9 +124,6 @@ export const updateCompleteProfile = async (req: Request, res: Response) => {
         updateData[key] = dbData[key as keyof typeof dbData];
       }
     });
-
-    console.log('🔍 updateCompleteProfile - Update data:', JSON.stringify(updateData, null, 2));
-
     // Build dynamic update query
     const setClause = Object.keys(updateData).map((key, index) => 
       `${key} = $${index + 2}`
@@ -157,12 +147,7 @@ export const updateCompleteProfile = async (req: Request, res: Response) => {
     `;
 
     const values = [user.id, ...Object.values(updateData)];
-    console.log('🔍 updateCompleteProfile - SQL Query:', updateQuery);
-    console.log('🔍 updateCompleteProfile - SQL Values:', values);
-    
     const result = await databaseManager.query(updateQuery, values);
-    console.log('🔍 updateCompleteProfile - Query result rows:', result.rows.length);
-
     // Transform response data
     const updatedUserData = ProfileTransformers.fromDatabase(result.rows[0]);
 

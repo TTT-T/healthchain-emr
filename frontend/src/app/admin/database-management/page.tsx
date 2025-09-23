@@ -118,9 +118,8 @@ export default function DatabasePage() {
           const tableSize = sizeInfo?.size || 'Unknown';
           const tableSizeBytes = parseInt(sizeInfo?.size_bytes) || 0;
           
-          // Debug: Log size information
+          // : Log size information
           if (tableSizeBytes > 0) {
-            console.log(`Table ${table.tablename}: ${tableSize} (${tableSizeBytes} bytes)`);
           }
           
           return {
@@ -193,7 +192,7 @@ export default function DatabasePage() {
       });
       
       if (response.statusCode === 200) {
-        logger.debug('Backup created:', response.data);
+        logger.('Backup created:', response.data);
         // Refresh all data
         refreshData();
       } else {
@@ -216,7 +215,7 @@ export default function DatabasePage() {
       });
       
       if (response.statusCode === 200) {
-        logger.debug('Database optimized:', response.data);
+        logger.('Database optimized:', response.data);
         // Refresh all data
         refreshData();
       } else {
@@ -236,20 +235,17 @@ export default function DatabasePage() {
     // Use sizeBytes if available for accurate calculation
     if (table.sizeBytes && table.sizeBytes > 0) {
       const sizeInGB = table.sizeBytes / (1024 * 1024 * 1024);
-      console.log(`Table ${table.name}: ${table.sizeBytes} bytes -> ${sizeInGB.toFixed(6)} GB`);
       return sum + sizeInGB;
     }
     
     // Fallback to parsing size string if sizeBytes not available
     if (!table.size || table.size === 'Unknown') {
-      console.log(`Table ${table.name}: No size information available`);
       return sum;
     }
     
     const sizeStr = table.size.replace(' GB', '').replace(' MB', '').replace(' KB', '').replace(' bytes', '');
     const size = parseFloat(sizeStr);
     if (isNaN(size)) {
-      console.log(`Table ${table.name}: Invalid size format: ${table.size}`);
       return sum;
     }
     
@@ -268,15 +264,10 @@ export default function DatabasePage() {
       // If no unit specified, assume it's already in GB
       sizeInGB = size;
     }
-    
-    console.log(`Table ${table.name}: ${table.size} -> ${sizeInGB.toFixed(6)} GB (fallback)`);
     return sum + sizeInGB;
   }, 0);
 
-  // Debug: Log total size calculation
-  console.log(`🔍 Total Size Calculation: ${totalSize.toFixed(6)} GB`);
-  console.log(`🔍 Total Size Rounded: ${totalSize.toFixed(3)} GB`);
-  
+  // : Log total size calculation
   // Format total size for display
   const formatTotalSize = (sizeInGB: number): string => {
     if (sizeInGB >= 1) {

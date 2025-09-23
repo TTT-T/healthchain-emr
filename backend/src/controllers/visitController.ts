@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { databaseManager } from '../database/connection';
 import { v4 as uuidv4 } from 'uuid';
-import { getThailandTime, getCurrentThailandDateString, getCurrentThailandTimeOnlyString } from '../utils/thailandTime';
+import { getThailandTime, getCurrentThailandDaring, getCurrentThailandTimeOnlyString } from '../utils/thailandTime';
 import { NotificationService } from '../services/notificationService';
 
 // Create a database helper that combines databaseManager and DatabaseSchema
@@ -34,8 +34,6 @@ import {
  */
 async function sendPatientVisitNotification(visit: any, doctorId: string, createdBy: string) {
   try {
-    console.log('📱 Sending patient visit notification...');
-    
     // Get patient information
     const patientQuery = `
       SELECT 
@@ -56,7 +54,6 @@ async function sendPatientVisitNotification(visit: any, doctorId: string, create
     const patientResult = await db.query(patientQuery, [visit.patient_id]);
     
     if (patientResult.rows.length === 0) {
-      console.log('❌ Patient not found for notification');
       return;
     }
     
@@ -77,7 +74,6 @@ async function sendPatientVisitNotification(visit: any, doctorId: string, create
     const doctorResult = await db.query(doctorQuery, [doctorId]);
     
     if (doctorResult.rows.length === 0) {
-      console.log('❌ Doctor not found for notification');
       return;
     }
     
@@ -121,12 +117,6 @@ async function sendPatientVisitNotification(visit: any, doctorId: string, create
         chiefComplaint: visit.chief_complaint
       }
     });
-    
-    console.log('✅ Patient notification sent successfully', {
-      patientHn: patient.hospital_number,
-      visitNumber: visit.visit_number
-    });
-    
   } catch (error) {
     console.error('❌ Error sending patient visit notification:', error);
     throw error;
@@ -138,8 +128,6 @@ async function sendPatientVisitNotification(visit: any, doctorId: string, create
  */
 async function sendVisitStartedNotification(visit: any) {
   try {
-    console.log('📱 Sending visit started notification...');
-    
     // Get patient information
     const patientQuery = `
       SELECT 
@@ -160,7 +148,6 @@ async function sendVisitStartedNotification(visit: any) {
     const patientResult = await db.query(patientQuery, [visit.patient_id]);
     
     if (patientResult.rows.length === 0) {
-      console.log('❌ Patient not found for notification');
       return;
     }
     
@@ -181,7 +168,6 @@ async function sendVisitStartedNotification(visit: any) {
     const doctorResult = await db.query(doctorQuery, [visit.attending_doctor_id]);
     
     if (doctorResult.rows.length === 0) {
-      console.log('❌ Doctor not found for notification');
       return;
     }
     
@@ -228,22 +214,12 @@ async function sendVisitStartedNotification(visit: any) {
       notificationData.is_read,
       notificationData.user_id, // created_by
       notificationData.created_at
-    ]);
-    
-    console.log('✅ Visit started notification sent successfully', {
-      patientHn: patient.hospital_number,
-      visitNumber: visit.visit_number,
-      notificationId: notificationData.id
-    });
-    
-    // TODO: Send SMS/Email if patient has phone/email
+    ]);
     if (patient.phone) {
-      console.log(`📱 Would send SMS to ${patient.phone}: หมายเลขคิว ${visit.visit_number} กำลังได้รับการตรวจจาก ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`);
     }
     
     if (patient.email || patient.user_email) {
       const email = patient.email || patient.user_email;
-      console.log(`📧 Would send email to ${email}: หมายเลขคิว ${visit.visit_number} กำลังได้รับการตรวจจาก ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`);
     }
     
   } catch (error) {
@@ -305,13 +281,8 @@ const visitSearchSchema = z.object({
  */
 export const createVisit = async (req: Request, res: Response) => {
   try {
-    console.log('🔍 Create visit request body:', req.body);
-    console.log('🔍 User from request:', req.user);
-    
     // Validate input
     const validatedData = createVisitSchema.parse(req.body);
-    console.log('✅ Validated data:', validatedData);
-    
     // Verify patient exists
     const patientResult = await db.query(
       'SELECT id FROM patients WHERE id = $1 AND is_active = true',
@@ -327,21 +298,14 @@ export const createVisit = async (req: Request, res: Response) => {
     // Verify doctor exists if provided
     let finalDoctorId = validatedData.attendingDoctorId;
     if (validatedData.attendingDoctorId) {
-      console.log('🔍 Original attendingDoctorId:', validatedData.attendingDoctorId);
-      
       // Check if attendingDoctorId is a doctor_id or user_id
       try {
         // First check if it's a doctor_id
         const doctorCheckQuery = 'SELECT user_id FROM doctors WHERE id = $1';
-        console.log('🔍 Executing doctor check query:', doctorCheckQuery, 'with param:', validatedData.attendingDoctorId);
         const doctorCheckResult = await db.query(doctorCheckQuery, [validatedData.attendingDoctorId]);
-        console.log('🔍 Doctor check result:', doctorCheckResult.rows);
-        
         if (doctorCheckResult.rows.length > 0) {
           finalDoctorId = doctorCheckResult.rows[0].user_id;
-          console.log('🔄 Converted doctor_id to user_id:', finalDoctorId);
         } else {
-          console.log('🔍 attendingDoctorId is not a doctor_id, treating as user_id:', validatedData.attendingDoctorId);
         }
       } catch (error) {
         console.error('Error checking doctor_id:', error);
@@ -353,7 +317,6 @@ export const createVisit = async (req: Request, res: Response) => {
       );
       
       if (doctorResult.rows.length === 0) {
-        console.log('❌ Doctor not found:', finalDoctorId);
         return res.status(404).json(
           errorResponse('ไม่พบข้อมูลแพทย์ที่ระบุ', 404)
         );
@@ -386,7 +349,7 @@ export const createVisit = async (req: Request, res: Response) => {
         validatedData.departmentId || null,
         'in_progress', // Set status to in_progress for new visits
         req.user?.id,
-        getCurrentThailandDateString(),
+        getCurrentThailandDaring(),
         getCurrentThailandTimeOnlyString()
       ]);
       
@@ -409,9 +372,7 @@ export const createVisit = async (req: Request, res: Response) => {
 
     // Send notification to patient
     try {
-      console.log('📱 Sending patient visit notification...');
       await sendPatientVisitNotification(result, finalDoctorId, req.user?.id);
-      console.log('✅ Patient notification sent successfully');
     } catch (notificationError) {
       console.error('❌ Failed to send patient notification:', notificationError);
       // Don't fail the visit creation if notification fails
@@ -470,9 +431,6 @@ export const createVisit = async (req: Request, res: Response) => {
 export const getVisitsByPatient = async (req: Request, res: Response) => {
   try {
     const { patientId } = req.params;
-    
-    console.log('🔍 Get visits by patient request:', { patientId });
-    
     // Validate patient ID
     if (!patientId) {
       return res.status(400).json(
@@ -541,9 +499,6 @@ export const getVisitsByPatient = async (req: Request, res: Response) => {
       doctorName: visit.doctor_thai_name || `${visit.doctor_first_name || ''} ${visit.doctor_last_name || ''}`.trim(),
       departmentName: visit.department_name
     }));
-    
-    console.log(`🔍 Found ${visits.length} visits for patient ${patientId}`);
-    
     res.status(200).json(
       successResponse('ดึงข้อมูลการมาพบแพทย์สำเร็จ', visits)
     );

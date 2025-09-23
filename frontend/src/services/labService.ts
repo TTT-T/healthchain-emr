@@ -92,7 +92,7 @@ export class LabService {
   /**
    * รายการประเภทการตรวจ
    */
-  static getTestCategories(): { value: string; label: string }[] {
+  static getCategories(): { value: string; label: string }[] {
     return [
       { value: 'blood', label: 'ตรวจเลือด' },
       { value: 'urine', label: 'ตรวจปัสสาวะ' },
@@ -105,7 +105,7 @@ export class LabService {
   /**
    * รายการตรวจเลือด
    */
-  static getBloodTests(): { code: string; name: string; normalRange?: string }[] {
+  static getBloods(): { code: string; name: string; normalRange?: string }[] {
     return [
       { code: 'CBC', name: 'Complete Blood Count', normalRange: 'ตามเกณฑ์' },
       { code: 'FBS', name: 'Fasting Blood Sugar', normalRange: '70-100 mg/dL' },
@@ -124,7 +124,7 @@ export class LabService {
   /**
    * รายการตรวจปัสสาวะ
    */
-  static getUrineTests(): { code: string; name: string }[] {
+  static getUrines(): { code: string; name: string }[] {
     return [
       { code: 'UA', name: 'Urine Analysis' },
       { code: 'UPROT', name: 'Urine Protein' },
@@ -137,7 +137,7 @@ export class LabService {
   /**
    * รายการตรวจทางภาพ
    */
-  static getImagingTests(): { code: string; name: string }[] {
+  static getImagings(): { code: string; name: string }[] {
     return [
       { code: 'CXR', name: 'Chest X-Ray' },
       { code: 'ECG', name: 'Electrocardiogram' },
@@ -215,7 +215,7 @@ export class LabService {
   /**
    * คำนวณเวลาที่คาดว่าจะได้ผลตรวจ
    */
-  static estimateResultTime(testCategory: string): string {
+  static estimateResultTime(Category: string): string {
     const timeMap: { [key: string]: string } = {
       'blood': '2-4 ชั่วโมง',
       'urine': '1-2 ชั่วโมง',
@@ -223,7 +223,7 @@ export class LabService {
       'imaging': '30 นาที - 2 ชั่วโมง',
       'other': '1-24 ชั่วโมง'
     };
-    return timeMap[testCategory] || 'ติดต่อสอบถาม';
+    return timeMap[Category] || 'ติดต่อสอบถาม';
   }
 }
 

@@ -516,7 +516,7 @@ export default function NotificationsPage() {
                             Edit
                           </Button>
                           <Button size="sm" variant="outline">
-                            Test
+                            
                           </Button>
                         </div>
                       </div>

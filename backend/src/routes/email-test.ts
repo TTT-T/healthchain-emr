@@ -5,31 +5,31 @@ import { successResponse, errorResponse } from '../utils';
 const router = Router();
 
 /**
- * Test SMTP connection
+ *  SMTP connection
  */
-router.get('/test-connection', async (req: Request, res: Response) => {
+router.get('/-connection', async (req: Request, res: Response) => {
   try {
-    const isConnected = await emailService.testConnection();
+    const isConnected = await emailService.Connection();
     
     if (isConnected) {
       return res.status(200).json(
-        successResponse('SMTP connection test successful', {
+        successResponse('SMTP connection  successful', {
           connected: true,
           message: 'Email service is working correctly'
         })
       );
     } else {
       return res.status(500).json(
-        errorResponse('SMTP connection test failed', 500, {
+        errorResponse('SMTP connection  failed', 500, {
           connected: false,
           message: 'Email service is not working'
         })
       );
     }
   } catch (error: any) {
-    console.error('❌ SMTP test error:', error);
+    console.error('❌ SMTP  error:', error);
     return res.status(500).json(
-      errorResponse('SMTP test failed', 500, {
+      errorResponse('SMTP  failed', 500, {
         error: error.message
       })
     );
@@ -37,9 +37,9 @@ router.get('/test-connection', async (req: Request, res: Response) => {
 });
 
 /**
- * Send test email
+ * Send  email
  */
-router.post('/send-test', async (req: Request, res: Response) => {
+router.post('/send-', async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
     
@@ -51,25 +51,25 @@ router.post('/send-test', async (req: Request, res: Response) => {
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.(email)) {
       return res.status(400).json(
         errorResponse('Invalid email format', 400)
       );
     }
 
-    const success = await emailService.sendTestEmail(email);
+    const success = await emailService.sendEmail(email);
     
     if (success) {
       return res.status(200).json(
-        successResponse('Test email sent successfully', {
+        successResponse(' email sent successfully', {
           email: email,
           sent: true,
-          message: 'Test email has been sent to your inbox'
+          message: ' email has been sent to your inbox'
         })
       );
     } else {
       return res.status(500).json(
-        errorResponse('Failed to send test email', 500, {
+        errorResponse('Failed to send  email', 500, {
           email: email,
           sent: false,
           message: 'Please check your email configuration'
@@ -77,9 +77,9 @@ router.post('/send-test', async (req: Request, res: Response) => {
       );
     }
   } catch (error: any) {
-    console.error('❌ Send test email error:', error);
+    console.error('❌ Send  email error:', error);
     return res.status(500).json(
-      errorResponse('Failed to send test email', 500, {
+      errorResponse('Failed to send  email', 500, {
         error: error.message
       })
     );

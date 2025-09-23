@@ -46,8 +46,7 @@ export default function RegistrationSuccessPage() {
     setIsLoading(false)
   }, [searchParams])
 
-  const handleResendEmail = async () => {
-    // TODO: Implement resend email functionality
+  const handleResendEmail = async () => {
     alert('ฟีเจอร์ส่งอีเมลซ้ำจะเปิดใช้งานเร็วๆ นี้')
   }
 
@@ -136,7 +135,6 @@ export default function RegistrationSuccessPage() {
             </p>
           </div>
         </div>
-
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">

@@ -7,9 +7,9 @@ interface CreateLabResultRequest {
   patientId: string;
   visitId?: string;
   labOrderId?: string;
-  testType: string;
-  testName: string;
-  testResults: Array<{
+  Type: string;
+  Name: string;
+  Results: Array<{
     parameter: string;
     value: string;
     unit?: string;
@@ -26,21 +26,21 @@ interface CreateLabResultRequest {
     fileType: string;
     fileSize: number;
   }>;
-  testedBy: string;
-  testedTime?: string;
+  edBy: string;
+  edTime?: string;
   reviewedBy?: string;
   reviewedTime?: string;
   notes?: string;
 }
 
 interface UpdateLabResultRequest {
-  testResults?: any[];
+  Results?: any[];
   overallResult?: string;
   interpretation?: string;
   recommendations?: string;
   attachments?: any[];
-  testedBy?: string;
-  testedTime?: string;
+  edBy?: string;
+  edTime?: string;
   reviewedBy?: string;
   reviewedTime?: string;
   notes?: string;
@@ -55,25 +55,25 @@ export const createLabResult = asyncHandler(async (req: Request, res: Response) 
     patientId,
     visitId,
     labOrderId,
-    testType,
-    testName,
-    testResults,
+    Type,
+    Name,
+    Results,
     overallResult,
     interpretation,
     recommendations,
     attachments,
-    testedBy,
-    testedTime,
+    edBy,
+    edTime,
     reviewedBy,
     reviewedTime,
     notes
   }: CreateLabResultRequest = req.body;
 
   // Validate required fields
-  if (!patientId || !testType || !testName || !testResults || !overallResult || !testedBy) {
+  if (!patientId || !Type || !Name || !Results || !overallResult || !edBy) {
     return res.status(400).json({
       statusCode: 400,
-      message: 'Missing required fields: patientId, testType, testName, testResults, overallResult, testedBy',
+      message: 'Missing required fields: patientId, Type, Name, Results, overallResult, edBy',
       data: null,
       error: {
         code: 'VALIDATION_ERROR',
@@ -110,9 +110,9 @@ export const createLabResult = asyncHandler(async (req: Request, res: Response) 
         visit_id,
         record_type,
         lab_order_id,
-        test_type,
-        test_name,
-        test_results,
+        _type,
+        _name,
+        _results,
         overall_result,
         interpretation,
         recommendations,
@@ -133,16 +133,16 @@ export const createLabResult = asyncHandler(async (req: Request, res: Response) 
       visitId || null,
       'lab_result',
       labOrderId || null,
-      testType,
-      testName,
-      JSON.stringify(testResults),
+      Type,
+      Name,
+      JSON.stringify(Results),
       overallResult,
       interpretation || null,
       recommendations || null,
       attachments ? JSON.stringify(attachments) : null,
       notes || null,
-      testedBy,
-      testedTime || new Date().toISOString(),
+      edBy,
+      edTime || new Date().toISOString(),
       reviewedBy || null,
       reviewedTime || null
     ];
@@ -153,7 +153,7 @@ export const createLabResult = asyncHandler(async (req: Request, res: Response) 
     logger.info('Lab result created successfully', {
       patientId,
       recordId: labResultRecord.id,
-      testedBy
+      edBy
     });
 
     res.status(201).json({
@@ -165,16 +165,16 @@ export const createLabResult = asyncHandler(async (req: Request, res: Response) 
         visitId: labResultRecord.visit_id,
         labOrderId: labResultRecord.lab_order_id,
         recordType: labResultRecord.record_type,
-        testType: labResultRecord.test_type,
-        testName: labResultRecord.test_name,
-        testResults: JSON.parse(labResultRecord.test_results || '[]'),
+        Type: labResultRecord._type,
+        Name: labResultRecord._name,
+        Results: JSON.parse(labResultRecord._results || '[]'),
         overallResult: labResultRecord.overall_result,
         interpretation: labResultRecord.interpretation,
         recommendations: labResultRecord.recommendations,
         attachments: labResultRecord.attachments ? JSON.parse(labResultRecord.attachments) : [],
         notes: labResultRecord.notes,
-        testedBy: labResultRecord.recorded_by,
-        testedTime: labResultRecord.recorded_time,
+        edBy: labResultRecord.recorded_by,
+        edTime: labResultRecord.recorded_time,
         reviewedBy: labResultRecord.reviewed_by,
         reviewedTime: labResultRecord.reviewed_time,
         createdAt: labResultRecord.created_at,
@@ -229,16 +229,16 @@ export const getLabResultsByPatient = asyncHandler(async (req: Request, res: Res
       visitId: record.visit_id,
       labOrderId: record.lab_order_id,
       recordType: record.record_type,
-      testType: record.test_type,
-      testName: record.test_name,
-      testResults: JSON.parse(record.test_results || '[]'),
+      Type: record._type,
+      Name: record._name,
+      Results: JSON.parse(record._results || '[]'),
       overallResult: record.overall_result,
       interpretation: record.interpretation,
       recommendations: record.recommendations,
       attachments: record.attachments ? JSON.parse(record.attachments) : [],
       notes: record.notes,
-      testedBy: record.recorded_by,
-      testedTime: record.recorded_time,
+      edBy: record.recorded_by,
+      edTime: record.recorded_time,
       reviewedBy: record.reviewed_by,
       reviewedTime: record.reviewed_time,
       createdAt: record.created_at,
@@ -314,16 +314,16 @@ export const getLabResultById = asyncHandler(async (req: Request, res: Response)
         visitId: record.visit_id,
         labOrderId: record.lab_order_id,
         recordType: record.record_type,
-        testType: record.test_type,
-        testName: record.test_name,
-        testResults: JSON.parse(record.test_results || '[]'),
+        Type: record._type,
+        Name: record._name,
+        Results: JSON.parse(record._results || '[]'),
         overallResult: record.overall_result,
         interpretation: record.interpretation,
         recommendations: record.recommendations,
         attachments: record.attachments ? JSON.parse(record.attachments) : [],
         notes: record.notes,
-        testedBy: record.recorded_by,
-        testedTime: record.recorded_time,
+        edBy: record.recorded_by,
+        edTime: record.recorded_time,
         reviewedBy: record.reviewed_by,
         reviewedTime: record.reviewed_time,
         createdAt: record.created_at,
@@ -434,16 +434,16 @@ export const updateLabResult = asyncHandler(async (req: Request, res: Response) 
         visitId: updatedRecord.visit_id,
         labOrderId: updatedRecord.lab_order_id,
         recordType: updatedRecord.record_type,
-        testType: updatedRecord.test_type,
-        testName: updatedRecord.test_name,
-        testResults: JSON.parse(updatedRecord.test_results || '[]'),
+        Type: updatedRecord._type,
+        Name: updatedRecord._name,
+        Results: JSON.parse(updatedRecord._results || '[]'),
         overallResult: updatedRecord.overall_result,
         interpretation: updatedRecord.interpretation,
         recommendations: updatedRecord.recommendations,
         attachments: updatedRecord.attachments ? JSON.parse(updatedRecord.attachments) : [],
         notes: updatedRecord.notes,
-        testedBy: updatedRecord.recorded_by,
-        testedTime: updatedRecord.recorded_time,
+        edBy: updatedRecord.recorded_by,
+        edTime: updatedRecord.recorded_time,
         reviewedBy: updatedRecord.reviewed_by,
         reviewedTime: updatedRecord.reviewed_time,
         createdAt: updatedRecord.created_at,

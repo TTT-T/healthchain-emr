@@ -55,13 +55,10 @@ export class DoctorService {
     is_available?: boolean;
   }) {
     try {
-      logger.debug('📱 DoctorService.getDoctors called', params);
-      console.log('📱 DoctorService.getDoctors called with params:', params);
-      
+      logger.('📱 DoctorService.getDoctors called', params);
       const response = await apiClient.get('/medical/doctors', { params });
       
-      logger.debug('✅ DoctorService.getDoctors success:', response);
-      console.log('✅ DoctorService.getDoctors success:', response);
+      logger.('✅ DoctorService.getDoctors success:', response);
       return response;
     } catch (error) {
       logger.error('❌ DoctorService.getDoctors error:', error);
@@ -81,11 +78,11 @@ export class DoctorService {
    */
   static async getDoctorById(id: string) {
     try {
-      logger.debug('📱 DoctorService.getDoctorById called', { id });
+      logger.('📱 DoctorService.getDoctorById called', { id });
       
       const response = await apiClient.get(`/medical/doctors/${id}`);
       
-      logger.debug('✅ DoctorService.getDoctorById success:', response);
+      logger.('✅ DoctorService.getDoctorById success:', response);
       return response;
     } catch (error) {
       logger.error('❌ DoctorService.getDoctorById error:', error);
@@ -98,11 +95,11 @@ export class DoctorService {
    */
   static async createDoctor(data: CreateDoctorRequest) {
     try {
-      logger.debug('📱 DoctorService.createDoctor called', data);
+      logger.('📱 DoctorService.createDoctor called', data);
       
       const response = await apiClient.post('/medical/doctors', data);
       
-      logger.debug('✅ DoctorService.createDoctor success:', response);
+      logger.('✅ DoctorService.createDoctor success:', response);
       return response;
     } catch (error) {
       logger.error('❌ DoctorService.createDoctor error:', error);
@@ -115,11 +112,11 @@ export class DoctorService {
    */
   static async updateDoctor(id: string, data: UpdateDoctorRequest) {
     try {
-      logger.debug('📱 DoctorService.updateDoctor called', { id, data });
+      logger.('📱 DoctorService.updateDoctor called', { id, data });
       
       const response = await apiClient.post(`/medical/doctors/${id}/update`, data);
       
-      logger.debug('✅ DoctorService.updateDoctor success:', response);
+      logger.('✅ DoctorService.updateDoctor success:', response);
       return response;
     } catch (error) {
       logger.error('❌ DoctorService.updateDoctor error:', error);
@@ -132,11 +129,11 @@ export class DoctorService {
    */
   static async deleteDoctor(id: string) {
     try {
-      logger.debug('📱 DoctorService.deleteDoctor called', { id });
+      logger.('📱 DoctorService.deleteDoctor called', { id });
       
       const response = await apiClient.post(`/medical/doctors/${id}/delete`, {});
       
-      logger.debug('✅ DoctorService.deleteDoctor success:', response);
+      logger.('✅ DoctorService.deleteDoctor success:', response);
       return response;
     } catch (error) {
       logger.error('❌ DoctorService.deleteDoctor error:', error);
@@ -149,11 +146,11 @@ export class DoctorService {
    */
   static async updateAvailability(id: string, isAvailable: boolean) {
     try {
-      logger.debug('📱 DoctorService.updateAvailability called', { id, isAvailable });
+      logger.('📱 DoctorService.updateAvailability called', { id, isAvailable });
       
       const response = await apiClient.post(`/medical/doctors/${id}/availability`, { isAvailable });
       
-      logger.debug('✅ DoctorService.updateAvailability success:', response);
+      logger.('✅ DoctorService.updateAvailability success:', response);
       return response;
     } catch (error) {
       logger.error('❌ DoctorService.updateAvailability error:', error);
@@ -166,11 +163,11 @@ export class DoctorService {
    */
   static async getCurrentQueue(id: string) {
     try {
-      logger.debug('📱 DoctorService.getCurrentQueue called', { id });
+      logger.('📱 DoctorService.getCurrentQueue called', { id });
       
       const response = await apiClient.get(`/medical/doctors/${id}/queue`);
       
-      logger.debug('✅ DoctorService.getCurrentQueue success:', response);
+      logger.('✅ DoctorService.getCurrentQueue success:', response);
       return response;
     } catch (error) {
       logger.error('❌ DoctorService.getCurrentQueue error:', error);
@@ -183,14 +180,14 @@ export class DoctorService {
    */
   static async getAvailableDoctors() {
     try {
-      logger.debug('📱 DoctorService.getAvailableDoctors called');
+      logger.('📱 DoctorService.getAvailableDoctors called');
       
       const response = await this.getDoctors({
         is_available: true,
         limit: 100 // ดึงทั้งหมด
       });
       
-      logger.debug('✅ DoctorService.getAvailableDoctors success:', response);
+      logger.('✅ DoctorService.getAvailableDoctors success:', response);
       return response;
     } catch (error) {
       logger.error('❌ DoctorService.getAvailableDoctors error:', error);

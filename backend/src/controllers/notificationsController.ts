@@ -151,15 +151,6 @@ export const getPatientNotifications = async (req: Request, res: Response) => {
       WHERE n.patient_id = $1 AND n.is_read = false
     `, [actualPatientId]);
     const unreadCount = parseInt(unreadCountResult.rows[0].unread_count);
-
-    console.log('🔔 Backend - Notification data:', {
-      actualPatientId,
-      patientId,
-      notificationsCount: notifications.length,
-      unreadCount,
-      notifications: notifications.map(n => ({ id: n.id, is_read: n.is_read, title: n.title }))
-    });
-
     // Format notifications
     const formattedNotifications = notifications.map(notif => ({
       id: notif.id,
@@ -273,14 +264,11 @@ export const markNotificationAsRead = async (req: Request, res: Response) => {
     }
 
     // Mark notification as read
-    console.log('🔔 Backend - Marking notification as read:', { notifId, actualPatientId, patientId });
     await databaseManager.query(`
       UPDATE notifications 
       SET is_read = true, read_at = NOW() AT TIME ZONE 'Asia/Bangkok', updated_at = NOW() AT TIME ZONE 'Asia/Bangkok'
       WHERE id = $1
     `, [notifId]);
-    console.log('🔔 Backend - Notification marked as read successfully');
-
     // Get updated notification
     const updatedNotification = await databaseManager.query(`
       SELECT 

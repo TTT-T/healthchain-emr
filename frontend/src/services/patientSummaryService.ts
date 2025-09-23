@@ -182,7 +182,7 @@ export class PatientSummaryService {
    */
   static formatDate(date: string): string {
     const dateObj = new Date(date);
-    return dateObj.toLocaleDateString('th-TH', {
+    return dateObj.toLocaleDaring('th-TH', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -211,7 +211,7 @@ export class PatientSummaryService {
   static isToday(dateTime: string): boolean {
     const today = new Date();
     const recordDate = new Date(dateTime);
-    return today.toDateString() === recordDate.toDateString();
+    return today.toDaring() === recordDate.toDaring();
   }
 
   /**
@@ -254,7 +254,7 @@ export class PatientSummaryService {
   /**
    * สร้างข้อมูลสถิติจากบันทึก
    */
-  static generateStatistics(records: any[]): {
+  static generaatistics(records: any[]): {
     totalRecords: number;
     recordsByType: Record<string, number>;
     recordsByMonth: Record<string, number>;
@@ -269,7 +269,7 @@ export class PatientSummaryService {
       recordsByType[record.recordType] = (recordsByType[record.recordType] || 0) + 1;
       
       // Count by month
-      const month = new Date(record.recordedTime).toLocaleDateString('th-TH', { year: 'numeric', month: 'long' });
+      const month = new Date(record.recordedTime).toLocaleDaring('th-TH', { year: 'numeric', month: 'long' });
       recordsByMonth[month] = (recordsByMonth[month] || 0) + 1;
     });
     
