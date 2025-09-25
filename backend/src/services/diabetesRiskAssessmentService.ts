@@ -55,8 +55,7 @@ export interface DiabetesRiskFactors {
   anxietyLevel?: number; // 1-10
   qualityOfLifeScore?: number; // 0-100
   
-  // Critical Lab Values
-  hba1c?: number;
+  // Critical Lab Values (duplicate removed)
   fastingInsulin?: number;
   cPeptide?: number;
   totalCholesterol?: number;
@@ -92,7 +91,7 @@ export interface DiabetesRiskFactors {
   sodiumIntake?: number;
   waterIntake?: number;
   mealFrequency?: number;
-  alcoholConsumption?: number;
+  alcoholConsumptionNumeric?: number;
   caffeineConsumption?: number;
   
   // Detailed Exercise
@@ -287,8 +286,7 @@ export class DiabetesRiskAssessmentService {
         anxietyLevel: vitalSigns.anxiety_level,
         qualityOfLifeScore: vitalSigns.quality_of_life_score,
         
-        // Critical Lab Values
-        hba1c: criticalLabs.hba1c,
+        // Critical Lab Values (duplicate removed)
         fastingInsulin: criticalLabs.fasting_insulin,
         cPeptide: criticalLabs.c_peptide,
         totalCholesterol: criticalLabs.total_cholesterol,
@@ -324,7 +322,7 @@ export class DiabetesRiskAssessmentService {
         sodiumIntake: nutrition.sodium_intake,
         waterIntake: nutrition.water_intake,
         mealFrequency: nutrition.meal_frequency,
-        alcoholConsumption: nutrition.alcohol_consumption,
+        alcoholConsumptionNumeric: nutrition.alcohol_consumption,
         caffeineConsumption: nutrition.caffeine_consumption,
         
         // Detailed Exercise
@@ -459,7 +457,7 @@ export class DiabetesRiskAssessmentService {
       contributingFactors.push('คุณภาพการนอนไม่ดี');
     }
     
-    if (factors.stressLevel && factors.stressLevel > 7) {
+    if (factors.stressLevel && factors.stressLevel === 'high') {
       riskScore += 5;
       contributingFactors.push('ระดับความเครียดสูง');
     }

@@ -56,12 +56,12 @@ export default function Notifications() {
           // Try to find patient record by email as fallback
           try {
             const patientResponse = await apiClient.get(`/medical/patients/by-email/${encodeURIComponent(user.email)}`);
-            if (patientResponse.data && patientResponse.data.id) {
-              currentPatientId = patientResponse.data.id;
+            if (patientResponse.data && typeof patientResponse.data === 'object' && patientResponse.data !== null && 'id' in patientResponse.data && (patientResponse.data as any).id) {
+              currentPatientId = (patientResponse.data as any).id;
               logger.info('Found patient ID for user', { userId: user.id, patientId: currentPatientId });
             }
           } catch (error) {
-            logger.warn('Could not find patient record for user', { userId: user.id, error: error.message });
+            logger.warn('Could not find patient record for user', { userId: user.id, error: (error as Error).message });
           }
         }
       }

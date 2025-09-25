@@ -206,11 +206,10 @@ export class AdminConsentAuditController {
       // Get usage by user type from consent requests
       const usageData = await databaseManager.query(`
         SELECT 
-          u.role,
+          cr.requester_type as role,
           COUNT(cr.id) as count
         FROM consent_requests cr
-        LEFT JOIN users u ON cr.requester_id = u.id
-        GROUP BY u.role
+        GROUP BY cr.requester_type
         ORDER BY count DESC
       `);
 
@@ -472,11 +471,10 @@ export class AdminConsentAuditController {
     // Get usage by user type from consent requests
     const usageData = await databaseManager.query(`
       SELECT 
-        u.role,
+        cr.requester_type as role,
         COUNT(cr.id) as count
       FROM consent_requests cr
-      LEFT JOIN users u ON cr.requester_id = u.id
-      GROUP BY u.role
+      GROUP BY cr.requester_type
       ORDER BY count DESC
     `);
 
@@ -560,6 +558,11 @@ export class AdminConsentAuditController {
 
   private getRoleLabel(role: string): string {
     switch (role) {
+      case 'hospital': return 'โรงพยาบาล';
+      case 'clinic': return 'คลินิก';
+      case 'insurance': return 'บริษัทประกัน';
+      case 'research': return 'สถาบันวิจัย';
+      case 'government': return 'หน่วยงานรัฐ';
       case 'doctor': return 'แพทย์';
       case 'nurse': return 'พยาบาล';
       case 'admin': return 'ผู้ดูแลระบบ';

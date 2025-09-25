@@ -67,12 +67,11 @@ export const getAllConsentRequests = async (req: Request, res: Response) => {
 
     if (search) {
       whereClause += ` AND (
-        u.first_name ILIKE $${paramIndex} OR 
-        u.last_name ILIKE $${paramIndex} OR 
-        p.first_name ILIKE $${paramIndex} OR 
-        p.last_name ILIKE $${paramIndex} OR 
-        p.hospital_number ILIKE $${paramIndex} OR 
-        cr.id::text ILIKE $${paramIndex}
+        cr.requester_name ILIKE $${paramIndex} OR 
+        cr.patient_name ILIKE $${paramIndex} OR 
+        cr.patient_hn ILIKE $${paramIndex} OR 
+        cr.id::text ILIKE $${paramIndex} OR
+        cr.request_id ILIKE $${paramIndex}
       )`;
       queryParams.push(`%${search}%`);
       paramIndex++;
@@ -82,8 +81,6 @@ export const getAllConsentRequests = async (req: Request, res: Response) => {
     const countQuery = `
       SELECT COUNT(*) as total
       FROM consent_requests cr
-      LEFT JOIN users u ON cr.requester_id = u.id
-      LEFT JOIN patients p ON cr.patient_id = p.id
       ${whereClause}
     `;
 
@@ -94,25 +91,23 @@ export const getAllConsentRequests = async (req: Request, res: Response) => {
     const requestsQuery = `
       SELECT 
         cr.id,
-        cr.id as request_id,
-        u.first_name || ' ' || u.last_name as requester_name,
-        'hospital' as requester_type,
-        p.first_name || ' ' || p.last_name as patient_name,
-        p.hospital_number as patient_hn,
+        cr.request_id,
+        cr.requester_name,
+        cr.requester_type,
+        cr.patient_name,
+        cr.patient_hn,
         cr.request_type,
-        cr.data_types as requested_data_types,
+        cr.requested_data_types,
         cr.purpose,
-        'normal' as urgency_level,
+        cr.urgency_level,
         cr.status,
-        cr.requested_at as created_at,
+        cr.created_at,
         cr.expires_at,
-        true as is_compliant,
-        cr.response_reason as compliance_notes
+        cr.is_compliant,
+        cr.compliance_notes
       FROM consent_requests cr
-      LEFT JOIN users u ON cr.requester_id = u.id
-      LEFT JOIN patients p ON cr.patient_id = p.id
       ${whereClause}
-      ORDER BY cr.requested_at DESC
+      ORDER BY cr.created_at DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 

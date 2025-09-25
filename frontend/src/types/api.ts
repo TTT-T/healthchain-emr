@@ -358,7 +358,9 @@ export interface MedicalPatient {
   firstName: string;
   lastName: string;
   thaiName?: string; // Add missing thai_name property
+  thaiLastName?: string; // Add missing thai_last_name property
   thai_name?: string; // Legacy field for backwards compatibility
+  thai_last_name?: string; // Legacy field for backwards compatibility
   nationalId?: string; // Add missing national_id property
   national_id?: string; // Legacy field for backwards compatibility
   birthDate: string; // Also add birth_date alias

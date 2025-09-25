@@ -1,367 +1,363 @@
-# 🏥 HealthChain EMR System - Setup Guide
+# 🏥 EMR System - คู่มือการติดตั้งและใช้งาน
 
-## 📋 Overview
+## 📋 ข้อกำหนดระบบ
 
-HealthChain EMR System เป็นระบบจัดการข้อมูลทางการแพทย์ที่ครบครัน ประกอบด้วย:
+### ซอฟต์แวร์ที่จำเป็น
+- **Node.js** >= 18.0.0
+- **npm** หรือ **yarn**
+- **PostgreSQL** >= 13
+- **Redis** >= 6
+- **Git**
+- **Docker** และ **Docker Compose** (ตัวเลือก)
 
-- **Backend API**: Node.js + Express + TypeScript + PostgreSQL
-- **Frontend**: Next.js 15 + React + TypeScript + Tailwind CSS
-- **Database**: PostgreSQL with comprehensive medical schema
-- **Authentication**: JWT-based with role-based access control
-- **Features**: Patient management, medical records, appointments, AI risk assessment, consent management
+### ระบบปฏิบัติการที่รองรับ
+- Windows 10/11
+- macOS 10.15+
+- Ubuntu 18.04+
+- CentOS 7+
 
-## 🚀 Quick Start
+---
 
-### Prerequisites
+## 🚀 วิธีการติดตั้ง
 
-- Node.js 18+ 
-- PostgreSQL 15+
-- npm หรือ yarn
-- Git
+### วิธีที่ 1: ติดตั้งด้วย Docker (แนะนำ)
 
-### 1. Clone Repository
-
+#### 1. โคลนโปรเจก
 ```bash
-git clone <repository-url>
-cd emr-system
+git clone https://github.com/TTT-T/healthchain-emr.git
+cd healthchain-emr
 ```
 
-### 2. Database Setup
-
-#### Install PostgreSQL
+#### 2. สร้างไฟล์ Environment
 ```bash
-# Windows (using Chocolatey)
-choco install postgresql
-
-# macOS (using Homebrew)
-brew install postgresql
-
-# Ubuntu/Debian
-sudo apt-get install postgresql postgresql-contrib
+# คัดลอกไฟล์ตัวอย่าง
+cp backend/env.example backend/.env
+cp frontend/.env.example frontend/.env.local
 ```
 
-#### Create Database
+#### 3. แก้ไขการตั้งค่าในไฟล์ `.env`
 ```bash
-# Connect to PostgreSQL
-psql -U postgres
-
-# Create database
-CREATE DATABASE emr_development;
-CREATE USER emr_user WITH PASSWORD 'your_password';
-GRANT ALL PRIVILEGES ON DATABASE emr_development TO emr_user;
-\q
-```
-
-### 3. Environment Configuration
-
-#### Backend Environment
-สร้างไฟล์ `backend/.env`:
-```env
+# backend/.env
 NODE_ENV=development
 PORT=3001
-DB_HOST=localhost
+DB_HOST=postgres
 DB_PORT=5432
 DB_NAME=emr_development
 DB_USER=postgres
 DB_PASSWORD=12345
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production-2025
-JWT_REFRESH_SECRET=your-super-secret-refresh-key-change-this-in-production-2025
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_REFRESH_SECRET=your-super-secret-refresh-key-change-this-in-production
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+EMAIL_FROM=your-email@gmail.com
+FRONTEND_URL=http://localhost:3000
 ```
 
-#### Frontend Environment
-สร้างไฟล์ `frontend/.env.local`:
-```env
-NEXT_PUBLIC_API_URL=http://localhost:3001/api
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-NODE_ENV=development
-```
-
-### 4. Install Dependencies
-
+#### 4. เริ่มต้นระบบด้วย Docker
 ```bash
-# Install backend dependencies
+# เริ่มต้นฐานข้อมูลและ Redis
+docker-compose up postgres redis -d
+
+# รอให้ฐานข้อมูลพร้อม (ประมาณ 30 วินาที)
+sleep 30
+
+# เริ่มต้น Backend และ Frontend
+docker-compose up backend frontend
+```
+
+---
+
+### วิธีที่ 2: ติดตั้งแบบ Manual
+
+#### 1. โคลนโปรเจก
+```bash
+git clone https://github.com/TTT-T/healthchain-emr.git
+cd healthchain-emr
+```
+
+#### 2. ติดตั้งฐานข้อมูล PostgreSQL
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+
+# macOS (ด้วย Homebrew)
+brew install postgresql
+brew services start postgresql
+
+# Windows
+# ดาวน์โหลดและติดตั้งจาก https://www.postgresql.org/download/windows/
+```
+
+#### 3. สร้างฐานข้อมูล
+```sql
+-- เข้าสู่ PostgreSQL
+sudo -u postgres psql
+
+-- สร้างฐานข้อมูลและผู้ใช้
+CREATE DATABASE emr_development;
+CREATE USER emr_user WITH PASSWORD '12345';
+GRANT ALL PRIVILEGES ON DATABASE emr_development TO emr_user;
+\q
+```
+
+#### 4. ติดตั้ง Redis
+```bash
+# Ubuntu/Debian
+sudo apt install redis-server
+sudo systemctl start redis-server
+
+# macOS (ด้วย Homebrew)
+brew install redis
+brew services start redis
+
+# Windows
+# ดาวน์โหลดและติดตั้งจาก https://redis.io/download
+```
+
+#### 5. ติดตั้ง Backend
+```bash
 cd backend
 npm install
-
-# Install frontend dependencies
-cd ../frontend
-npm install
-```
-
-### 5. Database Migration
-
-```bash
-# Run database migrations
-cd backend
+cp env.example .env
+# แก้ไขไฟล์ .env ตามการตั้งค่าของคุณ
+npm run build
 npm run migrate
-
-# Create default users
-npm run create-default-users
-```
-
-### 6. Start Development Servers
-
-#### Terminal 1 - Backend
-```bash
-cd backend
 npm run dev
 ```
 
-#### Terminal 2 - Frontend
+#### 6. ติดตั้ง Frontend (Terminal ใหม่)
 ```bash
 cd frontend
+npm install
+cp .env.example .env.local
+# แก้ไขไฟล์ .env.local ตามการตั้งค่าของคุณ
 npm run dev
 ```
 
-### 7. Access Application
+---
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:3001/api
-- **Health Check**: http://localhost:3001/health
+## 🔧 การตั้งค่าเพิ่มเติม
 
-## 🐳 Docker Setup (Alternative)
+### การตั้งค่า Email (Gmail)
+1. เปิดใช้งาน 2-Factor Authentication ใน Gmail
+2. สร้าง App Password:
+   - ไปที่ Google Account Settings
+   - Security → 2-Step Verification → App passwords
+   - สร้าง App Password สำหรับ "Mail"
+3. ใช้ App Password ในไฟล์ `.env`
 
-### Using Docker Compose
-
+### การตั้งค่า Admin User
 ```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
+cd backend
+npm run db:cli
+# เลือก "Create Admin User" และทำตามคำแนะนำ
 ```
 
-## 👥 Default Users
+---
 
-หลังจากรัน migration จะมี default users:
+## 🌐 การเข้าถึงระบบ
 
-| Role | Username | Password | Description |
-|------|----------|----------|-------------|
-| admin | admin | admin123 | System Administrator |
-| doctor | doctor | doctor123 | Medical Doctor |
-| nurse | nurse | nurse123 | Registered Nurse |
-| patient | patient | patient123 | Patient User |
+หลังจากติดตั้งเสร็จแล้ว:
 
-## 🔧 Development Commands
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:3001
+- **API Documentation**: http://localhost:3001/api-docs
+
+### บัญชีเริ่มต้น
+- **Admin**: admin@example.com / admin123
+- **Doctor**: doctor@example.com / doctor123
+- **Nurse**: nurse@example.com / nurse123
+- **Patient**: patient@example.com / patient123
+
+---
+
+## 🛠️ คำสั่งที่มีประโยชน์
 
 ### Backend Commands
 ```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run start        # Start production server
-npm run migrate      # Run database migrations
-npm run seed         # Seed database with sample data
-npm run test         # Run tests
-npm run lint         # Run ESLint
+# Development
+npm run dev              # เริ่มต้น development server
+npm run build           # Build โปรเจก
+npm run test            # รัน tests
+npm run migrate         # รัน database migrations
+
+# Database
+npm run db:status       # ตรวจสอบสถานะฐานข้อมูล
+npm run db:health       # ตรวจสอบสุขภาพฐานข้อมูล
+npm run db:migrate      # รัน migrations
+npm run db:seed         # เพิ่มข้อมูลตัวอย่าง
+
+# Performance Testing
+npm run perf:api        # ทดสอบ API performance
+npm run perf:db         # ทดสอบ database performance
+npm run perf:all        # ทดสอบทั้งหมด
 ```
 
 ### Frontend Commands
 ```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run start        # Start production server
-npm run lint         # Run ESLint
-npm run type-check   # Run TypeScript type checking
+# Development
+npm run dev             # เริ่มต้น development server
+npm run build           # Build โปรเจก
+npm run start           # เริ่มต้น production server
+npm run test            # รัน tests
+
+# Performance
+npm run perf:lighthouse # ทดสอบ Lighthouse
+npm run perf:bundle     # วิเคราะห์ bundle size
 ```
 
-## 📁 Project Structure
-
-```
-emr-system/
-├── backend/                 # Backend API
-│   ├── src/
-│   │   ├── controllers/     # Route controllers
-│   │   ├── middleware/      # Express middleware
-│   │   ├── routes/          # API routes
-│   │   ├── services/        # Business logic
-│   │   ├── database/        # Database connection & migrations
-│   │   ├── types/           # TypeScript types
-│   │   └── utils/           # Utility functions
-│   ├── package.json
-│   └── tsconfig.json
-├── frontend/                # Frontend Application
-│   ├── src/
-│   │   ├── app/             # Next.js app directory
-│   │   ├── components/      # React components
-│   │   ├── contexts/        # React contexts
-│   │   ├── hooks/           # Custom hooks
-│   │   ├── lib/             # Utility libraries
-│   │   ├── services/        # API services
-│   │   └── types/           # TypeScript types
-│   ├── package.json
-│   └── next.config.ts
-├── docker-compose.yml       # Docker configuration
-└── README.md
-```
-
-## 🔐 Authentication & Authorization
-
-### User Roles
-- **admin**: Full system access
-- **doctor**: Medical staff access
-- **nurse**: Nursing staff access
-- **patient**: Patient portal access
-- **external_user**: External requester access
-
-### API Authentication
+### Docker Commands
 ```bash
-# Login to get tokens
-curl -X POST http://localhost:3001/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin123"}'
+# เริ่มต้นระบบทั้งหมด
+docker-compose up
 
-# Use token in requests
-curl -X GET http://localhost:3001/api/auth/profile \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+# เริ่มต้นเฉพาะฐานข้อมูล
+docker-compose up postgres redis
+
+# เริ่มต้นในโหมด background
+docker-compose up -d
+
+# หยุดระบบ
+docker-compose down
+
+# ดู logs
+docker-compose logs -f backend
+docker-compose logs -f frontend
+
+# Rebuild containers
+docker-compose build --no-cache
 ```
 
-## 🏥 Medical Features
+---
 
-### Patient Management
-- Patient registration and profile management
-- Medical history tracking
-- Insurance information
-- Emergency contacts
+## 🐛 การแก้ไขปัญหา
 
-### Medical Records
-- Visit records
-- Vital signs
-- Lab orders and results
-- Prescriptions
-- Medical documents
+### ปัญหาที่พบบ่อย
 
-### Appointments
-- Appointment scheduling
-- Doctor availability
-- Patient notifications
-- Calendar integration
-
-### AI Risk Assessment
-- Diabetes risk assessment
-- Hypertension risk assessment
-- Heart disease risk assessment
-- Risk history tracking
-
-### Consent Management
-- Smart contracts for data sharing
-- Consent tracking and audit
-- External requester management
-- Blockchain integration (future)
-
-## 🛠️ Troubleshooting
-
-### Common Issues
-
-#### Database Connection Error
+#### 1. ฐานข้อมูลเชื่อมต่อไม่ได้
 ```bash
-# Check PostgreSQL status
+# ตรวจสอบว่า PostgreSQL ทำงานอยู่
 sudo systemctl status postgresql
 
-# Restart PostgreSQL
-sudo systemctl restart postgresql
-
-# Check connection
-psql -U postgres -h localhost -p 5432
+# ตรวจสอบการเชื่อมต่อ
+npm run db:test-connection
 ```
 
-#### Port Already in Use
+#### 2. Redis เชื่อมต่อไม่ได้
 ```bash
-# Find process using port
-lsof -i :3001
-lsof -i :3000
-
-# Kill process
-kill -9 <PID>
+# ตรวจสอบว่า Redis ทำงานอยู่
+redis-cli ping
+# ควรได้ผลลัพธ์: PONG
 ```
 
-#### Node Modules Issues
+#### 3. Port ถูกใช้งานแล้ว
 ```bash
-# Clear cache and reinstall
+# ตรวจสอบ port ที่ใช้งาน
+netstat -tulpn | grep :3000
+netstat -tulpn | grep :3001
+
+# ฆ่า process ที่ใช้ port
+sudo kill -9 <PID>
+```
+
+#### 4. Node modules มีปัญหา
+```bash
+# ลบ node_modules และติดตั้งใหม่
 rm -rf node_modules package-lock.json
 npm install
 ```
 
-### Logs and Debugging
-
-#### Backend Logs
+#### 5. Docker มีปัญหา
 ```bash
-# View backend logs
-cd backend
-npm run dev
+# ลบ containers และ volumes
+docker-compose down -v
+docker system prune -a
 
-# Or with Docker
-docker-compose logs backend
+# สร้างใหม่
+docker-compose up --build
 ```
-
-#### Frontend Logs
-```bash
-# View frontend logs
-cd frontend
-npm run dev
-
-# Or with Docker
-docker-compose logs frontend
-```
-
-## 📚 API Documentation
-
-### Authentication Endpoints
-- `POST /api/auth/login` - User login
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/logout` - User logout
-- `GET /api/auth/profile` - Get user profile
-- `PUT /api/auth/profile` - Update user profile
-
-### Patient Endpoints
-- `GET /api/patients` - List patients
-- `POST /api/patients` - Create patient
-- `GET /api/patients/:id` - Get patient
-- `PUT /api/patients/:id` - Update patient
-- `DELETE /api/patients/:id` - Delete patient
-
-### Medical Records Endpoints
-- `GET /api/visits` - List visits
-- `POST /api/visits` - Create visit
-- `GET /api/vital-signs` - List vital signs
-- `POST /api/vital-signs` - Create vital signs
-- `GET /api/lab-orders` - List lab orders
-- `POST /api/lab-orders` - Create lab order
-
-## 🔒 Security Considerations
-
-### Production Deployment
-1. Change all default passwords
-2. Use strong JWT secrets
-3. Enable HTTPS
-4. Configure CORS properly
-5. Set up rate limiting
-6. Enable audit logging
-7. Regular security updates
-
-### Environment Variables
-```env
-# Production environment variables
-NODE_ENV=production
-JWT_SECRET=your-very-strong-secret-key
-DB_PASSWORD=your-strong-database-password
-SMTP_PASSWORD=your-email-password
-```
-
-## 📞 Support
-
-หากมีปัญหาหรือคำถาม:
-1. ตรวจสอบ logs ใน console
-2. ดู troubleshooting section
-3. ตรวจสอบ environment variables
-4. ติดต่อทีมพัฒนา
-
-## 📄 License
-
-This project is licensed under the MIT License.
 
 ---
 
-**Happy Coding! 🚀**
+## 📁 โครงสร้างโปรเจก
+
+```
+healthchain-emr/
+├── backend/                 # Backend API (Node.js + Express)
+│   ├── src/
+│   │   ├── controllers/     # API Controllers
+│   │   ├── database/        # Database migrations & schemas
+│   │   ├── middleware/      # Express middleware
+│   │   ├── routes/          # API routes
+│   │   ├── services/        # Business logic
+│   │   └── utils/           # Utility functions
+│   ├── scripts/             # Database & admin scripts
+│   └── tests/               # Backend tests
+├── frontend/                # Frontend (Next.js + React)
+│   ├── src/
+│   │   ├── app/             # Next.js app directory
+│   │   ├── components/      # React components
+│   │   ├── services/        # API services
+│   │   └── types/           # TypeScript types
+│   └── public/              # Static assets
+├── docker-compose.yml       # Docker configuration
+└── README.md               # Project documentation
+```
+
+---
+
+## 🔒 การตั้งค่าสำหรับ Production
+
+### 1. Environment Variables
+```bash
+NODE_ENV=production
+JWT_SECRET=<strong-random-secret>
+JWT_REFRESH_SECRET=<strong-random-secret>
+DB_PASSWORD=<strong-database-password>
+SMTP_PASSWORD=<email-app-password>
+```
+
+### 2. Security Headers
+- เปิดใช้งาน HTTPS
+- ตั้งค่า CORS ให้เหมาะสม
+- ใช้ environment variables สำหรับ secrets
+
+### 3. Database
+- ใช้ connection pooling
+- ตั้งค่า backup strategy
+- เปิดใช้งาน SSL
+
+### 4. Monitoring
+- ตั้งค่า logging
+- ใช้ monitoring tools (เช่น PM2)
+- ตั้งค่า health checks
+
+---
+
+## 📞 การขอความช่วยเหลือ
+
+หากพบปัญหาหรือต้องการความช่วยเหลือ:
+
+1. ตรวจสอบ logs ใน `backend/logs/`
+2. ดู API documentation ที่ http://localhost:3001/api-docs
+3. ตรวจสอบ GitHub Issues
+4. ติดต่อทีมพัฒนา
+
+---
+
+## 🎯 ขั้นตอนถัดไป
+
+หลังจากติดตั้งเสร็จแล้ว:
+
+1. **สร้าง Admin User** - ใช้ script ใน `backend/scripts/`
+2. **ทดสอบระบบ** - ลองใช้งานฟีเจอร์ต่างๆ
+3. **ตั้งค่า Email** - กำหนดค่า SMTP สำหรับการส่งอีเมล
+4. **ปรับแต่ง UI** - แก้ไขสี, logo, และ branding
+5. **เพิ่มข้อมูลตัวอย่าง** - ใช้ `npm run db:seed`
+
+---
+
+**หมายเหตุ**: คู่มือนี้ครอบคลุมการติดตั้งพื้นฐาน หากต้องการการตั้งค่าเฉพาะหรือมีคำถามเพิ่มเติม กรุณาติดต่อทีมพัฒนา

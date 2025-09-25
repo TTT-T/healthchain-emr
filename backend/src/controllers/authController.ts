@@ -82,7 +82,7 @@ const db = {
   getUserById: async (userId: string) => {
     const query = `
       SELECT id, username, email, first_name, last_name,
-             thai_name, thai_last_name, position, department_id,
+             thai_name, thai_last_name, department_id,
              role, is_active, profile_completed, email_verified,
              created_at, updated_at
       FROM users WHERE id = $1

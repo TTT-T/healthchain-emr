@@ -86,14 +86,14 @@ export const getConsentDashboardStats = async (req: Request, res: Response) => {
         databaseManager.query(`
           SELECT COUNT(*) as active_contracts
           FROM consent_contracts
-          WHERE status = 'active' AND valid_until > NOW()
+          WHERE status = 'approved' AND (expires_at IS NULL OR expires_at > NOW())
         `),
         
         // Expired contracts
         databaseManager.query(`
           SELECT COUNT(*) as expired_contracts
           FROM consent_contracts
-          WHERE status = 'expired' OR valid_until <= NOW()
+          WHERE status = 'expired' OR expires_at <= NOW()
         `)
       );
     } else {
@@ -190,24 +190,22 @@ export const getRecentConsentRequests = async (req: Request, res: Response) => {
     const requestsQuery = `
       SELECT 
         cr.id,
-        cr.id as request_id,
-        u.first_name || ' ' || u.last_name as requester_name,
-        'hospital' as requester_type,
-        p.first_name || ' ' || p.last_name as patient_name,
-        p.hospital_number as patient_hn,
+        cr.request_id,
+        cr.requester_name,
+        cr.requester_type,
+        cr.patient_name,
+        cr.patient_hn,
         cr.request_type,
-        cr.data_types as requested_data_types,
+        cr.requested_data_types,
         cr.purpose,
-        'normal' as urgency_level,
+        cr.urgency_level,
         cr.status,
-        cr.requested_at as created_at,
+        cr.created_at,
         cr.expires_at,
-        true as is_compliant,
-        cr.response_reason as compliance_notes
+        cr.is_compliant,
+        cr.compliance_notes
       FROM consent_requests cr
-      LEFT JOIN users u ON cr.requester_id = u.id
-      LEFT JOIN patients p ON cr.patient_id = p.id
-      ORDER BY cr.requested_at DESC
+      ORDER BY cr.created_at DESC
       LIMIT $1
     `;
 
@@ -461,24 +459,22 @@ export const getConsentDashboardOverview = async (req: Request, res: Response) =
       queries.push(databaseManager.query(`
         SELECT 
           cr.id,
-          cr.id as request_id,
-          u.first_name || ' ' || u.last_name as requester_name,
-          'hospital' as requester_type,
-          p.first_name || ' ' || p.last_name as patient_name,
-          p.hospital_number as patient_hn,
+          cr.request_id,
+          cr.requester_name,
+          cr.requester_type,
+          cr.patient_name,
+          cr.patient_hn,
           cr.request_type,
-          cr.data_types as requested_data_types,
+          cr.requested_data_types,
           cr.purpose,
-          'normal' as urgency_level,
+          cr.urgency_level,
           cr.status,
-          cr.requested_at as created_at,
+          cr.created_at,
           cr.expires_at,
-          true as is_compliant,
-          cr.response_reason as compliance_notes
+          cr.is_compliant,
+          cr.compliance_notes
         FROM consent_requests cr
-        LEFT JOIN users u ON cr.requester_id = u.id
-        LEFT JOIN patients p ON cr.patient_id = p.id
-        ORDER BY cr.requested_at DESC
+        ORDER BY cr.created_at DESC
         LIMIT 5
       `));
     } else {

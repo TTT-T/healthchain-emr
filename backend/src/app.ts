@@ -19,7 +19,7 @@ import adminRoutes from './routes/admin';
 import securityRoutes from './routes/security';
 import externalRequestersRoutes from './routes/external-requesters';
 import healthRoutes from './routes/health';
-import emailRoutes from './routes/email-test';
+// import emailRoutes from './routes/email-test'; // Removed - test route
 import patientRegistrationRoutes from './routes/patientRegistration';
 
 // Middleware
@@ -162,7 +162,7 @@ class Application {
     // Profile routes are now included in /api/auth
     this.app.use('/api/security', securityRoutes);   // Security Settings     // Profile management
     this.app.use('/api/external-requesters', externalRequestersRoutes); // External Requesters
-    this.app.use('/api/email-', emailRoutes); // Email ing
+    // this.app.use('/api/email-', emailRoutes); // Email ing - Removed test route
     this.app.use('/api/patient-registration', patientRegistrationRoutes); // Patient EMR Registration
 
     // 404 handler

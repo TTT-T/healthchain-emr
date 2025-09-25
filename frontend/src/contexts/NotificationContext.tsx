@@ -49,8 +49,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           // Try to find patient record by email as fallback
           try {
             const patientResponse = await apiClient.get(`/medical/patients/by-email/${encodeURIComponent(user.email)}`);
-            if (patientResponse.data && patientResponse.data.id) {
-              patientId = patientResponse.data.id;
+            if (patientResponse.data && typeof patientResponse.data === 'object' && patientResponse.data !== null && 'id' in patientResponse.data && (patientResponse.data as any).id) {
+              patientId = (patientResponse.data as any).id;
             }
           } catch (error) {
             // Keep using user ID as fallback

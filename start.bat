@@ -1,96 +1,121 @@
 @echo off
-echo ========================================
-echo    EMR System - One Click Start
-echo ========================================
+title EMR System - Electronic Medical Records
+color 0A
+
+echo.
+echo  ███████╗███╗   ███╗██████╗     ███████╗██╗   ██╗███████╗████████╗███████╗███╗   ███╗
+echo  ██╔════╝████╗ ████║██╔══██╗    ██╔════╝╚██╗ ██╔╝██╔════╝╚══██╔══╝██╔════╝████╗ ████║
+echo  █████╗  ██╔████╔██║██████╔╝    ███████╗ ╚████╔╝ ███████╗   ██║   █████╗  ██╔████╔██║
+echo  ██╔══╝  ██║╚██╔╝██║██╔══██╗    ╚════██║  ╚██╔╝  ╚════██║   ██║   ██╔══╝  ██║╚██╔╝██║
+echo  ███████╗██║ ╚═╝ ██║██║  ██║    ███████║   ██║   ███████║   ██║   ███████╗██║ ╚═╝ ██║
+echo  ╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝    ╚══════╝   ╚═╝   ╚══════╝   ╚═╝   ╚══════╝╚═╝     ╚═╝
+echo.
+echo  ========================================
+echo     Electronic Medical Records System
+echo  ========================================
 echo.
 
-echo [1/4] Checking Docker installation...
-echo Please wait, checking Docker status...
-timeout /t 2 /nobreak >nul
+echo [INFO] Checking system requirements...
 
+:: Check if Docker is installed and running
+echo [1/6] Checking Docker installation...
 docker --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo.
-    echo ❌ Docker is not installed or not running!
-    echo.
-    echo Please install Docker Desktop first:
-    echo 1. Run install-docker.bat to install Docker automatically
-    echo 2. Or download from: https://www.docker.com/products/docker-desktop
-    echo.
-    echo Would you like to run the Docker installer now? (Y/N)
-    set /p choice=
-    if /i "%choice%"=="Y" (
-        echo.
-        echo Running Docker installer...
-        call install-docker.bat
-        echo.
-        echo Please restart this script after Docker is installed.
-        pause
-        exit /b 1
-    ) else (
-        echo.
-        echo Please install Docker and try again.
-        echo You can run install-docker.bat anytime to install Docker.
-        pause
-        exit /b 1
-    )
-)
-
-echo ✓ Docker is installed
-echo Testing Docker connection...
-docker info >nul 2>&1
-if %errorlevel% neq 0 (
-    echo.
-    echo ⚠ Docker is installed but not running!
-    echo Please start Docker Desktop and try again.
-    echo.
-    echo 1. Look for Docker Desktop icon in system tray
-    echo 2. Right-click and select "Start Docker Desktop"
-    echo 3. Wait for Docker to start (whale icon should be stable)
-    echo 4. Run this script again
+    echo [ERROR] Docker is not installed or not running!
+    echo [INFO] Please install Docker Desktop from: https://www.docker.com/products/docker-desktop
+    echo [INFO] After installation, start Docker Desktop and try again.
     echo.
     pause
     exit /b 1
 )
-echo ✓ Docker is running
+echo [OK] Docker is available
 
-echo.
-echo [2/4] Checking Docker Compose...
+:: Check if Docker Compose is available
+echo [2/6] Checking Docker Compose...
 docker-compose --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ERROR: Docker Compose is not available!
+    echo [ERROR] Docker Compose is not available!
+    echo [INFO] Please ensure Docker Desktop is properly installed.
+    echo.
     pause
     exit /b 1
 )
-echo ✓ Docker Compose is available
+echo [OK] Docker Compose is available
+
+:: Check if ports are available
+echo [3/6] Checking port availability...
+netstat -an | find "3000" | find "LISTENING" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [WARNING] Port 3000 is already in use. Stopping existing containers...
+    docker-compose down >nul 2>&1
+    timeout /t 3 /nobreak >nul
+)
+
+netstat -an | find "3001" | find "LISTENING" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [WARNING] Port 3001 is already in use. Stopping existing containers...
+    docker-compose down >nul 2>&1
+    timeout /t 3 /nobreak >nul
+)
+echo [OK] Ports are available
+
+:: Start the EMR system
+echo [4/6] Starting EMR System containers...
+echo [INFO] This may take a few minutes on first run...
+docker-compose up -d
+
+if %errorlevel% neq 0 (
+    echo [ERROR] Failed to start EMR System containers!
+    echo [INFO] Please check Docker Desktop is running and try again.
+    echo.
+    pause
+    exit /b 1
+)
+
+:: Wait for services to start
+echo [5/6] Waiting for services to initialize...
+echo [INFO] Please wait while services are starting up...
+timeout /t 15 /nobreak >nul
+
+:: Check if services are running
+echo [6/6] Verifying services...
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | findstr "emr_"
 
 echo.
-echo [3/4] Starting EMR System...
-echo This may take a few minutes on first run...
+echo  ========================================
+echo     EMR System Started Successfully!
+echo  ========================================
+echo.
+echo  🌐 Application URLs:
+echo     Frontend: http://localhost:3000
+echo     Backend:  http://localhost:3001
+echo.
+echo  🗄️  Database Services:
+echo     PostgreSQL: localhost:5432
+echo     Redis:      localhost:6379
+echo.
+echo  👤 Default Admin Login:
+echo     Username: admin
+echo     Password: password123
+echo.
+echo  📋 Available User Accounts:
+echo     Admin:  admin / password123
+echo     Doctor: doctor / password123
+echo     Patient: patient / password123
+echo.
+echo  ========================================
+echo.
+echo [INFO] Opening EMR System in your browser...
+timeout /t 2 /nobreak >nul
+start http://localhost:3000
+
+echo.
+echo [INFO] EMR System is now running!
+echo [INFO] Press Ctrl+C to stop the system, or close this window.
+echo [INFO] To stop the system later, run: docker-compose down
 echo.
 
-docker-compose -f docker-compose.simple.yml up --build
-
+:: Keep the window open and show live logs
+echo [INFO] Showing live system logs (Press Ctrl+C to exit)...
 echo.
-echo ========================================
-echo    EMR System Started Successfully!
-echo ========================================
-echo.
-echo 🌐 Frontend: http://localhost:3000
-echo 🔧 Backend API: http://localhost:3001
-echo 📚 API Docs: http://localhost:3001/api-docs
-echo.
-echo Test Accounts:
-echo 👨‍💼 Admin: admin@example.com / admin123
-echo 👨‍⚕️ Doctor: doctor@example.com / doctor123
-echo 👩‍⚕️ Nurse: nurse@example.com / nurse123
-echo 🏥 Patient: patient@example.com / patient123
-echo.
-echo Press any key to stop the system...
-pause >nul
-
-echo.
-echo Stopping EMR System...
-docker-compose -f docker-compose.simple.yml down
-echo System stopped.
-pause
+docker-compose logs -f

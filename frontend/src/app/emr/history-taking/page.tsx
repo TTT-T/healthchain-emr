@@ -419,7 +419,7 @@ export default function HistoryTaking() {
             alcoholConsumption: medicalHistory.detailedNutrition.alcoholConsumption ? parseFloat(medicalHistory.detailedNutrition.alcoholConsumption) : undefined,
             caffeineConsumption: medicalHistory.detailedNutrition.caffeineConsumption ? parseFloat(medicalHistory.detailedNutrition.caffeineConsumption) : undefined,
             assessmentDate: new Date().toISOString(),
-            visitId: null // Don't link to visits table since this is history-taking data
+            visitId: undefined // Don't link to visits table since this is history-taking data
           };
           
           // Save detailed exercise
@@ -440,7 +440,7 @@ export default function HistoryTaking() {
             stairsUsage: medicalHistory.detailedExercise.stairsUsage,
             walkingSteps: medicalHistory.detailedExercise.walkingSteps ? parseInt(medicalHistory.detailedExercise.walkingSteps) : undefined,
             assessmentDate: new Date().toISOString(),
-            visitId: null // Don't link to visits table since this is history-taking data
+            visitId: undefined // Don't link to visits table since this is history-taking data
           };
           
           // Only save if there's actual data and user is authenticated
