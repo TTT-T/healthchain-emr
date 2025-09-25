@@ -1,49 +1,39 @@
 @echo off
 echo ========================================
-echo    EMR System - One Click Start
+echo    EMR System - Quick Start
 echo ========================================
 echo.
 
-echo [1/4] Checking Docker installation...
-echo Please wait, checking Docker status...
-timeout /t 2 /nobreak >nul
+echo This script will help you get started quickly.
+echo.
 
+echo [1/3] Checking if Docker is installed...
 docker --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo.
-    echo ❌ Docker is not installed or not running!
+    echo ❌ Docker is not installed.
     echo.
     echo Please install Docker Desktop first:
-    echo 1. Run install-docker.bat to install Docker automatically
-    echo 2. Or download from: https://www.docker.com/products/docker-desktop
+    echo 1. Download from: https://www.docker.com/products/docker-desktop
+    echo 2. Install Docker Desktop
+    echo 3. Start Docker Desktop
+    echo 4. Run this script again
     echo.
-    echo Would you like to run the Docker installer now? (Y/N)
-    set /p choice=
-    if /i "%choice%"=="Y" (
-        echo.
-        echo Running Docker installer...
-        call install-docker.bat
-        echo.
-        echo Please restart this script after Docker is installed.
-        pause
-        exit /b 1
-    ) else (
-        echo.
-        echo Please install Docker and try again.
-        echo You can run install-docker.bat anytime to install Docker.
-        pause
-        exit /b 1
-    )
+    echo The download page will open in your browser...
+    timeout /t 3 /nobreak >nul
+    start https://www.docker.com/products/docker-desktop
+    pause
+    exit /b 1
 )
 
 echo ✓ Docker is installed
-echo Testing Docker connection...
+echo.
+
+echo [2/3] Checking if Docker is running...
 docker info >nul 2>&1
 if %errorlevel% neq 0 (
+    echo ❌ Docker is not running.
     echo.
-    echo ⚠ Docker is installed but not running!
-    echo Please start Docker Desktop and try again.
-    echo.
+    echo Please start Docker Desktop:
     echo 1. Look for Docker Desktop icon in system tray
     echo 2. Right-click and select "Start Docker Desktop"
     echo 3. Wait for Docker to start (whale icon should be stable)
@@ -52,20 +42,11 @@ if %errorlevel% neq 0 (
     pause
     exit /b 1
 )
+
 echo ✓ Docker is running
-
 echo.
-echo [2/4] Checking Docker Compose...
-docker-compose --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo ERROR: Docker Compose is not available!
-    pause
-    exit /b 1
-)
-echo ✓ Docker Compose is available
 
-echo.
-echo [3/4] Starting EMR System...
+echo [3/3] Starting EMR System...
 echo This may take a few minutes on first run...
 echo.
 

@@ -32,6 +32,10 @@ install-docker.bat
 # หากยังไม่มี Docker (Mac/Linux)
 chmod +x install-docker.sh && ./install-docker.sh
 
+# หรือใช้ Quick Start (ง่ายกว่า)
+quick-start.bat  # Windows
+chmod +x quick-start.sh && ./quick-start.sh  # Mac/Linux
+
 # หรือใช้คำสั่งเดียว
 docker-compose -f docker-compose.simple.yml up --build
 ```
@@ -58,6 +62,7 @@ docker-compose -f docker-compose.simple.yml up --build
 - [🚀 Quick Start Guide](QUICK_START.md) - ติดตั้งเร็วๆ ใน 5 นาที
 - [📚 Setup Guide](SETUP_GUIDE.md) - คู่มือการติดตั้งแบบละเอียด
 - [🌐 Deployment Guide](DEPLOYMENT_GUIDE.md) - คู่มือการ Deploy สำหรับ Production
+- [🆘 Troubleshooting](TROUBLESHOOTING.md) - การแก้ไขปัญหาที่พบบ่อย
 
 ## สถานะการพัฒนา
 

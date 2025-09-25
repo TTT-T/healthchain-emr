@@ -1,45 +1,41 @@
 #!/bin/bash
 
 echo "========================================"
-echo "    EMR System - One Click Start"
+echo "    EMR System - Quick Start"
 echo "========================================"
 echo
 
-echo "[1/4] Checking Docker installation..."
-echo "Please wait, checking Docker status..."
-sleep 2
+echo "This script will help you get started quickly."
+echo
 
+echo "[1/3] Checking if Docker is installed..."
 if ! command -v docker &> /dev/null; then
-    echo
-    echo "❌ Docker is not installed!"
+    echo "❌ Docker is not installed."
     echo
     echo "Please install Docker first:"
-    echo "1. Run ./install-docker.sh to install Docker automatically"
-    echo "2. Or install manually from: https://docs.docker.com/get-docker/"
+    echo "1. Download from: https://docs.docker.com/get-docker/"
+    echo "2. Install Docker"
+    echo "3. Start Docker service"
+    echo "4. Run this script again"
     echo
-    read -p "Would you like to run the Docker installer now? (y/n): " choice
-    if [[ $choice == [Yy] ]]; then
-        echo
-        echo "Running Docker installer..."
-        ./install-docker.sh
-        echo
-        echo "Please restart this script after Docker is installed."
-        exit 1
+    echo "The download page will open in your browser..."
+    sleep 3
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        open "https://docs.docker.com/get-docker/"
     else
-        echo
-        echo "Please install Docker and try again."
-        echo "You can run ./install-docker.sh anytime to install Docker."
-        exit 1
+        xdg-open "https://docs.docker.com/get-docker/"
     fi
+    exit 1
 fi
 
 echo "✓ Docker is installed"
-echo "Testing Docker connection..."
+echo
+
+echo "[2/3] Checking if Docker is running..."
 if ! docker info &> /dev/null; then
+    echo "❌ Docker is not running."
     echo
-    echo "⚠ Docker is installed but not running!"
-    echo "Please start Docker service and try again."
-    echo
+    echo "Please start Docker service:"
     echo "For Linux:"
     echo "  sudo systemctl start docker"
     echo "  sudo systemctl enable docker"
@@ -49,18 +45,11 @@ if ! docker info &> /dev/null; then
     echo
     exit 1
 fi
+
 echo "✓ Docker is running"
-
 echo
-echo "[2/4] Checking Docker Compose..."
-if ! command -v docker-compose &> /dev/null; then
-    echo "ERROR: Docker Compose is not available!"
-    exit 1
-fi
-echo "✓ Docker Compose is available"
 
-echo
-echo "[3/4] Starting EMR System..."
+echo "[3/3] Starting EMR System..."
 echo "This may take a few minutes on first run..."
 echo
 
