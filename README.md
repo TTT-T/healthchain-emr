@@ -14,16 +14,20 @@ EMR Patient Portal System เป็นระบบบริหารจัดก
 
 ## 🚀 การติดตั้งและเริ่มใช้งาน
 
-### ⚡ Quick Start (5 นาที)
+### ⚡ Instant Start (1 คลิก - ไม่ต้องตั้งค่า!)
 ```bash
 # โคลนโปรเจก
 git clone https://github.com/TTT-T/healthchain-emr.git
 cd healthchain-emr
 
-# เริ่มต้นด้วย Docker
-docker-compose up postgres redis -d
-sleep 30
-docker-compose up backend frontend
+# เริ่มต้นทันที (Windows)
+start.bat
+
+# เริ่มต้นทันที (Mac/Linux)
+chmod +x start.sh && ./start.sh
+
+# หรือใช้คำสั่งเดียว
+docker-compose -f docker-compose.simple.yml up --build
 ```
 
 **เข้าถึงระบบ:**
@@ -44,6 +48,7 @@ docker-compose up backend frontend
 - **Docker** & **Docker Compose** (แนะนำ)
 
 ### 📖 คู่มือการติดตั้งแบบละเอียด
+- [⚡ Instant Setup](INSTANT_SETUP.md) - เริ่มต้นใน 1 คลิก ไม่ต้องตั้งค่า!
 - [🚀 Quick Start Guide](QUICK_START.md) - ติดตั้งเร็วๆ ใน 5 นาที
 - [📚 Setup Guide](SETUP_GUIDE.md) - คู่มือการติดตั้งแบบละเอียด
 - [🌐 Deployment Guide](DEPLOYMENT_GUIDE.md) - คู่มือการ Deploy สำหรับ Production
