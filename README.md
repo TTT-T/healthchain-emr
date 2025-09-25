@@ -12,58 +12,41 @@ EMR Patient Portal System เป็นระบบบริหารจัดก
 - **Consent Engine** - ระบบจัดการยินยอมข้อมูล
 - **Multi-Role System** - ระบบบทบาทหลายระดับ
 
-## การติดตั้งและเริ่มใช้งาน
+## 🚀 การติดตั้งและเริ่มใช้งาน
 
-### ข้อกำหนดของระบบ
-- Node.js 18+
-- PostgreSQL 12+
-- npm หรือ yarn
-
-### 1. ติดตั้ง Dependencies
-
-**Backend:**
+### ⚡ Quick Start (5 นาที)
 ```bash
-cd backend
-npm install
+# โคลนโปรเจก
+git clone https://github.com/TTT-T/healthchain-emr.git
+cd healthchain-emr
+
+# เริ่มต้นด้วย Docker
+docker-compose up postgres redis -d
+sleep 30
+docker-compose up backend frontend
 ```
 
-**Frontend:**
-```bash
-cd frontend
-npm install
-```
+**เข้าถึงระบบ:**
+- 🌐 **เว็บไซต์**: http://localhost:3000
+- 🔧 **API**: http://localhost:3001
+- 📚 **API Docs**: http://localhost:3001/api-docs
 
-### 2. ตั้งค่า Environment Variables
+**บัญชีทดสอบ:**
+- 👨‍💼 **Admin**: admin@example.com / admin123
+- 👨‍⚕️ **Doctor**: doctor@example.com / doctor123
+- 👩‍⚕️ **Nurse**: nurse@example.com / nurse123
+- 🏥 **Patient**: patient@example.com / patient123
 
-**Backend (.env):**
-```env
-NODE_ENV=development
-PORT=3001
-DATABASE_URL=postgresql://username:password@localhost:5432/emr_db
-JWT_SECRET=your-jwt-secret-here
-JWT_REFRESH_SECRET=your-refresh-secret-here
-```
+### 📋 ข้อกำหนดของระบบ
+- **Node.js** >= 18.0.0
+- **PostgreSQL** >= 13
+- **Redis** >= 6
+- **Docker** & **Docker Compose** (แนะนำ)
 
-**Frontend (.env.local):**
-```env
-NEXT_PUBLIC_API_URL=http://localhost:3001/api
-```
-
-### 3. เริ่มต้นระบบ
-
-**เริ่มต้น Backend:**
-```bash
-cd backend
-npm run dev
-```
-Server จะทำงานที่: http://localhost:3001
-
-**เริ่มต้น Frontend:**
-```bash
-cd frontend
-npm run dev
-```
-Application จะทำงานที่: http://localhost:3000
+### 📖 คู่มือการติดตั้งแบบละเอียด
+- [🚀 Quick Start Guide](QUICK_START.md) - ติดตั้งเร็วๆ ใน 5 นาที
+- [📚 Setup Guide](SETUP_GUIDE.md) - คู่มือการติดตั้งแบบละเอียด
+- [🌐 Deployment Guide](DEPLOYMENT_GUIDE.md) - คู่มือการ Deploy สำหรับ Production
 
 ## สถานะการพัฒนา
 
