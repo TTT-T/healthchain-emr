@@ -8,8 +8,22 @@ echo
 echo "[1/4] Checking Docker installation..."
 if ! command -v docker &> /dev/null; then
     echo "ERROR: Docker is not installed!"
-    echo "Please install Docker from: https://docs.docker.com/get-docker/"
-    exit 1
+    echo
+    echo "Please install Docker first:"
+    echo "1. Run ./install-docker.sh to install Docker automatically"
+    echo "2. Or install manually from: https://docs.docker.com/get-docker/"
+    echo
+    read -p "Would you like to run the Docker installer now? (y/n): " choice
+    if [[ $choice == [Yy] ]]; then
+        echo "Running Docker installer..."
+        ./install-docker.sh
+        echo
+        echo "Please restart this script after Docker is installed."
+        exit 1
+    else
+        echo "Please install Docker and try again."
+        exit 1
+    fi
 fi
 echo "✓ Docker is installed"
 

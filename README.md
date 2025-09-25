@@ -26,6 +26,12 @@ start.bat
 # เริ่มต้นทันที (Mac/Linux)
 chmod +x start.sh && ./start.sh
 
+# หากยังไม่มี Docker (Windows)
+install-docker.bat
+
+# หากยังไม่มี Docker (Mac/Linux)
+chmod +x install-docker.sh && ./install-docker.sh
+
 # หรือใช้คำสั่งเดียว
 docker-compose -f docker-compose.simple.yml up --build
 ```

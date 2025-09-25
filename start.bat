@@ -8,9 +8,25 @@ echo [1/4] Checking Docker installation...
 docker --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo ERROR: Docker is not installed or not running!
-    echo Please install Docker Desktop from: https://www.docker.com/products/docker-desktop
-    pause
-    exit /b 1
+    echo.
+    echo Please install Docker Desktop first:
+    echo 1. Run install-docker.bat to install Docker automatically
+    echo 2. Or download from: https://www.docker.com/products/docker-desktop
+    echo.
+    echo Would you like to run the Docker installer now? (Y/N)
+    set /p choice=
+    if /i "%choice%"=="Y" (
+        echo Running Docker installer...
+        call install-docker.bat
+        echo.
+        echo Please restart this script after Docker is installed.
+        pause
+        exit /b 1
+    ) else (
+        echo Please install Docker and try again.
+        pause
+        exit /b 1
+    )
 )
 echo ✓ Docker is installed
 
