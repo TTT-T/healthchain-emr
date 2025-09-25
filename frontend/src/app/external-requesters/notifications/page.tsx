@@ -80,7 +80,7 @@ export default function NotificationsPage() {
             title: notif.title,
             message: notif.message,
             type: notif.type || 'info',
-            timestamp: notif.createdAt,
+            timestamp: notif.created_at,
             isRead: notif.isRead,
             relatedRequestId: notif.data?.requestId,
             actionRequired: notif.data?.actionRequired || false
@@ -139,7 +139,7 @@ export default function NotificationsPage() {
   const unreadCount = notifications.filter(n => !n.isRead).length
 
   const formatDate = (daring: string) => {
-    return new Date(daring).toLocaleDaring('th-TH', {
+    return new Date(daring).toLocaleString('th-TH', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { Search, Pill, Plus, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Search, Pill, Plus, Trash2, CheckCircle, AlertCircle, User, Heart, Activity, FileText, Brain, Database, Shield, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
 import { PharmacyService } from '@/services/pharmacyService';
@@ -49,16 +49,21 @@ export default function Pharmacy() {
   const calculateAgeFromFields = (patient: MedicalPatient): number => {
     logger.info("Calculating age for patient:", {
       birth_date: patient.birth_date,
-      birth_year: patient.birth_year,
-      birth_month: patient.birth_month,
-      birth_day: patient.birth_day
+      birthDate: patient.birthDate,
+      birthYear: patient.birthYear,
+      birthMonth: patient.birthMonth,
+      birthDay: patient.birthDay
     });
     
     // Try to calculate age from separate birth fields first
-    if (patient.birth_year && patient.birth_month && patient.birth_day) {
+    const birthYear = patient.birthYear;
+    const birthMonth = patient.birthMonth;
+    const birthDay = patient.birthDay;
+    
+    if (birthYear && birthMonth && birthDay) {
       const today = new Date();
-      const birthYear = patient.birth_year > 2500 ? patient.birth_year - 543 : patient.birth_year;
-      const birth = new Date(birthYear, patient.birth_month - 1, patient.birth_day);
+      const adjustedBirthYear = birthYear > 2500 ? birthYear - 543 : birthYear;
+      const birth = new Date(adjustedBirthYear, birthMonth - 1, birthDay);
       let age = today.getFullYear() - birth.getFullYear();
       const monthDiff = today.getMonth() - birth.getMonth();
       
@@ -68,31 +73,93 @@ export default function Pharmacy() {
       
       logger.info("Calculated age from separate fields:", {
         age,
-        birthYear,
-        birthMonth: patient.birth_month,
-        birthDay: patient.birth_day
+        adjustedBirthYear,
+        birthMonth,
+        birthDay
       });
       
-      return age;
+      return Math.max(0, age);
     }
     
-    // Fallback to birth_date
-    if (patient.birth_date) {
-      const age = calculateAge(patient.birth_date);
-      logger.info("Calculated age from birth_date:", { age, birth_date: patient.birth_date });
-      return age;
+    // Fallback to birth_date or birthDate
+    if (patient.birth_date || patient.birthDate) {
+      const birthDate = patient.birth_date || patient.birthDate;
+      const age = calculateAge(birthDate);
+      logger.info("Calculated age from birth_date:", { age, birth_date: birthDate });
+      return Math.max(0, age);
+    }
+    
+    // Try to parse birth_date from DD/MM/YYYY format
+    if (patient.birthDate) {
+      try {
+        const parts = patient.birthDate.split('/');
+        if (parts.length === 3) {
+          const day = parseInt(parts[0]);
+          const month = parseInt(parts[1]);
+          const year = parseInt(parts[2]);
+          
+          if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+            const today = new Date();
+            const adjustedYear = year > 2500 ? year - 543 : year;
+            const birth = new Date(adjustedYear, month - 1, day);
+            let age = today.getFullYear() - birth.getFullYear();
+            const monthDiff = today.getMonth() - birth.getMonth();
+            
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+              age--;
+            }
+            
+            logger.info("Calculated age from birthDate DD/MM/YYYY:", {
+              age,
+              adjustedYear,
+              month,
+              day
+            });
+            
+            return Math.max(0, age);
+          }
+        }
+      } catch (error) {
+        logger.error("Error parsing birthDate:", error);
+      }
     }
     
     logger.info("No birth data available, returning 0");
     return 0;
   };
 
+  // Update dispensedBy when user changes
+  useEffect(() => {
+    if (user) {
+      const pharmacistName = user.thaiName || `${user.firstName} ${user.lastName}` || "เภสัชกร";
+      setPharmacyData(prev => ({
+        ...prev,
+        dispensedBy: pharmacistName
+      }));
+    }
+  }, [user]);
+
   const [pharmacyData, setPharmacyData] = useState({
     medications: [] as Medication[],
     totalAmount: 0,
     paymentMethod: 'cash',
     notes: '',
-    dispensedTime: new Date().toISOString().slice(0, 16)
+    dispensedTime: new Date().toISOString().slice(0, 16),
+    dispensedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || "เภสัชกร",
+    // AI Research Fields for Pharmacy
+    aiResearchData: {
+      drugInteractions: '', // ปฏิกิริยาระหว่างยา
+      allergyWarnings: '', // คำเตือนการแพ้
+      dosageAdjustments: '', // การปรับขนาดยา
+      contraindications: '', // ข้อห้ามใช้
+      sideEffects: '', // ผลข้างเคียงที่คาดหวัง
+      monitoringRequirements: '', // ความต้องการติดตาม
+      patientCompliance: '', // การปฏิบัติตามคำแนะนำ
+      effectiveness: '', // ประสิทธิภาพของยา
+      costEffectiveness: '', // ความคุ้มค่า
+      alternativeMedications: '', // ยาทางเลือก
+      researchNotes: '' // หมายเหตุสำหรับการวิจัย
+    }
   });
 
   const handleSearch = async () => {
@@ -108,12 +175,12 @@ export default function Pharmacy() {
         const patient = response.data[0];
         logger.info("Patient found:", {
           id: patient.id,
-          hospital_number: patient.hospital_number,
-          thai_name: patient.thai_name,
+          hospital_number: patient.hospitalNumber,
+          thai_name: patient.thaiName,
           birth_date: patient.birth_date,
-          birth_year: patient.birth_year,
-          birth_month: patient.birth_month,
-          birth_day: patient.birth_day,
+          birth_year: patient.birthYear,
+          birth_month: patient.birthMonth,
+          birth_day: patient.birthDay,
           gender: patient.gender
         });
         setSelectedPatient(patient);
@@ -191,9 +258,9 @@ export default function Pharmacy() {
     try {
       logger.info(' user data:', {
         userId: user?.id,
-        userFirstName: user?.first_name,
-        userLastName: user?.last_name,
-        userThaiName: user?.thai_name,
+        userFirstName: user?.firstName,
+        userLastName: user?.lastName,
+        userThaiName: user?.thaiName,
         selectedPatientId: selectedPatient.id
       });
       
@@ -222,7 +289,28 @@ export default function Pharmacy() {
         setTimeout(() => {
           setSelectedPatient(null);
           setSearchQuery("");
-          setPharmacyData(PharmacyService.createEmptyPharmacyData());
+          setPharmacyData({
+            medications: [],
+            totalAmount: 0,
+            paymentMethod: 'cash',
+            notes: '',
+            dispensedTime: new Date().toISOString().slice(0, 16),
+            dispensedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || "เภสัชกร",
+            // Reset AI Research Data
+            aiResearchData: {
+              drugInteractions: '',
+              allergyWarnings: '',
+              dosageAdjustments: '',
+              contraindications: '',
+              sideEffects: '',
+              monitoringRequirements: '',
+              patientCompliance: '',
+              effectiveness: '',
+              costEffectiveness: '',
+              alternativeMedications: '',
+              researchNotes: ''
+            }
+          });
           setSuccess(null);
         }, 3000);
       } else {
@@ -241,15 +329,17 @@ export default function Pharmacy() {
       const notificationData = {
         patientHn: patient.hn || patient.hospitalNumber || '',
         patientNationalId: patient.nationalId || '',
-        patientName: patient.thaiName || `${patient.firstName} ${patient.lastName}`,
+        patientName: patient.thaiName && patient.thaiLastName 
+          ? `${patient.thaiName} ${patient.thaiLastName}`
+          : patient.thaiName || `${patient.firstName} ${patient.lastName}`,
         patientPhone: patient.phone || '',
         patientEmail: patient.email || '',
         recordType: 'pharmacy_dispensing',
         recordId: dispensingRecord.id,
         chiefComplaint: `จ่ายยา ${dispensingRecord.medications.length} รายการ`,
-        recordedBy: user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'เภสัชกร',
+        recordedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เภสัชกร',
         recordedTime: dispensingRecord.dispensedTime,
-        message: `มีการจ่ายยาใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เภสัชกร'}`
+        message: `มีการจ่ายยาใหม่สำหรับคุณ ${patient.thaiName && patient.thaiLastName ? `${patient.thaiName} ${patient.thaiLastName}` : patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เภสัชกร'}`
       };
 
       await NotificationService.notifyPatientRecordUpdate(notificationData);
@@ -283,16 +373,18 @@ export default function Pharmacy() {
         'prescription',
         pharmacyData,
         {
-          patientHn: patient.hospital_number || '',
+          patientHn: patient.hospitalNumber || '',
           patientNationalId: patient.national_id || '',
-          patientName: patient.thai_name || ''
+          patientName: patient.thaiName && patient.thaiLastName 
+            ? `${patient.thaiName} ${patient.thaiLastName}`
+            : patient.thaiName || ''
         },
         user?.id || 'system',
-        user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'เภสัชกร'
+        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เภสัชกร'
       );
       
       logger.info('Patient document created successfully for pharmacy', { 
-        patientHn: patient.hospital_number,
+        patientHn: patient.hospitalNumber,
         recordType: 'prescription'
       });
     } catch (error) {
@@ -362,22 +454,165 @@ export default function Pharmacy() {
             </div>
           </div>
 
-          {/* Patient Info */}
+          {/* Comprehensive Patient Information for Pharmacy */}
           {selectedPatient && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-              <h3 className="text-lg font-semibold text-green-800 mb-2">ข้อมูลผู้ป่วย</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospital_number}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 mb-6 shadow-sm">
+              <div className="flex items-center mb-6">
+                <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center mr-4">
+                  <Pill className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
-                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thai_name || `${selectedPatient.first_name} ${selectedPatient.last_name}`}
+                  <h3 className="text-xl font-bold text-green-800">ข้อมูลผู้ป่วยสำหรับการจ่ายยา</h3>
+                  <p className="text-green-600">ข้อมูลครบถ้วนเพื่อความปลอดภัยในการจ่ายยา</p>
                 </div>
-                <div>
-                  <span className="font-medium">อายุ:</span> {calculateAgeFromFields(selectedPatient) > 0 ? `${calculateAgeFromFields(selectedPatient)} ปี` : 'ไม่ระบุ'}
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Basic Information */}
+                <div className="bg-white rounded-lg p-4 border border-green-100">
+                  <h4 className="text-sm font-semibold text-green-800 mb-3 flex items-center">
+                    <User className="h-4 w-4 mr-2" />
+                    ข้อมูลพื้นฐาน
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">HN:</span>
+                      <span className="font-bold text-green-600">{selectedPatient.hn || selectedPatient.hospitalNumber}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">ชื่อ-นามสกุล:</span>
+                      <span className="font-medium text-slate-800">
+                        {selectedPatient.thaiName && selectedPatient.thaiLastName
+                          ? `${selectedPatient.thaiName} ${selectedPatient.thaiLastName}`
+                          : selectedPatient.thaiName || selectedPatient.firstName
+                          ? `${selectedPatient.thaiName || selectedPatient.firstName} ${selectedPatient.thaiLastName || selectedPatient.lastName || ''}`.trim()
+                          : 'ไม่ระบุ'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">อายุ:</span>
+                      <span className="font-medium text-slate-800">
+                        {(() => {
+                          const age = calculateAgeFromFields(selectedPatient);
+                          if (age > 0) {
+                            return `${age} ปี`;
+                          } else if (selectedPatient.birth_date || selectedPatient.birthDate || selectedPatient.birthYear) {
+                            return 'ไม่สามารถคำนวณได้';
+                          } else {
+                            return 'ไม่ระบุ';
+                          }
+                        })()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">เพศ:</span>
+                      <span className="font-medium text-slate-800">
+                        {selectedPatient.gender === 'male' ? 'ชาย' : 
+                         selectedPatient.gender === 'female' ? 'หญิง' : 
+                         selectedPatient.gender || 'ไม่ระบุ'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">กรุ๊ปเลือด:</span>
+                      <span className="font-medium text-slate-800">{selectedPatient.bloodType || 'ไม่ระบุ'}</span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <span className="font-medium">เพศ:</span> {selectedPatient.gender || 'ไม่ระบุ'}
+
+                {/* Critical Medical Information */}
+                <div className="bg-white rounded-lg p-4 border border-red-100">
+                  <h4 className="text-sm font-semibold text-red-800 mb-3 flex items-center">
+                    <Shield className="h-4 w-4 mr-2" />
+                    ข้อมูลสำคัญสำหรับเภสัชกร
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">แพ้ยา:</span>
+                      <span className="font-medium text-red-600">{selectedPatient.drugAllergies || 'ไม่มี'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">แพ้อาหาร:</span>
+                      <span className="font-medium text-red-600">{selectedPatient.foodAllergies || 'ไม่มี'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">โรคประจำตัว:</span>
+                      <span className="font-medium text-slate-800">{selectedPatient.chronicDiseases || 'ไม่มี'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">ยาที่ใช้อยู่:</span>
+                      <span className="font-medium text-slate-800">{selectedPatient.currentMedications || 'ไม่มี'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Current Medications & Vital Signs */}
+                <div className="bg-white rounded-lg p-4 border border-blue-100">
+                  <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center">
+                    <Activity className="h-4 w-4 mr-2" />
+                    ข้อมูลปัจจุบัน
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">น้ำหนัก:</span>
+                      <span className="font-medium text-slate-800">{selectedPatient.weight ? `${selectedPatient.weight} กก.` : 'ไม่ระบุ'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">ส่วนสูง:</span>
+                      <span className="font-medium text-slate-800">{selectedPatient.height ? `${selectedPatient.height} ซม.` : 'ไม่ระบุ'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">BMI:</span>
+                      <span className="font-medium text-slate-800">
+                        {selectedPatient.weight && selectedPatient.height 
+                          ? (selectedPatient.weight / Math.pow(selectedPatient.height / 100, 2)).toFixed(1)
+                          : 'ไม่ระบุ'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">สถานะ:</span>
+                      <span className="font-medium text-green-600">พร้อมจ่ายยา</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Drug Interaction Warnings */}
+              {(selectedPatient.drugAllergies || selectedPatient.currentMedications) && (
+                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-start">
+                    <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 mr-2 flex-shrink-0" />
+                    <div className="text-sm text-red-800">
+                      <p className="font-medium mb-1">⚠️ คำเตือนสำหรับเภสัชกร:</p>
+                      <ul className="space-y-1 text-red-700">
+                        {selectedPatient.drugAllergies && (
+                          <li>• <strong>แพ้ยา:</strong> {selectedPatient.drugAllergies}</li>
+                        )}
+                        {selectedPatient.currentMedications && (
+                          <li>• <strong>ยาที่ใช้อยู่:</strong> {selectedPatient.currentMedications}</li>
+                        )}
+                        <li>• ตรวจสอบปฏิกิริยาระหว่างยาก่อนจ่ายยา</li>
+                        <li>• แจ้งผู้ป่วยเกี่ยวกับผลข้างเคียงที่อาจเกิดขึ้น</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Instructions for Pharmacist */}
+              <div className="mt-4 p-4 bg-green-100 border border-green-200 rounded-lg">
+                <div className="flex items-start">
+                  <svg className="w-5 h-5 text-green-600 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  <div className="text-sm text-green-800">
+                    <p className="font-medium mb-1">คำแนะนำสำหรับเภสัชกร:</p>
+                    <ul className="space-y-1 text-green-700">
+                      <li>• ตรวจสอบประวัติการแพ้ยาและอาหารก่อนจ่ายยา</li>
+                      <li>• ตรวจสอบปฏิกิริยาระหว่างยากับยาที่ใช้อยู่</li>
+                      <li>• อธิบายวิธีใช้ยาและข้อควรระวังให้ผู้ป่วย</li>
+                      <li>• บันทึกข้อมูลการจ่ายยาให้ครบถ้วนเพื่อการวิจัย</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             </div>
@@ -569,6 +804,199 @@ export default function Pharmacy() {
                   rows={3}
                   placeholder="กรอกหมายเหตุเพิ่มเติม"
                 />
+              </div>
+
+              {/* AI Research Data Section for Pharmacy */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-6">
+                <div className="flex items-center mb-6">
+                  <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mr-4">
+                    <Brain className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-purple-800">ข้อมูลสำหรับ AI และการวิจัยเภสัชกรรม</h3>
+                    <p className="text-purple-600">ข้อมูลเพิ่มเติมเพื่อการพัฒนาระบบ AI และการวิจัยเภสัชกรรม</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Drug Safety & Interactions */}
+                  <div className="bg-white rounded-lg p-4 border border-purple-100">
+                    <h4 className="text-sm font-semibold text-purple-800 mb-3">ความปลอดภัยและปฏิกิริยาระหว่างยา</h4>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          ปฏิกิริยาระหว่างยา
+                        </label>
+                        <textarea
+                          value={pharmacyData.aiResearchData.drugInteractions}
+                          onChange={(e) => setPharmacyData(prev => ({
+                            ...prev,
+                            aiResearchData: { ...prev.aiResearchData, drugInteractions: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          rows={3}
+                          placeholder="เช่น ยา A กับยา B อาจทำให้เกิดผลข้างเคียง"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          คำเตือนการแพ้
+                        </label>
+                        <textarea
+                          value={pharmacyData.aiResearchData.allergyWarnings}
+                          onChange={(e) => setPharmacyData(prev => ({
+                            ...prev,
+                            aiResearchData: { ...prev.aiResearchData, allergyWarnings: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          rows={3}
+                          placeholder="เช่น ระวังการแพ้ในผู้ป่วยที่มีประวัติแพ้ยา"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          ข้อห้ามใช้
+                        </label>
+                        <textarea
+                          value={pharmacyData.aiResearchData.contraindications}
+                          onChange={(e) => setPharmacyData(prev => ({
+                            ...prev,
+                            aiResearchData: { ...prev.aiResearchData, contraindications: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          rows={3}
+                          placeholder="เช่น ห้ามใช้ในผู้ป่วยโรคไต, ห้ามใช้ในสตรีมีครรภ์"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Medication Effectiveness & Monitoring */}
+                  <div className="bg-white rounded-lg p-4 border border-purple-100">
+                    <h4 className="text-sm font-semibold text-purple-800 mb-3">ประสิทธิภาพและการติดตาม</h4>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          ประสิทธิภาพของยา
+                        </label>
+                        <select
+                          value={pharmacyData.aiResearchData.effectiveness}
+                          onChange={(e) => setPharmacyData(prev => ({
+                            ...prev,
+                            aiResearchData: { ...prev.aiResearchData, effectiveness: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        >
+                          <option value="">เลือกประสิทธิภาพ</option>
+                          <option value="excellent">ดีมาก</option>
+                          <option value="good">ดี</option>
+                          <option value="fair">ปานกลาง</option>
+                          <option value="poor">ไม่ดี</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          ความต้องการติดตาม
+                        </label>
+                        <textarea
+                          value={pharmacyData.aiResearchData.monitoringRequirements}
+                          onChange={(e) => setPharmacyData(prev => ({
+                            ...prev,
+                            aiResearchData: { ...prev.aiResearchData, monitoringRequirements: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          rows={3}
+                          placeholder="เช่น ตรวจเลือดทุก 3 เดือน, วัดความดันทุกสัปดาห์"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          ผลข้างเคียงที่คาดหวัง
+                        </label>
+                        <textarea
+                          value={pharmacyData.aiResearchData.sideEffects}
+                          onChange={(e) => setPharmacyData(prev => ({
+                            ...prev,
+                            aiResearchData: { ...prev.aiResearchData, sideEffects: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          rows={3}
+                          placeholder="เช่น คลื่นไส้, ง่วงนอน, ปวดหัว"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional AI Research Fields */}
+                <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      การปรับขนาดยา
+                    </label>
+                    <textarea
+                      value={pharmacyData.aiResearchData.dosageAdjustments}
+                      onChange={(e) => setPharmacyData(prev => ({
+                        ...prev,
+                        aiResearchData: { ...prev.aiResearchData, dosageAdjustments: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      rows={3}
+                      placeholder="เช่น ลดขนาดยาในผู้ป่วยสูงอายุ, เพิ่มขนาดยาในผู้ป่วยอ้วน"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      ยาทางเลือก
+                    </label>
+                    <textarea
+                      value={pharmacyData.aiResearchData.alternativeMedications}
+                      onChange={(e) => setPharmacyData(prev => ({
+                        ...prev,
+                        aiResearchData: { ...prev.aiResearchData, alternativeMedications: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      rows={3}
+                      placeholder="เช่น ยา A, ยา B, ยา C"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    หมายเหตุสำหรับการวิจัยเภสัชกรรม
+                  </label>
+                  <textarea
+                    value={pharmacyData.aiResearchData.researchNotes}
+                    onChange={(e) => setPharmacyData(prev => ({
+                      ...prev,
+                      aiResearchData: { ...prev.aiResearchData, researchNotes: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    rows={4}
+                    placeholder="ข้อมูลเพิ่มเติมที่สำคัญสำหรับการวิจัยเภสัชกรรมและพัฒนาระบบ AI"
+                  />
+                </div>
+
+                <div className="mt-4 p-4 bg-purple-100 border border-purple-200 rounded-lg">
+                  <div className="flex items-start">
+                    <Database className="w-5 h-5 text-purple-600 mt-0.5 mr-2 flex-shrink-0" />
+                    <div className="text-sm text-purple-800">
+                      <p className="font-medium mb-1">ประโยชน์ของข้อมูล AI Research สำหรับเภสัชกรรม:</p>
+                      <ul className="space-y-1 text-purple-700">
+                        <li>• ช่วยพัฒนาระบบ AI ในการตรวจสอบปฏิกิริยาระหว่างยา</li>
+                        <li>• ใช้ในการวิจัยเพื่อหาประสิทธิภาพและความปลอดภัยของยา</li>
+                        <li>• ปรับปรุงการจ่ายยาและการติดตามผู้ป่วย</li>
+                        <li>• สร้างฐานข้อมูลสำหรับการวิเคราะห์แนวโน้มการใช้ยา</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Submit Button */}

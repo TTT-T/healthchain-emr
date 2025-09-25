@@ -36,8 +36,8 @@ export interface User {
   profileCompleted: boolean;
   
   // Timestamps
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
   lastLogin?: string;
 }
 
@@ -80,17 +80,17 @@ export interface EmergencyContact {
 export const validateUser = {
   email: (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.(email);
+    return emailRegex.test(email);
   },
   
   phone: (phone: string): boolean => {
     const phoneRegex = /^[0-9]{10}$/;
-    return phoneRegex.(phone.replace(/[-\s]/g, ''));
+    return phoneRegex.test(phone.replace(/[-\s]/g, ''));
   },
   
   nationalId: (id: string): boolean => {
     const cleanId = id.replace(/[-\s]/g, '');
-    return /^\d{13}$/.(cleanId);
+    return /^\d{13}$/.test(cleanId);
   },
   
   bloodType: (type: string): boolean => {

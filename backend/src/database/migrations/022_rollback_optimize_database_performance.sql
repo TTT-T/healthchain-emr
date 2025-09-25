@@ -32,10 +32,6 @@ DROP INDEX IF EXISTS idx_patients_blood_group;
 DROP INDEX IF EXISTS idx_patients_birth_date;
 DROP INDEX IF EXISTS idx_patients_thai_name;
 
--- Update migration log
-INSERT INTO migrations (migration_name, executed_at, execution_time_ms, success, error_message) 
-VALUES ('022_rollback_optimize_database_performance', CURRENT_TIMESTAMP, 0, true, NULL);
-
 -- =============================================================================
 -- END OF ROLLBACK MIGRATION
 -- =============================================================================

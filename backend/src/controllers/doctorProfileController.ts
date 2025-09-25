@@ -51,7 +51,7 @@ export const updateDoctorProfile = async (req: Request, res: Response) => {
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.(email)) {
+    if (!emailRegex.test(email)) {
       return res.status(400).json({
         data: null,
         meta: null,

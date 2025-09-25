@@ -174,6 +174,13 @@ export const ProfileFormTabs: React.FC<ProfileFormTabsProps> = ({
             <div className="space-y-3">
               <h5 className="text-sm font-medium text-gray-700">ชื่อภาษาไทย</h5>
               <FormField
+                label="คำนำหน้าชื่อ"
+                value={data.title}
+                onChange={(value) => onChange('title', value)}
+                disabled={!isEditing}
+                placeholder="คำนำหน้าชื่อ"
+              />
+              <FormField
                 label="ชื่อ (ไทย)"
                 value={data.thaiName}
                 onChange={(value) => onChange('thaiName', value)}

@@ -8,7 +8,8 @@ import { logger } from '@/lib/logger';
 import { 
   Home, Users, UserPlus, Activity, Heart, Stethoscope, 
   Pill, FileText, Calendar, ClipboardList, Search, 
-  Menu, X, ChevronRight, ChevronDown, LogOut, BarChart3
+  Menu, X, ChevronRight, ChevronDown, LogOut, BarChart3, Brain,
+  UserCheck, UserCog, User, UserX, UserCircle, User2, Shield
 } from 'lucide-react';
 
 interface MenuItem {
@@ -35,6 +36,14 @@ const menuItems: MenuItem[] = [
     href: '/emr/dashboard',
     icon: BarChart3,
     description: 'ภาพรวมระบบ EMR',
+    category: 'main'
+  },
+  {
+    id: 'ai-dashboard',
+    label: 'AI Dashboard',
+    href: '/emr/ai-dashboard',
+    icon: Brain,
+    description: 'ระบบประเมินความเสี่ยง',
     category: 'main'
   },
   {
@@ -276,9 +285,20 @@ export default function EMRSidebar({
                           } ${(isCollapsed && !isMobile) ? 'justify-center' : ''}`}
                           title={(isCollapsed && !isMobile) ? item.label : item.description}
                         >
-                          <Icon className={`h-4 w-4 ${(isCollapsed && !isMobile) ? '' : 'mr-2'} ${
-                            isActive ? 'text-blue-700' : 'text-gray-500 group-hover:text-gray-700'
-                          }`} />
+                          {Icon ? (
+                            <Icon 
+                              className={`h-4 w-4 flex-shrink-0 ${(isCollapsed && !isMobile) ? '' : 'mr-2'} ${
+                                isActive ? 'text-blue-700' : 'text-gray-500 group-hover:text-gray-700'
+                              }`} 
+                              style={{ minWidth: '16px', minHeight: '16px' }}
+                            />
+                          ) : (
+                            <div className={`h-4 w-4 flex-shrink-0 ${(isCollapsed && !isMobile) ? '' : 'mr-2'} ${
+                              isActive ? 'text-blue-700' : 'text-gray-500 group-hover:text-gray-700'
+                            }`}>
+                              <div className="w-full h-full bg-gray-300 rounded"></div>
+                            </div>
+                          )}
                           {(!isCollapsed || isMobile) && (
                             <div className="flex-1">
                               <div className="font-medium text-sm">{item.label}</div>

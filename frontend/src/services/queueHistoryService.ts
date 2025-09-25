@@ -14,8 +14,8 @@ export interface QueueHistoryRecord {
   department: string;
   visitTime: string;
   status: 'waiting' | 'in_progress' | 'completed' | 'cancelled';
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
   symptoms?: string;
   notes?: string;
   pdfUrl?: string;
@@ -112,7 +112,7 @@ export const getAllQueueHistory = async (query: QueueHistoryQuery = {}): Promise
 
     const response = await apiClient.get(`/medical/queue-history?${params.toString()}`);
     
-    logger.('Queue history fetched successfully', response.data as any);
+    logger.info('Queue history fetched successfully', response.data as any);
     return response.data as any as QueueHistoryResponse;
   } catch (error) {
     logger.error('Error fetching queue history:', error);
@@ -139,7 +139,7 @@ export const getQueueHistoryByPatient = async (
 
     const response = await apiClient.get(`/medical/queue-history/patients/${patientId}?${params.toString()}`);
     
-    logger.('Patient queue history fetched successfully', response.data as any);
+    logger.info('Patient queue history fetched successfully', response.data as any);
     return response.data as any;
   } catch (error) {
     logger.error('Error fetching patient queue history:', error);
@@ -166,7 +166,7 @@ export const getQueueHistoryByDoctor = async (
 
     const response = await apiClient.get(`/medical/queue-history/doctors/${doctorId}?${params.toString()}`);
     
-    logger.('Doctor queue history fetched successfully', response.data as any);
+    logger.info('Doctor queue history fetched successfully', response.data as any);
     return response.data as any;
   } catch (error) {
     logger.error('Error fetching doctor queue history:', error);
@@ -183,7 +183,7 @@ export const getQueueHistoryById = async (id: string): Promise<SingleQueueRespon
     
     const response = await apiClient.get(`/medical/queue-history/${id}`);
     
-    logger.('Queue history by ID fetched successfully', response.data as any);
+    logger.info('Queue history by ID fetched successfully', response.data as any);
     return response.data as any;
   } catch (error) {
     logger.error('Error fetching queue history by ID:', error);
@@ -208,7 +208,7 @@ export const getQueueStatistics = async (query: StatisticsQuery = {}): Promise<Q
 
     const response = await apiClient.get(`/medical/queue-history/statistics?${params.toString()}`);
     
-    logger.('Queue statistics fetched successfully', response.data as any);
+    logger.info('Queue statistics fetched successfully', response.data as any);
     return response.data as any;
   } catch (error) {
     logger.error('Error fetching queue statistics:', error);
@@ -240,7 +240,7 @@ export const downloadQueueReport = async (id: string, format: 'json' | 'pdf' = '
       window.URL.revokeObjectURL(url);
     }
     
-    logger.('Queue report downloaded successfully', { id, format });
+    logger.info('Queue report downloaded successfully', { id, format });
     return response.data as any;
   } catch (error) {
     logger.error('Error downloading queue report:', error);
@@ -280,7 +280,7 @@ export const generaatisticsReport = async (query: StatisticsQuery = {}): Promise
       window.URL.revokeObjectURL(url);
     }
     
-    logger.('Statistics report generated successfully', query);
+    logger.info('Statistics report generated successfully', query);
     return response.data as any;
   } catch (error) {
     logger.error('Error generating statistics report:', error);
@@ -297,7 +297,7 @@ export const searchQueueByPatient = async (searchTerm: string): Promise<QueueHis
     
     const response = await getAllQueueHistory({ search: searchTerm, limit: 50 });
     
-    logger.('Queue search completed', { searchTerm, results: (response.data as any).length });
+    logger.info('Queue search completed', { searchTerm, results: (response.data as any).length });
     return response.data as any;
   } catch (error) {
     logger.error('Error searching queue by patient:', error);
@@ -317,7 +317,7 @@ export const getTodayQueueHistory = async (): Promise<QueueHistoryRecord[]> => {
       limit: 100 
     });
     
-    logger.('Today queue history fetched', { count: (response.data as any).length });
+    logger.info('Today queue history fetched', { count: (response.data as any).length });
     return response.data as any;
   } catch (error) {
     logger.error('Error fetching today queue history:', error);
@@ -335,7 +335,7 @@ export const getWaitingQueues = async (): Promise<QueueHistoryRecord[]> => {
       limit: 100 
     });
     
-    logger.('Waiting queues fetched', { count: (response.data as any).length });
+    logger.info('Waiting queues fetched', { count: (response.data as any).length });
     return response.data as any;
   } catch (error) {
     logger.error('Error fetching waiting queues:', error);
@@ -355,7 +355,7 @@ export const getCompletedQueues = async (dateFrom?: string, dateTo?: string): Pr
       limit: 100 
     });
     
-    logger.('Completed queues fetched', { count: (response.data as any).length });
+    logger.info('Completed queues fetched', { count: (response.data as any).length });
     return response.data as any;
   } catch (error) {
     logger.error('Error fetching completed queues:', error);
@@ -370,8 +370,8 @@ export const formatQueueData = (queue: QueueHistoryRecord) => {
   return {
     ...queue,
     formattedVisitTime: new Date(queue.visitTime).toLocaleString('th-TH'),
-    formattedCreatedAt: new Date(queue.createdAt).toLocaleString('th-TH'),
-    formattedUpdatedAt: new Date(queue.updatedAt).toLocaleString('th-TH'),
+    formattedCreatedAt: new Date(queue.created_at).toLocaleString('th-TH'),
+    formattedUpdatedAt: new Date(queue.updated_at).toLocaleString('th-TH'),
     statusLabel: getStatusLabel(queue.status),
     statusColor: getStatusColor(queue.status)
   };
@@ -413,7 +413,7 @@ export const calculateAverageWaitTime = (queues: QueueHistoryRecord[]): number =
   
   const totalWaitTime = completedQueues.reduce((sum, queue) => {
     const visitTime = new Date(queue.visitTime);
-    const completedTime = new Date(queue.updatedAt);
+    const completedTime = new Date(queue.updated_at);
     return sum + (completedTime.getTime() - visitTime.getTime()) / (1000 * 60); // minutes
   }, 0);
   
@@ -437,8 +437,8 @@ export const getSampleQueueData = (): QueueHistoryRecord[] => {
       department: 'อายุรกรรม',
       visitTime: '2025-01-08T09:00:00Z',
       status: 'completed',
-      createdAt: '2025-01-08T08:30:00Z',
-      updatedAt: '2025-01-08T10:30:00Z',
+      created_at: '2025-01-08T08:30:00Z',
+      updated_at: '2025-01-08T10:30:00Z',
       symptoms: 'ปวดหัว',
       notes: 'ผู้ป่วยมาด้วยอาการปวดหัว',
       pdfUrl: '/api/medical/queue-history/1/pdf',
@@ -456,8 +456,8 @@ export const getSampleQueueData = (): QueueHistoryRecord[] => {
       department: 'กุมารเวชกรรม',
       visitTime: '2025-01-08T10:30:00Z',
       status: 'completed',
-      createdAt: '2025-01-08T10:00:00Z',
-      updatedAt: '2025-01-08T12:00:00Z',
+      created_at: '2025-01-08T10:00:00Z',
+      updated_at: '2025-01-08T12:00:00Z',
       symptoms: 'ตรวจสุขภาพประจำปี',
       notes: 'ตรวจสุขภาพประจำปี',
       pdfUrl: '/api/medical/queue-history/2/pdf',
@@ -475,8 +475,8 @@ export const getSampleQueueData = (): QueueHistoryRecord[] => {
       department: 'เวชศาสตร์ป้องกัน',
       visitTime: '2025-01-08T14:00:00Z',
       status: 'waiting',
-      createdAt: '2025-01-08T13:30:00Z',
-      updatedAt: '2025-01-08T13:30:00Z',
+      created_at: '2025-01-08T13:30:00Z',
+      updated_at: '2025-01-08T13:30:00Z',
       symptoms: 'ฉีดวัคซีนไข้หวัดใหญ่',
       notes: 'ฉีดวัคซีนไข้หวัดใหญ่ประจำปี',
       visitId: 'VISIT003'

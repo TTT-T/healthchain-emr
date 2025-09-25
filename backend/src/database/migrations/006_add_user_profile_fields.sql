@@ -44,9 +44,17 @@ CREATE INDEX IF NOT EXISTS idx_users_last_activity ON users(last_activity);
 -- 3. ADD CONSTRAINTS
 -- =============================================================================
 
--- Add unique constraint for national_id if provided
-ALTER TABLE users 
-ADD CONSTRAINT unique_users_national_id UNIQUE (national_id);
+-- Add unique constraint for national_id if provided (only if it doesn't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'unique_users_national_id'
+    ) THEN
+        ALTER TABLE users 
+        ADD CONSTRAINT unique_users_national_id UNIQUE (national_id);
+    END IF;
+END $$;
 
 -- =============================================================================
 -- 4. ADD COMMENTS FOR DOCUMENTATION

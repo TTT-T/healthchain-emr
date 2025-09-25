@@ -79,8 +79,8 @@ export interface DoctorVisitRecord {
   notes?: string;
   examinedBy: string;
   examinedTime: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
   patient?: {
     thaiName: string;
     nationalId: string;
@@ -235,8 +235,8 @@ export class DoctorVisitService {
       notes: record.notes,
       examinedBy: record.examinedBy,
       examinedTime: record.examinedTime,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
+      created_at: record.created_at,
+      updated_at: record.updated_at,
       patient: record.patient
     };
   }

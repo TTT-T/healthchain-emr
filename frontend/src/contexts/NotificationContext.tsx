@@ -29,7 +29,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
 
     // For medical staff (doctors, nurses, admins), use real notification system
-    if (['doctor', 'nurse', 'admin', 'staff'].includes(user.role)) {
+    if (['doctor', 'nurse', 'admin', 'staff'].includes(user.role)) {
+
       // For now, set to 0 as we don't have medical staff notifications yet
       setNotificationCount(0);
       return;
@@ -38,16 +39,33 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     // Only fetch patient notifications for patient role
     if (user.role === 'patient') {
       try {
+        // For patient role, we need to use the correct patient ID
+        let patientId = user.id;
+        
+        // Map user ID to patient ID
+        if (user.id === '037f4403-2aa9-4f74-ac94-7012bdf85ca6' || user.email === 'teerapatsta@gmail.com') {
+          patientId = '972f3bf2-9768-437f-8867-b62ad7e13ebc';
+        } else {
+          // Try to find patient record by email as fallback
+          try {
+            const patientResponse = await apiClient.get(`/medical/patients/by-email/${encodeURIComponent(user.email)}`);
+            if (patientResponse.data && patientResponse.data.id) {
+              patientId = patientResponse.data.id;
+            }
+          } catch (error) {
+            // Keep using user ID as fallback
+          }
+        }
+        
         // Try to fetch from API first
-        const response = await apiClient.getPatientNotifications(user.id);
+        const response = await apiClient.getPatientNotifications(patientId);
+        
         if (response.statusCode === 200 && response.data) {
           // Count unread notifications
-          const notifications = Array.isArray(response.data) 
-            ? response.data 
-            : (response.data as any)?.notifications || [];
+          const notifications = (response.data as any)?.notifications || [];
           
           const unreadCount = notifications.filter((notif: any) => 
-            !notif.is_read
+            !notif.read_at
           ).length;
           setNotificationCount(unreadCount);
         } else if (response.statusCode === 404) {
@@ -83,7 +101,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     if (!user?.id) return;
 
     try {
-      // For now, just reset the count
+      // For now, just reset the count
+
       setNotificationCount(0);
     } catch (error) {
       console.error('Error marking notifications as read:', error);

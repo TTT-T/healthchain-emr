@@ -42,10 +42,6 @@ COMMENT ON INDEX idx_users_thai_name IS 'Index for Thai name searches in user re
 COMMENT ON INDEX idx_patients_name_search IS 'Composite index for patient name searches';
 COMMENT ON INDEX idx_patients_contact_search IS 'Composite index for patient contact information searches';
 
--- Update migration log
-INSERT INTO migrations (migration_name, executed_at, execution_time_ms, success, error_message) 
-VALUES ('022_optimize_database_performance', CURRENT_TIMESTAMP, 0, true, NULL);
-
 -- =============================================================================
 -- Performance Analysis Queries (for monitoring)
 -- =============================================================================

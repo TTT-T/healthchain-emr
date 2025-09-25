@@ -98,7 +98,7 @@ COMMENT ON COLUMN patients.chronic_diseases IS 'Chronic diseases (duplicate of c
 -- Copy data from old fields to new fields for consistency
 UPDATE patients 
 SET 
-    thai_name = COALESCE(thai_name, CONCAT(thai_first_name, ' ', thai_last_name)),
+    thai_name = COALESCE(thai_name, ''),
     birth_date = COALESCE(birth_date, date_of_birth),
     phone_number = COALESCE(phone_number, phone),
     current_address = COALESCE(current_address, address)

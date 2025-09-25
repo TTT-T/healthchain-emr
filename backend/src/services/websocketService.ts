@@ -157,7 +157,7 @@ class WebSocketService {
         message: 'Connected to HealthChain EMR System',
         userId: socket.userId,
         userRole: socket.userRole,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
       });
     });
   }
@@ -199,7 +199,7 @@ class WebSocketService {
     if (socket) {
       socket.emit('notification', {
         ...notification,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }),
         id: this.generateNotificationId()
       });
     }
@@ -211,7 +211,7 @@ class WebSocketService {
   public sendNotificationToRole(role: string, notification: NotificationData): void {
     this.io.to(`role:${role}`).emit('notification', {
       ...notification,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }),
       id: this.generateNotificationId()
     });
   }
@@ -222,7 +222,7 @@ class WebSocketService {
   public sendNotificationToAdmins(notification: NotificationData): void {
     this.io.to('admin').emit('notification', {
       ...notification,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }),
       id: this.generateNotificationId()
     });
   }
@@ -233,7 +233,7 @@ class WebSocketService {
   public sendNotificationToAll(notification: NotificationData): void {
     this.io.emit('notification', {
       ...notification,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }),
       id: this.generateNotificationId()
     });
   }
@@ -250,7 +250,7 @@ class WebSocketService {
   }): void {
     this.io.emit('system_update', {
       ...update,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }),
       id: this.generateNotificationId()
     });
   }
@@ -261,7 +261,7 @@ class WebSocketService {
   public sendDashboardUpdate(role: string, data: any): void {
     this.io.to(`role:${role}`).emit('dashboard_update', {
       data,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
     });
   }
 
@@ -276,17 +276,17 @@ class WebSocketService {
     // Send to patient
     this.io.to(`user:${patientId}`).emit('patient_update', {
       ...update,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
     });
 
     // Send to medical staff
     this.io.to('role:doctor').emit('patient_update', {
       ...update,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
     });
     this.io.to('role:nurse').emit('patient_update', {
       ...update,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
     });
   }
 

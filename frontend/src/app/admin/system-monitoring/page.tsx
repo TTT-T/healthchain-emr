@@ -145,7 +145,7 @@ export default function SystemMonitoringPage() {
       console.log('✅ Data set successfully')
     } catch (error) {
       console.error('❌ Critical error in fetchData:', error)
-      setError(`Failed to load data: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      setError(`Failed to load data: ${error instanceof Error ? (error as any).message : 'Unknown error'}`)
     } finally {
       setLoading(false)
       console.log('🏁 Loading completed')

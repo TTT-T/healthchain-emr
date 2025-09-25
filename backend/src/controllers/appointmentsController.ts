@@ -172,46 +172,54 @@ export const getPatientAppointments = async (req: Request, res: Response) => {
     const { page = 1, limit = 10, status, startDate, endDate, type } = req.query;
     const user = (req as any).user;
 
-    // For patient role, find patient record by user's email
+    // For patient role, use the user's ID directly since appointments.patient_id references users.id
     // For other roles, use the patientId from URL
     let actualPatientId = patientId;
     let patient: any;
     
     if (user?.role === 'patient') {
-      // Find patient record by user's email
-      const patientByEmail = await databaseManager.query(
-        'SELECT id, first_name, last_name FROM patients WHERE email = $1',
-        [user.email]
-      );
-      
-      if (patientByEmail.rows.length === 0) {
-        return res.status(404).json({
-          data: null,
-          meta: null,
-          error: { message: 'Patient record not found for this user' },
-          statusCode: 404
-        });
-      }
-      
-      actualPatientId = patientByEmail.rows[0].id;
-      patient = patientByEmail.rows[0];
+      // For patient role, use the user's ID directly
+      actualPatientId = user.id;
+      patient = {
+        id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name
+      };
     } else {
-      // For doctors/nurses/admins, validate patient exists
-      const patientExists = await databaseManager.query(
-        'SELECT id, first_name, last_name FROM patients WHERE id = $1',
+      // For doctors/nurses/admins, first check if it's a patient ID from patients table
+      const patientFromPatientsTable = await databaseManager.query(
+        'SELECT p.id, p.user_id, u.first_name, u.last_name FROM patients p LEFT JOIN users u ON p.user_id = u.id WHERE p.id = $1',
         [patientId]
       );
 
-      if (patientExists.rows.length === 0) {
-        return res.status(404).json({
-          data: null,
-          meta: null,
-          error: { message: 'Patient not found' },
-          statusCode: 404
-        });
+      if (patientFromPatientsTable.rows.length > 0) {
+        // It's a patient ID from patients table, use the patient_id directly
+        // because appointments are stored with patients.id, not users.id
+        const patientData = patientFromPatientsTable.rows[0];
+        actualPatientId = patientData.id; // Use patient ID, not user ID
+        patient = {
+          id: patientData.id,
+          first_name: patientData.first_name,
+          last_name: patientData.last_name
+        };
+      } else {
+        // Check if it's a user ID directly
+        const patientExists = await databaseManager.query(
+          'SELECT id, first_name, last_name FROM users WHERE id = $1 AND role = $2',
+          [patientId, 'patient']
+        );
+
+        if (patientExists.rows.length === 0) {
+          return res.status(404).json({
+            data: null,
+            meta: null,
+            error: { message: 'Patient not found' },
+            statusCode: 404
+          });
+        }
+        
+        patient = patientExists.rows[0];
       }
-      
-      patient = patientExists.rows[0];
     }
 
     const offset = (Number(page) - 1) * Number(limit);

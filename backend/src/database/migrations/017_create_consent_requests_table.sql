@@ -49,6 +49,3 @@ END $$;
 -- Add comment for documentation
 COMMENT ON TABLE consent_requests IS 'Consent Requests - Table for managing external data access requests';
 
--- Update migration log
-INSERT INTO migrations (migration_name, executed_at, execution_time_ms, success, error_message) 
-VALUES ('017_create_consent_requests_table', CURRENT_TIMESTAMP, 0, true, NULL);

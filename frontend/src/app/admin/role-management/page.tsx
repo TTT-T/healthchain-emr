@@ -123,8 +123,8 @@ export default function RoleManagementPage() {
   const handleCreateUser = async (userData: {
     username: string;
     email: string;
-    first_name: string;
-    last_name: string;
+    firstName: string;
+    lastName: string;
     role: string;
     password: string;
   }) => {
@@ -429,7 +429,7 @@ export default function RoleManagementPage() {
                           </div>
                           <div>
                             <div className="text-sm font-medium text-gray-900">
-                              {user.first_name} {user.last_name}
+                              {user.firstName} {user.lastName}
                             </div>
                             <div className="text-sm text-gray-500">{user.email}</div>
                           </div>
@@ -469,7 +469,7 @@ export default function RoleManagementPage() {
                         </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {user.last_login ? new Date(user.last_login).toLocaleDaring('th-TH') : 'ไม่เคยเข้าสู่ระบบ'}
+                        {user.last_login ? new Date(user.last_login).toLocaleString('th-TH') : 'ไม่เคยเข้าสู่ระบบ'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center gap-2">

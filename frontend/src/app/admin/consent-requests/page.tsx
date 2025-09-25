@@ -460,7 +460,7 @@ export default function ConsentRequestsPage() {
                     )}
                   </td>
                   <td className="py-4 px-4 text-sm text-gray-500">
-                    {new Date(request.created_at).toLocaleDaring('th-TH', {
+                    {new Date(request.created_at).toLocaleString('th-TH', {
                       timeZone: 'Asia/Bangkok',
                       year: 'numeric',
                       month: 'short',
@@ -663,7 +663,7 @@ export default function ConsentRequestsPage() {
                     <div>
                       <label className="text-sm font-medium text-gray-600">วันที่สร้างคำขอ</label>
                       <p className="text-gray-900">
-                        {new Date(selectedRequest.created_at).toLocaleDaring('th-TH', {
+                        {new Date(selectedRequest.created_at).toLocaleString('th-TH', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric',
@@ -675,7 +675,7 @@ export default function ConsentRequestsPage() {
                     <div>
                       <label className="text-sm font-medium text-gray-600">วันหมดอายุ</label>
                       <p className="text-gray-900">
-                        {new Date(selectedRequest.expires_at).toLocaleDaring('th-TH', {
+                        {new Date(selectedRequest.expires_at).toLocaleString('th-TH', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric',
@@ -688,7 +688,7 @@ export default function ConsentRequestsPage() {
                       <div>
                         <label className="text-sm font-medium text-gray-600">วันที่ตรวจสอบ</label>
                         <p className="text-gray-900">
-                          {new Date(selectedRequest.validated_at).toLocaleDaring('th-TH', {
+                          {new Date(selectedRequest.validated_at).toLocaleString('th-TH', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric',

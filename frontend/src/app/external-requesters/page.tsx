@@ -67,7 +67,7 @@ export default function ExternalRequestersHomePage() {
             status: profileData.status,
             dataAccessLevel: profileData.dataAccessLevel,
             lastLogin: profileData.lastLogin || new Date().toISOString(),
-            createdAt: profileData.createdAt || new Date().toISOString()
+            created_at: profileData.createdAt || new Date().toISOString()
           })
         }
 
@@ -337,7 +337,7 @@ export default function ExternalRequestersHomePage() {
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-sm text-slate-600">
-                          {new Date(request.requestedAt).toLocaleDaring('th-TH')}
+                           {new Date(request.requestedAt).toLocaleString('th-TH')}
                         </span>
                       </td>
                       <td className="px-6 py-4">

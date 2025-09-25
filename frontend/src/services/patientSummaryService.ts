@@ -16,8 +16,8 @@ export interface PatientSummary {
     email: string;
     address: string;
     emergencyContact: string;
-    createdAt: string;
-    updatedAt: string;
+    created_at: string;
+    updated_at: string;
   };
   records: {
     visits: any[];
@@ -48,7 +48,7 @@ export interface TimelineItem {
   recordedByName: string;
   doctorName: string;
   recordedTime: string;
-  createdAt: string;
+  created_at: string;
   title: string;
   description: string;
   data: any;
@@ -182,7 +182,7 @@ export class PatientSummaryService {
    */
   static formatDate(date: string): string {
     const dateObj = new Date(date);
-    return dateObj.toLocaleDaring('th-TH', {
+    return dateObj.toLocaleString('th-TH', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -211,7 +211,7 @@ export class PatientSummaryService {
   static isToday(dateTime: string): boolean {
     const today = new Date();
     const recordDate = new Date(dateTime);
-    return today.toDaring() === recordDate.toDaring();
+    return today.toLocaleString() === recordDate.toLocaleString();
   }
 
   /**
@@ -269,7 +269,7 @@ export class PatientSummaryService {
       recordsByType[record.recordType] = (recordsByType[record.recordType] || 0) + 1;
       
       // Count by month
-      const month = new Date(record.recordedTime).toLocaleDaring('th-TH', { year: 'numeric', month: 'long' });
+      const month = new Date(record.recordedTime).toLocaleString('th-TH', { year: 'numeric', month: 'long' });
       recordsByMonth[month] = (recordsByMonth[month] || 0) + 1;
     });
     

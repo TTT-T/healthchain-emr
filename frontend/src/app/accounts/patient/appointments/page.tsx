@@ -154,7 +154,7 @@ const PatientAppointments = () => {
 
             return {
               ...apt,
-              date: apt.appointment_date || apt.appointmentDate || apt.date,
+              date: apt.appointmentDate || apt.appointmentDate || apt.date,
               time: apt.appointment_time || apt.appointmentTime || apt.time,
               doctor: doctorName,
               department: apt.appointment_type || apt.appointmentType || apt.department || 'ไม่ระบุ',
@@ -408,7 +408,7 @@ const PatientAppointments = () => {
                           </div>
                           <div className="text-xs text-gray-500">
                             {appointment.created_at && (
-                              <span>สร้างเมื่อ: {new Date(appointment.created_at).toLocaleDaring('th-TH')}</span>
+                              <span>สร้างเมื่อ: {new Date(appointment.created_at).toLocaleString('th-TH')}</span>
                             )}
                           </div>
                         </div>
@@ -574,13 +574,13 @@ const PatientAppointments = () => {
                             {appointment.created_at && (
                               <div className="flex items-center space-x-1">
                                 <Calendar className="h-3 w-3" />
-                                <span>สร้างเมื่อ: {new Date(appointment.created_at).toLocaleDaring('th-TH')}</span>
+                                <span>สร้างเมื่อ: {new Date(appointment.created_at).toLocaleString('th-TH')}</span>
                               </div>
                             )}
                             {appointment.updated_at && appointment.updated_at !== appointment.created_at && (
                               <div className="flex items-center space-x-1">
                                 <Edit className="h-3 w-3" />
-                                <span>อัปเดตเมื่อ: {new Date(appointment.updated_at).toLocaleDaring('th-TH')}</span>
+                                <span>อัปเดตเมื่อ: {new Date(appointment.updated_at).toLocaleString('th-TH')}</span>
                               </div>
                             )}
                             {appointment.patientId && (

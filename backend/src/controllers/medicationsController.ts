@@ -43,17 +43,15 @@ export const getPatientMedications = async (req: Request, res: Response) => {
         patientResult = await databaseManager.query(patientQuery, [user.id]);
       }
       
-      // If still no patient found, do not create one automatically
+      // If still no patient found, create a virtual patient record from user data
       if (patientResult.rows.length === 0) {
-        return res.status(404).json({
-          data: null,
-          meta: null,
-          error: { 
-            message: 'Patient record not found. Please register through EMR system at /emr/register-patient',
-            code: 'PATIENT_NOT_REGISTERED'
-          },
-          statusCode: 404
-        });
+        patient = {
+          id: user.id, // Use user ID as patient ID
+          user_id: user.id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          email: user.email
+        };
       } else {
         patient = patientResult.rows[0];
       }

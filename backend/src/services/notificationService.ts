@@ -7,7 +7,7 @@ export interface PatientNotificationData {
   patientName: string;
   patientPhone?: string;
   patientEmail?: string;
-  notificationType: 'document_created' | 'record_updated' | 'appointment_created' | 'lab_result_ready' | 'prescription_ready';
+  notificationType: 'document_created' | 'record_updated' | 'appointment_created' | 'lab_result_ready' | 'prescription_ready' | 'history_taking_recorded' | 'queue_created' | 'vital_signs_recorded';
   title: string;
   message: string;
   recordType?: string;
@@ -148,7 +148,7 @@ export class NotificationService {
         recordId: data.recordId,
         createdBy: data.createdBy,
         createdByName: data.createdByName,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }),
         read: false,
         metadata: data.metadata
       };
@@ -168,7 +168,7 @@ export class NotificationService {
    */
   private static generateSMSMessage(data: PatientNotificationData): string {
     const hospitalName = 'โรงพยาบาลตัวอย่าง';
-    const timestamp = new Date().toLocaleString('th-TH');
+    const timestamp = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
     
     switch (data.notificationType) {
       case 'document_created':
@@ -195,7 +195,7 @@ export class NotificationService {
    * สร้าง Email Template
    */
   private static generateEmailTemplate(data: PatientNotificationData): string {
-    const timestamp = new Date().toLocaleString('th-TH');
+    const timestamp = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
     const hospitalName = 'โรงพยาบาลตัวอย่าง';
     
     return `
@@ -299,7 +299,7 @@ export class NotificationService {
     try {
       await databaseManager.query(
         `UPDATE notifications 
-         SET read_at = NOW(), updated_at = NOW() 
+         SET read_at = NOW() AT TIME ZONE 'Asia/Bangkok', updated_at = NOW() AT TIME ZONE 'Asia/Bangkok' 
          WHERE id = $1`,
         [notificationId]
       );

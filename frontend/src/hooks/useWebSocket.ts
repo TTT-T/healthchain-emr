@@ -58,12 +58,12 @@ export const useWebSocket = () => {
       // Set up event listeners
       const handleConnected = () => {
         setIsConnected(true);
-        logger.('🔌 WebSocket connected in hook');
+        logger.info('🔌 WebSocket connected in hook');
       };
 
       const handleDisconnected = (reason: string) => {
         setIsConnected(false);
-        logger.('🔌 WebSocket disconnected in hook:', reason);
+        logger.info('🔌 WebSocket disconnected in hook:', reason);
       };
 
       const handleConnectionError = (error: unknown) => {
@@ -73,22 +73,22 @@ export const useWebSocket = () => {
 
       const handleNotification = (notification: NotificationData) => {
         setNotifications(prev => [notification, ...prev.slice(0, 49)]); // Keep last 50 notifications
-        logger.('📢 New notification received:', notification);
+        logger.info('📢 New notification received:', notification);
       };
 
       const handleSystemUpdate = (update: SystemUpdate) => {
         setSystemUpdates(prev => [update, ...prev.slice(0, 19)]); // Keep last 20 updates
-        logger.('🔄 New system update received:', update);
+        logger.info('🔄 New system update received:', update);
       };
 
       const handleDashboardUpdate = (update: DashboardUpdate) => {
         setDashboardData(update.data);
-        logger.('📊 Dashboard updated:', update);
+        logger.info('📊 Dashboard updated:', update);
       };
 
       const handlePatientUpdate = (update: PatientUpdate) => {
         setPatientUpdates(prev => [update, ...prev.slice(0, 19)]); // Keep last 20 updates
-        logger.('🏥 New patient update received:', update);
+        logger.info('🏥 New patient update received:', update);
       };
 
       // Add event listeners

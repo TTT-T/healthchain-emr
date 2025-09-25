@@ -64,8 +64,8 @@ export interface LabResultRecord {
   edTime: string;
   reviewedBy?: string;
   reviewedTime?: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
   patient?: {
     thaiName: string;
     nationalId: string;
@@ -187,8 +187,8 @@ export class LabResultService {
       edTime: record.edTime,
       reviewedBy: record.reviewedBy,
       reviewedTime: record.reviewedTime,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
+      created_at: record.created_at,
+      updated_at: record.updated_at,
       patient: record.patient
     };
   }

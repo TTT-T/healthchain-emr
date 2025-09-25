@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api";
 import { CheckCircle, AlertCircle, FileText, Calendar, User, Download, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
 import { logger } from '@/lib/logger';
+import { formatThailandDate } from '@/utils/dateUtils';
 
 interface LabResult {
   id: string;
@@ -160,8 +161,9 @@ export default function LabResults() {
     setIsModalOpen(true);
   };
 
-  const handleDownload = (result: LabResult) => {
-    logger.('Download result:', result.lab_order.id);
+  const handleDownload = (result: LabResult) => {
+
+    logger.info('Download result:', result.id);
   };
 
   if (isLoading) {
@@ -346,7 +348,7 @@ export default function LabResults() {
                       </div>
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
-                        <span>{new Date(result.result_date).toLocaleDaring('th-TH')}</span>
+                        <span>{formatThailandDate(result.result_date)}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <User className="h-4 w-4" />
@@ -431,7 +433,7 @@ export default function LabResults() {
                   <div className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-gray-500" />
                     <span className="font-medium">วันที่ตรวจ:</span>
-                    <span>{new Date(selectedResult.result_date).toLocaleDaring('th-TH')}</span>
+                    <span>{formatThailandDate(selectedResult.result_date)}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-5 w-5 text-gray-500" />
@@ -518,11 +520,11 @@ export default function LabResults() {
                     </div>
                     <div>
                       <span className="font-medium">วันที่สร้าง:</span>
-                      <span className="ml-2">{new Date(selectedResult.created_at).toLocaleDaring('th-TH')}</span>
+                      <span className="ml-2">{new Date(selectedResult.created_at).toLocaleString('th-TH')}</span>
                     </div>
                     <div>
                       <span className="font-medium">วันที่อัปเดต:</span>
-                      <span className="ml-2">{new Date(selectedResult.updated_at).toLocaleDaring('th-TH')}</span>
+                      <span className="ml-2">{new Date(selectedResult.updated_at).toLocaleString('th-TH')}</span>
                     </div>
                     <div>
                       <span className="font-medium">สถานะ:</span>

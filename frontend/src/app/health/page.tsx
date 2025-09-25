@@ -37,7 +37,7 @@ export default function HealthCheck() {
       
       if (response.ok) {
         const data = await response.json();
-        logger.('Backend health response:', data); //  log
+        logger.info('Backend health response:', data); //  log
         
         // Handle new standardized response format
         const healthData = data.data || data;

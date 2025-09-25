@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import { databaseManager } from '../database'
+import { databaseManager } from '../database/connection'
 import { successResponse, errorResponse } from '../utils'
 import { getCurrentThailandTimeForDB } from '../utils/thailandTime'
 

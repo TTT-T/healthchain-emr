@@ -18,6 +18,3 @@ ADD COLUMN IF NOT EXISTS title VARCHAR(50);
 COMMENT ON COLUMN users.title IS 'Title/prefix for name (Mr., Mrs., Miss, Ms., นาย, นาง, นางสาว, etc.)';
 COMMENT ON COLUMN patients.title IS 'Title/prefix for name (Mr., Mrs., Miss, Ms., นาย, นาง, นางสาว, etc.)';
 
--- Update migration log
-INSERT INTO migrations (migration_name, executed_at, execution_time_ms, success, error_message) 
-VALUES ('015_add_title_columns', CURRENT_TIMESTAMP, 0, true, NULL);

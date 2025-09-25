@@ -45,7 +45,7 @@ export function formatAPIError(error: APIError | Error | unknown): string {
 
   // Handle regular Error
   if (error instanceof Error) {
-    return error.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
+    return (error as any).message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
   }
 
   // Handle string errors

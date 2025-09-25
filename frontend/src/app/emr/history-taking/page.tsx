@@ -1,24 +1,40 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
 import { HistoryTakingService } from '@/services/historyTakingService';
 import { NotificationService } from '@/services/notificationService';
 import { PatientDocumentService } from '@/services/patientDocumentService';
+import { EnhancedDataService } from '@/services/enhancedDataService';
 import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
 import { getCurrentThailandDateTimeLocal } from '@/utils/thailandTime';
 
 interface Patient {
+  id: string;
   hn: string;
   nationalId: string;
   thaiName: string;
+  thaiLastName?: string;
+  firstName?: string;
+  lastName?: string;
   gender: string;
   birth_date: string;
+  birthDate?: string;
+  birth_year?: number;
+  birth_month?: number;
+  birth_day?: number;
   queueNumber: string;
   treatmentType: string;
   assignedDoctor: string;
+  bloodType?: string;
+  drugAllergies?: string;
+  foodAllergies?: string;
+  chronicDiseases?: string;
+  currentMedications?: string;
+  weight?: number;
+  height?: number;
   vitalSigns?: {
     weight: string;
     height: string;
@@ -73,13 +89,48 @@ interface MedicalHistory {
     fastFoodFrequency: string;
     mealFrequency: string;
   };
-  lifestyleFactors: {
-    sleepDuration: string;
-    sleepQuality: string;
-    stressLevel: string;
-    physicalActivityDetails: string;
-    sedentaryHours: string;
-  };
+    lifestyleFactors: {
+      sleepDuration: string;
+      sleepQuality: string;
+      stressLevel: string;
+      physicalActivityDetails: string;
+      sedentaryHours: string;
+    };
+    detailedNutrition: {
+      dailyCalorieIntake: string;
+      carbohydrateIntake: string;
+      proteinIntake: string;
+      fatIntake: string;
+      fiberIntake: string;
+      sugarIntake: string;
+      sodiumIntake: string;
+      waterIntake: string;
+      mealFrequency: string;
+      snackingFrequency: string;
+      eatingOutFrequency: string;
+      processedFoodConsumption: string;
+      organicFoodConsumption: string;
+      supplementUse: string;
+      alcoholConsumption: string;
+      caffeineConsumption: string;
+    };
+    detailedExercise: {
+      exerciseType: string;
+      exerciseDuration: string;
+      exerciseFrequency: string;
+      exerciseIntensity: string;
+      mets: string;
+      heartRateZones: string;
+      vo2Max: string;
+      strengthTraining: string;
+      flexibilityTraining: string;
+      balanceTraining: string;
+      sportsParticipation: string;
+      physicalActivityAtWork: string;
+      transportationMethod: string;
+      stairsUsage: string;
+      walkingSteps: string;
+    };
   reviewOfSystems: {
     general: string;
     cardiovascular: string;
@@ -97,6 +148,17 @@ interface MedicalHistory {
 
 export default function HistoryTaking() {
   const { isAuthenticated, user } = useAuth();
+  
+  // Debug authentication status
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    logger.info('Authentication status:', { 
+      isAuthenticated, 
+      user: user ? { id: user.id, role: user.role, username: user.username } : null,
+      hasToken: !!token,
+      tokenLength: token ? token.length : 0
+    });
+  }, [isAuthenticated, user]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<"hn" | "queue">("queue");
   const [isSearching, setIsSearching] = useState(false);
@@ -155,6 +217,41 @@ export default function HistoryTaking() {
       physicalActivityDetails: "",
       sedentaryHours: ""
     },
+    detailedNutrition: {
+      dailyCalorieIntake: "",
+      carbohydrateIntake: "",
+      proteinIntake: "",
+      fatIntake: "",
+      fiberIntake: "",
+      sugarIntake: "",
+      sodiumIntake: "",
+      waterIntake: "",
+      mealFrequency: "",
+      snackingFrequency: "",
+      eatingOutFrequency: "",
+      processedFoodConsumption: "",
+      organicFoodConsumption: "",
+      supplementUse: "",
+      alcoholConsumption: "",
+      caffeineConsumption: ""
+    },
+    detailedExercise: {
+      exerciseType: "",
+      exerciseDuration: "",
+      exerciseFrequency: "",
+      exerciseIntensity: "",
+      mets: "",
+      heartRateZones: "",
+      vo2Max: "",
+      strengthTraining: "",
+      flexibilityTraining: "",
+      balanceTraining: "",
+      sportsParticipation: "",
+      physicalActivityAtWork: "",
+      transportationMethod: "",
+      stairsUsage: "",
+      walkingSteps: ""
+    },
     reviewOfSystems: {
       general: "",
       cardiovascular: "",
@@ -165,12 +262,23 @@ export default function HistoryTaking() {
       musculoskeletal: "",
       dermatological: ""
     },
-    recordedBy: "นพ.สมชาย วงศ์แพทย์",
+    recordedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || "เจ้าหน้าที่",
     recordedTime: getCurrentThailandDateTimeLocal(),
     notes: ""
   });
 
   const [errors, setErrors] = useState<any>({});
+
+  // Update recordedBy when user changes
+  useEffect(() => {
+    if (user) {
+      const userName = user.thaiName || `${user.firstName} ${user.lastName}` || "เจ้าหน้าที่";
+      setMedicalHistory(prev => ({
+        ...prev,
+        recordedBy: userName
+      }));
+    }
+  }, [user]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -253,6 +361,7 @@ export default function HistoryTaking() {
     
     setIsSubmitting(true);
     setError(null);
+    setSuccess(null);
     
     try {
       // Create medical history record using VisitService
@@ -287,9 +396,119 @@ export default function HistoryTaking() {
         // Create document for patient
         await createPatientDocument(selectedPatient!, response.data);
         
-        setSuccess("บันทึกประวัติผู้ป่วยสำเร็จ! พร้อมสำหรับขั้นตอนการตรวจร่างกาย\n\n✅ ระบบได้ส่งการแจ้งเตือนและเอกสารให้ผู้ป่วยแล้ว");
+        setSuccess("🎉 บันทึกประวัติผู้ป่วยสำเร็จ! พร้อมสำหรับขั้นตอนการตรวจร่างกาย\n\n✅ ระบบได้ส่งการแจ้งเตือนและเอกสารให้ผู้ป่วยแล้ว");
+        
+        // Save detailed nutrition and exercise data for AI analysis
+        try {
+          // Save detailed nutrition
+          const nutritionData = {
+            dailyCalorieIntake: medicalHistory.detailedNutrition.dailyCalorieIntake ? parseFloat(medicalHistory.detailedNutrition.dailyCalorieIntake) : undefined,
+            carbohydrateIntake: medicalHistory.detailedNutrition.carbohydrateIntake ? parseFloat(medicalHistory.detailedNutrition.carbohydrateIntake) : undefined,
+            proteinIntake: medicalHistory.detailedNutrition.proteinIntake ? parseFloat(medicalHistory.detailedNutrition.proteinIntake) : undefined,
+            fatIntake: medicalHistory.detailedNutrition.fatIntake ? parseFloat(medicalHistory.detailedNutrition.fatIntake) : undefined,
+            fiberIntake: medicalHistory.detailedNutrition.fiberIntake ? parseFloat(medicalHistory.detailedNutrition.fiberIntake) : undefined,
+            sugarIntake: medicalHistory.detailedNutrition.sugarIntake ? parseFloat(medicalHistory.detailedNutrition.sugarIntake) : undefined,
+            sodiumIntake: medicalHistory.detailedNutrition.sodiumIntake ? parseFloat(medicalHistory.detailedNutrition.sodiumIntake) : undefined,
+            waterIntake: medicalHistory.detailedNutrition.waterIntake ? parseFloat(medicalHistory.detailedNutrition.waterIntake) : undefined,
+            mealFrequency: medicalHistory.detailedNutrition.mealFrequency ? parseInt(medicalHistory.detailedNutrition.mealFrequency) : undefined,
+            snackingFrequency: medicalHistory.detailedNutrition.snackingFrequency,
+            eatingOutFrequency: medicalHistory.detailedNutrition.eatingOutFrequency,
+            processedFoodConsumption: medicalHistory.detailedNutrition.processedFoodConsumption,
+            organicFoodConsumption: medicalHistory.detailedNutrition.organicFoodConsumption,
+            supplementUse: medicalHistory.detailedNutrition.supplementUse,
+            alcoholConsumption: medicalHistory.detailedNutrition.alcoholConsumption ? parseFloat(medicalHistory.detailedNutrition.alcoholConsumption) : undefined,
+            caffeineConsumption: medicalHistory.detailedNutrition.caffeineConsumption ? parseFloat(medicalHistory.detailedNutrition.caffeineConsumption) : undefined,
+            assessmentDate: new Date().toISOString(),
+            visitId: null // Don't link to visits table since this is history-taking data
+          };
+          
+          // Save detailed exercise
+          const exerciseData = {
+            exerciseType: medicalHistory.detailedExercise.exerciseType,
+            exerciseDuration: medicalHistory.detailedExercise.exerciseDuration ? parseFloat(medicalHistory.detailedExercise.exerciseDuration) : undefined,
+            exerciseFrequency: medicalHistory.detailedExercise.exerciseFrequency ? parseInt(medicalHistory.detailedExercise.exerciseFrequency) : undefined,
+            exerciseIntensity: medicalHistory.detailedExercise.exerciseIntensity,
+            mets: medicalHistory.detailedExercise.mets ? parseFloat(medicalHistory.detailedExercise.mets) : undefined,
+            heartRateZones: medicalHistory.detailedExercise.heartRateZones,
+            vo2Max: medicalHistory.detailedExercise.vo2Max ? parseFloat(medicalHistory.detailedExercise.vo2Max) : undefined,
+            strengthTraining: medicalHistory.detailedExercise.strengthTraining,
+            flexibilityTraining: medicalHistory.detailedExercise.flexibilityTraining,
+            balanceTraining: medicalHistory.detailedExercise.balanceTraining,
+            sportsParticipation: medicalHistory.detailedExercise.sportsParticipation,
+            physicalActivityAtWork: medicalHistory.detailedExercise.physicalActivityAtWork,
+            transportationMethod: medicalHistory.detailedExercise.transportationMethod,
+            stairsUsage: medicalHistory.detailedExercise.stairsUsage,
+            walkingSteps: medicalHistory.detailedExercise.walkingSteps ? parseInt(medicalHistory.detailedExercise.walkingSteps) : undefined,
+            assessmentDate: new Date().toISOString(),
+            visitId: null // Don't link to visits table since this is history-taking data
+          };
+          
+          // Only save if there's actual data and user is authenticated
+          const token = localStorage.getItem('access_token');
+          if (isAuthenticated && user && token) {
+            logger.info('User appears authenticated with valid token, attempting to save enhanced data...');
+            
+            const hasNutritionData = Object.values(nutritionData).some(value => 
+              value !== undefined && value !== null && value !== ''
+            );
+            
+            const hasExerciseData = Object.values(exerciseData).some(value => 
+              value !== undefined && value !== null && value !== ''
+            );
+            
+            let enhancedDataSaved = false;
+            
+            if (hasNutritionData) {
+              try {
+                await EnhancedDataService.saveDetailedNutrition(selectedPatient!.id, nutritionData);
+                logger.info('Detailed nutrition data saved for AI analysis');
+                enhancedDataSaved = true;
+              } catch (nutritionError) {
+                logger.error('Failed to save nutrition data:', nutritionError);
+                // Don't throw - just log the error
+              }
+            }
+            
+            if (hasExerciseData) {
+              try {
+                await EnhancedDataService.saveDetailedExercise(selectedPatient!.id, exerciseData);
+                logger.info('Detailed exercise data saved for AI analysis');
+                enhancedDataSaved = true;
+              } catch (exerciseError) {
+                logger.error('Failed to save exercise data:', exerciseError);
+                // Don't throw - just log the error
+              }
+            }
+            
+            // Update success message if enhanced data was saved
+            if (enhancedDataSaved) {
+              setSuccess(prev => prev + "\n\n📊 ข้อมูลเพิ่มเติมสำหรับการวิเคราะห์ AI ถูกบันทึกเรียบร้อยแล้ว");
+            }
+          } else {
+            logger.warn('Skipping enhanced data save - user not authenticated or no token', { 
+              isAuthenticated, 
+              user: user?.id, 
+              hasToken: !!token 
+            });
+          }
+        } catch (enhancedError) {
+          logger.warn('Failed to save enhanced data, but history was saved:', enhancedError);
+          
+          // Check if it's an authentication error
+          if (enhancedError && typeof enhancedError === 'object' && 'response' in enhancedError) {
+            const response = (enhancedError as any).response;
+            if (response && response.status === 401) {
+              logger.warn('Authentication error when saving enhanced data - user may need to log in again');
+              // Don't show error to user as history was saved successfully
+            } else {
+              logger.warn('Other error when saving enhanced data:', response?.status, response?.data);
+            }
+          }
+          // Don't throw error here as history was saved successfully
+        }
+        
       } else {
-        setError("เกิดข้อผิดพลาดในการบันทึกประวัติผู้ป่วย");
+        setError("❌ เกิดข้อผิดพลาดในการบันทึกประวัติผู้ป่วย กรุณาลองใหม่อีกครั้ง");
       }
       
       // Reset form
@@ -356,15 +575,50 @@ export default function HistoryTaking() {
             musculoskeletal: "",
             dermatological: ""
           },
-          recordedBy: "นพ.สมชาย วงศ์แพทย์",
+          recordedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || "เจ้าหน้าที่",
           recordedTime: getCurrentThailandDateTimeLocal(),
-          notes: ""
+          notes: "",
+          detailedNutrition: {
+            dailyCalorieIntake: "",
+            carbohydrateIntake: "",
+            proteinIntake: "",
+            fatIntake: "",
+            fiberIntake: "",
+            sugarIntake: "",
+            sodiumIntake: "",
+            waterIntake: "",
+            mealFrequency: "",
+            snackingFrequency: "",
+            eatingOutFrequency: "",
+            processedFoodConsumption: "",
+            organicFoodConsumption: "",
+            supplementUse: "",
+            alcoholConsumption: "",
+            caffeineConsumption: ""
+          },
+          detailedExercise: {
+            exerciseType: "",
+            exerciseDuration: "",
+            exerciseFrequency: "",
+            exerciseIntensity: "",
+            mets: "",
+            heartRateZones: "",
+            vo2Max: "",
+            strengthTraining: "",
+            flexibilityTraining: "",
+            balanceTraining: "",
+            sportsParticipation: "",
+            physicalActivityAtWork: "",
+            transportationMethod: "",
+            stairsUsage: "",
+            walkingSteps: ""
+          }
         });
       }, 3000);
       
     } catch (error) {
       logger.error("Error saving medical history:", error);
-      setError("เกิดข้อผิดพลาดในการบันทึกประวัติ กรุณาลองอีกครั้ง");
+      setError("❌ เกิดข้อผิดพลาดในการบันทึกประวัติผู้ป่วย กรุณาลองใหม่อีกครั้ง");
     } finally {
       setIsSubmitting(false);
     }
@@ -379,7 +633,9 @@ export default function HistoryTaking() {
       const notificationData = {
         patientHn: patient.hn || patient.hospitalNumber || '',
         patientNationalId: patient.nationalId || '',
-        patientName: patient.thaiName || `${patient.firstName} ${patient.lastName}`,
+        patientName: patient.thaiName && patient.thaiLastName 
+          ? `${patient.thaiName} ${patient.thaiLastName}`
+          : patient.thaiName || `${patient.firstName} ${patient.lastName}`,
         patientPhone: patient.phone || '',
         patientEmail: patient.email || '',
         recordType: 'history_taking',
@@ -387,7 +643,7 @@ export default function HistoryTaking() {
         chiefComplaint: historyRecord.chiefComplaint,
         recordedBy: historyRecord.recordedBy,
         recordedTime: historyRecord.recordedTime,
-        message: `มีการบันทึกประวัติการซักประวัติใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'}`
+        message: `มีการบันทึกประวัติการซักประวัติใหม่สำหรับคุณ ${patient.thaiName && patient.thaiLastName ? `${patient.thaiName} ${patient.thaiLastName}` : patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'}`
       };
 
       await NotificationService.notifyPatientRecordUpdate(notificationData);
@@ -400,30 +656,169 @@ export default function HistoryTaking() {
     }
   };
 
-  const calculateAge = (birthDate: string): number => {
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
+  const calculateAge = (birthDate: string, patient?: any): number => {
+    // Try to use separate birth fields if birthDate is null or empty
+    if ((!birthDate || birthDate === '') && patient) {
+      if (patient.birth_year && patient.birth_month && patient.birth_day) {
+        let birthYear = patient.birth_year;
+        let birthMonth = patient.birth_month;
+        let birthDay = patient.birth_day;
+        
+        // Convert Buddhist Era to Christian Era if year >= 2500
+        if (birthYear >= 2500) {
+          birthYear = birthYear - 543;
+        }
+        
+        const today = new Date();
+        let age = today.getFullYear() - birthYear;
+        
+        // Check if birthday has passed this year
+        const currentMonth = today.getMonth() + 1;
+        const currentDay = today.getDate();
+        
+        if (currentMonth < birthMonth || (currentMonth === birthMonth && currentDay < birthDay)) {
+          age--;
+        }
+        
+        return Math.max(0, age);
+      }
     }
     
-    return age;
+    if (!birthDate || birthDate === '') return 0;
+    
+    try {
+      let birthYear: number;
+      let birthMonth: number;
+      let birthDay: number;
+      
+      if (birthDate.includes('/')) {
+        const parts = birthDate.split('/');
+        if (parts.length >= 3) {
+          birthDay = parseInt(parts[0]);
+          birthMonth = parseInt(parts[1]) - 1;
+          birthYear = parseInt(parts[2]);
+          
+          if (birthYear > 2500) {
+            birthYear = birthYear - 543;
+          }
+        } else {
+          return 0;
+        }
+      } else {
+        const birth = new Date(birthDate);
+        if (isNaN(birth.getTime())) return 0;
+        
+        birthYear = birth.getFullYear();
+        birthMonth = birth.getMonth();
+        birthDay = birth.getDate();
+      }
+      
+      const today = new Date();
+      let age = today.getFullYear() - birthYear;
+      const monthDiff = today.getMonth() - birthMonth;
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDay)) {
+        age--;
+      }
+      
+      return Math.max(0, age);
+    } catch (error) {
+      console.error('Error calculating age:', error);
+      return 0;
+    }
   };
 
   const navigationSections = [
-    { id: "cc", label: "CC", title: "Chief Complaint", icon: "💬" },
-    { id: "hpi", label: "HPI", title: "History of Present Illness", icon: "📋" },
-    { id: "pmh", label: "PMH", title: "Past Medical History", icon: "🏥" },
-    { id: "drugs", label: "Drugs", title: "Drug Allergy & Medications", icon: "💊" },
-    { id: "family", label: "Family", title: "Family History", icon: "👨‍👩‍👧‍👦" },
-    { id: "social", label: "Social", title: "Social History", icon: "🌍" },
-    ...(selectedPatient?.gender === "female" ? [{ id: "pregnancy", label: "Pregnancy", title: "Pregnancy History", icon: "🤱" }] : []),
-    { id: "dietary", label: "Diet", title: "Dietary History", icon: "🍎" },
-    { id: "lifestyle", label: "Lifestyle", title: "Lifestyle Factors", icon: "💪" },
-    { id: "ros", label: "ROS", title: "Review of Systems", icon: "🔍" }
+    { 
+      id: "cc", 
+      label: "CC", 
+      title: "Chief Complaint", 
+      subtitle: "อาการสำคัญ",
+      icon: "💬",
+      color: "purple",
+      description: "อาการหลักที่ผู้ป่วยมาพบแพทย์"
+    },
+    { 
+      id: "hpi", 
+      label: "HPI", 
+      title: "History of Present Illness", 
+      subtitle: "ประวัติอาการปัจจุบัน",
+      icon: "📋",
+      color: "blue",
+      description: "รายละเอียดของอาการปัจจุบัน"
+    },
+    { 
+      id: "pmh", 
+      label: "PMH", 
+      title: "Past Medical History", 
+      subtitle: "ประวัติการรักษา",
+      icon: "🏥",
+      color: "green",
+      description: "โรคประจำตัวและการรักษาในอดีต"
+    },
+    { 
+      id: "drugs", 
+      label: "Drugs", 
+      title: "Drug Allergy & Medications", 
+      subtitle: "ยาและการแพ้",
+      icon: "💊",
+      color: "red",
+      description: "ประวัติแพ้ยาและยาที่ใช้อยู่"
+    },
+    { 
+      id: "family", 
+      label: "Family", 
+      title: "Family History", 
+      subtitle: "ประวัติครอบครัว",
+      icon: "👨‍👩‍👧‍👦",
+      color: "indigo",
+      description: "โรคทางพันธุกรรมในครอบครัว"
+    },
+    { 
+      id: "social", 
+      label: "Social", 
+      title: "Social History", 
+      subtitle: "ประวัติสังคม",
+      icon: "🌍",
+      color: "teal",
+      description: "พฤติกรรมและวิถีชีวิต"
+    },
+    ...(selectedPatient?.gender === "female" ? [{ 
+      id: "pregnancy", 
+      label: "Pregnancy", 
+      title: "Pregnancy History", 
+      subtitle: "ประวัติการตั้งครรภ์",
+      icon: "🤱",
+      color: "pink",
+      description: "ประวัติการตั้งครรภ์และภาวะแทรกซ้อน"
+    }] : []),
+    { 
+      id: "dietary", 
+      label: "Diet", 
+      title: "Dietary History", 
+      subtitle: "ประวัติอาหาร",
+      icon: "🍎",
+      color: "orange",
+      description: "พฤติกรรมการรับประทานอาหาร"
+    },
+    { 
+      id: "lifestyle", 
+      label: "Lifestyle", 
+      title: "Lifestyle Factors", 
+      subtitle: "ปัจจัยวิถีชีวิต",
+      icon: "💪",
+      color: "yellow",
+      description: "การนอน ความเครียด การออกกำลังกาย"
+    },
+    { 
+      id: "ros", 
+      label: "ROS", 
+      title: "Review of Systems", 
+      subtitle: "ตรวจสอบระบบ",
+      icon: "🔍",
+      color: "cyan",
+      description: "การตรวจสอบระบบต่างๆ ของร่างกาย"
+    }
   ];
 
   /**
@@ -437,7 +832,9 @@ export default function HistoryTaking() {
         {
           patientHn: patient.hn || '',
           patientNationalId: patient.nationalId || '',
-          patientName: patient.thaiName || ''
+          patientName: patient.thaiName && patient.thaiLastName 
+            ? `${patient.thaiName} ${patient.thaiLastName}`
+            : patient.thaiName || ''
         },
         user?.id || '',
         user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'
@@ -468,6 +865,24 @@ export default function HistoryTaking() {
             </div>
           </div>
         </div>
+
+        {/* Authentication Warning */}
+        {(!isAuthenticated || !localStorage.getItem('access_token')) && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center space-x-3">
+              <AlertTriangle className="h-5 w-5 text-yellow-600" />
+              <div>
+                <h3 className="text-sm font-medium text-yellow-800">การแจ้งเตือน</h3>
+                <p className="text-sm text-yellow-700 mt-1">
+                  คุณยังไม่ได้เข้าสู่ระบบหรือ token หมดอายุ การบันทึกข้อมูลเพิ่มเติมสำหรับการวิเคราะห์ AI อาจไม่ทำงาน
+                </p>
+                <p className="text-xs text-yellow-600 mt-1">
+                  กรุณาเข้าสู่ระบบใหม่ที่ <a href="/login" className="underline">หน้าเข้าสู่ระบบ</a>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
       <div className="space-y-4 md:space-y-6">
         {/* Patient Search Section */}
@@ -547,44 +962,123 @@ export default function HistoryTaking() {
 
           {/* Selected Patient Info */}
           {selectedPatient && (
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center mb-3">
-                <svg className="w-5 h-5 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                <span className="text-blue-800 font-medium">ข้อมูลผู้ป่วย</span>
+            <div className="mt-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm">
+              <div className="flex items-center mb-4">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                  <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-blue-800">ข้อมูลผู้ป่วยสำหรับการซักประวัติ</h3>
+                  <p className="text-sm text-blue-600">ข้อมูลพื้นฐานที่จำเป็นสำหรับการซักประวัติ</p>
+                </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <span className="text-slate-600">HN:</span>
-                  <span className="ml-2 font-bold text-blue-600 text-lg">{selectedPatient.hn}</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Basic Information */}
+                <div className="bg-white rounded-lg p-4 border border-blue-100">
+                  <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center">
+                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
+                    </svg>
+                    ข้อมูลพื้นฐาน
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">HN:</span>
+                      <span className="font-bold text-blue-600">{selectedPatient.hn}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">ชื่อ-นามสกุล:</span>
+                      <span className="font-medium text-slate-800">
+                        {selectedPatient.thaiName && selectedPatient.thaiLastName
+                          ? `${selectedPatient.thaiName} ${selectedPatient.thaiLastName}`
+                          : selectedPatient.thaiName || selectedPatient.firstName
+                          ? `${selectedPatient.thaiName || selectedPatient.firstName} ${selectedPatient.thaiLastName || selectedPatient.lastName || ''}`.trim()
+                          : 'ไม่ระบุ'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">อายุ:</span>
+                      <span className="font-medium text-slate-800">
+                        {calculateAge(selectedPatient.birth_date || selectedPatient.birthDate, selectedPatient)} ปี
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">เพศ:</span>
+                      <span className="font-medium text-slate-800">
+                        {selectedPatient.gender === 'male' ? 'ชาย' : 
+                         selectedPatient.gender === 'female' ? 'หญิง' : 
+                         selectedPatient.gender || 'ไม่ระบุ'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-slate-600">ชื่อ:</span>
-                  <span className="ml-2 font-medium text-slate-800">{selectedPatient.thaiName}</span>
+
+                {/* Medical Information */}
+                <div className="bg-white rounded-lg p-4 border border-red-100">
+                  <h4 className="text-sm font-semibold text-red-800 mb-3 flex items-center">
+                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    ข้อมูลทางการแพทย์
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">กรุ๊ปเลือด:</span>
+                      <span className="font-medium text-slate-800">{selectedPatient.bloodType || 'ไม่ระบุ'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">แพ้ยา:</span>
+                      <span className="font-medium text-red-600">{selectedPatient.drugAllergies || 'ไม่มี'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">แพ้อาหาร:</span>
+                      <span className="font-medium text-red-600">{selectedPatient.foodAllergies || 'ไม่มี'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">โรคประจำตัว:</span>
+                      <span className="font-medium text-slate-800">{selectedPatient.chronicDiseases || 'ไม่มี'}</span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-slate-600">อายุ:</span>
-                  <span className="ml-2 font-medium text-slate-800">{selectedPatient.birth_date ? calculateAge(selectedPatient.birth_date) : 'ไม่ระบุ'} ปี</span>
-                </div>
-                <div>
-                  <span className="text-slate-600">เพศ:</span>
-                  <span className="ml-2 font-medium text-slate-800">{selectedPatient.gender === 'male' ? 'ชาย' : 'หญิง'}</span>
+
+                {/* Current Medications */}
+                <div className="bg-white rounded-lg p-4 border border-green-100">
+                  <h4 className="text-sm font-semibold text-green-800 mb-3 flex items-center">
+                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                    </svg>
+                    ยาที่ใช้อยู่
+                  </h4>
+                  <div className="text-sm">
+                    <p className="text-slate-600 mb-2">ยาปัจจุบัน:</p>
+                    <p className="font-medium text-slate-800 bg-green-50 p-2 rounded text-xs">
+                      {selectedPatient.currentMedications || 'ไม่มี'}
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              {/* Patient Info Note */}
-              <div className="mt-4 pt-4 border-t border-blue-200">
-                <div className="flex items-center mb-2">
-                  <svg className="w-4 h-4 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              {/* Vital Signs Information */}
+              {/* Vital Signs Information - Disabled for now */}
+
+              {/* Instructions */}
+              <div className="mt-4 p-4 bg-blue-100 border border-blue-200 rounded-lg">
+                <div className="flex items-start">
+                  <svg className="w-5 h-5 text-blue-600 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                   </svg>
-                  <span className="text-blue-800 font-medium text-sm">ข้อมูลผู้ป่วย</span>
-                </div>
-                <div className="text-xs text-slate-600">
-                  <p>กรุณาดำเนินการซักประวัติเพื่อเตรียมข้อมูลสำหรับแพทย์</p>
-                  <p className="mt-1">หมายเหตุ: ข้อมูลสัญญาณชีพจะแสดงหลังจากการตรวจวัดแล้ว</p>
+                  <div className="text-sm text-blue-800">
+                    <p className="font-medium mb-1">คำแนะนำสำหรับการซักประวัติ:</p>
+                    <ul className="space-y-1 text-blue-700">
+                      <li>• ตรวจสอบประวัติแพ้ยาและอาหารให้ละเอียดเพื่อความปลอดภัย</li>
+                      <li>• ใช้ข้อมูลโรคประจำตัวและยาที่ใช้อยู่เป็นแนวทางในการซักประวัติ</li>
+                      <li>• ข้อมูลสัญญาณชีพจะช่วยในการประเมินอาการของผู้ป่วย</li>
+                      <li>• เริ่มจาก Chief Complaint แล้วตามด้วย HPI ตามลำดับ</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             </div>
@@ -594,28 +1088,89 @@ export default function HistoryTaking() {
         {/* Medical History Form */}
         {selectedPatient && (
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-            {/* Tab Navigation */}
-            <div className="border-b bg-slate-50">
-              <div className="flex overflow-x-auto">
-                {navigationSections.map((section) => (
-                  <button
-                    key={section.id}
-                    onClick={() => setActiveSection(section.id)}
-                    className={`flex-shrink-0 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
-                      activeSection === section.id
-                        ? 'border-blue-500 text-blue-600 bg-white'
-                        : 'border-transparent text-slate-600 hover:text-slate-800 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <span>{section.icon}</span>
-                      <div className="text-left">
-                        <div className="font-bold">{section.label}</div>
-                        <div className="text-xs opacity-75">{section.title}</div>
+            {/* Enhanced Tab Navigation */}
+            <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
+              <div className="p-4">
+                <h2 className="text-lg font-bold text-slate-800 mb-3 flex items-center">
+                  <svg className="w-5 h-5 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                  </svg>
+                  การซักประวัติทางการแพทย์
+                </h2>
+                <p className="text-sm text-slate-600 mb-4">เลือกหัวข้อการซักประวัติตามลำดับความสำคัญ</p>
+                
+                {/* Desktop Navigation */}
+                <div className="hidden lg:grid lg:grid-cols-5 xl:grid-cols-10 gap-3">
+                  {navigationSections.map((section) => (
+                    <button
+                      key={section.id}
+                      onClick={() => setActiveSection(section.id)}
+                      className={`group relative p-4 rounded-xl transition-all duration-200 border-2 ${
+                        activeSection === section.id
+                          ? `border-${section.color}-500 bg-${section.color}-50 shadow-lg transform scale-105`
+                          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="text-2xl mb-2">{section.icon}</div>
+                        <div className="font-bold text-sm text-slate-800 mb-1">{section.label}</div>
+                        <div className="text-xs text-slate-600 leading-tight">{section.subtitle}</div>
                       </div>
-                    </div>
-                  </button>
-                ))}
+                      
+                      {/* Active indicator */}
+                      {activeSection === section.id && (
+                        <div className={`absolute -top-1 -right-1 w-3 h-3 bg-${section.color}-500 rounded-full border-2 border-white`}></div>
+                      )}
+                      
+                      {/* Hover tooltip */}
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-slate-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                        {section.description}
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800"></div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Mobile/Tablet Navigation */}
+                <div className="lg:hidden">
+                  <div className="flex overflow-x-auto space-x-3 pb-2">
+                    {navigationSections.map((section) => (
+                      <button
+                        key={section.id}
+                        onClick={() => setActiveSection(section.id)}
+                        className={`flex-shrink-0 p-3 rounded-lg transition-all duration-200 border-2 ${
+                          activeSection === section.id
+                            ? `border-${section.color}-500 bg-${section.color}-50 shadow-md`
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span className="text-lg">{section.icon}</span>
+                          <div className="text-left">
+                            <div className="font-bold text-sm text-slate-800">{section.label}</div>
+                            <div className="text-xs text-slate-600">{section.subtitle}</div>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Progress Indicator */}
+                <div className="mt-4">
+                  <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+                    <span>ความคืบหน้า</span>
+                    <span>{navigationSections.findIndex(s => s.id === activeSection) + 1} / {navigationSections.length}</span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-2">
+                    <div 
+                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
+                      style={{ 
+                        width: `${((navigationSections.findIndex(s => s.id === activeSection) + 1) / navigationSections.length) * 100}%` 
+                      }}
+                    ></div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -625,41 +1180,65 @@ export default function HistoryTaking() {
                 {/* Chief Complaint */}
                 {activeSection === "cc" && (
                   <div className="space-y-6">
-                    <div>
-                      <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center">
-                        <span className="text-2xl mr-3">💬</span>
-                        Chief Complaint (อาการสำคัญที่มาพบแพทย์)
-                      </h3>
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-6">
+                      <div className="flex items-center mb-6">
+                        <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mr-4">
+                          <span className="text-2xl">💬</span>
+                        </div>
+                        <div>
+                          <h3 className="text-2xl font-bold text-purple-800">Chief Complaint</h3>
+                          <p className="text-purple-600">อาการสำคัญที่มาพบแพทย์</p>
+                        </div>
+                      </div>
                       
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <div className="bg-white rounded-lg p-6 border border-purple-100">
+                        <label className="block text-lg font-semibold text-slate-700 mb-3">
                           อาการหลักที่ผู้ป่วยมาพบแพทย์ <span className="text-red-500">*</span>
                         </label>
                         <textarea
                           value={medicalHistory.chiefComplaint}
                           onChange={(e) => handleInputChange("chiefComplaint", e.target.value)}
-                          rows={4}
-                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                          rows={5}
+                          className={`w-full px-4 py-4 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-lg ${
                             errors.chiefComplaint ? 'border-red-500' : 'border-slate-300'
                           }`}
                           placeholder="เช่น ปวดท้อง, ไข้, ไอ, ปวดหัด เป็นต้น (อธิบายให้ละเอียด)"
                         />
-                        {errors.chiefComplaint && <p className="text-red-500 text-sm mt-1">{errors.chiefComplaint}</p>}
+                        {errors.chiefComplaint && <p className="text-red-500 text-sm mt-2 flex items-center">
+                          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          {errors.chiefComplaint}
+                        </p>}
                       </div>
 
-                      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="mt-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
                         <div className="flex items-start">
-                          <svg className="w-5 h-5 text-blue-600 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                          </svg>
-                          <div className="text-sm text-blue-800">
-                            <p className="font-medium mb-1">แนวทางการซักประวัติ Chief Complaint:</p>
-                            <ul className="space-y-1 text-blue-700">
-                              <li>• ใช้คำของผู้ป่วยเอง ไม่ใช่การวินิจฉัย</li>
-                              <li>• ระบุระยะเวลาที่มีอาการ</li>
-                              <li>• ถ้ามีหลายอาการ ให้เรียงตามลำดับความสำคัญ</li>
-                              <li>• หลีกเลี่ยงการใช้คำทางการแพทย์</li>
-                            </ul>
+                          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+                            <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-blue-800 mb-3">แนวทางการซักประวัติ Chief Complaint:</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-blue-700">
+                              <div className="flex items-start">
+                                <span className="text-blue-500 mr-2">•</span>
+                                <span>ใช้คำของผู้ป่วยเอง ไม่ใช่การวินิจฉัย</span>
+                              </div>
+                              <div className="flex items-start">
+                                <span className="text-blue-500 mr-2">•</span>
+                                <span>ระบุระยะเวลาที่มีอาการ</span>
+                              </div>
+                              <div className="flex items-start">
+                                <span className="text-blue-500 mr-2">•</span>
+                                <span>ถ้ามีหลายอาการ ให้เรียงตามลำดับความสำคัญ</span>
+                              </div>
+                              <div className="flex items-start">
+                                <span className="text-blue-500 mr-2">•</span>
+                                <span>หลีกเลี่ยงการใช้คำทางการแพทย์</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1438,13 +2017,21 @@ export default function HistoryTaking() {
                       <label className="block text-sm font-medium text-slate-700 mb-2">
                         ผู้บันทึก
                       </label>
-                      <input
-                        type="text"
-                        value={medicalHistory.recordedBy}
-                        onChange={(e) => handleInputChange("recordedBy", e.target.value)}
-                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="ชื่อแพทย์ผู้บันทึก"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={medicalHistory.recordedBy}
+                          readOnly
+                          className="w-full px-4 py-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-700 cursor-not-allowed"
+                          placeholder="ชื่อแพทย์ผู้บันทึก"
+                        />
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                          <svg className="w-5 h-5 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">แสดงชื่อของเจ้าหน้าที่ที่เข้าสู่ระบบ</p>
                     </div>
 
                     <div>
@@ -1533,9 +2120,9 @@ export default function HistoryTaking() {
         {/* Success Message */}
         {success && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-            <div className="flex items-center">
-              <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-              <span className="text-green-700">{success}</span>
+            <div className="flex items-start">
+              <CheckCircle className="h-5 w-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
+              <div className="text-green-700 whitespace-pre-line">{success}</div>
             </div>
           </div>
         )}

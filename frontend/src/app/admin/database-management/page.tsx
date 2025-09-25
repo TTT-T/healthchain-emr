@@ -192,7 +192,7 @@ export default function DatabasePage() {
       });
       
       if (response.statusCode === 200) {
-        logger.('Backup created:', response.data);
+        logger.info('Backup created:', response.data);
         // Refresh all data
         refreshData();
       } else {
@@ -215,7 +215,7 @@ export default function DatabasePage() {
       });
       
       if (response.statusCode === 200) {
-        logger.('Database optimized:', response.data);
+        logger.info('Database optimized:', response.data);
         // Refresh all data
         refreshData();
       } else {

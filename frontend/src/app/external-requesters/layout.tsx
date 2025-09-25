@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import ExternalRequestersSidebar from '../../components/ExternalRequestersSidebar';
 import ExternalRequestersHeader from '../../components/ExternalRequestersHeader';
 import { ExternalAuthProvider } from '@/contexts/ExternalAuthContext';
-import { Menu } from 'lucide-react';
+// import { Menu } from 'lucide-react';
 
 interface ExternalRequestersLayoutProps {
   children: React.ReactNode;

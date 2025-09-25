@@ -18,7 +18,7 @@ interface UserData {
   address: string;
   role: string;
   isActive: boolean;
-  createdAt: string;
+  created_at: string;
 }
 
 export default function UserSearchPage() {
@@ -41,7 +41,7 @@ export default function UserSearchPage() {
     setSuccess(null);
     
     try {
-      logger.(`🔍 Searching for user by ${searchType}:`, searchQuery);
+      logger.info(`🔍 Searching for user by ${searchType}:`, searchQuery);
       
       // ค้นหา users จาก API
       const response = await apiClient.searchPatients(searchQuery);
@@ -49,7 +49,7 @@ export default function UserSearchPage() {
       if (response.statusCode === 200 && response.data) {
         setSearchResults(response.data as UserData[]);
         setSuccess(`พบ ${(response.data as UserData[]).length} รายการ`);
-        logger.('✅ Users found:', response.data);
+        logger.info('✅ Users found:', response.data);
       } else {
         setSearchResults([]);
         setError("ไม่พบข้อมูลผู้ใช้ในระบบ กรุณาตรวจสอบข้อมูล");
@@ -57,7 +57,7 @@ export default function UserSearchPage() {
       
     } catch (error: any) {
       logger.error('❌ Error searching users:', error);
-      setError(error.message || "เกิดข้อผิดพลาดในการค้นหา กรุณาลองอีกครั้ง");
+      setError((error as any).message || "เกิดข้อผิดพลาดในการค้นหา กรุณาลองอีกครั้ง");
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -86,7 +86,7 @@ export default function UserSearchPage() {
   };
 
   const formatDate = (daring: string) => {
-    return new Date(daring).toLocaleDaring('th-TH');
+    return new Date(daring).toLocaleString('th-TH');
   };
 
   const getGenderText = (gender: string) => {
@@ -264,7 +264,7 @@ export default function UserSearchPage() {
                         </div>
                         
                         <div className="mt-2 text-xs text-gray-500">
-                          สมัครสมาชิกเมื่อ: {formatDate(user.createdAt)}
+                          สมัครสมาชิกเมื่อ: {formatDate(user.created_at)}
                         </div>
                       </div>
                     </div>

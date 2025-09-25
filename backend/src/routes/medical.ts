@@ -7,6 +7,7 @@ import patientRoutes from './patients';
 import {
   getAllPatients,
   getPatientById,
+  getPatientByEmail,
   createPatient,
   updatePatient,
   searchUsersByNationalId
@@ -171,6 +172,22 @@ import {
   calculatePatientAIInsights
 } from '../controllers/aiInsightsController';
 import {
+  getAIDashboardOverview,
+  getPatientDiabetesRisk,
+  getAIAnalytics,
+  bulkAssessDiabetesRisk
+} from '../controllers/aiDashboardController';
+import {
+  saveEnhancedVitalSigns,
+  saveCriticalLabValues,
+  getCriticalLabValues,
+  saveDetailedNutrition,
+  getDetailedNutrition,
+  saveDetailedExercise,
+  getDetailedExercise,
+  getComprehensivePatientData
+} from '../controllers/enhancedDataController';
+import {
   getPatientConsentRequests,
   respondToConsentRequest,
   createConsentRequest,
@@ -195,6 +212,7 @@ router.use(authenticate);
 // Patient Management
 router.get('/patients', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAllPatients));
 router.get('/patients/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getPatientById));
+router.get('/patients/by-email/:email', authorize(['patient', 'doctor', 'nurse', 'admin']), asyncHandler(getPatientByEmail));
 // DISABLED: Use /api/patient-registration/register instead
 // router.post('/patients', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createPatient));
 router.put('/patients/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(updatePatient));
@@ -417,6 +435,22 @@ router.get('/patients/:id/notifications-list', authorize(['patient']), asyncHand
 // AI Insights
 router.get('/patients/:id/ai-insights', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(getPatientAIInsights));
 router.post('/patients/:id/ai-insights/calculate', authorize(['doctor', 'nurse', 'admin']), asyncHandler(calculatePatientAIInsights));
+
+// AI Dashboard
+router.get('/ai/dashboard/overview', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAIDashboardOverview));
+router.get('/ai/dashboard/patients/:id/diabetes-risk', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getPatientDiabetesRisk));
+router.get('/ai/dashboard/analytics', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAIAnalytics));
+router.post('/ai/dashboard/bulk-assess', authorize(['doctor', 'nurse', 'admin']), asyncHandler(bulkAssessDiabetesRisk));
+
+// Enhanced Data for AI Analysis
+router.post('/patients/:id/enhanced-vital-signs', authorize(['doctor', 'nurse', 'admin']), asyncHandler(saveEnhancedVitalSigns));
+router.post('/patients/:id/critical-lab-values', authorize(['doctor', 'nurse', 'admin', 'lab_tech']), asyncHandler(saveCriticalLabValues));
+router.get('/patients/:id/critical-lab-values', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getCriticalLabValues));
+router.post('/patients/:id/detailed-nutrition', authorize(['doctor', 'nurse', 'admin']), asyncHandler(saveDetailedNutrition));
+router.get('/patients/:id/detailed-nutrition', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getDetailedNutrition));
+router.post('/patients/:id/detailed-exercise', authorize(['doctor', 'nurse', 'admin']), asyncHandler(saveDetailedExercise));
+router.get('/patients/:id/detailed-exercise', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getDetailedExercise));
+router.get('/patients/:id/comprehensive-data', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getComprehensivePatientData));
 
 // Consent Requests
 router.get('/patients/:id/consent-requests', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(getPatientConsentRequests));

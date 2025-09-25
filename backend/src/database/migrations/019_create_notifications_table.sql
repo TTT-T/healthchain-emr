@@ -44,8 +44,17 @@ CREATE INDEX IF NOT EXISTS idx_notifications_read_at ON notifications(read_at);
 CREATE INDEX IF NOT EXISTS idx_notifications_record_id ON notifications(record_id);
 
 -- Trigger for timestamp updates
-CREATE TRIGGER update_notifications_updated_at BEFORE UPDATE ON notifications
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.triggers 
+        WHERE trigger_name = 'update_notifications_updated_at' 
+        AND event_object_table = 'notifications'
+    ) THEN
+        CREATE TRIGGER update_notifications_updated_at BEFORE UPDATE ON notifications
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
 
 COMMENT ON TABLE notifications IS 'Patient Notifications - All notifications sent to patients';
 COMMENT ON COLUMN notifications.notification_type IS 'Type of notification: document_created, record_updated, appointment_created, lab_result_ready, prescription_ready, queue_assigned, visit_completed';

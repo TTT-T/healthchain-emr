@@ -120,7 +120,7 @@ export default function SettingsPage() {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));
-      logger.('Settings saved:', settings);
+      logger.info('Settings saved:', settings);
       // Show success message
       alert('Settings saved successfully!');
     } catch (error) {

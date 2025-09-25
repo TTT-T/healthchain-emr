@@ -6,7 +6,7 @@ export interface PendingUser {
   email: string;
   name: string;
   role: string;
-  createdAt: string;
+  created_at: string;
   professionalInfo: {
     licenseNumber?: string;
     specialization?: string;

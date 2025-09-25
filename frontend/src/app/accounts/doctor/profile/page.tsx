@@ -8,8 +8,8 @@ import { logger } from '@/lib/logger';
 export default function DoctorProfilePage() {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
-    first_name: "",
-    last_name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     hospital: "",
@@ -37,8 +37,8 @@ export default function DoctorProfilePage() {
         if (response.statusCode === 200 && !response.error && response.data) {
           const profile = response.data as any;
           setFormData({
-            first_name: profile.user?.firstName || "",
-            last_name: profile.user?.lastName || "",
+            firstName: profile.user?.firstName || "",
+            lastName: profile.user?.lastName || "",
             email: profile.user?.email || "",
             phone: profile.user?.phone || "",
             hospital: profile.doctor?.department || "",
@@ -54,8 +54,8 @@ export default function DoctorProfilePage() {
         } else if (user) {
           // Fallback to user data if profile not found
           setFormData({
-            first_name: user.firstName || "",
-            last_name: user.lastName || "",
+            firstName: user.firstName || "",
+            lastName: user.lastName || "",
             email: user.email || "",
             phone: user.phone || "",
             hospital: (user as any).hospital || "",
@@ -96,28 +96,28 @@ export default function DoctorProfilePage() {
     
     try {
       // Basic validation
-      if (!formData.first_name || !formData.last_name || !formData.email) {
+      if (!formData.firstName || !formData.lastName || !formData.email) {
         setError('กรุณากรอกข้อมูลที่จำเป็น (ชื่อ, นามสกุล, อีเมล)');
         return;
       }
       
       // Email validation
       const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailPattern.(formData.email)) {
+      if (!emailPattern.test(formData.email)) {
         setError('รูปแบบอีเมลไม่ถูกต้อง');
         return;
       }
       
       // Phone validation (if provided)
-      if (formData.phone && !/^[0-9\-\s\+\(\)]+$/.(formData.phone)) {
+      if (formData.phone && !/^[0-9\-\s\+\(\)]+$/.test(formData.phone)) {
         setError('รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง');
         return;
       }
       
       // Prepare data for API
       const updateData = {
-        firstName: formData.first_name,
-        lastName: formData.last_name,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
         phone: formData.phone,
         department: formData.department,
@@ -157,7 +157,7 @@ export default function DoctorProfilePage() {
                 Dr
               </div>
               <div className="text-center sm:text-left">
-                <h2 className="text-2xl md:text-3xl font-bold text-slate-800">นายแพทย์{formData.first_name} {formData.last_name}</h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-slate-800">นายแพทย์{formData.firstName} {formData.lastName}</h2>
                 <p className="text-green-600 font-medium text-lg">{formData.specialty}</p>
                 <p className="text-slate-600">{formData.hospital} • แผนก{formData.department}</p>
                 <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-2">
@@ -223,7 +223,7 @@ export default function DoctorProfilePage() {
                     <input
                       type="text"
                       name="first_name"
-                      value={formData.first_name}
+                      value={formData.firstName}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-slate-50 focus:bg-white"
                       required
@@ -234,7 +234,7 @@ export default function DoctorProfilePage() {
                     <input
                       type="text"
                       name="last_name"
-                      value={formData.last_name}
+                      value={formData.lastName}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-slate-50 focus:bg-white"
                       required

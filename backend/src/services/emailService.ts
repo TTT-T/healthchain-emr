@@ -1489,9 +1489,9 @@ class EmailService {
   }
 
   /**
-   * Send  email
+   * Send test email
    */
-  async sendEmail(to: string): Promise<boolean> {
+  async sendTestEmail(to: string): Promise<boolean> {
     const emailData: EmailData = {
       to: to,
       subject: '🧪 HealthChain EMR -  Email',
@@ -1511,7 +1511,7 @@ class EmailService {
           <div style="padding: 20px; background: #f8fafc; border-radius: 8px; margin-top: 20px;">
             <h2>✅ Email Service Working!</h2>
             <p>This is a  email to verify that the email service is working correctly.</p>
-            <p><strong>Timestamp:</strong> ${new Date().toLocaleString('th-TH')}</p>
+            <p><strong>Timestamp:</strong> ${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}</p>
             <p><strong>Recipient:</strong> ${to}</p>
           </div>
           <div style="text-align: center; margin-top: 20px; color: #64748b; font-size: 14px;">

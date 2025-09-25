@@ -7,7 +7,7 @@ const levels = {
   warn: 1,
   info: 2,
   http: 3,
-  : 4,
+  debug: 4,
 };
 
 // Define colors for each level
@@ -16,7 +16,7 @@ const colors = {
   warn: 'yellow',
   info: 'green',
   http: 'magenta',
-  : 'white',
+  debug: 'white',
 };
 
 // Tell winston that you want to link the colors

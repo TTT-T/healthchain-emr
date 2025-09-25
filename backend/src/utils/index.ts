@@ -36,28 +36,28 @@ export class PasswordUtils {
       });
     }
 
-    if (!/[a-z]/.(password)) {
+    if (!/[a-z]/.test(password)) {
       errors.push({
         field: 'password',
         message: 'Password must contain at least one lowercase letter'
       });
     }
 
-    if (!/[A-Z]/.(password)) {
+    if (!/[A-Z]/.test(password)) {
       errors.push({
         field: 'password',
         message: 'Password must contain at least one uppercase letter'
       });
     }
 
-    if (!/[0-9]/.(password)) {
+    if (!/[0-9]/.test(password)) {
       errors.push({
         field: 'password',
         message: 'Password must contain at least one number'
       });
     }
 
-    if (!/[^a-zA-Z0-9]/.(password)) {
+    if (!/[^a-zA-Z0-9]/.test(password)) {
       errors.push({
         field: 'password',
         message: 'Password must contain at least one special character'
@@ -223,7 +223,7 @@ export class ValidationUtils {
    */
   static isValidEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.(email);
+    return emailRegex.test(email);
   }
 
   /**
@@ -231,7 +231,7 @@ export class ValidationUtils {
    */
   static isValidThaiPhone(phone: string): boolean {
     const phoneRegex = /^[0-9]{10}$/;
-    return phoneRegex.(phone.replace(/[-\s]/g, ''));
+    return phoneRegex.test(phone.replace(/[-\s]/g, ''));
   }
 
   /**
@@ -239,7 +239,7 @@ export class ValidationUtils {
    */
   static isValidThaiNationalId(id: string): boolean {
     const cleanId = id.replace(/[-\s]/g, '');
-    if (!/^\d{13}$/.(cleanId)) return false;
+    if (!/^\d{13}$/.test(cleanId)) return false;
 
     // Validate checksum
     const digits = cleanId.split('').map(Number);
@@ -257,7 +257,7 @@ export class ValidationUtils {
   static isValidUsername(username: string): boolean {
     // Username: 3-50 characters, alphanumeric and underscore only
     const usernameRegex = /^[a-zA-Z0-9_]{3,50}$/;
-    return usernameRegex.(username);
+    return usernameRegex.test(username);
   }
 
   /**
@@ -272,7 +272,7 @@ export class ValidationUtils {
    */
   static isValidUUID(uuid: string): boolean {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return uuidRegex.(uuid);
+    return uuidRegex.test(uuid);
   }
 }
 
@@ -284,7 +284,7 @@ export class DateUtils {
    * Format date to ISO string
    */
   static toISOString(date: Date): string {
-    return date.toISOString();
+    return date.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
   }
 
   /**
@@ -330,7 +330,7 @@ export class DateUtils {
    * Format date for Thai locale
    */
   static formatThaiDate(date: Date): string {
-    return date.toLocaleDaring('th-TH', {
+    return date.toLocaleString('th-TH', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -351,7 +351,7 @@ export class ResponseUtils {
       data,
       message,
       metadata,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
     };
   }
 
@@ -365,7 +365,7 @@ export class ResponseUtils {
         message,
         code: code || 'VALIDATION_ERROR',
         statusCode,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }),
         requestId: EncryptionUtils.generateSecureToken(16),
         details
       }
@@ -390,7 +390,7 @@ export class ResponseUtils {
         hasNext: page < totalPages,
         hasPrev: page > 1
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
     };
   }
 }
@@ -550,7 +550,7 @@ export const createAppError = (message: string, statusCode: number, code?: strin
  */
 export const generateHospitalNumber = async (): Promise<string> => {
   // Get the current year in Thai Buddhist era
-  const thaiYear = new Date().getFullYear() + 543;
+  const thaiYear = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' })).getFullYear() + 543;
   const yearSuffix = thaiYear.toString().slice(-2); // Last 2 digits
   
   // Generate random 6-digit number

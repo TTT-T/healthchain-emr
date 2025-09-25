@@ -8,7 +8,7 @@ interface PDFRecord {
   fileName: string;
   fileUrl: string;
   fileSize: number;
-  createdAt: string;
+  created_at: string;
   createdBy: string;
   visitId?: string;
   doctorName: string;
@@ -47,7 +47,7 @@ export class PDFStorageService {
         fileName,
         fileUrl,
         fileSize: pdfBlob.size,
-        createdAt: new Date().toISOString(),
+        created_at: new Date().toISOString(),
         createdBy,
         visitId,
         doctorName: doctorName || 'ไม่ระบุ',

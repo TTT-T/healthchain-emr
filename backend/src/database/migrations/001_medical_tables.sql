@@ -516,27 +516,44 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Triggers for timestamp updates
-CREATE TRIGGER update_visits_updated_at BEFORE UPDATE ON visits
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_vital_signs_updated_at BEFORE UPDATE ON vital_signs
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_lab_orders_updated_at BEFORE UPDATE ON lab_orders
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_lab_results_updated_at BEFORE UPDATE ON lab_results
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_prescriptions_updated_at BEFORE UPDATE ON prescriptions
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_prescription_items_updated_at BEFORE UPDATE ON prescription_items
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_visit_attachments_updated_at BEFORE UPDATE ON visit_attachments
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Triggers for timestamp updates (only if they don't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.triggers WHERE trigger_name = 'update_visits_updated_at' AND event_object_table = 'visits') THEN
+        CREATE TRIGGER update_visits_updated_at BEFORE UPDATE ON visits
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.triggers WHERE trigger_name = 'update_vital_signs_updated_at' AND event_object_table = 'vital_signs') THEN
+        CREATE TRIGGER update_vital_signs_updated_at BEFORE UPDATE ON vital_signs
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.triggers WHERE trigger_name = 'update_lab_orders_updated_at' AND event_object_table = 'lab_orders') THEN
+        CREATE TRIGGER update_lab_orders_updated_at BEFORE UPDATE ON lab_orders
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.triggers WHERE trigger_name = 'update_lab_results_updated_at' AND event_object_table = 'lab_results') THEN
+        CREATE TRIGGER update_lab_results_updated_at BEFORE UPDATE ON lab_results
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.triggers WHERE trigger_name = 'update_prescriptions_updated_at' AND event_object_table = 'prescriptions') THEN
+        CREATE TRIGGER update_prescriptions_updated_at BEFORE UPDATE ON prescriptions
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.triggers WHERE trigger_name = 'update_prescription_items_updated_at' AND event_object_table = 'prescription_items') THEN
+        CREATE TRIGGER update_prescription_items_updated_at BEFORE UPDATE ON prescription_items
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.triggers WHERE trigger_name = 'update_visit_attachments_updated_at' AND event_object_table = 'visit_attachments') THEN
+        CREATE TRIGGER update_visit_attachments_updated_at BEFORE UPDATE ON visit_attachments
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
 
 -- =============================================================================
 -- END OF MEDICAL RECORDS TABLES

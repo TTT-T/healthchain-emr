@@ -58,10 +58,10 @@ export default function QueueHistory() {
         doctorName: pdf.doctorName,
         doctorId: 'DOC001',
         department: pdf.department,
-        visitTime: pdf.createdAt,
+        visitTime: pdf.created_at,
         status: 'completed' as const,
-        createdAt: pdf.createdAt,
-        updatedAt: pdf.createdAt,
+        created_at: pdf.created_at,
+        updated_at: pdf.created_at,
         pdfUrl: pdf.fileUrl,
         symptoms: 'ไม่ระบุ',
         notes: 'ไม่ระบุ',
@@ -104,8 +104,8 @@ export default function QueueHistory() {
         cancelledQueues: queueRecords.filter(r => r.status === 'cancelled').length,
         averageWaitTime: 45,
         todayQueues: queueRecords.filter(r => {
-          const today = new Date().toDaring();
-          return new Date(r.createdAt).toDaring() === today;
+          const today = new Date().toLocaleString();
+          return new Date(r.created_at).toLocaleString() === today;
         }).length,
         weeklyQueues: queueRecords.length,
         monthlyQueues: queueRecords.length
@@ -164,12 +164,12 @@ export default function QueueHistory() {
       }
       if (filters.dateFrom) {
         filtered = filtered.filter(r => 
-          new Date(r.createdAt) >= new Date(filters.dateFrom!)
+          new Date(r.created_at) >= new Date(filters.dateFrom!)
         );
       }
       if (filters.dateTo) {
         filtered = filtered.filter(r => 
-          new Date(r.createdAt) <= new Date(filters.dateTo!)
+          new Date(r.created_at) <= new Date(filters.dateTo!)
         );
       }
       
@@ -542,7 +542,7 @@ export default function QueueHistory() {
                             {formatDateTime(record.visitTime)}
                           </div>
                           <div className="text-sm text-gray-500">
-                            สร้าง: {formatDateTime(record.createdAt)}
+                            สร้าง: {formatDateTime(record.created_at)}
                           </div>
                         </div>
                       </td>
@@ -652,7 +652,7 @@ export default function QueueHistory() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">เวลาสร้าง</label>
-                      <p className="text-sm text-gray-900">{formatDateTime(selectedRecord.createdAt)}</p>
+                      <p className="text-sm text-gray-900">{formatDateTime(selectedRecord.created_at)}</p>
                     </div>
                   </div>
                 </div>

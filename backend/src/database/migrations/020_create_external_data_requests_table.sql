@@ -76,9 +76,18 @@ CREATE INDEX idx_external_data_requests_requester_email ON external_data_request
 CREATE INDEX idx_external_data_requests_organization_type ON external_data_requests(organization_type);
 CREATE INDEX idx_external_data_requests_request_type ON external_data_requests(request_type);
 
--- Create trigger for timestamp updates
-CREATE TRIGGER update_external_data_requests_updated_at BEFORE UPDATE ON external_data_requests
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Create trigger for timestamp updates (only if it doesn't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.triggers 
+        WHERE trigger_name = 'update_external_data_requests_updated_at' 
+        AND event_object_table = 'external_data_requests'
+    ) THEN
+        CREATE TRIGGER update_external_data_requests_updated_at BEFORE UPDATE ON external_data_requests
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
 
 -- Add comments for documentation
 COMMENT ON TABLE external_data_requests IS 'External Data Requests - Table for managing external requester registrations and data access requests';
@@ -89,7 +98,3 @@ COMMENT ON COLUMN external_data_requests.data_access_level IS 'Access level: bas
 COMMENT ON COLUMN external_data_requests.additional_requirements IS 'Additional requirements and metadata in JSON format';
 COMMENT ON COLUMN external_data_requests.address IS 'Organization address in JSON format';
 COMMENT ON COLUMN external_data_requests.verification_documents IS 'Verification documents metadata in JSON format';
-
--- Update migration log
-INSERT INTO migrations (migration_name, executed_at, execution_time_ms, success, error_message) 
-VALUES ('020_create_external_data_requests_table', CURRENT_TIMESTAMP, 0, true, NULL);

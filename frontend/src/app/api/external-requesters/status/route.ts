@@ -9,8 +9,8 @@ interface RegistrationStatus {
   status: 'pending_email_verification' | 'pending_admin_approval' | 'approved' | 'rejected'
   emailVerified: boolean
   adminApproved: boolean
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 export async function GET(request: NextRequest) {
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
     const backendData = await backendResponse.json()
     
-    logger.('Registration status requested:', { requestId, email, status: backendData.data?.status })
+    logger.info('Registration status requested:', { requestId, email, status: backendData.data?.status })
 
     return NextResponse.json(backendData)
 

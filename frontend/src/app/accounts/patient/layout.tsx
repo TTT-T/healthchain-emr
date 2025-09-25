@@ -10,28 +10,28 @@ export default function PatientLayout({ children }: { children: React.ReactNode 
   const router = useRouter();
 
   useEffect(() => {
-    logger.('🏥 Patient Layout: Auth state check');
-    logger.('  - isLoading:', isLoading);
-    logger.('  - isAuthenticated:', isAuthenticated);
-    logger.('  - user:', user);
-    logger.('  - current path:', typeof window !== 'undefined' ? window.location.pathname : 'SSR');
+    logger.info('🏥 Patient Layout: Auth state check');
+    logger.info('  - isLoading:', isLoading);
+    logger.info('  - isAuthenticated:', isAuthenticated);
+    logger.info('  - user:', user);
+    logger.info('  - current path:', typeof window !== 'undefined' ? window.location.pathname : 'SSR');
     
     // Skip checks while still loading
     if (isLoading) {
-      logger.('⏳ Still loading, waiting...');
+      logger.info('⏳ Still loading, waiting...');
       return;
     }
     
     // Redirect to login if not authenticated
     if (!isAuthenticated) {
-      logger.("🔒 Patient layout: Not authenticated, redirecting to login");
+      logger.info("🔒 Patient layout: Not authenticated, redirecting to login");
       router.push("/login");
       return;
     }
 
     // Check if user role is correct for this layout
     if (user && user.role !== 'patient') {
-      logger.("🚫 Patient layout: User role mismatch, redirecting to appropriate dashboard");
+      logger.info("🚫 Patient layout: User role mismatch, redirecting to appropriate dashboard");
       // Redirect to appropriate dashboard based on role
       switch (user.role) {
         case 'admin':
@@ -59,7 +59,7 @@ export default function PatientLayout({ children }: { children: React.ReactNode 
       const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
       // Only redirect to setup-profile if not already there
       if (currentPath !== '/setup-profile') {
-        logger.("📝 Patient profile not completed, redirecting to setup-profile");
+        logger.info("📝 Patient profile not completed, redirecting to setup-profile");
         router.push('/setup-profile');
         return;
       }
@@ -70,12 +70,12 @@ export default function PatientLayout({ children }: { children: React.ReactNode 
     if (user && user.role === 'patient' && (user as any).profile_completed) {
       const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
       if (currentPath === '/setup-profile') {
-        logger.("📝 User accessing setup-profile for updates");
+        logger.info("📝 User accessing setup-profile for updates");
         return; // Allow access to setup-profile
       }
     }
 
-    logger.("✅ Patient layout: Authentication check passed");
+    logger.info("✅ Patient layout: Authentication check passed");
   }, [user, isLoading, isAuthenticated, router]);
 
   if (isLoading) {

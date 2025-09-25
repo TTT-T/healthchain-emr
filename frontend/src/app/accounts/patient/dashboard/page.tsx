@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
+import { formatThailandDate, getCurrentThailandDateString } from '@/utils/dateUtils';
 import { PatientDocumentService, PatientDocument } from '@/services/patientDocumentService';
 import { 
   Calendar, 
@@ -86,8 +87,7 @@ const PatientDashboard = () => {
       'birthDay', 'birthMonth', 'birthYear', 'gender', 'bloodType', 'phone', 'address',
       'emergencyContactName', 'emergencyContactPhone',
       'drugAllergies', 'foodAllergies', 'environmentAllergies', 'chronicDiseases',
-      'weight', 'height', 'occupation', 'education', 'maritalStatus', 'religion', 'race',
-      'insuranceType', 'insuranceNumber', 'insuranceExpiryDay', 'insuranceExpiryMonth', 'insuranceExpiryYear'
+      'weight', 'height', 'occupation', 'education', 'maritalStatus', 'religion', 'race'
     ];
     
     const filledFields = fields.filter(field => {
@@ -103,7 +103,7 @@ const PatientDashboard = () => {
       try {
         // Check if user has valid token
         const token = apiClient.getAccessToken();
-        logger.('🔍 Patient Dashboard - Auth Check:', {
+        logger.info('🔍 Patient Dashboard - Auth Check:', {
           user: !!user,
           token: !!token,
           userData: user,
@@ -115,21 +115,21 @@ const PatientDashboard = () => {
         });
         
         if (!token) {
-          logger.('🔍 Patient Dashboard - No token, redirecting to login');
+          logger.info('🔍 Patient Dashboard - No token, redirecting to login');
           window.location.href = '/login';
           return;
         }
         
         // If no user data but have token, try to refresh user data
         if (!user && token) {
-          logger.('🔍 Patient Dashboard - No user data, refreshing...');
+          logger.info('🔍 Patient Dashboard - No user data, refreshing...');
           window.dispatchEvent(new CustomEvent('refreshUserData'));
           return;
         }
         
         // If we have user data, load patient data
         if (user?.id) {
-          logger.('🔍 Patient Dashboard - Loading patient data for user:', user.id);
+          logger.info('🔍 Patient Dashboard - Loading patient data for user:', user.id);
           const response = await apiClient.getCompleteProfile();
           if (response.statusCode === 200 && response.data) {
             setPatient(response.data as any);
@@ -248,7 +248,7 @@ const PatientDashboard = () => {
             </div>
             <div className="text-right text-sm text-gray-700">
               <p>วันที่เข้าสู่ระบบล่าสุด</p>
-              <p className="font-medium">{new Date().toLocaleDaring('th-TH')}</p>
+              <p className="font-medium">{formatThailandDate(new Date())}</p>
             </div>
           </div>
           
@@ -324,6 +324,22 @@ const PatientDashboard = () => {
                 <div>
                   <p className="text-sm text-gray-600">ที่อยู่</p>
                   <p className="font-medium text-gray-900">{patient.address || 'ไม่ระบุ'}</p>
+                </div>
+              </div>
+
+              {/* เพศ */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
+                  <User className="h-5 w-5 text-pink-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">เพศ</p>
+                  <p className="font-medium text-gray-900">
+                    {patient.gender === 'male' ? 'ชาย' : 
+                     patient.gender === 'female' ? 'หญิง' : 
+                     patient.gender === 'other' ? 'อื่นๆ' : 
+                     'ไม่ระบุ'}
+                  </p>
                 </div>
               </div>
 
@@ -557,8 +573,7 @@ const PatientDashboard = () => {
                     <div>
                       <p className="font-medium text-gray-900 text-sm">{doc.documentTitle}</p>
                       <p className="text-xs text-gray-500">
-                        {new Date(doc.createdAt).toLocaleDaring('th-TH', {
-                          timeZone: 'Asia/Bangkok',
+                        {formatThailandDate(doc.created_at, {
                           year: 'numeric',
                           month: 'short',
                           day: 'numeric'
@@ -629,17 +644,14 @@ const RecentActivities = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadRecentNotifications = () => {
+    const loadRecentNotifications = async () => {
       try {
-        // ดึงการแจ้งเตือนล่าสุดจาก localStorage
-        const allNotifications = JSON.parse(localStorage.getItem('patient_notifications') || '[]');
+        // TODO: ดึงข้อมูลจากฐานข้อมูลจริงแทน localStorage
+        // const response = await apiClient.getPatientNotifications();
+        // setNotifications(response.data);
         
-        // เรียงตามวันที่ล่าสุด และเอาแค่ 5 รายการแรก
-        const recentNotifications = allNotifications
-          .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-          .slice(0, 5);
-        
-        setNotifications(recentNotifications);
+        // สำหรับตอนนี้ให้แสดงข้อความว่าไม่มีข้อมูล
+        setNotifications([]);
       } catch (error) {
         logger.error('Error loading recent notifications:', error);
         setNotifications([]);
@@ -649,17 +661,6 @@ const RecentActivities = () => {
     };
 
     loadRecentNotifications();
-
-    // Listen for new notifications
-    const handleNewNotification = () => {
-      loadRecentNotifications();
-    };
-
-    window.addEventListener('patientAppointmentNotification', handleNewNotification);
-    
-    return () => {
-      window.removeEventListener('patientAppointmentNotification', handleNewNotification);
-    };
   }, []);
 
   if (loading) {
@@ -671,67 +672,12 @@ const RecentActivities = () => {
     );
   }
 
-  if (notifications.length === 0) {
-    return (
-      <div className="text-center py-8 text-gray-500">
-        <Clock className="h-12 w-12 mx-auto mb-4 opacity-30" />
-        <p className="text-gray-700">ยังไม่มีข้อมูลกิจกรรม</p>
-        <p className="text-sm">ข้อมูลจะแสดงเมื่อคุณเริ่มใช้บริการ</p>
-      </div>
-    );
-  }
-
+  // แสดงข้อความว่าไม่มีข้อมูล
   return (
-    <div className="space-y-4">
-      {notifications.map((notification) => (
-        <div key={notification.id} className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
-          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-            {notification.type === 'appointment' ? (
-              <Calendar className="h-4 w-4 text-blue-600" />
-            ) : (
-              <Bell className="h-4 w-4 text-blue-600" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h4 className="text-sm font-medium text-gray-900 truncate">
-                {notification.title}
-              </h4>
-              {!notification.read && (
-                <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
-              )}
-            </div>
-            <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-              {notification.message}
-            </p>
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-gray-500">
-                {new Date(notification.createdAt).toLocaleString('th-TH', {
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </p>
-              {notification.queueNumber && (
-                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                  {notification.queueNumber}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      ))}
-      
-      {notifications.length > 0 && (
-        <div className="text-center pt-4">
-          <Link href="/accounts/patient/notifications">
-            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-              ดูการแจ้งเตือนทั้งหมด →
-            </button>
-          </Link>
-        </div>
-      )}
+    <div className="text-center py-8 text-gray-500">
+      <Clock className="h-12 w-12 mx-auto mb-4 opacity-30" />
+      <p className="text-gray-700">ยังไม่มีข้อมูลกิจกรรม</p>
+      <p className="text-sm">ข้อมูลจะแสดงเมื่อคุณเริ่มใช้บริการ</p>
     </div>
   );
 };

@@ -362,7 +362,7 @@ export default function ExternalRequesterRegistration() {
 
       // Email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.(formData.loginEmail)) {
+        if (!emailRegex.test(formData.loginEmail)) {
         setSubmitResult({
           success: false,
           message: 'รูปแบบอีเมลสำหรับเข้าสู่ระบบไม่ถูกต้อง'
@@ -391,11 +391,11 @@ export default function ExternalRequesterRegistration() {
           message += `รหัสคำขอ: ${data.requestId || data.id}\n`;
         }
         
-        if (data?.requiresEmailVerification) {
+        if ((data as any)?.requiresEmailVerification) {
           message += '\n📧 กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี';
         }
         
-        if (data?.requiresAdminApproval) {
+        if ((data as any)?.requiresAdminApproval) {
           message += '\n👨‍💼 บัญชีของคุณอยู่ระหว่างการตรวจสอบจากผู้ดูแลระบบ';
         }
         

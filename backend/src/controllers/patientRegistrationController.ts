@@ -146,30 +146,30 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
     // Create patient record in EMR system
     const patientResult = await db.query(`
       INSERT INTO patients (
-        user_id, hospital_number, first_name, last_name, thai_name,
+        user_id, hospital_number, first_name, last_name, thai_name, thai_last_name,
         date_of_birth, gender, national_id, phone, email, address, blood_type,
         allergies, medical_history, current_medications, chronic_diseases,
         emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
         drug_allergies, food_allergies, environment_allergies,
         weight, height, religion, race, occupation, education, marital_status,
-        current_address, created_by
+        current_address, title, created_by
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33
       )
-      RETURNING id, hospital_number, first_name, last_name, thai_name,
+      RETURNING id, hospital_number, first_name, last_name, thai_name, thai_last_name,
                 date_of_birth, gender, national_id, phone, email, address, blood_type,
                 allergies, medical_history, current_medications, chronic_diseases,
                 emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
                 drug_allergies, food_allergies, environment_allergies,
                 weight, height, religion, race, occupation, education, marital_status,
-                current_address, created_at, updated_at
+                current_address, title, created_at, updated_at
     `, [
       validatedData.userId,
       hospitalNumber,
       validatedData.firstName,
       validatedData.lastName,
-      validatedData.thaiFirstName && validatedData.thaiLastName ? 
-        `${validatedData.thaiFirstName} ${validatedData.thaiLastName}` : null,
+      validatedData.thaiFirstName || null,
+      validatedData.thaiLastName || null,
       validatedData.dateOfBirth,
       validatedData.gender,
       validatedData.nationalId || null,
@@ -195,6 +195,7 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
       validatedData.education || null,
       validatedData.maritalStatus || null,
       validatedData.currentAddress || null,
+      validatedData.title || null,
       validatedData.userId // created_by
     ]);
     
@@ -231,7 +232,7 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
           hospitalNumber: newPatient.hospital_number,
           firstName: newPatient.first_name,
           lastName: newPatient.last_name,
-          thaiFirstName: newPatient.thai_first_name,
+          thaiFirstName: newPatient.thai_name,
           thaiLastName: newPatient.thai_last_name,
           dateOfBirth: newPatient.date_of_birth,
           gender: newPatient.gender,
@@ -250,6 +251,7 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
           insuranceType: newPatient.insurance_type,
           insuranceNumber: newPatient.insurance_number,
           insuranceExpiryDate: newPatient.insurance_expiry_date,
+          title: newPatient.title,
           createdAt: newPatient.created_at,
           updatedAt: newPatient.updated_at
         }
@@ -287,12 +289,12 @@ export const getPatientByUserId = async (req: Request, res: Response) => {
     // Get patient information
     const patientResult = await db.query(`
       SELECT 
-        p.id, p.hospital_number, p.first_name, p.last_name, p.thai_first_name, p.thai_last_name,
+        p.id, p.hospital_number, p.first_name, p.last_name, p.thai_name, p.thai_last_name,
         p.date_of_birth, p.gender, p.national_id, p.phone, p.email, p.address, p.blood_type,
         p.allergies, p.medical_history, p.current_medications, p.chronic_diseases,
         p.emergency_contact_name, p.emergency_contact_phone, p.emergency_contact_relation,
         p.insurance_type, p.insurance_number, p.insurance_expiry_date,
-        p.created_at, p.updated_at,
+        p.title, p.created_at, p.updated_at,
         u.username, u.email as user_email
       FROM patients p
       JOIN users u ON p.user_id = u.id
@@ -314,7 +316,7 @@ export const getPatientByUserId = async (req: Request, res: Response) => {
           hospitalNumber: patient.hospital_number,
           firstName: patient.first_name,
           lastName: patient.last_name,
-          thaiFirstName: patient.thai_first_name,
+          thaiFirstName: patient.thai_name,
           thaiLastName: patient.thai_last_name,
           dateOfBirth: patient.date_of_birth,
           gender: patient.gender,
@@ -333,6 +335,7 @@ export const getPatientByUserId = async (req: Request, res: Response) => {
           insuranceType: patient.insurance_type,
           insuranceNumber: patient.insurance_number,
           insuranceExpiryDate: patient.insurance_expiry_date,
+          title: patient.title,
           createdAt: patient.created_at,
           updatedAt: patient.updated_at,
           user: {

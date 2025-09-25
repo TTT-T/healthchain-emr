@@ -118,7 +118,7 @@ export default function ActivityLogsPage() {
 
   const handleExport = async () => {
     try {
-      logger.('Exporting activity logs...');
+      logger.info('Exporting activity logs...');
       
       const filters = {
         search: searchTerm || undefined,
@@ -141,7 +141,7 @@ export default function ActivityLogsPage() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       
-      logger.('Activity logs exported successfully');
+      logger.info('Activity logs exported successfully');
     } catch (err) {
       logger.error('Error exporting activity logs:', err);
       setError('Failed to export activity logs');
@@ -149,7 +149,7 @@ export default function ActivityLogsPage() {
   };
 
   const handleRefresh = () => {
-    logger.('Refreshing logs...');
+    logger.info('Refreshing logs...');
     loadActivityLogs();
   };
 

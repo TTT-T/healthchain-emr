@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Search, User, Calendar, FileText, Activity, Clock, AlertCircle, CheckCircle } from 'lucide-react';
+import { Search, User, Calendar, FileText, Activity, Clock, AlertCircle, CheckCircle, Brain } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
 import { PatientSummaryService } from '@/services/patientSummaryService';
 import { PatientDocumentService } from '@/services/patientDocumentService';
+import { AIDashboardService, PatientDiabetesRiskDetail } from '@/services/aiDashboardService';
 import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
 import { createLocalDateTimeString } from '@/utils/timeUtils';
@@ -18,9 +19,84 @@ export default function PatientSummary() {
   const [patientSummary, setPatientSummary] = useState<any>(null);
   const [timeline, setTimeline] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // AI Risk Assessment states
+  const [aiRiskData, setAiRiskData] = useState<PatientDiabetesRiskDetail | null>(null);
+  const [loadingRisk, setLoadingRisk] = useState(false);
+  const [riskError, setRiskError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'records'>('overview');
   const [isGeneratingDocument, setIsGeneratingDocument] = useState(false);
+
+  // Load AI Risk Assessment for selected patient
+  const loadPatientRisk = async (patientId: string) => {
+    try {
+      setLoadingRisk(true);
+      setRiskError(null);
+      logger.info('Loading AI risk assessment for patient:', patientId);
+      
+      const riskData = await AIDashboardService.getPatientDiabetesRisk(patientId);
+      setAiRiskData(riskData);
+      logger.info('AI risk assessment loaded successfully:', riskData);
+    } catch (error: any) {
+      logger.error('Error loading patient risk assessment:', error);
+      setRiskError('ไม่สามารถโหลดข้อมูลความเสี่ยงได้');
+      setAiRiskData(null);
+    } finally {
+      setLoadingRisk(false);
+    }
+  };
+
+  // Get risk level color
+  const getRiskColor = (level: string) => {
+    switch (level?.toLowerCase()) {
+      case 'low': return 'text-green-600 bg-green-50';
+      case 'moderate': return 'text-yellow-600 bg-yellow-50';
+      case 'high': return 'text-orange-600 bg-orange-50';
+      case 'very_high': return 'text-red-600 bg-red-50';
+      default: return 'text-gray-600 bg-gray-50';
+    }
+  };
+
+  // Get risk level in Thai
+  const getRiskLevelThai = (level: string) => {
+    switch (level?.toLowerCase()) {
+      case 'low': return 'ต่ำ';
+      case 'moderate': return 'ปานกลาง';
+      case 'high': return 'สูง';
+      case 'very_high': return 'สูงมาก';
+      default: return 'ไม่ระบุ';
+    }
+  };
+
+  // Check authentication on component mount
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setError('กรุณาเข้าสู่ระบบก่อนใช้งาน');
+      return;
+    }
+    
+    if (!user || !['doctor', 'nurse', 'admin'].includes(user.role)) {
+      setError('ไม่มีสิทธิ์เข้าถึงข้อมูลผู้ป่วย');
+      return;
+    }
+    
+    console.log('✅ User authenticated:', { 
+      isAuthenticated, 
+      userId: user?.id, 
+      userRole: user?.role 
+    });
+  }, [isAuthenticated, user]);
+
+  // Load AI risk assessment when patient is selected
+  useEffect(() => {
+    if (selectedPatient) {
+      loadPatientRisk(selectedPatient.id);
+    } else {
+      setAiRiskData(null);
+      setRiskError(null);
+    }
+  }, [selectedPatient]);
 
   const calculateAge = (birthDate: string): number => {
     if (!birthDate) return 0;
@@ -40,37 +116,59 @@ export default function PatientSummary() {
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     
-    setIsSearching(true);
+    // Clear previous data to ensure fresh data
+    setSelectedPatient(null);
+    setPatientSummary(null);
+    setTimeline([]);
     setError(null);
     
+    setIsSearching(true);
+    
     try {
+      console.log('🔍 Searching for patient:', { searchQuery, searchType });
+      
       const response = await PatientService.searchPatients(searchQuery, searchType);
+      console.log('📊 Search response:', response);
+      
       if (response.statusCode === 200 && response.data && response.data.length > 0) {
         // Backend sends data in nested format, extract the patient data
         const patientData = response.data[0];
+        console.log('👤 Raw patient data:', patientData);
+        
         const formattedPatient: MedicalPatient = {
           id: patientData.id,
-          hn: patientData.personal_info?.hospital_number || patientData.hospital_number,
-          hospitalNumber: patientData.personal_info?.hospital_number || patientData.hospital_number,
-          thaiName: patientData.personal_info?.thai_name || patientData.thai_name,
-          firstName: patientData.personal_info?.first_name || patientData.first_name,
-          lastName: patientData.personal_info?.last_name || patientData.last_name,
-          nationalId: patientData.personal_info?.national_id || patientData.national_id,
-          birthDate: patientData.personal_info?.birth_date || patientData.birth_date,
-          dateOfBirth: patientData.personal_info?.birth_date || patientData.birth_date,
-          gender: patientData.personal_info?.gender || patientData.gender,
-          phone: patientData.contact_info?.phone || patientData.phone,
-          email: patientData.contact_info?.email || patientData.email,
-          address: patientData.contact_info?.address || patientData.address,
-          currentAddress: patientData.contact_info?.current_address || patientData.current_address,
-          bloodType: patientData.medical_info?.blood_type || patientData.blood_type,
-          medicalHistory: patientData.medical_info?.medical_history || patientData.medical_history,
-          allergies: patientData.medical_info?.allergies || patientData.allergies,
-          drugAllergies: patientData.medical_info?.drug_allergies || patientData.drug_allergies,
-          chronicDiseases: patientData.medical_info?.chronic_diseases || patientData.chronic_diseases,
-          createdAt: patientData.created_at,
-          updatedAt: patientData.updated_at
+          hn: patientData.hn || patientData.hospital_number,
+          hospitalNumber: patientData.hn || patientData.hospital_number,
+          thaiName: patientData.thaiName,
+          firstName: patientData.firstName,
+          lastName: patientData.lastName,
+          nationalId: patientData.nationalId,
+          birthDate: patientData.birthDate,
+          dateOfBirth: patientData.birthDate,
+          gender: patientData.gender,
+          phone: patientData.phone,
+          email: patientData.email,
+          address: patientData.address,
+          currentAddress: patientData.current_address,
+          bloodType: patientData.bloodType,
+          medicalHistory: patientData.medicalHistory,
+          allergies: patientData.allergies,
+          drugAllergies: patientData.drugAllergies,
+          foodAllergies: patientData.foodAllergies,
+          environmentAllergies: patientData.environmentAllergies,
+          chronicDiseases: patientData.chronicDiseases,
+          weight: patientData.weight,
+          height: patientData.height,
+          occupation: patientData.occupation,
+          education: patientData.education,
+          maritalStatus: patientData.maritalStatus,
+          religion: patientData.religion,
+          race: patientData.race,
+          created_at: patientData.created_at,
+          updated_at: patientData.updated_at
         };
+        
+        console.log('👤 Formatted patient data:', formattedPatient);
         
         setSelectedPatient(formattedPatient);
         await loadPatientSummary(formattedPatient.id);
@@ -81,9 +179,27 @@ export default function PatientSummary() {
         setPatientSummary(null);
         setTimeline([]);
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('💥 Search error:', error);
       logger.error("Error searching patient:", error);
-      setError("เกิดข้อผิดพลาดในการค้นหาผู้ป่วย");
+      
+      // Handle specific error types
+      if (error.statusCode === 401) {
+        setError('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+        // Redirect to login or refresh token
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+      } else if (error.statusCode === 403) {
+        setError('ไม่มีสิทธิ์เข้าถึงข้อมูลผู้ป่วย');
+      } else if (error.statusCode === 404) {
+        setError('ไม่พบข้อมูลผู้ป่วย');
+      } else if (error.message?.includes('Network error')) {
+        setError('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
+      } else {
+        setError(error.message || 'เกิดข้อผิดพลาดในการค้นหาผู้ป่วย');
+      }
+      
       setSelectedPatient(null);
       setPatientSummary(null);
       setTimeline([]);
@@ -244,44 +360,222 @@ export default function PatientSummary() {
                   placeholder={searchType === "hn" ? "กรอกหมายเลข HN (เช่น HN250001)" : "กรอกหมายเลขคิว"}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                 />
               </div>
               <button
                 onClick={handleSearch}
-                disabled={isSearching}
+                disabled={isSearching || !isAuthenticated}
                 className="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 flex items-center gap-2"
               >
                 <Search className="h-4 w-4" />
                 {isSearching ? "กำลังค้นหา..." : "ค้นหา"}
               </button>
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedPatient(null);
+                  setPatientSummary(null);
+                  setTimeline([]);
+                  setError(null);
+                }}
+                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 flex items-center gap-2"
+              >
+                <span>ล้างข้อมูล</span>
+              </button>
             </div>
           </div>
 
-          {/* Patient Info */}
-          {selectedPatient && patientSummary && (
-            <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 mb-6">
-              <h3 className="text-lg font-semibold text-teal-800 mb-4">ข้อมูลผู้ป่วย</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-red-600" />
                 <div>
-                  <span className="font-medium">HN:</span> {selectedPatient.hn || selectedPatient.hospitalNumber}
-                </div>
-                <div>
-                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thaiName || `${selectedPatient.firstName} ${selectedPatient.lastName}`}
-                </div>
-                <div>
-                  <span className="font-medium">อายุ:</span> {patientSummary?.patient?.age || (selectedPatient.birthDate ? calculateAge(selectedPatient.birthDate) : 'ไม่ระบุ')}
-                </div>
-                <div>
-                  <span className="font-medium">เพศ:</span> {patientSummary?.patient?.gender || selectedPatient.gender || 'ไม่ระบุ'}
-                </div>
-                <div>
-                  <span className="font-medium">โทรศัพท์:</span> {patientSummary?.patient?.phone || selectedPatient.phone || 'ไม่ระบุ'}
-                </div>
-                <div>
-                  <span className="font-medium">อีเมล:</span> {patientSummary?.patient?.email || selectedPatient.email || 'ไม่ระบุ'}
+                  <h3 className="text-sm font-medium text-red-800">เกิดข้อผิดพลาด</h3>
+                  <p className="text-sm text-red-700 mt-1">{error}</p>
+                  {error.includes('เซสชันหมดอายุ') && (
+                    <button
+                      onClick={() => window.location.href = '/login'}
+                      className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                    >
+                      เข้าสู่ระบบใหม่
+                    </button>
+                  )}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Patient Info */}
+          {selectedPatient && patientSummary && (
+            <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
+              <div className="flex items-center gap-3 mb-6">
+                <User className="h-6 w-6 text-teal-600" />
+                <h3 className="text-xl font-semibold text-gray-900">ข้อมูลผู้ป่วย</h3>
+              </div>
+              
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-blue-800 mb-3">ข้อมูลพื้นฐาน</h4>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium text-gray-700">HN:</span> <span className="text-gray-900">{selectedPatient.hn || selectedPatient.hospitalNumber || 'ไม่ระบุ'}</span></div>
+                    <div><span className="font-medium text-gray-700">ชื่อไทย:</span> <span className="text-gray-900">{selectedPatient.thaiName || 'ไม่ระบุ'}</span></div>
+                    <div><span className="font-medium text-gray-700">ชื่ออังกฤษ:</span> <span className="text-gray-900">{selectedPatient.firstName || 'ไม่ระบุ'} {selectedPatient.lastName || ''}</span></div>
+                    <div><span className="font-medium text-gray-700">เลขบัตรประชาชน:</span> <span className="text-gray-900">{selectedPatient.nationalId || 'ไม่ระบุ'}</span></div>
+                  </div>
+                </div>
+
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-green-800 mb-3">ข้อมูลส่วนตัว</h4>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium text-gray-700">อายุ:</span> <span className="text-gray-900">{patientSummary?.patient?.age || (selectedPatient.birthDate ? calculateAge(selectedPatient.birthDate) : 'ไม่ระบุ')} ปี</span></div>
+                    <div><span className="font-medium text-gray-700">เพศ:</span> <span className="text-gray-900">{selectedPatient.gender === 'male' ? 'ชาย' : selectedPatient.gender === 'female' ? 'หญิง' : selectedPatient.gender === 'other' ? 'อื่นๆ' : 'ไม่ระบุ'}</span></div>
+                    <div><span className="font-medium text-gray-700">วันเกิด:</span> <span className="text-gray-900">{selectedPatient.birthDate ? new Date(selectedPatient.birthDate).toLocaleDateString('th-TH') : 'ไม่ระบุ'}</span></div>
+                    <div><span className="font-medium text-gray-700">หมู่เลือด:</span> <span className="text-gray-900">{selectedPatient.bloodType || 'ไม่ระบุ'}</span></div>
+                    <div><span className="font-medium text-gray-700">น้ำหนัก:</span> <span className="text-gray-900">{selectedPatient.weight ? `${selectedPatient.weight} กก.` : 'ไม่ระบุ'}</span></div>
+                    <div><span className="font-medium text-gray-700">ส่วนสูง:</span> <span className="text-gray-900">{selectedPatient.height ? `${selectedPatient.height} ซม.` : 'ไม่ระบุ'}</span></div>
+                  </div>
+                </div>
+
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-purple-800 mb-3">ข้อมูลติดต่อ</h4>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium text-gray-700">โทรศัพท์:</span> <span className="text-gray-900">{selectedPatient.phone || 'ไม่ระบุ'}</span></div>
+                    <div><span className="font-medium text-gray-700">อีเมล:</span> <span className="text-gray-900">{selectedPatient.email || 'ไม่ระบุ'}</span></div>
+                    <div><span className="font-medium text-gray-700">ที่อยู่:</span> <span className="text-gray-900">{selectedPatient.address || 'ไม่ระบุ'}</span></div>
+                    <div><span className="font-medium text-gray-700">ผู้ติดต่อฉุกเฉิน:</span> <span className="text-gray-900">ไม่ระบุ</span></div>
+                    <div><span className="font-medium text-gray-700">เบอร์ติดต่อฉุกเฉิน:</span> <span className="text-gray-900">ไม่ระบุ</span></div>
+                    <div><span className="font-medium text-gray-700">ความสัมพันธ์:</span> <span className="text-gray-900">ไม่ระบุ</span></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* AI Risk Assessment Section */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
+                <div className="flex items-center mb-4">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                    <Brain className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold text-blue-800">AI Risk Assessment</h4>
+                    <p className="text-sm text-blue-600">การประเมินความเสี่ยงโรคเบาหวานด้วย AI</p>
+                  </div>
+                </div>
+
+                {loadingRisk ? (
+                  <div className="flex items-center justify-center py-6">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                    <span className="ml-3 text-blue-600">กำลังโหลดข้อมูลความเสี่ยง...</span>
+                  </div>
+                ) : riskError ? (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-center">
+                      <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+                      <span className="text-red-700">{riskError}</span>
+                    </div>
+                  </div>
+                ) : aiRiskData ? (
+                  <div className="space-y-4">
+                    {/* Risk Overview */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Risk Score */}
+                      <div className="bg-white p-3 rounded-lg border border-blue-100">
+                        <div className="text-xs text-gray-600 mb-1">Risk Score</div>
+                        <div className="text-2xl font-bold text-blue-600">{aiRiskData.diabetesRisk.riskScore}/100</div>
+                        <div className="text-xs text-gray-500">คะแนนความเสี่ยง</div>
+                      </div>
+                      
+                      {/* Risk Level */}
+                      <div className="bg-white p-3 rounded-lg border border-blue-100">
+                        <div className="text-xs text-gray-600 mb-1">Risk Level</div>
+                        <div className={`text-lg font-bold px-2 py-1 rounded-full inline-block ${getRiskColor(aiRiskData.diabetesRisk.riskLevel)}`}>
+                          {getRiskLevelThai(aiRiskData.diabetesRisk.riskLevel)}
+                        </div>
+                        <div className="text-xs text-gray-500">ระดับความเสี่ยง</div>
+                      </div>
+                      
+                      {/* Risk Percentage */}
+                      <div className="bg-white p-3 rounded-lg border border-blue-100">
+                        <div className="text-xs text-gray-600 mb-1">Risk Percentage</div>
+                        <div className="text-xl font-bold text-orange-600">{aiRiskData.diabetesRisk.riskPercentage}%</div>
+                        <div className="text-xs text-gray-500">โอกาสเป็นเบาหวานใน 10 ปี</div>
+                      </div>
+                    </div>
+
+                    {/* Contributing Factors */}
+                    {aiRiskData.diabetesRisk.contributingFactors && aiRiskData.diabetesRisk.contributingFactors.length > 0 && (
+                      <div className="bg-white p-3 rounded-lg border border-blue-100">
+                        <h5 className="text-sm font-semibold text-gray-700 mb-2">ปัจจัยที่ส่งผลต่อความเสี่ยง:</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+                          {aiRiskData.diabetesRisk.contributingFactors.slice(0, 4).map((factor, index) => (
+                            <div key={index} className="flex items-center text-xs text-gray-600">
+                              <AlertCircle className="h-3 w-3 text-orange-500 mr-1 flex-shrink-0" />
+                              {factor}
+                            </div>
+                          ))}
+                        </div>
+                        {aiRiskData.diabetesRisk.contributingFactors.length > 4 && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            และอีก {aiRiskData.diabetesRisk.contributingFactors.length - 4} ปัจจัย
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Assessment Info */}
+                    <div className="bg-white p-3 rounded-lg border border-blue-100">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-gray-600">วันที่ประเมิน:</span>
+                          <span className="ml-1 font-medium text-gray-800">
+                            {new Date().toLocaleDateString('th-TH')}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">ประเมินโดย:</span>
+                          <span className="ml-1 font-medium text-gray-800">AI System</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-gray-500">
+                    <Brain className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                    <p className="text-sm">ยังไม่มีข้อมูลการประเมินความเสี่ยง</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Medical Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="bg-red-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-red-800 mb-3">ข้อมูลทางการแพทย์</h4>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium text-gray-700">อาการแพ้ยา:</span> <span className="text-gray-900">{selectedPatient.drugAllergies || 'ไม่มี'}</span></div>
+                    <div><span className="font-medium text-gray-700">อาการแพ้อาหาร:</span> <span className="text-gray-900">{selectedPatient.foodAllergies || 'ไม่มี'}</span></div>
+                    <div><span className="font-medium text-gray-700">อาการแพ้สิ่งแวดล้อม:</span> <span className="text-gray-900">{selectedPatient.environmentAllergies || 'ไม่มี'}</span></div>
+                    <div><span className="font-medium text-gray-700">โรคประจำตัว:</span> <span className="text-gray-900">{selectedPatient.chronicDiseases || 'ไม่มี'}</span></div>
+                    <div><span className="font-medium text-gray-700">ประวัติการเจ็บป่วย:</span> <span className="text-gray-900">{selectedPatient.medicalHistory || 'ไม่มี'}</span></div>
+                    <div><span className="font-medium text-gray-700">ยาที่ใช้อยู่:</span> <span className="text-gray-900">{selectedPatient.currentMedications || 'ไม่มี'}</span></div>
+                  </div>
+                </div>
+
+                <div className="bg-orange-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-orange-800 mb-3">ข้อมูลเพิ่มเติม</h4>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium text-gray-700">อาชีพ:</span> <span className="text-gray-900">{selectedPatient.occupation || 'ไม่ระบุ'}</span></div>
+                    <div><span className="font-medium text-gray-700">การศึกษา:</span> <span className="text-gray-900">{selectedPatient.education || 'ไม่ระบุ'}</span></div>
+                    <div><span className="font-medium text-gray-700">สถานภาพ:</span> <span className="text-gray-900">{selectedPatient.maritalStatus === 'single' ? 'โสด' : selectedPatient.maritalStatus === 'married' ? 'แต่งงาน' : selectedPatient.maritalStatus === 'divorced' ? 'หย่าร้าง' : selectedPatient.maritalStatus === 'widowed' ? 'ม่าย' : 'ไม่ระบุ'}</span></div>
+                    <div><span className="font-medium text-gray-700">ศาสนา:</span> <span className="text-gray-900">{selectedPatient.religion || 'ไม่ระบุ'}</span></div>
+                    <div><span className="font-medium text-gray-700">เชื้อชาติ:</span> <span className="text-gray-900">{selectedPatient.race || 'ไม่ระบุ'}</span></div>
+                    <div><span className="font-medium text-gray-700">สัญชาติ:</span> <span className="text-gray-900">ไม่ระบุ</span></div>
+                  </div>
+                </div>
+              </div>
+
             </div>
           )}
 

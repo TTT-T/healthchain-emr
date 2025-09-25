@@ -46,7 +46,7 @@ class FormDataCleaner {
         sessionStorage.removeItem(key);
       });
 
-      logger.('✅ All form data cleared');
+      logger.info('✅ All form data cleared');
     } catch (error) {
       logger.error('❌ Error clearing form data:', error);
     }
@@ -62,7 +62,7 @@ class FormDataCleaner {
       localStorage.removeItem(formKey);
       sessionStorage.removeItem(formKey);
       
-      logger.(`✅ Form data cleared: ${formKey}`);
+      logger.info(`✅ Form data cleared: ${formKey}`);
     } catch (error) {
       logger.error(`❌ Error clearing form data for ${formKey}:`, error);
     }
@@ -124,7 +124,7 @@ class FormDataCleaner {
         sessionStorage.removeItem(key);
       });
 
-      logger.('✅ All cache data cleared');
+      logger.info('✅ All cache data cleared');
     } catch (error) {
       logger.error('❌ Error clearing cache data:', error);
     }
@@ -148,7 +148,7 @@ class FormDataCleaner {
             if (data.timestamp && Date.now() - data.timestamp > oneHour) {
               localStorage.removeItem(key);
               sessionStorage.removeItem(key);
-              logger.(`🗑️ Expired cache cleared: ${key}`);
+              logger.info(`🗑️ Expired cache cleared: ${key}`);
             }
           } catch (error) {
             // If parsing fails, remove the item
@@ -184,7 +184,7 @@ class FormDataCleaner {
         form.setAttribute('autocomplete', 'off');
       });
 
-      logger.(`✅ Autofill disabled for ${formKey || 'all form elements'}`);
+      logger.info(`✅ Autofill disabled for ${formKey || 'all form elements'}`);
     } catch (error) {
       logger.error('❌ Error disabling autofill:', error);
     }
@@ -208,7 +208,7 @@ class FormDataCleaner {
         }
       });
 
-      logger.(`✅ Form inputs reset for ${formKey || 'all forms'}`);
+      logger.info(`✅ Form inputs reset for ${formKey || 'all forms'}`);
     } catch (error) {
       logger.error('❌ Error resetting form inputs:', error);
     }

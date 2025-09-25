@@ -49,13 +49,13 @@ export default function UserDetailModal({ isOpen, onClose, userId, onEdit, onDel
       const transformedUser: UserType = {
         id: userData.id,
         username: userData.username || '',
-        name: `${userData.first_name || ''} ${userData.last_name || ''}`.trim(),
-        first_name: userData.first_name || '',
-        last_name: userData.last_name || '',
+        name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
         email: userData.email,
         role: userData.role,
-        status: userData.is_active ? 'active' : 'inactive',
-        department: userData.department_name || '',
+        status: userData.isActive ? 'active' : 'inactive',
+        department: userData.departmentName || '',
         last_login: userData.last_login,
         visit_count: userData.visit_count || 0,
         appointment_count: userData.appointment_count || 0,
@@ -99,7 +99,7 @@ export default function UserDetailModal({ isOpen, onClose, userId, onEdit, onDel
   };
 
   const formatDate = (daring: string) => {
-    return new Date(daring).toLocaleDaring('th-TH', {
+    return new Date(daring).toLocaleString('th-TH', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

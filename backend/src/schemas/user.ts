@@ -45,6 +45,7 @@ export const CreateUserSchema = z.object({
   lastName: FieldValidators.lastName,
   thaiFirstName: z.string().max(200).optional(),
   thaiLastName: z.string().max(200).optional(),
+  title: z.string().max(50).optional(),
   phoneNumber: FieldValidators.phone,
   role: FieldValidators.role.optional(),
   
@@ -87,6 +88,9 @@ export const TransformToDatabase = {
   userProfile: (data: any) => ({
     first_name: data.firstName,
     last_name: data.lastName,
+    thai_name: data.thaiFirstName,
+    thai_last_name: data.thaiLastName,
+    title: data.title,
     email: data.email,
     phone: data.phoneNumber,
     emergency_contact_name: data.emergencyContactName,
@@ -108,6 +112,9 @@ export const TransformFromDatabase = {
     email: data.email,
     firstName: data.first_name,
     lastName: data.last_name,
+    thaiFirstName: data.thai_name,
+    thaiLastName: data.thai_last_name,
+    title: data.title,
     phoneNumber: data.phone,
     emergencyContactName: data.emergency_contact_name,
     emergencyContactPhone: data.emergency_contact_phone,

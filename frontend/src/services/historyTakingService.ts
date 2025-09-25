@@ -59,8 +59,8 @@ export interface HistoryTakingRecord {
   notes?: string;
   recordedBy: string;
   recordedTime: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
   patient?: {
     thaiName: string;
     nationalId: string;
@@ -146,8 +146,8 @@ export class HistoryTakingService {
       patientId,
       chiefComplaint: medicalHistory.chiefComplaint,
       presentIllness: medicalHistory.hpi,
-      pastMedicalHistory: medicalHistory.pmh?.previousIllness,
-      surgicalHistory: medicalHistory.pmh?.surgicalHistory,
+      pastMedicalHistory: medicalHistory.pmh?.previousIllness || null,
+      surgicalHistory: medicalHistory.pmh?.surgicalHistory || null,
       drugAllergies: medicalHistory.drugAllergy?.hasAllergy === 'yes' ? medicalHistory.drugAllergy.allergyDetails : 'ไม่แพ้ยา',
       currentMedications: medicalHistory.currentMedications,
       familyHistory: JSON.stringify(medicalHistory.familyHistory),
@@ -156,7 +156,7 @@ export class HistoryTakingService {
       dietaryHistory: JSON.stringify(medicalHistory.dietaryHistory),
       lifestyleFactors: JSON.stringify(medicalHistory.lifestyleFactors),
       reviewOfSystems: JSON.stringify(medicalHistory.reviewOfSystems),
-      notes: medicalHistory.notes,
+      notes: medicalHistory.notes || null,
       recordedBy,
       recordedTime: medicalHistory.recordedTime || new Date().toISOString()
     };
@@ -224,8 +224,8 @@ export class HistoryTakingService {
       notes: record.notes || '',
       recordedBy: record.recordedBy,
       recordedTime: record.recordedTime,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
+      created_at: record.created_at,
+      updated_at: record.updated_at,
       patient: record.patient
     };
   }

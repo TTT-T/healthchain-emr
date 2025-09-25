@@ -8,7 +8,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/api';
 
 interface ProfileData {
-  // Names (4 fields)
+  // Names (5 fields)
+  title: string;
   thaiFirstName: string;
   thaiLastName: string;
   englishFirstName: string;
@@ -221,7 +222,8 @@ export default function SetupProfile() {
   const { user, isLoading } = useAuth();
   
   const [formData, setFormData] = useState<ProfileData>({
-    // Names (4 fields)
+    // Names (5 fields)
+    title: '',
     thaiFirstName: '',
     thaiLastName: '',
     englishFirstName: '',
@@ -282,12 +284,11 @@ export default function SetupProfile() {
   // Calculate profile completion percentage
   const calculateProfileCompletion = () => {
     const fields = [
-      'thaiFirstName', 'thaiLastName', 'englishFirstName', 'englishLastName',
+      'title', 'thaiFirstName', 'thaiLastName', 'englishFirstName', 'englishLastName',
       'nationalId', 'birthDay', 'birthMonth', 'birthYear', 'gender', 'bloodType',
       'phone', 'address', 'emergencyContactName', 'emergencyContactPhone',
       'drugAllergies', 'foodAllergies', 'environmentAllergies', 'chronicDiseases',
-      'weight', 'height', 'occupation', 'education', 'maritalStatus', 'religion', 'race',
-      'insuranceType', 'insuranceNumber', 'insuranceExpiryDay', 'insuranceExpiryMonth', 'insuranceExpiryYear'
+      'weight', 'height', 'occupation', 'education', 'maritalStatus', 'religion', 'race'
     ];
     
     const filledFields = fields.filter(field => {
@@ -311,7 +312,8 @@ export default function SetupProfile() {
           const profile = response.data;
           // Map existing data to form fields (using correct field names from API)
           setFormData({
-            // Names (4 fields)
+            // Names (5 fields)
+            title: profile.title || '',
             thaiFirstName: profile.thaiName || '',
             thaiLastName: profile.thaiLastName || '',
             englishFirstName: profile.firstName || '',
@@ -455,11 +457,11 @@ export default function SetupProfile() {
 
     // Phone validation
     const phoneRegex = /^[0-9]{10}$/;
-    if (formData.phone && !phoneRegex.(formData.phone.replace(/[-\s]/g, ''))) {
+    if (formData.phone && !phoneRegex.test(formData.phone.replace(/[-\s]/g, ''))) {
       newErrors.phone = 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก';
     }
 
-    if (formData.emergencyContactPhone && !phoneRegex.(formData.emergencyContactPhone.replace(/[-\s]/g, ''))) {
+    if (formData.emergencyContactPhone && !phoneRegex.test(formData.emergencyContactPhone.replace(/[-\s]/g, ''))) {
       newErrors.emergencyContactPhone = 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก';
     }
 
@@ -508,7 +510,8 @@ export default function SetupProfile() {
         if (hasDataToSave) {
           // Transform all form data to backend format (using correct field names)
           const profileData = {
-            // Names (4 fields)
+            // Names (5 fields)
+            title: formData.title,
             thaiName: formData.thaiFirstName,
             thaiLastName: formData.thaiLastName,
             firstName: formData.englishFirstName,
@@ -721,6 +724,28 @@ export default function SetupProfile() {
                   </h3>
                 </div>
                 <div className="grid grid-cols-1 gap-6">
+                  <div>
+                    <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+                      คำนำหน้าชื่อ
+                    </label>
+                    <select
+                      id="title"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 ${
+                        errors.title ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                    >
+                      <option value="">เลือกคำนำหน้า</option>
+                      <option value="นาย">นาย</option>
+                      <option value="นาง">นาง</option>
+                      <option value="นางสาว">นางสาว</option>
+                      <option value="เด็กชาย">เด็กชาย</option>
+                      <option value="เด็กหญิง">เด็กหญิง</option>
+                    </select>
+                    {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
+                  </div>
                   <div>
                     <label htmlFor="thaiFirstName" className="block text-sm font-medium text-gray-700 mb-2">
                       ชื่อ (ไทย)

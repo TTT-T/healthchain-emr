@@ -19,7 +19,7 @@ export async function GET() {
       message: 'Error',
       timestamp: new Date().toISOString(),
       status: 'unhealthy',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? (error as any).message : 'Unknown error'
     };
 
     return NextResponse.json(healthCheck, { status: 503 });

@@ -55,19 +55,19 @@ export class DoctorService {
     is_available?: boolean;
   }) {
     try {
-      logger.('📱 DoctorService.getDoctors called', params);
+      logger.info('📱 DoctorService.getDoctors called', params);
       const response = await apiClient.get('/medical/doctors', { params });
       
-      logger.('✅ DoctorService.getDoctors success:', response);
+      logger.info('✅ DoctorService.getDoctors success:', response);
       return response;
     } catch (error) {
       logger.error('❌ DoctorService.getDoctors error:', error);
       console.error('❌ DoctorService.getDoctors error:', error);
       console.error('❌ Error details:', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-        url: error.config?.url
+        message: (error as any).message,
+        status: (error as any).response?.status,
+        data: (error as any).response?.data,
+        url: (error as any).config?.url
       });
       throw error;
     }
@@ -78,11 +78,11 @@ export class DoctorService {
    */
   static async getDoctorById(id: string) {
     try {
-      logger.('📱 DoctorService.getDoctorById called', { id });
+      logger.info('📱 DoctorService.getDoctorById called', { id });
       
       const response = await apiClient.get(`/medical/doctors/${id}`);
       
-      logger.('✅ DoctorService.getDoctorById success:', response);
+      logger.info('✅ DoctorService.getDoctorById success:', response);
       return response;
     } catch (error) {
       logger.error('❌ DoctorService.getDoctorById error:', error);
@@ -95,11 +95,11 @@ export class DoctorService {
    */
   static async createDoctor(data: CreateDoctorRequest) {
     try {
-      logger.('📱 DoctorService.createDoctor called', data);
+      logger.info('📱 DoctorService.createDoctor called', data);
       
       const response = await apiClient.post('/medical/doctors', data);
       
-      logger.('✅ DoctorService.createDoctor success:', response);
+      logger.info('✅ DoctorService.createDoctor success:', response);
       return response;
     } catch (error) {
       logger.error('❌ DoctorService.createDoctor error:', error);
@@ -112,11 +112,11 @@ export class DoctorService {
    */
   static async updateDoctor(id: string, data: UpdateDoctorRequest) {
     try {
-      logger.('📱 DoctorService.updateDoctor called', { id, data });
+      logger.info('📱 DoctorService.updateDoctor called', { id, data });
       
       const response = await apiClient.post(`/medical/doctors/${id}/update`, data);
       
-      logger.('✅ DoctorService.updateDoctor success:', response);
+      logger.info('✅ DoctorService.updateDoctor success:', response);
       return response;
     } catch (error) {
       logger.error('❌ DoctorService.updateDoctor error:', error);
@@ -129,11 +129,11 @@ export class DoctorService {
    */
   static async deleteDoctor(id: string) {
     try {
-      logger.('📱 DoctorService.deleteDoctor called', { id });
+      logger.info('📱 DoctorService.deleteDoctor called', { id });
       
       const response = await apiClient.post(`/medical/doctors/${id}/delete`, {});
       
-      logger.('✅ DoctorService.deleteDoctor success:', response);
+      logger.info('✅ DoctorService.deleteDoctor success:', response);
       return response;
     } catch (error) {
       logger.error('❌ DoctorService.deleteDoctor error:', error);
@@ -146,11 +146,11 @@ export class DoctorService {
    */
   static async updateAvailability(id: string, isAvailable: boolean) {
     try {
-      logger.('📱 DoctorService.updateAvailability called', { id, isAvailable });
+      logger.info('📱 DoctorService.updateAvailability called', { id, isAvailable });
       
       const response = await apiClient.post(`/medical/doctors/${id}/availability`, { isAvailable });
       
-      logger.('✅ DoctorService.updateAvailability success:', response);
+      logger.info('✅ DoctorService.updateAvailability success:', response);
       return response;
     } catch (error) {
       logger.error('❌ DoctorService.updateAvailability error:', error);
@@ -163,11 +163,11 @@ export class DoctorService {
    */
   static async getCurrentQueue(id: string) {
     try {
-      logger.('📱 DoctorService.getCurrentQueue called', { id });
+      logger.info('📱 DoctorService.getCurrentQueue called', { id });
       
       const response = await apiClient.get(`/medical/doctors/${id}/queue`);
       
-      logger.('✅ DoctorService.getCurrentQueue success:', response);
+      logger.info('✅ DoctorService.getCurrentQueue success:', response);
       return response;
     } catch (error) {
       logger.error('❌ DoctorService.getCurrentQueue error:', error);
@@ -180,14 +180,14 @@ export class DoctorService {
    */
   static async getAvailableDoctors() {
     try {
-      logger.('📱 DoctorService.getAvailableDoctors called');
+      logger.info('📱 DoctorService.getAvailableDoctors called');
       
       const response = await this.getDoctors({
         is_available: true,
         limit: 100 // ดึงทั้งหมด
       });
       
-      logger.('✅ DoctorService.getAvailableDoctors success:', response);
+      logger.info('✅ DoctorService.getAvailableDoctors success:', response);
       return response;
     } catch (error) {
       logger.error('❌ DoctorService.getAvailableDoctors error:', error);

@@ -31,7 +31,7 @@ export const getCompleteProfile = async (req: Request, res: Response) => {
     const userQuery = `
       SELECT 
         u.id, u.username, u.email, u.first_name, u.last_name, u.phone, u.role,
-        u.thai_name, u.thai_last_name, u.national_id, u.birth_date, u.birth_day, u.birth_month, u.birth_year, u.gender, u.blood_type,
+        u.thai_name, u.thai_last_name, u.title, u.national_id, u.birth_date, u.birth_day, u.birth_month, u.birth_year, u.gender, u.blood_type,
         u.address, u.id_card_address,
         u.emergency_contact_name, u.emergency_contact_phone, u.emergency_contact_relation,
         u.allergies, u.drug_allergies, u.food_allergies, u.environment_allergies,
@@ -135,7 +135,7 @@ export const updateCompleteProfile = async (req: Request, res: Response) => {
       WHERE id = $1
       RETURNING 
         id, username, email, first_name, last_name, phone, role,
-        thai_name, thai_last_name, national_id, birth_date, birth_day, birth_month, birth_year, gender, blood_type,
+        thai_name, thai_last_name, title, national_id, birth_date, birth_day, birth_month, birth_year, gender, blood_type,
         address, id_card_address,
         emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
         allergies, drug_allergies, food_allergies, environment_allergies,

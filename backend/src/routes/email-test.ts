@@ -51,7 +51,7 @@ router.post('/send-', async (req: Request, res: Response) => {
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.(email)) {
+    if (!emailRegex.test(email)) {
       return res.status(400).json(
         errorResponse('Invalid email format', 400)
       );

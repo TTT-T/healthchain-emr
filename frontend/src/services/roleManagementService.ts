@@ -4,8 +4,8 @@ export interface User {
   id: string;
   username: string;
   name: string;
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   role: string;
   status: 'active' | 'inactive';
@@ -152,8 +152,8 @@ class RoleManagementService {
   async createUser(userData: {
     username: string;
     email: string;
-    first_name: string;
-    last_name: string;
+    firstName: string;
+    lastName: string;
     role: string;
     password: string;
   }): Promise<any> {

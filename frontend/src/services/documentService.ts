@@ -61,8 +61,8 @@ export interface DocumentRecord {
   issuedDate: string;
   validUntil?: string;
   recipientInfo?: any;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
   patient?: {
     thaiName: string;
     nationalId: string;
@@ -123,7 +123,7 @@ export class DocumentService {
    */
   static async updateDocument(id: string, data: UpdateDocumentRequest): Promise<APIResponse<DocumentRecord>> {
     try {
-      const response = await apiClient.put(`/medical/documents/${id}`, data);
+      const response = await apiClient.patch(`/medical/documents/${id}`, data);
       return response as APIResponse<DocumentRecord>;
     } catch (error) {
       logger.error('Error updating document:', error);
@@ -186,8 +186,8 @@ export class DocumentService {
       issuedDate: record.issuedDate,
       validUntil: record.validUntil,
       recipientInfo: record.recipientInfo,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
+      created_at: record.created_at,
+      updated_at: record.updated_at,
       patient: record.patient
     };
   }
@@ -337,14 +337,14 @@ export class DocumentService {
     // Replace patient info
     if (patientInfo) {
       content = content.replace(/\{\{patientName\}\}/g, patientInfo.thaiName || `${patientInfo.firstName} ${patientInfo.lastName}`);
-      content = content.replace(/\{\{patientHn\}\}/g, patientInfo.hn || patientInfo.hospital_number || '');
+      content = content.replace(/\{\{patientHn\}\}/g, patientInfo.hn || patientInfo.hospitalNumber || '');
       content = content.replace(/\{\{patientNationalId\}\}/g, patientInfo.national_id || '');
       content = content.replace(/\{\{patientAge\}\}/g, patientInfo.age || '');
       content = content.replace(/\{\{patientGender\}\}/g, patientInfo.gender || '');
     }
 
     // Replace current date
-    const currentDate = new Date().toLocaleDaring('th-TH');
+    const currentDate = new Date().toLocaleString('th-TH');
     content = content.replace(/\{\{currentDate\}\}/g, currentDate);
 
     return content;

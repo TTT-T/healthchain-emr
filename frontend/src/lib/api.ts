@@ -88,10 +88,10 @@ class APIClient {
     this.axiosInstance.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
-        const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+        const originalRequest = (error as any).config as AxiosRequestConfig & { _retry?: boolean };
 
         // If error is 401 and we haven't already tried to refresh
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        if ((error as any).response?.status === 401 && !originalRequest._retry) {
           if (this.isRefreshing) {
             // If already refreshing, queue this request
             return new Promise((resolve, reject) => {
@@ -190,7 +190,7 @@ class APIClient {
   private handleError(error: AxiosError): APIError {
     if (error.response) {
       // Server responded with error status
-      const responseData = error.response.data as { message?: string; code?: string; details?: unknown; errors?: unknown };
+      const responseData = Array.isArray(error.response?.data) ? null : (error.response?.data as { message?: string; code?: string; details?: unknown; errors?: unknown });
       
       // Handle specific status codes
       switch (error.response.status) {
@@ -217,8 +217,11 @@ class APIClient {
           }
           break;
         case 404:
-          // Not found
-          logger.warn('Resource not found', { url: error.config?.url, status: 404 });
+          // Not found - but don't log for expected 404s
+          if (!(error as any).config?.url?.includes('/appointments') && 
+              !(error as any).config?.url?.includes('/notifications')) {
+            logger.warn('Resource not found', { url: (error as any).config?.url, status: 404 });
+          }
           break;
         case 429:
           // Rate limited
@@ -248,7 +251,7 @@ class APIClient {
       }
       
       return {
-        message: responseData?.message || error.message,
+        message: responseData?.message || (error as any).message,
         code: responseData?.code || error.code,
         statusCode: error.response.status,
         details: responseData?.details || responseData?.errors
@@ -263,7 +266,7 @@ class APIClient {
     } else {
       // Request setup error
       return {
-        message: error.message,
+        message: (error as any).message,
         statusCode: 0,
         code: 'REQUEST_ERROR'
       };
@@ -278,19 +281,19 @@ class APIClient {
     
     // Check remember me preference to determine storage type
     const isRemembered = localStorage.getItem('rememberMe') === 'true';
-    logger.('🔍 getAccessToken - rememberMe preference:', isRemembered);
+    logger.info('🔍 getAccessToken - rememberMe preference:', isRemembered);
     let token = null;
     
     if (isRemembered) {
       // If user chose to be remembered, check localStorage first, then cookie
       try {
         token = localStorage.getItem(TOKEN_KEY);
-        logger.('🔒 Checking localStorage for token:', !!token);
+        logger.info('🔒 Checking localStorage for token:', !!token);
         if (!token) {
           token = Cookies.get(TOKEN_KEY);
-          logger.('🍪 Checking cookie for token:', !!token);
+          logger.info('🍪 Checking cookie for token:', !!token);
         }
-        logger.('🔒 Token retrieved from persistent storage (remembered):', !!token);
+        logger.info('🔒 Token retrieved from persistent storage (remembered):', !!token);
       } catch (error) {
         logger.error('❌ Persistent storage retrieval failed:', error);
       }
@@ -298,24 +301,24 @@ class APIClient {
       // If user didn't choose to be remembered, check sessionStorage first
       try {
         token = sessionStorage.getItem(TOKEN_KEY);
-        logger.('🔓 Checking sessionStorage for token:', !!token);
+        logger.info('🔓 Checking sessionStorage for token:', !!token);
         if (!token) {
           // Fallback to cookie or localStorage (migration case)
           token = Cookies.get(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
-          logger.('🍪 Checking cookie/localStorage fallback for token:', !!token);
+          logger.info('🍪 Checking cookie/localStorage fallback for token:', !!token);
         }
-        logger.('🔓 Token retrieved from session storage (not remembered):', !!token);
+        logger.info('🔓 Token retrieved from session storage (not remembered):', !!token);
       } catch (error) {
         logger.error('❌ Session storage retrieval failed:', error);
       }
     }
     
     // : Log all storage types
-    logger.('🔍  - Storage check:');
-    logger.('  - localStorage token:', !!localStorage.getItem(TOKEN_KEY));
-    logger.('  - sessionStorage token:', !!sessionStorage.getItem(TOKEN_KEY));
-    logger.('  - cookie token:', !!Cookies.get(TOKEN_KEY));
-    logger.('  - rememberMe:', localStorage.getItem('rememberMe'));
+    logger.info('🔍  - Storage check:');
+    logger.info('  - localStorage token:', !!localStorage.getItem(TOKEN_KEY));
+    logger.info('  - sessionStorage token:', !!sessionStorage.getItem(TOKEN_KEY));
+    logger.info('  - cookie token:', !!Cookies.get(TOKEN_KEY));
+    logger.info('  - rememberMe:', localStorage.getItem('rememberMe'));
     
     // Validate token format (basic check)
     if (token && !token.startsWith('eyJ')) {
@@ -346,24 +349,24 @@ class APIClient {
 
   public setAccessToken(token: string): void {
     if (typeof window === 'undefined') return;
-    logger.('🔑 Setting access token:', token.substring(0, 30) + '...');
+    logger.info('🔑 Setting access token:', token.substring(0, 30) + '...');
     
     // Check remember me preference to determine storage type
     const isRemembered = localStorage.getItem('rememberMe') === 'true';
-    logger.('🔍 rememberMe preference:', isRemembered);
+    logger.info('🔍 rememberMe preference:', isRemembered);
     
     if (isRemembered) {
       // If user chose to be remembered, store in localStorage and cookie
-      logger.('🔒 Storing token in persistent storage (remembered)');
+      logger.info('🔒 Storing token in persistent storage (remembered)');
       
       // Store in localStorage
       try {
         localStorage.setItem(TOKEN_KEY, token);
-        logger.('💾 Token stored in localStorage');
+        logger.info('💾 Token stored in localStorage');
         
         // Verify storage
         const verifyToken = localStorage.getItem(TOKEN_KEY);
-        logger.('✅ localStorage verification:', !!verifyToken);
+        logger.info('✅ localStorage verification:', !!verifyToken);
       } catch (error) {
         logger.error('❌ LocalStorage storage failed:', error);
       }
@@ -377,27 +380,27 @@ class APIClient {
           secure: false
         };
         Cookies.set(TOKEN_KEY, token, cookieOptions);
-        logger.('🍪 Token stored in cookie (backup)');
+        logger.info('🍪 Token stored in cookie (backup)');
       } catch (error) {
         logger.error('❌ Cookie storage failed:', error);
       }
     } else {
       // If user didn't choose to be remembered, store in sessionStorage only
-      logger.('🔓 Storing token in session storage (not remembered)');
+      logger.info('🔓 Storing token in session storage (not remembered)');
       
       try {
         sessionStorage.setItem(TOKEN_KEY, token);
-        logger.('💾 Token stored in sessionStorage');
+        logger.info('💾 Token stored in sessionStorage');
         
         // Verify storage
         const verifyToken = sessionStorage.getItem(TOKEN_KEY);
-        logger.('✅ sessionStorage verification:', !!verifyToken);
+        logger.info('✅ sessionStorage verification:', !!verifyToken);
       } catch (error) {
         logger.error('❌ SessionStorage storage failed:', error);
         // Fallback to cookie with session expiry
         try {
           Cookies.set(TOKEN_KEY, token, { path: '/' }); // No expires = session cookie
-          logger.('🍪 Token stored in session cookie (fallback)');
+          logger.info('🍪 Token stored in session cookie (fallback)');
         } catch (cookieError) {
           logger.error('❌ Cookie fallback failed:', cookieError);
         }
@@ -447,7 +450,7 @@ class APIClient {
       // If user chose to be remembered, store in localStorage and cookie
       try {
         localStorage.setItem(REFRESH_TOKEN_KEY, token);
-        logger.('💾 Refresh token stored in localStorage');
+        logger.info('💾 Refresh token stored in localStorage');
       } catch (error) {
         logger.error('❌ LocalStorage refresh token storage failed:', error);
       }
@@ -461,7 +464,7 @@ class APIClient {
           secure: false
         };
         Cookies.set(REFRESH_TOKEN_KEY, token, cookieOptions);
-        logger.('🍪 Refresh token stored in cookie (backup)');
+        logger.info('🍪 Refresh token stored in cookie (backup)');
       } catch (error) {
         logger.error('❌ Cookie refresh token storage failed:', error);
       }
@@ -469,13 +472,13 @@ class APIClient {
       // If user didn't choose to be remembered, store in sessionStorage only
       try {
         sessionStorage.setItem(REFRESH_TOKEN_KEY, token);
-        logger.('💾 Refresh token stored in sessionStorage');
+        logger.info('💾 Refresh token stored in sessionStorage');
       } catch (error) {
         logger.error('❌ SessionStorage refresh token storage failed:', error);
         // Fallback to cookie with session expiry
         try {
           Cookies.set(REFRESH_TOKEN_KEY, token, { path: '/' }); // No expires = session cookie
-          logger.('🍪 Refresh token stored in session cookie (fallback)');
+          logger.info('🍪 Refresh token stored in session cookie (fallback)');
         } catch (cookieError) {
           logger.error('❌ Cookie refresh token fallback failed:', cookieError);
         }
@@ -486,7 +489,7 @@ class APIClient {
   public clearTokens(): void {
     if (typeof window === 'undefined') return;
     
-    logger.('🧹 Clearing all tokens and session data...');
+    logger.info('🧹 Clearing all tokens and session data...');
     
     // Clear cookies with all possible configurations
     Cookies.remove(TOKEN_KEY);
@@ -502,7 +505,7 @@ class APIClient {
       localStorage.removeItem(REFRESH_TOKEN_KEY);
       localStorage.removeItem('rememberMe');
       localStorage.removeItem('user');
-      logger.('💾 Tokens cleared from localStorage');
+      logger.info('💾 Tokens cleared from localStorage');
     } catch (error) {
       logger.error('❌ LocalStorage cleanup failed:', error);
     }
@@ -512,7 +515,7 @@ class APIClient {
       sessionStorage.removeItem(TOKEN_KEY);
       sessionStorage.removeItem(REFRESH_TOKEN_KEY);
       sessionStorage.removeItem('user');
-      logger.('💾 Tokens cleared from sessionStorage');
+      logger.info('💾 Tokens cleared from sessionStorage');
     } catch (error) {
       logger.error('❌ SessionStorage cleanup failed:', error);
     }
@@ -525,27 +528,109 @@ class APIClient {
         localStorage.removeItem(key);
         sessionStorage.removeItem(key);
       });
-      logger.('🧹 User data cleared from storage');
+      logger.info('🧹 User data cleared from storage');
     } catch (error) {
       logger.error('❌ User data cleanup failed:', error);
     }
     
-    // Force reload to clear any cached state
+    // Force reload to clear any cached state (only for non-public pages)
     if (typeof window !== 'undefined') {
-      logger.('🔄 Forcing page reload to clear cached state...');
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 100);
+      const publicPages = [
+        '/',
+        '/login',
+        '/register',
+        '/register/success',
+        '/verify-email',
+        '/resend-verification',
+        '/forgot-password',
+        '/reset-password',
+        '/email-verification-required',
+        '/admin-approval-required',
+        '/admin/login',
+        '/doctor/login',
+        '/nurse/login',
+        '/medical-staff/register',
+        '/external-requesters/login',
+        '/external-requesters/register',
+        '/external-requesters/registration-success',
+        '/external-requesters/status'
+      ];
+      
+      const isPublicPage = publicPages.some(page => 
+        window.location.pathname === page || window.location.pathname.startsWith(page + '/')
+      );
+      
+      if (!isPublicPage) {
+        logger.info('🔄 Forcing page reload to clear cached state...');
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 100);
+      } else {
+        logger.info('🔒 On public page, skipping redirect to login');
+      }
     }
     
-    logger.('✅ All tokens and session data cleared');
+    logger.info('✅ All tokens and session data cleared');
+  }
+
+  /**
+   * Clear tokens silently without redirecting
+   */
+  public clearTokensSilently(): void {
+    if (typeof window === 'undefined') return;
+    
+    logger.info('🧹 Clearing all tokens and session data silently...');
+    
+    // Clear cookies with all possible configurations
+    Cookies.remove(TOKEN_KEY);
+    Cookies.remove(REFRESH_TOKEN_KEY);
+    Cookies.remove(TOKEN_KEY, { path: '/' });
+    Cookies.remove(REFRESH_TOKEN_KEY, { path: '/' });
+    Cookies.remove(TOKEN_KEY, { path: '/', domain: window.location.hostname });
+    Cookies.remove(REFRESH_TOKEN_KEY, { path: '/', domain: window.location.hostname });
+    
+    // Clear localStorage fallback
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
+      localStorage.removeItem('rememberMe');
+      localStorage.removeItem('user');
+      logger.info('💾 Tokens cleared from localStorage');
+    } catch (error) {
+      logger.error('❌ LocalStorage cleanup failed:', error);
+    }
+    
+    // Clear sessionStorage as well
+    try {
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+      sessionStorage.removeItem('user');
+      logger.info('💾 Tokens cleared from sessionStorage');
+    } catch (error) {
+      logger.error('❌ SessionStorage cleanup failed:', error);
+    }
+    
+    // Clear any other auth-related data
+    try {
+      // Clear all possible auth-related keys
+      const authKeys = ['user', 'auth', 'session', 'login', 'profile'];
+      authKeys.forEach(key => {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      });
+      logger.info('🧹 User data cleared from storage');
+    } catch (error) {
+      logger.error('❌ User data cleanup failed:', error);
+    }
+    
+    logger.info('✅ All tokens and session data cleared silently');
   }
 
   public setAuthTokens(accessToken: string, refreshToken: string): void {
-    logger.('🔑 Setting auth tokens...');
+    logger.info('🔑 Setting auth tokens...');
     this.setAccessToken(accessToken);
     this.setRefreshToken(refreshToken);
-    logger.('🔑 Auth tokens set complete');
+    logger.info('🔑 Auth tokens set complete');
   }
 
   /**
@@ -553,7 +638,7 @@ class APIClient {
    */
   private async request<T>(config: AxiosRequestConfig): Promise<APIResponse<T>> {
     try {
-      logger.('🌐 Making API request:', {
+      logger.info('🌐 Making API request:', {
         method: config.method,
         url: config.url,
         baseURL: this.axiosInstance.defaults.baseURL,
@@ -561,7 +646,7 @@ class APIClient {
       });
       
       const response: AxiosResponse<APIResponse<T>> = await this.axiosInstance(config);
-      logger.('✅ API response received:', response.status, response.data);
+      logger.info('✅ API response received:', response.status, response.data);
       
       // Transform backend response to frontend format
       const transformedResponse: APIResponse<T> = {
@@ -575,7 +660,7 @@ class APIClient {
     } catch (error: any) {
       // Don't log 404 errors for notifications as they are expected for users not yet registered in EMR
       if (error?.response?.status === 404 && config.url?.includes('/notifications')) {
-        logger.('🔍 Expected 404 for notifications (user not registered in EMR):', config.url);
+        logger.info('🔍 Expected 404 for notifications (user not registered in EMR):', config.url);
         // Return empty response for expected 404
         return {
           data: null,
@@ -583,9 +668,19 @@ class APIClient {
           error: null,
           statusCode: 404
         };
+      } else if (error?.response?.status === 404 && config.url?.includes('/appointments')) {
+        // Don't log 404 errors for appointments as they are expected for new patients
+        logger.info('🔍 Expected 404 for appointments (patient has no appointments):', config.url);
+        // Return empty response for expected 404
+        return {
+          data: [] as T,
+          meta: null,
+          error: null,
+          statusCode: 404
+        } as APIResponse<T>;
       } else if (error?.response?.status === 200) {
         // Don't log errors for successful responses (status 200)
-        logger.('✅ API request successful but caught in error handler:', config.url);
+        logger.info('✅ API request successful but caught in error handler:', config.url);
         // Return the response data for successful 200 responses
         return {
           data: error?.response?.data?.data || error?.response?.data,
@@ -594,6 +689,27 @@ class APIClient {
           statusCode: 200
         };
       } else {
+        // Debug: Log error structure to understand what we're dealing with
+        logger.info('🔍 Debug - Error structure:', {
+          hasResponse: 'response' in error,
+          responseStatus: error?.response?.status,
+          url: config.url,
+          includesAppointments: config.url?.includes('/appointments'),
+          errorMessage: error?.message
+        });
+        
+        // Check if it's a 404 error for appointments - don't log these as they are expected
+        if ((error?.response?.status === 404 || error?.message?.includes('404')) && config.url?.includes('/appointments')) {
+          logger.info('🔍 Expected 404 for appointments (patient has no appointments):', config.url);
+          // Return empty response for expected 404
+          return {
+            data: [] as T,
+            meta: null,
+            error: null,
+            statusCode: 404
+          } as APIResponse<T>;
+        }
+        
         // Better error logging with proper serialization
         const errorInfo = {
           message: error?.message || 'Unknown error',
@@ -644,6 +760,38 @@ class APIClient {
     });
   }
 
+  /**
+   * Generic PATCH method
+   */
+  public async patch<T>(url: string, data?: unknown): Promise<APIResponse<T>> {
+    return this.request<T>({
+      method: 'PATCH',
+      url,
+      data
+    });
+  }
+
+  /**
+   * Generic PUT method
+   */
+  public async put<T>(url: string, data?: unknown): Promise<APIResponse<T>> {
+    return this.request<T>({
+      method: 'PUT',
+      url,
+      data
+    });
+  }
+
+  /**
+   * Generic DELETE method
+   */
+  public async delete<T>(url: string): Promise<APIResponse<T>> {
+    return this.request<T>({
+      method: 'DELETE',
+      url
+    });
+  }
+
   // =============================================================================
   // AUTHENTICATION API
   // =============================================================================
@@ -669,16 +817,16 @@ class APIClient {
   /**
    * Register user
    */
-  async register(data: RegisterRequest): Promise<APIResponse<AuthResponse>> {
-    logger.('🆕 Attempting registration with:', { ...data, password: '[HIDDEN]' });
+  async register(data: RegisterRequest): Promise<APIResponse<AuthResponse & { requiresEmailVerification?: boolean; requiresAdminApproval?: boolean; emailSent?: boolean; email?: string }>> {
+    logger.info('🆕 Attempting registration with:', { ...data, password: '[HIDDEN]' });
     
-    const response = await this.request<AuthResponse>({
+    const response = await this.request<AuthResponse & { requiresEmailVerification?: boolean; requiresAdminApproval?: boolean; emailSent?: boolean; email?: string }>({
       method: 'POST',
       url: '/auth/register',
       data
     });
     
-    logger.('📥 Registration response:', response);
+    logger.info('📥 Registration response:', response);
     
     // Store tokens if registration successful
     if (response.data && !response.error) {
@@ -747,13 +895,13 @@ class APIClient {
    * Get current user profile
    */
   async getProfile(): Promise<APIResponse<User>> {
-    logger.('📱 getProfile called');
+    logger.info('📱 getProfile called');
     try {
       const response = await this.request<User>({
         method: 'GET',
         url: '/auth/profile'
       });
-      logger.('✅ getProfile success:', response);
+      logger.info('✅ getProfile success:', response);
       return response;
     } catch (error) {
       logger.error('❌ getProfile error:', error);
@@ -765,13 +913,13 @@ class APIClient {
    * Get doctor profile
    */
   async getDoctorProfile(): Promise<APIResponse<User>> {
-    logger.('👨‍⚕️ getDoctorProfile called');
+    logger.info('👨‍⚕️ getDoctorProfile called');
     try {
       const response = await this.request<User>({
         method: 'GET',
         url: '/auth/profile/doctor'
       });
-      logger.('✅ getDoctorProfile success:', response);
+      logger.info('✅ getDoctorProfile success:', response);
       return response;
     } catch (error) {
       logger.error('❌ getDoctorProfile error:', error);
@@ -783,13 +931,13 @@ class APIClient {
    * Get nurse profile
    */
   async getNurseProfile(): Promise<APIResponse<User>> {
-    logger.('👩‍⚕️ getNurseProfile called');
+    logger.info('👩‍⚕️ getNurseProfile called');
     try {
       const response = await this.request<User>({
         method: 'GET',
         url: '/auth/profile/nurse'
       });
-      logger.('✅ getNurseProfile success:', response);
+      logger.info('✅ getNurseProfile success:', response);
       return response;
     } catch (error) {
       logger.error('❌ getNurseProfile error:', error);
@@ -801,14 +949,14 @@ class APIClient {
    * Validate password strength
    */
   async validatePasswordStrength(password: string): Promise<APIResponse<{ isValid: boolean; score: number; feedback: string[] }>> {
-    logger.('🔒 validatePasswordStrength called');
+    logger.info('🔒 validatePasswordStrength called');
     try {
       const response = await this.request<{ isValid: boolean; score: number; feedback: string[] }>({
         method: 'POST',
         url: '/auth/validate-password',
         data: { password }
       });
-      logger.('✅ validatePasswordStrength success:', response);
+      logger.info('✅ validatePasswordStrength success:', response);
       return response;
     } catch (error) {
       logger.error('❌ validatePasswordStrength error:', error);
@@ -1093,10 +1241,10 @@ class APIClient {
 
     const result = await response.json();
     return {
-      success: response.ok,
       data: result,
       statusCode: response.status,
-      error: response.ok ? null : { message: result.error || 'Registration failed' }
+      error: response.ok ? null : { code: 'REGISTRATION_FAILED', message: result.error || 'Registration failed' },
+      meta: null
     };
   }
 
@@ -1289,7 +1437,7 @@ class APIClient {
   async getPatientConsentRequests(userId: string): Promise<APIResponse<unknown[]>> {
     return this.request<unknown[]>({
       method: 'GET',
-      url: `/patients/${userId}/consent-requests`
+      url: `/medical/patients/${userId}/consent-requests`
     });
   }
 
@@ -1299,7 +1447,7 @@ class APIClient {
   async respondToConsentRequest(userId: string, requestId: string, data: { decision: string; reason?: string }): Promise<APIResponse<unknown>> {
     return this.request<unknown>({
       method: 'POST',
-      url: `/patients/${userId}/consent-requests/${requestId}/respond`,
+      url: `/medical/patients/${userId}/consent-requests/${requestId}/respond`,
       data
     });
   }
@@ -1310,7 +1458,7 @@ class APIClient {
   async getPatientLabResults(userId: string): Promise<APIResponse<unknown[]>> {
     return this.request<unknown[]>({
       method: 'GET',
-      url: `/patients/${userId}/lab-results`
+      url: `/medical/patients/${userId}/lab-results`
     });
   }
 
@@ -1402,7 +1550,7 @@ class APIClient {
   async getPatientAIInsights(patientId: string): Promise<APIResponse<unknown>> {
     return this.request<unknown>({
       method: 'GET',
-      url: `/patients/${patientId}/ai-insights`
+      url: `/medical/patients/${patientId}/ai-insights`
     });
   }
 
@@ -1422,7 +1570,7 @@ class APIClient {
   async getPatientMedications(patientId: string): Promise<APIResponse<unknown[]>> {
     return this.request<unknown[]>({
       method: 'GET',
-      url: `/patients/${patientId}/medications`
+      url: `/medical/patients/${patientId}/medications`
     });
   }
 

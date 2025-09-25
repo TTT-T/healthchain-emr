@@ -119,7 +119,7 @@ export const createDocument = asyncHandler(async (req: Request, res: Response) =
         valid_until,
         created_at,
         updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW() AT TIME ZONE 'Asia/Bangkok', NOW() AT TIME ZONE 'Asia/Bangkok')
       RETURNING *
     `;
 
@@ -134,8 +134,8 @@ export const createDocument = asyncHandler(async (req: Request, res: Response) =
       status || 'draft',
       notes || null,
       issuedBy, // This goes to recorded_by column
-      new Date().toISOString(),
-      issuedDate || new Date().toISOString(),
+      new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }),
+      issuedDate || new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }),
       validUntil || null
     ];
 
@@ -238,6 +238,8 @@ export const getDocumentsByPatient = asyncHandler(async (req: Request, res: Resp
   const user = (req as any).user;
 
   try {
+    let actualPatientId = patientId; // Default to URL parameter
+    
     // Check if patient is trying to access their own documents
     if (user.role === 'patient') {
       // For patients, we need to find their patient record using user_id
@@ -247,18 +249,11 @@ export const getDocumentsByPatient = asyncHandler(async (req: Request, res: Resp
       );
       
       if (patientQuery.rows.length === 0) {
-        return res.status(404).json({
-          statusCode: 404,
-          message: 'Patient record not found',
-          data: null,
-          error: {
-            code: 'PATIENT_NOT_FOUND',
-            message: 'Patient record not found for this user'
-          }
-        });
+        // If no patient record found, use user ID as patient ID
+        actualPatientId = user.id;
+      } else {
+        actualPatientId = patientQuery.rows[0].id;
       }
-      
-      const actualPatientId = patientQuery.rows[0].id;
       
       // For patient role, use the actual patient ID from database instead of URL parameter
       // This allows frontend to send user.id and backend will find the correct patient.id
@@ -285,12 +280,12 @@ export const getDocumentsByPatient = asyncHandler(async (req: Request, res: Resp
       SELECT mr.*, p.thai_name, p.national_id, p.hospital_number,
              u.thai_name as issued_by_name, u.first_name, u.last_name
       FROM medical_records mr
-      JOIN patients p ON mr.patient_id = p.id
+      LEFT JOIN patients p ON mr.patient_id = p.id
       LEFT JOIN users u ON mr.recorded_by = u.id
       WHERE mr.patient_id = $1 AND mr.record_type = 'document'
     `;
     
-    const values = [patientId];
+    const values = [actualPatientId];
     
     if (documentType) {
       query += ` AND mr.document_type = $2`;
@@ -526,7 +521,7 @@ export const updateDocument = asyncHandler(async (req: Request, res: Response) =
       });
     }
 
-    updateFields.push(`updated_at = NOW()`);
+    updateFields.push(`updated_at = NOW() AT TIME ZONE 'Asia/Bangkok'`);
     values.push(id);
 
     const updateQuery = `

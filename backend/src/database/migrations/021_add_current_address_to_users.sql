@@ -13,6 +13,3 @@ ADD COLUMN IF NOT EXISTS current_address TEXT;
 -- Add comment for documentation
 COMMENT ON COLUMN users.current_address IS 'Current residential address (different from ID card address)';
 
--- Update migration log
-INSERT INTO migrations (migration_name, executed_at, execution_time_ms, success, error_message) 
-VALUES ('021_add_current_address_to_users', CURRENT_TIMESTAMP, 0, true, NULL);

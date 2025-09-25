@@ -127,7 +127,7 @@ export default function NewRequestPage() {
         setSearchResults((response.data as any[]).map((patient: any) => ({
           id: patient.id,
           patientId: patient.patientId || patient.id,
-          name: `${patient.firstName || patient.first_name} ${patient.lastName || patient.last_name}`,
+          name: `${patient.firstName || patient.firstName} ${patient.lastName || patient.lastName}`,
           age: patient.age || 0,
           gender: patient.gender || 'ไม่ระบุ',
           lastVisit: patient.lastVisit || patient.last_visit,

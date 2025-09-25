@@ -48,6 +48,20 @@ interface ExternalRequesterRegistrationData {
     uploadDate: string;
   }[];
 
+  // User Information
+  username?: string;
+  firstNameEnglish?: string;
+  lastNameEnglish?: string;
+  firstNameThai?: string;
+  lastNameThai?: string;
+  title?: string;
+  nationalId?: string;
+  birthDate?: string;
+  gender?: string;
+  nationality?: string;
+  currentAddress?: string;
+  idCardAddress?: string;
+
   // Account Setup for Login
   loginEmail: string;
   password: string;
@@ -113,7 +127,7 @@ export async function POST(request: NextRequest) {
 
     // ตรวจสอบรูปแบบอีเมล
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.(body.primaryContactEmail)) {
+    if (!emailRegex.test(body.primaryContactEmail)) {
       return NextResponse.json({
         success: false,
         error: 'รูปแบบอีเมลติดต่อไม่ถูกต้อง'
@@ -121,7 +135,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ตรวจสอบ login email
-    if (!emailRegex.(body.loginEmail)) {
+    if (!emailRegex.test(body.loginEmail)) {
       return NextResponse.json({
         success: false,
         error: 'รูปแบบ login email ไม่ถูกต้อง'
@@ -219,7 +233,7 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString()
     };
 
-    logger.('Registration data to be saved:', registrationData);
+    logger.info('Registration data to be saved:', registrationData);
 
     // ส่งข้อมูลไปยัง backend เพื่อบันทึกลงฐานข้อมูล
     try {
@@ -238,7 +252,7 @@ export async function POST(request: NextRequest) {
       }
 
       const backendResult = await backendResponse.json();
-      logger.('Backend registration successful:', backendResult);
+      logger.info('Backend registration successful:', backendResult);
     } catch (backendError) {
       logger.safeError('Error calling backend registration:', backendError);
       // ยังคงส่ง response สำเร็จให้ frontend แต่ log error

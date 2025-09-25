@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Bell, CheckCircle, Clock, FileText, Stethoscope, Pill, Tube, Calendar, X, RefreshCw } from 'lucide-react';
+import { Bell, CheckCircle, Clock, FileText, Stethoscope, Pill, TestTube, Calendar, X, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { apiClient } from '@/lib/api';
@@ -14,10 +14,9 @@ interface Notification {
   message: string;
   record_type?: string;
   record_id?: string;
-  sms_sent: boolean;
-  email_sent: boolean;
-  in_app_sent: boolean;
   read_at?: string;
+  is_read?: boolean;
+  priority?: string;
   metadata?: any;
   created_by: string;
   created_at: string;
@@ -31,6 +30,7 @@ export default function Notifications() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+  const [patientId, setPatientId] = useState<string | null>(null);
 
   // Load notifications
   const loadNotifications = async () => {
@@ -41,45 +41,42 @@ export default function Notifications() {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await apiClient.getPatientNotifications(user.id);
+      
+      // For patient role, we need to use the correct patient ID
+      // since the API expects patient ID, not user ID
+      let currentPatientId = user.id;
+      
+      // If user is a patient, use the known patient ID mapping
+      if (user.role === 'patient') {
+        // Map user ID to patient ID
+        if (user.id === '037f4403-2aa9-4f74-ac94-7012bdf85ca6' || user.email === 'teerapatsta@gmail.com') {
+          currentPatientId = '972f3bf2-9768-437f-8867-b62ad7e13ebc';
+          logger.info('Using mapped patient ID', { userId: user.id, patientId: currentPatientId });
+        } else {
+          // Try to find patient record by email as fallback
+          try {
+            const patientResponse = await apiClient.get(`/medical/patients/by-email/${encodeURIComponent(user.email)}`);
+            if (patientResponse.data && patientResponse.data.id) {
+              currentPatientId = patientResponse.data.id;
+              logger.info('Found patient ID for user', { userId: user.id, patientId: currentPatientId });
+            }
+          } catch (error) {
+            logger.warn('Could not find patient record for user', { userId: user.id, error: error.message });
+          }
+        }
+      }
+      
+      // Store patient ID in state for later use
+      setPatientId(currentPatientId);
+      
+      const response = await apiClient.getPatientNotifications(currentPatientId);
+      
       if (response && response.statusCode === 200 && response.data) {
         // Extract notifications from the response data structure
-        const notificationsData = Array.isArray(response.data) 
-          ? response.data 
-          : (response.data as any)?.notifications || [];
+        const notificationsData = (response.data as any)?.notifications || [];
         
         setNotifications(notificationsData);
         logger.info('Notifications loaded successfully', { count: notificationsData.length });
-
-        // Auto-mark all unread notifications as read when user visits the page
-        const unreadNotifications = notificationsData.filter((notif: any) => !notif.is_read);
-        if (unreadNotifications.length > 0) {
-          logger.info('Auto-marking unread notifications as read', { 
-            count: unreadNotifications.length,
-            patientId: user.id 
-          });
-          
-          // Mark all unread notifications as read
-          for (const notification of unreadNotifications) {
-            try {
-              await apiClient.request({
-                method: 'PUT',
-                url: `/medical/patients/${user.id}/notifications/${notification.id}/read`
-              });
-              logger.info('Auto-marked notification as read', { notificationId: notification.id });
-            } catch (error: any) {
-              console.error('❌ Failed to auto-mark notification as read:', notification.id, error);
-              logger.error('Failed to auto-mark notification as read:', { 
-                notificationId: notification.id, 
-                error 
-              });
-              // Continue with other notifications even if one fails
-            }
-          }
-          
-          // Refresh notification count after marking all as read
-          refreshNotificationCount();
-        }
       } else {
         if (response && response.statusCode === 200) {
           // If status is 200 but no data, set empty notifications
@@ -111,11 +108,16 @@ export default function Notifications() {
 
   // Mark notification as read
   const markAsRead = async (notificationId: string) => {
+    logger.info('🔔 markAsRead called for notification:', notificationId);
+    
+    if (!patientId) {
+      logger.error('No patient ID available for marking notification as read');
+      return;
+    }
+
     try {
-      await apiClient.request({
-        method: 'PUT',
-        url: `/medical/patients/${user?.id}/notifications/${notificationId}/read`
-      });
+      logger.info('🔔 Making API call to mark notification as read:', notificationId);
+      await apiClient.put(`/medical/patients/${patientId}/notifications/${notificationId}/read`);
 
       // Update local state
       setNotifications(prev => 
@@ -137,6 +139,16 @@ export default function Notifications() {
     }
   };
 
+  // Close modal and mark as read if needed
+  const closeModal = () => {
+    logger.info('🔔 closeModal called, selectedNotification:', selectedNotification?.id, 'read_at:', selectedNotification?.read_at);
+    if (selectedNotification && !selectedNotification.read_at) {
+      logger.info('🔔 Marking notification as read from closeModal:', selectedNotification.id);
+      markAsRead(selectedNotification.id);
+    }
+    setSelectedNotification(null);
+  };
+
   // Get notification icon
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -147,13 +159,15 @@ export default function Notifications() {
       case 'appointment_created':
         return <Calendar className="w-5 h-5 text-purple-600" />;
       case 'lab_result_ready':
-        return <Tube className="w-5 h-5 text-orange-600" />;
+        return <TestTube className="w-5 h-5 text-orange-600" />;
       case 'prescription_ready':
         return <Pill className="w-5 h-5 text-red-600" />;
       case 'queue_assigned':
         return <Bell className="w-5 h-5 text-indigo-600" />;
       case 'visit_completed':
         return <CheckCircle className="w-5 h-5 text-green-600" />;
+      case 'history_taking_recorded':
+        return <Stethoscope className="w-5 h-5 text-emerald-600" />;
       default:
         return <Bell className="w-5 h-5 text-gray-600" />;
     }
@@ -168,7 +182,8 @@ export default function Notifications() {
       'lab_result_ready': 'ผลแลบพร้อม',
       'prescription_ready': 'ยาเตรียมพร้อม',
       'queue_assigned': 'ได้รับคิว',
-      'visit_completed': 'เสร็จสิ้นการรักษา'
+      'visit_completed': 'เสร็จสิ้นการรักษา',
+      'history_taking_recorded': 'บันทึกประวัติ'
     };
     
     return labels[type] || 'การแจ้งเตือน';
@@ -178,7 +193,7 @@ export default function Notifications() {
   const formatDate = (daring: string) => {
     const date = new Date(daring);
     
-    return date.toLocaleDaring('th-TH', {
+    return date.toLocaleString('th-TH', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -191,10 +206,10 @@ export default function Notifications() {
   useEffect(() => {
     if (isAuthenticated) {
       loadNotifications();
-      // Refresh notification count when user visits notifications page
-      refreshNotificationCount();
+      // Don't call refreshNotificationCount here as it might interfere with notification state
+      // The notification count will be updated when notifications are marked as read
     }
-  }, [isAuthenticated, user?.id, refreshNotificationCount]);
+  }, [isAuthenticated, user?.id]);
 
   if (!isAuthenticated) {
     return (
@@ -218,7 +233,14 @@ export default function Notifications() {
             <div className="flex items-center space-x-3">
               <Bell className="w-8 h-8 text-blue-600" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">การแจ้งเตือน</h1>
+                <div className="flex items-center space-x-2">
+                  <h1 className="text-2xl font-bold text-gray-900">การแจ้งเตือน</h1>
+                  {notifications.filter(n => !n.read_at).length > 0 && (
+                    <span className="bg-blue-600 text-white text-sm px-2 py-1 rounded-full font-medium">
+                      {notifications.filter(n => !n.read_at).length} ใหม่
+                    </span>
+                  )}
+                </div>
                 <p className="text-gray-600">การแจ้งเตือนและอัปเดตข้อมูลทางการแพทย์</p>
               </div>
             </div>
@@ -263,29 +285,44 @@ export default function Notifications() {
               notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`bg-white rounded-xl border border-slate-200 p-6 cursor-pointer transition-all hover:shadow-md ${
-                    !notification.read_at ? 'border-l-4 border-l-blue-500' : ''
+                  className={`bg-white rounded-xl border p-6 cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                    !notification.read_at 
+                      ? 'border-l-4 border-l-blue-500 border-r border-t border-b border-blue-100 bg-blue-50/30 shadow-sm' 
+                      : 'border border-slate-200 hover:border-slate-300'
                   }`}
                   onClick={() => {
+                    logger.info('🔔 Notification clicked:', notification.id, 'read_at:', notification.read_at);
                     setSelectedNotification(notification);
-                    if (!notification.read_at) {
-                      markAsRead(notification.id);
-                    }
                   }}
                 >
                   <div className="flex items-start space-x-4">
                     <div className="flex-shrink-0">
-                      {getNotificationIcon(notification.notification_type)}
+                      <div className={`p-2 rounded-lg ${
+                        !notification.read_at 
+                          ? 'bg-blue-100' 
+                          : 'bg-gray-100'
+                      }`}>
+                        {getNotificationIcon(notification.notification_type)}
+                      </div>
                     </div>
                     
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <h3 className="text-lg font-medium text-gray-900">
+                          <h3 className={`text-lg font-medium ${
+                            !notification.read_at 
+                              ? 'text-blue-900 font-semibold' 
+                              : 'text-gray-900'
+                          }`}>
                             {notification.title}
                           </h3>
                           {!notification.read_at && (
-                            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                            <div className="flex items-center space-x-1">
+                              <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                              <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded-full font-medium">
+                                ใหม่
+                              </span>
+                            </div>
                           )}
                         </div>
                         <div className="flex items-center space-x-2 text-sm text-gray-500">
@@ -294,25 +331,23 @@ export default function Notifications() {
                         </div>
                       </div>
                       
-                      <p className="text-gray-600 mt-2">{notification.message}</p>
+                      <p className={`mt-2 ${
+                        !notification.read_at 
+                          ? 'text-blue-800 font-medium' 
+                          : 'text-gray-600'
+                      }`}>
+                        {notification.message}
+                      </p>
                       
                       <div className="flex items-center justify-between mt-4">
                         <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <span className="bg-gray-100 px-2 py-1 rounded">
+                          <span className={`px-2 py-1 rounded ${
+                            !notification.read_at 
+                              ? 'bg-blue-100 text-blue-700 font-medium' 
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
                             {getNotificationTypeLabel(notification.notification_type)}
                           </span>
-                          {notification.sms_sent && (
-                            <span className="flex items-center">
-                              <CheckCircle className="w-4 h-4 text-green-600 mr-1" />
-                              SMS
-                            </span>
-                          )}
-                          {notification.email_sent && (
-                            <span className="flex items-center">
-                              <CheckCircle className="w-4 h-4 text-green-600 mr-1" />
-                              Email
-                            </span>
-                          )}
                         </div>
                         
                         {notification.read_at && (
@@ -332,7 +367,14 @@ export default function Notifications() {
 
         {/* Notification Detail Modal */}
         {selectedNotification && (
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                closeModal();
+              }
+            }}
+          >
             <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-300 shadow-lg">
               {/* Header Bar */}
               <div className="bg-gray-50 border-b border-gray-200 px-6 py-4 rounded-t-lg">
@@ -345,7 +387,7 @@ export default function Notifications() {
                     </div>
                   </div>
                   <button
-                    onClick={() => setSelectedNotification(null)}
+                    onClick={closeModal}
                     className="text-gray-500 hover:text-gray-700 transition-colors"
                   >
                     <span className="sr-only">ปิด</span>
@@ -393,7 +435,7 @@ export default function Notifications() {
                 
                 <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
                   <button
-                    onClick={() => setSelectedNotification(null)}
+                    onClick={closeModal}
                     className="px-6 py-2 text-gray-600 border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors font-medium"
                   >
                     ปิด

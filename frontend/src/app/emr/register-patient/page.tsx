@@ -149,8 +149,8 @@ export default function RegisterPatient() {
         // Pre-fill form with user data
         setFormData(prev => ({
           ...prev,
-          thaiFirstName: parsedData.thaiFirstName || parsedData.firstName || "",
-          thaiLastName: parsedData.thaiLastName || parsedData.lastName || "",
+          thaiFirstName: parsedData.thaiFirstName || "",
+          thaiLastName: parsedData.thaiLastName || "",
           englishFirstName: parsedData.englishFirstName || parsedData.firstName || "",
           englishLastName: parsedData.englishLastName || parsedData.lastName || "",
           nationalId: parsedData.nationalId || "",
@@ -225,13 +225,13 @@ export default function RegisterPatient() {
       newErrors.birthDate = "กรุณาเลือกวันเกิด";
     }
     if (!formData.nationalId.trim()) newErrors.nationalId = "กรุณากรอกเลขบัตรประชาชน";
-    else if (!/^\d{13}$/.(formData.nationalId)) newErrors.nationalId = "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก";
+    else if (!/^\d{13}$/.test(formData.nationalId)) newErrors.nationalId = "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก";
     else if (nationalIdStatus === 'taken') newErrors.nationalId = "เลขบัตรประชาชนนี้ลงทะเบียนในระบบ EMR ไปแล้ว";
     
     // ข้อมูลติดต่อ
     if (!formData.phone.trim()) newErrors.phone = "กรุณากรอกเบอร์โทรศัพท์";
-    else if (!/^[0-9]{10}$/.(formData.phone)) newErrors.phone = "เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก";
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.(formData.email)) {
+    else if (!/^[0-9]{10}$/.test(formData.phone)) newErrors.phone = "เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก";
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "รูปแบบอีเมลไม่ถูกต้อง";
     }
     // Address validation removed as we only have one address field now
@@ -301,10 +301,10 @@ export default function RegisterPatient() {
           return {
             id: item.id,
             username: item.username,
-            firstName: item.first_name,
-            lastName: item.last_name,
-            thaiFirstName: item.thai_name || item.thai_first_name,
-            thaiLastName: item.thai_last_name,
+            firstName: item.first_name || item.firstName || "",
+            lastName: item.last_name || item.lastName || "",
+            thaiFirstName: item.thai_name || item.thaiName || "",
+            thaiLastName: item.thai_last_name || item.thaiLastName || "",
             nationalId: item.national_id,
             email: item.email,
             phone: item.phone,
@@ -343,7 +343,7 @@ export default function RegisterPatient() {
             role: item.role, // เพิ่ม role information
             hasPatientRecord: isExistingPatient,
             patientData: isExistingPatient ? {
-              hospital_number: item.hospital_number,
+              hospital_number: item.hospitalNumber,
               id: item.id
             } : null
           };
@@ -383,8 +383,8 @@ export default function RegisterPatient() {
     setFormData(prev => ({
       ...prev,
       title: user.title || (user.gender === 'male' ? 'นาย' : user.gender === 'female' ? 'นางสาว' : ''),
-      thaiFirstName: user.thaiFirstName || user.firstName || "",
-      thaiLastName: user.thaiLastName || user.lastName || "",
+      thaiFirstName: user.thaiFirstName || "",
+      thaiLastName: user.thaiLastName || "",
       englishFirstName: user.firstName || "",
       englishLastName: user.lastName || "",
       nationalId: user.nationalId || "",
@@ -474,7 +474,7 @@ export default function RegisterPatient() {
       return;
     }
 
-    if (!/^\d{13}$/.(searchId)) {
+    if (!/^\d{13}$/.test(searchId)) {
       alert("เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก");
       return;
     }
@@ -521,17 +521,17 @@ export default function RegisterPatient() {
     const mappedData: PatientData = {
       // ข้อมูลชื่อ-นามสกุล
       title: searchResult.title || (searchResult.gender === 'male' ? 'นาย' : searchResult.gender === 'female' ? 'นางสาว' : ''),
-      thaiFirstName: searchResult.thai_name || "",
+      thaiFirstName: searchResult.thaiName || searchResult.thai_first_name || "",
       thaiLastName: searchResult.thai_last_name || "",
-      englishFirstName: searchResult.first_name || "",
-      englishLastName: searchResult.last_name || "",
+      englishFirstName: searchResult.firstName || "",
+      englishLastName: searchResult.lastName || "",
       
       // ข้อมูลส่วนตัว
       nationalId: searchResult.national_id || searchId,
       birthDate: birthDate,
-      birthDay: searchResult.birth_day?.toString() || birthDateObj.getDate().toString() || "1",
-      birthMonth: searchResult.birth_month?.toString() || (birthDateObj.getMonth() + 1).toString() || "1",
-      birthYear: searchResult.birth_year?.toString() || (birthDateObj.getFullYear() + 543).toString() || "2540",
+      birthDay: searchResult.birthDay?.toString() || birthDateObj.getDate().toString() || "1",
+      birthMonth: searchResult.birthMonth?.toString() || (birthDateObj.getMonth() + 1).toString() || "1",
+      birthYear: searchResult.birthYear?.toString() || (birthDateObj.getFullYear() + 543).toString() || "2540",
       gender: searchResult.gender || "",
       bloodType: searchResult.blood_type || "",
       phone: searchResult.phone || "",
@@ -672,7 +672,7 @@ export default function RegisterPatient() {
         throw new Error('ไม่พบข้อมูลผู้ใช้ที่เลือก กรุณาเลือกผู้ใช้ใหม่');
       }
       
-      logger.('Using selected user ID:', selectedUserData.id);
+      logger.info('Using selected user ID:', selectedUserData.id);
       
       // เตรียมข้อมูลสำหรับ API - ใช้ format ที่ backend ต้องการ
       const patientData = {
@@ -737,7 +737,7 @@ export default function RegisterPatient() {
         handleClearForm();
         
         // อาจจะ redirect หรือแสดงข้อมูลผู้ป่วยที่สร้างใหม่
-        logger.('Patient created successfully:', patient);
+        logger.info('Patient created successfully:', patient);
       } else {
         throw new Error('การลงทะเบียนไม่สำเร็จ');
       }
@@ -750,11 +750,11 @@ export default function RegisterPatient() {
         setNationalIdStatus('taken');
         setErrors(prev => ({ 
           ...prev, 
-          nationalId: error.response.data.message 
+          nationalId: (error as any).message 
         }));
-        alert(error.response.data.message);
+        alert((error as any).message);
       } else {
-      alert(error.message || "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง");
+      alert((error as any).message || "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง");
       }
     } finally {
       setIsSubmitting(false);
@@ -768,27 +768,27 @@ export default function RegisterPatient() {
     try {
       // สร้างข้อมูลการแจ้งเตือน
       const notificationData = {
-        patientHn: patient.hn || patient.hospital_number || '',
+        patientHn: patient.hn || patient.hospitalNumber || '',
         patientNationalId: patient.national_id || formData.nationalId || '',
-        patientName: patient.thai_name || `${formData.thaiFirstName} ${formData.thaiLastName}` || '',
+        patientName: patient.thaiName || `${formData.thaiFirstName} ${formData.thaiLastName}` || '',
         patientPhone: patient.phone || formData.phone || '',
         patientEmail: patient.email || formData.email || '',
         recordType: 'patient_registration',
         recordId: patient.id || patient.hn || '',
         recordTitle: 'ลงทะเบียนผู้ป่วยใหม่',
-        recordDescription: `ยินดีต้อนรับ! คุณได้ลงทะเบียนเป็นผู้ป่วยของโรงพยาบาลเรียบร้อยแล้ว หมายเลข HN: ${patient.hn || patient.hospital_number}`,
+        recordDescription: `ยินดีต้อนรับ! คุณได้ลงทะเบียนเป็นผู้ป่วยของโรงพยาบาลเรียบร้อยแล้ว หมายเลข HN: ${patient.hn || patient.hospitalNumber}`,
         recordDetails: {
-          hospitalNumber: patient.hn || patient.hospital_number,
-          patientName: patient.thai_name || `${formData.thaiFirstName} ${formData.thaiLastName}`,
+          hospitalNumber: patient.hn || patient.hospitalNumber,
+          patientName: patient.thaiName || `${formData.thaiFirstName} ${formData.thaiLastName}`,
           registrationDate: formatLocalDateTime(new Date()),
           nextSteps: 'คุณสามารถใช้หมายเลข HN นี้เพื่อเช็คอินและรับบริการทางการแพทย์'
         },
         createdBy: user?.id || '',
         createdByName: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่',
-        createdAt: createLocalDateTimeString(new Date()),
+        created_at: createLocalDateTimeString(new Date()),
         recordedBy: user?.id || '',
         recordedTime: createLocalDateTimeString(new Date()),
-        message: `ยินดีต้อนรับ! คุณได้ลงทะเบียนเป็นผู้ป่วยของโรงพยาบาลเรียบร้อยแล้ว หมายเลข HN: ${patient.hn || patient.hospital_number}`,
+        message: `ยินดีต้อนรับ! คุณได้ลงทะเบียนเป็นผู้ป่วยของโรงพยาบาลเรียบร้อยแล้ว หมายเลข HN: ${patient.hn || patient.hospitalNumber}`,
         severity: 'info'
       };
 
@@ -816,11 +816,11 @@ export default function RegisterPatient() {
       await PatientDocumentService.createDocumentFromMedicalRecord(
         'patient_registration',
         {
-          hospitalNumber: patient.hn || patient.hospital_number,
-          patientName: patient.thai_name || `${formData.thaiFirstName} ${formData.thaiLastName}`,
+          hospitalNumber: patient.hn || patient.hospitalNumber,
+          patientName: patient.thaiName || `${formData.thaiFirstName} ${formData.thaiLastName}`,
           registrationDate: createLocalDateTimeString(new Date()),
           personalInfo: {
-            thaiName: patient.thai_name || `${formData.thaiFirstName} ${formData.thaiLastName}`,
+            thaiName: patient.thaiName || `${formData.thaiFirstName} ${formData.thaiLastName}`,
             englishName: patient.english_name || `${formData.englishFirstName} ${formData.englishLastName}`,
             gender: patient.gender || formData.gender,
             birthDate: patient.birth_date || formData.birthDate,
@@ -830,16 +830,16 @@ export default function RegisterPatient() {
           }
         },
         {
-          patientHn: patient.hn || patient.hospital_number || '',
+          patientHn: patient.hn || patient.hospitalNumber || '',
           patientNationalId: patient.national_id || formData.nationalId || '',
-          patientName: patient.thai_name || `${formData.thaiFirstName} ${formData.thaiLastName}` || ''
+          patientName: patient.thaiName || `${formData.thaiFirstName} ${formData.thaiLastName}` || ''
         },
         user?.id || '',
         user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'
       );
       
       logger.info('Patient document created successfully for registration', { 
-        patientHn: patient.hn || patient.hospital_number,
+        patientHn: patient.hn || patient.hospitalNumber,
         recordType: 'patient_registration'
       });
     } catch (error) {
@@ -963,7 +963,7 @@ export default function RegisterPatient() {
                   ข้อมูลผู้ใช้ที่เลือก
                 </h3>
                 <p className="text-green-700">
-                  {selectedUserData.firstName} {selectedUserData.lastName} 
+                  {selectedUserData.thaiFirstName || selectedUserData.firstName} {selectedUserData.thaiLastName || selectedUserData.lastName}
                   {selectedUserData.email && ` (${selectedUserData.email})`}
                 </p>
                 <p className="text-sm text-green-600">
@@ -1100,24 +1100,29 @@ export default function RegisterPatient() {
                       } space-y-1`}>
                         <p><strong>คำนำหน้าชื่อ:</strong> {user.title || (user.gender === 'male' ? 'นาย' : user.gender === 'female' ? 'นางสาว' : 'ไม่ระบุ')}</p>
                         <p><strong>ชื่อไทย:</strong> {user.thaiFirstName || 'ไม่ระบุ'} {user.thaiLastName || ''}</p>
-                        <p><strong>ชื่ออังกฤษ:</strong> {user.firstName || 'ไม่ระบุ'} {user.lastName || 'ไม่ระบุ'}</p>
+                        <p><strong>ชื่ออังกฤษ:</strong> {user.firstName || 'ไม่ระบุ'} {user.lastName || ''}</p>
                         <p><strong>เพศ:</strong> {user.gender === 'male' ? 'ชาย' : user.gender === 'female' ? 'หญิง' : user.gender || 'ไม่ระบุ'}</p>
                         <p><strong>บทบาท:</strong> {user.role === 'patient' ? 'ผู้ป่วย' : user.role === 'doctor' ? 'แพทย์' : user.role === 'nurse' ? 'พยาบาล' : user.role === 'admin' ? 'ผู้ดูแลระบบ' : user.role || 'ไม่ระบุ'}</p>
                         <p><strong>อีเมล:</strong> {user.email || 'ไม่ระบุ'}</p>
                         <p><strong>โทรศัพท์:</strong> {user.phone || 'ไม่ระบุ'}</p>
                         <p><strong>เลขบัตรประชาชน:</strong> {user.nationalId || 'ไม่ระบุ'}</p>
                     <p><strong>วันเกิด:</strong> {
+                      (user.birthDay && user.birthMonth && user.birthYear) ? 
+                        `${user.birthDay}/${user.birthMonth}/${user.birthYear}` : 
                       user.birthDate ? 
                         (() => {
-                          // ถ้า birthDate เป็นรูปแบบ YYYY-MM-DD และปีเป็น พ.ศ.
+                          // ถ้า birthDate เป็นรูปแบบ YYYY-MM-DD
                           if (user.birthDate.includes('-')) {
                             const [year, month, day] = user.birthDate.split('-');
                             return `${day}/${month}/${year}`;
                           }
-                          return new Date(user.birthDate).toLocaleDaring('th-TH');
+                          // ถ้า birthDate เป็น Date object
+                          const date = new Date(user.birthDate);
+                          const day = date.getDate();
+                          const month = date.getMonth() + 1;
+                          const year = date.getFullYear(); // ไม่แปลงเป็น พ.ศ. เพราะข้อมูลใน database เป็น ค.ศ.
+                          return `${day}/${month}/${year}`;
                         })() : 
-                      (user.birthDay && user.birthMonth && user.birthYear) ? 
-                        `${user.birthDay}/${user.birthMonth}/${user.birthYear}` : 
                         'ไม่ระบุ'
                     }</p>
                     <p><strong>ประเภทประกัน:</strong> {user.insuranceType || 'ไม่ระบุ'}</p>
@@ -1135,7 +1140,7 @@ export default function RegisterPatient() {
                         {user.currentMedications && <p><strong>ยาที่ใช้อยู่:</strong> {user.currentMedications}</p>}
                         {user.chronicDiseases && <p><strong>โรคประจำตัว:</strong> {user.chronicDiseases}</p>}
                         {user.hasPatientRecord && user.patientData && (
-                          <p className="text-green-600 font-semibold"><strong>หมายเลข HN:</strong> {user.patientData.hospital_number}</p>
+                          <p className="text-green-600 font-semibold"><strong>หมายเลข HN:</strong> {user.patientData.hospitalNumber}</p>
                         )}
                       </div>
                     </div>
@@ -1215,7 +1220,8 @@ export default function RegisterPatient() {
                 </button>
               </div>
               <div className="mt-2 text-sm text-blue-700">
-                <p><strong>ชื่อ:</strong> {selectedUserData.thaiFirstName || selectedUserData.firstName} {selectedUserData.thaiLastName || selectedUserData.lastName}</p>
+                <p><strong>ชื่อไทย:</strong> {selectedUserData.thaiFirstName || 'ไม่ระบุ'} {selectedUserData.thaiLastName || ''}</p>
+                <p><strong>ชื่ออังกฤษ:</strong> {selectedUserData.firstName || 'ไม่ระบุ'} {selectedUserData.lastName || ''}</p>
                 <p><strong>อีเมล:</strong> {selectedUserData.email}</p>
                 <p><strong>โทรศัพท์:</strong> {selectedUserData.phone}</p>
                 <p><strong>เลขบัตรประชาชน:</strong> {selectedUserData.nationalId}</p>

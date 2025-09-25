@@ -25,6 +25,7 @@ export interface User {
   firstName: string;
   lastName: string;
   thaiName?: string;
+  title?: string;
   
   // Names (4 fields for Thai and English)
   thaiFirstName?: string;
@@ -47,8 +48,8 @@ export interface User {
   lastLogin?: Date;
   lastActivity?: Date;
   passwordChangedAt: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  created_at: Date;
+  updated_at: Date;
   createdBy?: string;
   profileCompleted: boolean;
   accessToken?: string; // For WebSocket authentication
@@ -102,6 +103,7 @@ export interface RegisterRequest {
   lastName: string;
   thaiFirstName?: string;
   thaiLastName?: string;
+  title?: string;
   phoneNumber?: string;
   nationalId?: string;
   birthDate?: string;
@@ -132,7 +134,7 @@ export interface UserData {
   organizationName: string;
   organizationType?: string;
   lastLogin: string;
-  createdAt: string;
+  created_at: string;
   email?: string;
   status?: string;
   dataAccessLevel?: string;
@@ -319,7 +321,7 @@ export interface ConsentContract {
     purposeRestrictions: string[];
   };
   status: 'pending' | 'approved' | 'rejected' | 'expired' | 'revoked';
-  createdAt: string;
+  created_at: string;
   expiresAt: string;
   smartContractRules: {
     autoExpire: boolean;
@@ -362,6 +364,10 @@ export interface MedicalPatient {
   birthDate: string; // Also add birth_date alias
   birth_date?: string; // Legacy field for backwards compatibility
   dateOfBirth: string;
+  // Add birth fields for age calculation
+  birthYear?: number;
+  birthMonth?: number;
+  birthDay?: number;
   gender: 'male' | 'female' | 'other';
   phone?: string;
   phone_number?: string; // Legacy field
@@ -373,8 +379,8 @@ export interface MedicalPatient {
   province?: string;
   postalCode?: string;
   postal_code?: string; // Legacy field
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
   createdBy?: string;
   updatedBy?: string;
   
@@ -463,7 +469,7 @@ export interface CreatePatientRequest {
 export interface MedicalVisit {
   id: string;
   patient_id: string;
-  visit_number: string;
+  visitNumber: string;
   visit_date: string;
   visit_time: string;
   visit_type: 'walk_in' | 'appointment' | 'emergency' | 'follow_up' | 'referral';

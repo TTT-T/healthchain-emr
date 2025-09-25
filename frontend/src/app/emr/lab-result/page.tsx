@@ -1,11 +1,12 @@
 "use client";
-import { useState } from "react";
-import { Search, FileText, Plus, Trash2, Upload, CheckCircle, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Search, FileText, Plus, Trash2, Upload, CheckCircle, AlertCircle, User, Heart, Activity, Brain, Database, Microscope, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
 import { LabResultService } from '@/services/labResultService';
 import { NotificationService } from '@/services/notificationService';
 import { PatientDocumentService } from '@/services/patientDocumentService';
+import { EnhancedDataService } from '@/services/enhancedDataService';
 import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
 
@@ -46,16 +47,17 @@ export default function LabResult() {
   const calculateAgeFromFields = (patient: MedicalPatient): number => {
     logger.info("Calculating age for patient:", {
       birth_date: patient.birth_date,
-      birth_year: patient.birth_year,
-      birth_month: patient.birth_month,
-      birth_day: patient.birth_day
+      birthDate: patient.birthDate,
+      birth_year: patient.birthYear,
+      birth_month: patient.birthMonth,
+      birth_day: patient.birthDay
     });
     
     // Try to calculate age from separate birth fields first
-    if (patient.birth_year && patient.birth_month && patient.birth_day) {
+    if (patient.birthYear && patient.birthMonth && patient.birthDay) {
       const today = new Date();
-      const birthYear = patient.birth_year > 2500 ? patient.birth_year - 543 : patient.birth_year;
-      const birth = new Date(birthYear, patient.birth_month - 1, patient.birth_day);
+      const birthYear = patient.birthYear > 2500 ? patient.birthYear - 543 : patient.birthYear;
+      const birth = new Date(birthYear, patient.birthMonth - 1, patient.birthDay);
       let age = today.getFullYear() - birth.getFullYear();
       const monthDiff = today.getMonth() - birth.getMonth();
       
@@ -66,23 +68,35 @@ export default function LabResult() {
       logger.info("Calculated age from separate fields:", {
         age,
         birthYear,
-        birthMonth: patient.birth_month,
-        birthDay: patient.birth_day
+        birthMonth: patient.birthMonth,
+        birthDay: patient.birthDay
       });
       
       return age;
     }
     
-    // Fallback to birth_date
-    if (patient.birth_date) {
-      const age = calculateAge(patient.birth_date);
-      logger.info("Calculated age from birth_date:", { age, birth_date: patient.birth_date });
+    // Fallback to birth_date or birthDate
+    if (patient.birth_date || patient.birthDate) {
+      const birthDate = patient.birth_date || patient.birthDate;
+      const age = calculateAge(birthDate);
+      logger.info("Calculated age from birth_date:", { age, birth_date: birthDate });
       return age;
     }
     
     logger.info("No birth data available, returning 0");
     return 0;
   };
+
+  // Update edBy when user changes
+  useEffect(() => {
+    if (user) {
+      const labTechnicianName = user.thaiName || `${user.firstName} ${user.lastName}` || "เจ้าหน้าที่แลบ";
+      setLabResultData(prev => ({
+        ...prev,
+        edBy: labTechnicianName
+      }));
+    }
+  }, [user]);
 
   const [labResultData, setLabResultData] = useState({
     Type: '',
@@ -93,7 +107,52 @@ export default function LabResult() {
     recommendations: '',
     attachments: [] as any[],
     notes: '',
-    edTime: new Date().toISOString().slice(0, 16)
+    edTime: new Date().toISOString().slice(0, 16),
+    edBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || "เจ้าหน้าที่แลบ",
+    
+    // Critical Lab Values for AI Analysis
+    criticalLabValues: {
+      hba1c: '', // HbA1c - ระดับน้ำตาลเฉลี่ย 3 เดือน
+      fastingInsulin: '', // Fasting Insulin - ระดับอินซูลินหลังอดอาหาร
+      cPeptide: '', // C-Peptide - วัดการทำงานของตับอ่อน
+      totalCholesterol: '', // Total Cholesterol
+      hdlCholesterol: '', // HDL Cholesterol
+      ldlCholesterol: '', // LDL Cholesterol
+      triglycerides: '', // Triglycerides
+      bun: '', // BUN - Blood Urea Nitrogen
+      creatinine: '', // Creatinine
+      egfr: '', // eGFR - Estimated Glomerular Filtration Rate
+      alt: '', // ALT - Alanine Aminotransferase
+      ast: '', // AST - Aspartate Aminotransferase
+      alp: '', // ALP - Alkaline Phosphatase
+      bilirubin: '', // Bilirubin
+      tsh: '', // TSH - Thyroid Stimulating Hormone
+      t3: '', // T3 - Triiodothyronine
+      t4: '', // T4 - Thyroxine
+      crp: '', // CRP - C-Reactive Protein
+      esr: '', // ESR - Erythrocyte Sedimentation Rate
+      vitaminD: '', // Vitamin D
+      b12: '', // Vitamin B12
+      folate: '', // Folate
+      iron: '', // Iron
+      ferritin: '', // Ferritin
+      uricAcid: '' // Uric Acid
+    },
+    
+    // AI Research Fields for Lab Results
+    aiResearchData: {
+      clinicalSignificance: '', // ความสำคัญทางคลินิก
+      trendAnalysis: '', // การวิเคราะห์แนวโน้ม
+      correlationWithSymptoms: '', // ความสัมพันธ์กับอาการ
+      riskFactors: '', // ปัจจัยเสี่ยงที่เกี่ยวข้อง
+      followUpRecommendations: '', // คำแนะนำการติดตาม
+      referenceRanges: '', // ช่วงค่าอ้างอิง
+      qualityControl: '', // การควบคุมคุณภาพ
+      methodology: '', // วิธีการตรวจ
+      limitations: '', // ข้อจำกัด
+      clinicalDecisionSupport: '', // การสนับสนุนการตัดสินใจทางคลินิก
+      researchNotes: '' // หมายเหตุสำหรับการวิจัย
+    }
   });
 
   const handleSearch = async () => {
@@ -216,11 +275,110 @@ export default function LabResult() {
         
         setSuccess("บันทึกผลแลบสำเร็จ!\n\n✅ ระบบได้ส่งการแจ้งเตือนและเอกสารให้ผู้ป่วยแล้ว");
         
+        // Save critical lab values for AI analysis
+        try {
+          const criticalLabData = {
+            hba1c: labResultData.criticalLabValues.hba1c ? parseFloat(labResultData.criticalLabValues.hba1c) : undefined,
+            fastingInsulin: labResultData.criticalLabValues.fastingInsulin ? parseFloat(labResultData.criticalLabValues.fastingInsulin) : undefined,
+            cPeptide: labResultData.criticalLabValues.cPeptide ? parseFloat(labResultData.criticalLabValues.cPeptide) : undefined,
+            totalCholesterol: labResultData.criticalLabValues.totalCholesterol ? parseFloat(labResultData.criticalLabValues.totalCholesterol) : undefined,
+            hdlCholesterol: labResultData.criticalLabValues.hdlCholesterol ? parseFloat(labResultData.criticalLabValues.hdlCholesterol) : undefined,
+            ldlCholesterol: labResultData.criticalLabValues.ldlCholesterol ? parseFloat(labResultData.criticalLabValues.ldlCholesterol) : undefined,
+            triglycerides: labResultData.criticalLabValues.triglycerides ? parseFloat(labResultData.criticalLabValues.triglycerides) : undefined,
+            bun: labResultData.criticalLabValues.bun ? parseFloat(labResultData.criticalLabValues.bun) : undefined,
+            creatinine: labResultData.criticalLabValues.creatinine ? parseFloat(labResultData.criticalLabValues.creatinine) : undefined,
+            egfr: labResultData.criticalLabValues.egfr ? parseFloat(labResultData.criticalLabValues.egfr) : undefined,
+            alt: labResultData.criticalLabValues.alt ? parseFloat(labResultData.criticalLabValues.alt) : undefined,
+            ast: labResultData.criticalLabValues.ast ? parseFloat(labResultData.criticalLabValues.ast) : undefined,
+            alp: labResultData.criticalLabValues.alp ? parseFloat(labResultData.criticalLabValues.alp) : undefined,
+            bilirubin: labResultData.criticalLabValues.bilirubin ? parseFloat(labResultData.criticalLabValues.bilirubin) : undefined,
+            tsh: labResultData.criticalLabValues.tsh ? parseFloat(labResultData.criticalLabValues.tsh) : undefined,
+            t3: labResultData.criticalLabValues.t3 ? parseFloat(labResultData.criticalLabValues.t3) : undefined,
+            t4: labResultData.criticalLabValues.t4 ? parseFloat(labResultData.criticalLabValues.t4) : undefined,
+            crp: labResultData.criticalLabValues.crp ? parseFloat(labResultData.criticalLabValues.crp) : undefined,
+            esr: labResultData.criticalLabValues.esr ? parseFloat(labResultData.criticalLabValues.esr) : undefined,
+            vitaminD: labResultData.criticalLabValues.vitaminD ? parseFloat(labResultData.criticalLabValues.vitaminD) : undefined,
+            b12: labResultData.criticalLabValues.b12 ? parseFloat(labResultData.criticalLabValues.b12) : undefined,
+            folate: labResultData.criticalLabValues.folate ? parseFloat(labResultData.criticalLabValues.folate) : undefined,
+            iron: labResultData.criticalLabValues.iron ? parseFloat(labResultData.criticalLabValues.iron) : undefined,
+            ferritin: labResultData.criticalLabValues.ferritin ? parseFloat(labResultData.criticalLabValues.ferritin) : undefined,
+            uricAcid: labResultData.criticalLabValues.uricAcid ? parseFloat(labResultData.criticalLabValues.uricAcid) : undefined,
+            testDate: new Date().toISOString(),
+            labResultId: response.data.id
+          };
+          
+          // Only save if there's actual data
+          const hasCriticalData = Object.values(criticalLabData).some(value => 
+            value !== undefined && value !== null && value !== ''
+          );
+          
+          if (hasCriticalData) {
+            await EnhancedDataService.saveCriticalLabValues(selectedPatient.id, criticalLabData);
+            logger.info('Critical lab values saved for AI analysis');
+          }
+        } catch (enhancedError) {
+          logger.warn('Failed to save critical lab values, but lab result was saved:', enhancedError);
+          // Don't throw error here as lab result was saved successfully
+        }
+        
         // Reset form
         setTimeout(() => {
           setSelectedPatient(null);
           setSearchQuery("");
-          setLabResultData(LabResultService.createEmptyLabResultData());
+          setLabResultData({
+            Type: '',
+            Name: '',
+            Results: [],
+            overallResult: 'normal',
+            interpretation: '',
+            recommendations: '',
+            attachments: [],
+            notes: '',
+            edTime: new Date().toISOString().slice(0, 16),
+            edBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || "เจ้าหน้าที่แลบ",
+            // Reset Critical Lab Values
+            criticalLabValues: {
+              hba1c: '',
+              fastingInsulin: '',
+              cPeptide: '',
+              totalCholesterol: '',
+              hdlCholesterol: '',
+              ldlCholesterol: '',
+              triglycerides: '',
+              bun: '',
+              creatinine: '',
+              egfr: '',
+              alt: '',
+              ast: '',
+              alp: '',
+              bilirubin: '',
+              tsh: '',
+              t3: '',
+              t4: '',
+              crp: '',
+              esr: '',
+              vitaminD: '',
+              b12: '',
+              folate: '',
+              iron: '',
+              ferritin: '',
+              uricAcid: ''
+            },
+            // Reset AI Research Data
+            aiResearchData: {
+              clinicalSignificance: '',
+              trendAnalysis: '',
+              correlationWithSymptoms: '',
+              riskFactors: '',
+              followUpRecommendations: '',
+              referenceRanges: '',
+              qualityControl: '',
+              methodology: '',
+              limitations: '',
+              clinicalDecisionSupport: '',
+              researchNotes: ''
+            }
+          });
           setSuccess(null);
         }, 3000);
       } else {
@@ -237,7 +395,7 @@ export default function LabResult() {
   const sendPatientNotification = async (patient: MedicalPatient, labResultRecord: any) => {
     try {
       const notificationData = {
-        patientHn: patient.hospital_number || patient.hn || '',
+        patientHn: patient.hospitalNumber || patient.hn || '',
         patientNationalId: patient.national_id || '',
         patientName: patient.thaiName || `${patient.firstName} ${patient.lastName}`,
         patientPhone: patient.phone || '',
@@ -281,16 +439,16 @@ export default function LabResult() {
         'lab_result',
         labData,
         {
-          patientHn: patient.hospital_number || patient.hn || '',
+          patientHn: patient.hospitalNumber || patient.hn || '',
           patientNationalId: patient.national_id || '',
-          patientName: patient.thai_name || ''
+          patientName: patient.thaiName || ''
         },
         user?.id || '',
-        user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'เจ้าหน้าที่แลบ'
+        user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่แลบ'
       );
       
       logger.info('Patient document created successfully for lab result', { 
-        patientHn: patient.hospital_number || patient.hn,
+        patientHn: patient.hospitalNumber || patient.hn,
         recordType: 'lab_result'
       });
     } catch (error) {
@@ -360,22 +518,161 @@ export default function LabResult() {
             </div>
           </div>
 
-          {/* Patient Info */}
+          {/* Comprehensive Patient Information for Lab Results */}
           {selectedPatient && (
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
-              <h3 className="text-lg font-semibold text-purple-800 mb-2">ข้อมูลผู้ป่วย</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">HN:</span> {selectedPatient.hospital_number || selectedPatient.hn}
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-6 mb-6 shadow-sm">
+              <div className="flex items-center mb-6">
+                <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mr-4">
+                  <Microscope className="h-6 w-6 text-purple-600" />
                 </div>
                 <div>
-                  <span className="font-medium">ชื่อ:</span> {selectedPatient.thai_name || `${selectedPatient.first_name} ${selectedPatient.last_name}`}
+                  <h3 className="text-xl font-bold text-purple-800">ข้อมูลผู้ป่วยสำหรับการตรวจแล็บ</h3>
+                  <p className="text-purple-600">ข้อมูลครบถ้วนเพื่อการวิเคราะห์ผลการตรวจที่แม่นยำ</p>
                 </div>
-                <div>
-                  <span className="font-medium">อายุ:</span> {calculateAgeFromFields(selectedPatient) > 0 ? `${calculateAgeFromFields(selectedPatient)} ปี` : 'ไม่ระบุ'}
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Basic Information */}
+                <div className="bg-white rounded-lg p-4 border border-purple-100">
+                  <h4 className="text-sm font-semibold text-purple-800 mb-3 flex items-center">
+                    <User className="h-4 w-4 mr-2" />
+                    ข้อมูลพื้นฐาน
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">HN:</span>
+                      <span className="font-bold text-purple-600">{selectedPatient.hospitalNumber || selectedPatient.hn}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">ชื่อ-นามสกุล:</span>
+                      <span className="font-medium text-slate-800">
+                        {selectedPatient.thaiName && selectedPatient.thaiLastName
+                          ? `${selectedPatient.thaiName} ${selectedPatient.thaiLastName}`
+                          : selectedPatient.thaiName || selectedPatient.firstName
+                          ? `${selectedPatient.thaiName || selectedPatient.firstName} ${selectedPatient.thaiLastName || selectedPatient.lastName || ''}`.trim()
+                          : 'ไม่ระบุ'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">อายุ:</span>
+                      <span className="font-medium text-slate-800">
+                        {(() => {
+                          const age = calculateAgeFromFields(selectedPatient);
+                          if (age > 0) {
+                            return `${age} ปี`;
+                          } else if (selectedPatient.birth_date || selectedPatient.birthDate || selectedPatient.birthYear) {
+                            return 'ไม่สามารถคำนวณได้';
+                          } else {
+                            return 'ไม่ระบุ';
+                          }
+                        })()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">เพศ:</span>
+                      <span className="font-medium text-slate-800">
+                        {selectedPatient.gender === 'male' ? 'ชาย' : 
+                         selectedPatient.gender === 'female' ? 'หญิง' : 
+                         selectedPatient.gender || 'ไม่ระบุ'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">กรุ๊ปเลือด:</span>
+                      <span className="font-medium text-slate-800">{selectedPatient.bloodType || 'ไม่ระบุ'}</span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <span className="font-medium">เพศ:</span> {selectedPatient.gender || 'ไม่ระบุ'}
+
+                {/* Medical Information */}
+                <div className="bg-white rounded-lg p-4 border border-red-100">
+                  <h4 className="text-sm font-semibold text-red-800 mb-3 flex items-center">
+                    <Heart className="h-4 w-4 mr-2" />
+                    ข้อมูลทางการแพทย์
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">แพ้ยา:</span>
+                      <span className="font-medium text-red-600">{selectedPatient.drugAllergies || 'ไม่มี'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">แพ้อาหาร:</span>
+                      <span className="font-medium text-red-600">{selectedPatient.foodAllergies || 'ไม่มี'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">โรคประจำตัว:</span>
+                      <span className="font-medium text-slate-800">{selectedPatient.chronicDiseases || 'ไม่มี'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">ยาที่ใช้อยู่:</span>
+                      <span className="font-medium text-slate-800">{selectedPatient.currentMedications || 'ไม่มี'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Current Status */}
+                <div className="bg-white rounded-lg p-4 border border-blue-100">
+                  <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center">
+                    <Activity className="h-4 w-4 mr-2" />
+                    สถานะปัจจุบัน
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">น้ำหนัก:</span>
+                      <span className="font-medium text-slate-800">{selectedPatient.weight ? `${selectedPatient.weight} กก.` : 'ไม่ระบุ'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">ส่วนสูง:</span>
+                      <span className="font-medium text-slate-800">{selectedPatient.height ? `${selectedPatient.height} ซม.` : 'ไม่ระบุ'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">BMI:</span>
+                      <span className="font-medium text-slate-800">
+                        {selectedPatient.weight && selectedPatient.height 
+                          ? (selectedPatient.weight / Math.pow(selectedPatient.height / 100, 2)).toFixed(1)
+                          : 'ไม่ระบุ'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">สถานะ:</span>
+                      <span className="font-medium text-blue-600">พร้อมตรวจแล็บ</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Lab-Specific Information */}
+              <div className="mt-4 bg-white rounded-lg p-4 border border-green-100">
+                <h4 className="text-sm font-semibold text-green-800 mb-3 flex items-center">
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  ข้อมูลสำหรับการตรวจแล็บ
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-slate-600">ประวัติการตรวจแล็บ:</span>
+                    <p className="text-slate-800 mt-1">ไม่มีข้อมูล</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-600">การเตรียมตัวก่อนตรวจ:</span>
+                    <p className="text-slate-800 mt-1">ไม่มีข้อมูล</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Instructions for Lab Technician */}
+              <div className="mt-4 p-4 bg-purple-100 border border-purple-200 rounded-lg">
+                <div className="flex items-start">
+                  <svg className="w-5 h-5 text-purple-600 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  <div className="text-sm text-purple-800">
+                    <p className="font-medium mb-1">คำแนะนำสำหรับเจ้าหน้าที่แล็บ:</p>
+                    <ul className="space-y-1 text-purple-700">
+                      <li>• ตรวจสอบประวัติการแพ้ยาและอาหารก่อนการตรวจ</li>
+                      <li>• พิจารณาโรคประจำตัวและยาที่ใช้อยู่ในการแปลผล</li>
+                      <li>• ใช้ข้อมูลน้ำหนักและส่วนสูงในการคำนวณค่าอ้างอิง</li>
+                      <li>• บันทึกข้อมูลให้ครบถ้วนเพื่อการวิจัยและพัฒนาระบบ AI</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             </div>
@@ -607,6 +904,220 @@ export default function LabResult() {
                   rows={3}
                   placeholder="กรอกหมายเหตุเพิ่มเติม"
                 />
+              </div>
+
+              {/* AI Research Data Section for Lab Results */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-6">
+                <div className="flex items-center mb-6">
+                  <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mr-4">
+                    <Brain className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-purple-800">ข้อมูลสำหรับ AI และการวิจัยแล็บ</h3>
+                    <p className="text-purple-600">ข้อมูลเพิ่มเติมเพื่อการพัฒนาระบบ AI และการวิจัยแล็บ</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Clinical Analysis */}
+                  <div className="bg-white rounded-lg p-4 border border-purple-100">
+                    <h4 className="text-sm font-semibold text-purple-800 mb-3">การวิเคราะห์ทางคลินิก</h4>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          ความสำคัญทางคลินิก
+                        </label>
+                        <select
+                          value={labResultData.aiResearchData.clinicalSignificance}
+                          onChange={(e) => setLabResultData(prev => ({
+                            ...prev,
+                            aiResearchData: { ...prev.aiResearchData, clinicalSignificance: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        >
+                          <option value="">เลือกความสำคัญ</option>
+                          <option value="critical">วิกฤต - ต้องดำเนินการทันที</option>
+                          <option value="high">สูง - ต้องติดตามใกล้ชิด</option>
+                          <option value="moderate">ปานกลาง - ต้องติดตาม</option>
+                          <option value="low">ต่ำ - ติดตามตามปกติ</option>
+                          <option value="normal">ปกติ - ไม่ต้องดำเนินการพิเศษ</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          การวิเคราะห์แนวโน้ม
+                        </label>
+                        <textarea
+                          value={labResultData.aiResearchData.trendAnalysis}
+                          onChange={(e) => setLabResultData(prev => ({
+                            ...prev,
+                            aiResearchData: { ...prev.aiResearchData, trendAnalysis: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          rows={3}
+                          placeholder="เช่น ค่าเพิ่มขึ้นจากครั้งก่อน, มีแนวโน้มดีขึ้น"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          ความสัมพันธ์กับอาการ
+                        </label>
+                        <textarea
+                          value={labResultData.aiResearchData.correlationWithSymptoms}
+                          onChange={(e) => setLabResultData(prev => ({
+                            ...prev,
+                            aiResearchData: { ...prev.aiResearchData, correlationWithSymptoms: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          rows={3}
+                          placeholder="เช่น สอดคล้องกับอาการที่ผู้ป่วยรายงาน, ไม่สอดคล้องกับอาการ"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quality & Methodology */}
+                  <div className="bg-white rounded-lg p-4 border border-purple-100">
+                    <h4 className="text-sm font-semibold text-purple-800 mb-3">คุณภาพและวิธีการ</h4>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          การควบคุมคุณภาพ
+                        </label>
+                        <select
+                          value={labResultData.aiResearchData.qualityControl}
+                          onChange={(e) => setLabResultData(prev => ({
+                            ...prev,
+                            aiResearchData: { ...prev.aiResearchData, qualityControl: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        >
+                          <option value="">เลือกการควบคุมคุณภาพ</option>
+                          <option value="excellent">ดีมาก - ผ่านการควบคุมคุณภาพทุกขั้นตอน</option>
+                          <option value="good">ดี - ผ่านการควบคุมคุณภาพตามมาตรฐาน</option>
+                          <option value="fair">ปานกลาง - มีการควบคุมคุณภาพพื้นฐาน</option>
+                          <option value="poor">ไม่ดี - การควบคุมคุณภาพไม่เพียงพอ</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          วิธีการตรวจ
+                        </label>
+                        <textarea
+                          value={labResultData.aiResearchData.methodology}
+                          onChange={(e) => setLabResultData(prev => ({
+                            ...prev,
+                            aiResearchData: { ...prev.aiResearchData, methodology: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          rows={3}
+                          placeholder="เช่น ใช้เครื่องมือ XYZ, วิธีการมาตรฐาน ISO"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          ข้อจำกัด
+                        </label>
+                        <textarea
+                          value={labResultData.aiResearchData.limitations}
+                          onChange={(e) => setLabResultData(prev => ({
+                            ...prev,
+                            aiResearchData: { ...prev.aiResearchData, limitations: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          rows={3}
+                          placeholder="เช่น ตัวอย่างไม่เพียงพอ, สภาวะการเก็บรักษาไม่เหมาะสม"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional AI Research Fields */}
+                <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      ปัจจัยเสี่ยงที่เกี่ยวข้อง
+                    </label>
+                    <textarea
+                      value={labResultData.aiResearchData.riskFactors}
+                      onChange={(e) => setLabResultData(prev => ({
+                        ...prev,
+                        aiResearchData: { ...prev.aiResearchData, riskFactors: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      rows={3}
+                      placeholder="เช่น อายุ, โรคประจำตัว, พฤติกรรมเสี่ยง"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      คำแนะนำการติดตาม
+                    </label>
+                    <textarea
+                      value={labResultData.aiResearchData.followUpRecommendations}
+                      onChange={(e) => setLabResultData(prev => ({
+                        ...prev,
+                        aiResearchData: { ...prev.aiResearchData, followUpRecommendations: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      rows={3}
+                      placeholder="เช่น ตรวจซ้ำใน 1 สัปดาห์, ติดตามอาการ"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    การสนับสนุนการตัดสินใจทางคลินิก
+                  </label>
+                  <textarea
+                    value={labResultData.aiResearchData.clinicalDecisionSupport}
+                    onChange={(e) => setLabResultData(prev => ({
+                      ...prev,
+                      aiResearchData: { ...prev.aiResearchData, clinicalDecisionSupport: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    rows={3}
+                    placeholder="เช่น ผลการตรวจสนับสนุนการวินิจฉัย X, ควรพิจารณาการตรวจเพิ่มเติม"
+                  />
+                </div>
+
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    หมายเหตุสำหรับการวิจัยแล็บ
+                  </label>
+                  <textarea
+                    value={labResultData.aiResearchData.researchNotes}
+                    onChange={(e) => setLabResultData(prev => ({
+                      ...prev,
+                      aiResearchData: { ...prev.aiResearchData, researchNotes: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    rows={4}
+                    placeholder="ข้อมูลเพิ่มเติมที่สำคัญสำหรับการวิจัยแล็บและพัฒนาระบบ AI"
+                  />
+                </div>
+
+                <div className="mt-4 p-4 bg-purple-100 border border-purple-200 rounded-lg">
+                  <div className="flex items-start">
+                    <Database className="w-5 h-5 text-purple-600 mt-0.5 mr-2 flex-shrink-0" />
+                    <div className="text-sm text-purple-800">
+                      <p className="font-medium mb-1">ประโยชน์ของข้อมูล AI Research สำหรับแล็บ:</p>
+                      <ul className="space-y-1 text-purple-700">
+                        <li>• ช่วยพัฒนาระบบ AI ในการวิเคราะห์ผลแล็บและคาดการณ์โรค</li>
+                        <li>• ใช้ในการวิจัยเพื่อหาความสัมพันธ์ระหว่างผลแล็บกับโรค</li>
+                        <li>• ปรับปรุงการควบคุมคุณภาพและการแปลผล</li>
+                        <li>• สร้างฐานข้อมูลสำหรับการวิเคราะห์แนวโน้มสุขภาพ</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Submit Button */}

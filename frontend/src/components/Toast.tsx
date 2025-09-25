@@ -199,7 +199,7 @@ export const useToastHelpers = () => {
   const { addToast } = useToast();
 
   const showSuccess = useCallback((title: string, message?: string) => {
-    addToast({ type: 'success', title, message });
+    addToast({ type: 'info', title, message });
   }, [addToast]);
 
   const showError = useCallback((title: string, message?: string) => {

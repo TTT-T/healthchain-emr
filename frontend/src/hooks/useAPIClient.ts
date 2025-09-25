@@ -235,7 +235,7 @@ export function useCreateUser() {
   
   return useMutation({
     mutationFn: (data: Omit<User, 'id' | 'created_at' | 'updated_at'>) => 
-      apiClient.createUser(data),
+      apiClient.createUser(data as any),
     onSuccess: () => {
       // Invalidate users list
       queryClient.invalidateQueries({ queryKey: queryKeys.users });

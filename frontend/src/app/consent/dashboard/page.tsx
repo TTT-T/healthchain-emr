@@ -31,7 +31,7 @@ interface ConsentRequest {
   requestedDataTypes: string[]
   urgencyLevel: 'emergency' | 'urgent' | 'normal'
   status: string
-  createdAt: string
+  created_at: string
   expiresAt: string
   referenceNumber?: string
 }
@@ -60,7 +60,7 @@ const mockConsentRequests: ConsentRequest[] = [
     requestedDataTypes: ['medical_history', 'lab_results', 'medications', 'vital_signs'],
     urgencyLevel: 'urgent',
     status: 'pending',
-    createdAt: '2025-07-03T10:30:00Z',
+    created_at: '2025-07-03T10:30:00Z',
     expiresAt: '2025-07-10T10:30:00Z'
   },
   {
@@ -73,7 +73,7 @@ const mockConsentRequests: ConsentRequest[] = [
     requestedDataTypes: ['diagnosis', 'treatment_records', 'billing'],
     urgencyLevel: 'normal',
     status: 'pending',
-    createdAt: '2025-07-02T14:15:00Z',
+    created_at: '2025-07-02T14:15:00Z',
     expiresAt: '2025-07-09T14:15:00Z',
     referenceNumber: 'CLM-789456-2025'
   }
@@ -365,7 +365,7 @@ export default function ConsentDashboard() {
                   <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                     <div className="flex items-center space-x-1">
                       <Clock className="h-4 w-4" />
-                      <span>สร้างเมื่อ: {formatDateTime(request.createdAt)}</span>
+                      <span>สร้างเมื่อ: {formatDateTime(request.created_at)}</span>
                     </div>
                     <div className="flex items-center space-x-1">
                       <AlertTriangle className="h-4 w-4" />

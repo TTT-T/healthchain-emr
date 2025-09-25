@@ -16,6 +16,7 @@ export const getPatientNotifications = async (req: Request, res: Response) => {
     const { id: patientId } = req.params;
     const { page = 1, limit = 10, type, isRead, startDate, endDate } = req.query;
     const user = (req as any).user;
+    
 
     // For patient role, find patient record by user's email
     // For other roles, use the patientId from URL
@@ -90,8 +91,11 @@ export const getPatientNotifications = async (req: Request, res: Response) => {
 
     if (isRead !== undefined) {
       const paramIndex = queryParams.length + 1;
-      whereClause += ` AND n.is_read = $${paramIndex}`;
-      queryParams.push(isRead === 'true');
+      if (isRead === 'true') {
+        whereClause += ` AND n.read_at IS NOT NULL`;
+      } else {
+        whereClause += ` AND n.read_at IS NULL`;
+      }
     }
 
     if (startDate) {
@@ -113,20 +117,16 @@ export const getPatientNotifications = async (req: Request, res: Response) => {
         n.title,
         n.message,
         n.notification_type,
-        n.priority,
-        n.is_read,
         n.read_at,
-        n.action_required,
-        n.action_url,
-        n.expires_at,
+        n.is_read,
+        n.priority,
+        n.metadata,
         n.created_at,
         n.updated_at,
-        u.first_name as created_by_first_name,
-        u.last_name as created_by_last_name
+        n.created_by
       FROM notifications n
-      LEFT JOIN users u ON n.created_by = u.id
       ${whereClause}
-      ORDER BY n.priority DESC, n.created_at DESC
+      ORDER BY n.created_at DESC
       LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
     `;
 
@@ -148,7 +148,7 @@ export const getPatientNotifications = async (req: Request, res: Response) => {
     const unreadCountResult = await databaseManager.query(`
       SELECT COUNT(*) as unread_count
       FROM notifications n
-      WHERE n.patient_id = $1 AND n.is_read = false
+      WHERE n.patient_id = $1 AND n.read_at IS NULL
     `, [actualPatientId]);
     const unreadCount = parseInt(unreadCountResult.rows[0].unread_count);
     // Format notifications
@@ -158,18 +158,15 @@ export const getPatientNotifications = async (req: Request, res: Response) => {
       title: notif.title,
       message: notif.message,
       notification_type: notif.notification_type,
-      priority: notif.priority,
-      is_read: notif.is_read,
       read_at: notif.read_at,
-      action_required: notif.action_required,
-      action_url: notif.action_url,
-      expires_at: notif.expires_at,
+      is_read: notif.is_read,
+      priority: notif.priority,
+      metadata: notif.metadata,
       created_at: notif.created_at,
       updated_at: notif.updated_at,
-      created_by: notif.created_by_first_name ? {
-        name: `${notif.created_by_first_name} ${notif.created_by_last_name}`
-      } : null
+      created_by: notif.created_by
     }));
+    
 
     res.json({
       data: {
@@ -213,6 +210,7 @@ export const markNotificationAsRead = async (req: Request, res: Response) => {
   try {
     const { id: patientId, notifId } = req.params;
     const user = (req as any).user;
+    
 
     // For patient role, find patient record by user's email
     // For other roles, use the patientId from URL
@@ -239,7 +237,7 @@ export const markNotificationAsRead = async (req: Request, res: Response) => {
 
     // Validate notification exists and belongs to patient
     const notificationExists = await databaseManager.query(`
-      SELECT id, is_read FROM notifications 
+      SELECT id, read_at FROM notifications 
       WHERE id = $1 AND patient_id = $2
     `, [notifId, actualPatientId]);
 
@@ -254,7 +252,7 @@ export const markNotificationAsRead = async (req: Request, res: Response) => {
 
     const notification = notificationExists.rows[0];
 
-    if (notification.is_read) {
+    if (notification.read_at) {
       return res.status(400).json({
         data: null,
         meta: null,
@@ -266,15 +264,14 @@ export const markNotificationAsRead = async (req: Request, res: Response) => {
     // Mark notification as read
     await databaseManager.query(`
       UPDATE notifications 
-      SET is_read = true, read_at = NOW() AT TIME ZONE 'Asia/Bangkok', updated_at = NOW() AT TIME ZONE 'Asia/Bangkok'
+      SET read_at = NOW() AT TIME ZONE 'Asia/Bangkok', updated_at = NOW() AT TIME ZONE 'Asia/Bangkok'
       WHERE id = $1
     `, [notifId]);
     // Get updated notification
     const updatedNotification = await databaseManager.query(`
       SELECT 
-        n.id, n.title, n.message, n.notification_type, n.priority,
-        n.is_read, n.read_at, n.action_required, n.action_url,
-        n.expires_at, n.updated_at
+        n.id, n.title, n.message, n.notification_type,
+        n.read_at, n.updated_at
       FROM notifications n
       WHERE n.id = $1
     `, [notifId]);
@@ -408,7 +405,7 @@ export const createPatientNotification = async (req: Request, res: Response) => 
     const createdNotification = await databaseManager.query(`
       SELECT 
         n.id, n.title, n.message, n.notification_type, n.priority,
-        n.is_read, n.action_required, n.action_url, n.expires_at,
+        n.read_at, n.action_required, n.action_url, n.expires_at,
         n.created_at, n.updated_at,
         u.first_name as created_by_first_name, u.last_name as created_by_last_name
       FROM notifications n

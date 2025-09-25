@@ -51,8 +51,8 @@ export interface AppointmentRecord {
   priority: string;
   location?: string;
   createdBy: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
   reminderSent: boolean;
   followUpRequired: boolean;
   followUpDate?: string;
@@ -105,6 +105,36 @@ export class AppointmentService {
       const response = await apiClient.get(`/medical/patients/${patientId}/appointments`);
       return response as APIResponse<AppointmentRecord[]>;
     } catch (error) {
+      // Check if it's a 404 error (endpoint not found)
+      if (error && typeof error === 'object' && 'response' in error) {
+        const response = (error as any).response;
+        if (response && response.status === 404) {
+          logger.info('Appointments endpoint not found (404) - this is normal for new patients');
+          // Return empty response for 404 instead of throwing error
+          return {
+            data: [],
+            meta: null,
+            error: null,
+            statusCode: 404
+          };
+        }
+      }
+      
+      // Check if it's a 404 error by looking at the error message
+      if (error && typeof error === 'object' && 'message' in error) {
+        const errorMessage = (error as Error).message;
+        if (errorMessage.includes('404') || errorMessage.includes('Request failed with status code 404')) {
+          logger.info('Appointments endpoint not found (404) - this is normal for new patients');
+          // Return empty response for 404 instead of throwing error
+          return {
+            data: [],
+            meta: null,
+            error: null,
+            statusCode: 404
+          };
+        }
+      }
+      
       logger.error('Error retrieving patient appointments:', error);
       throw error;
     }
@@ -194,8 +224,8 @@ export class AppointmentService {
       priority: record.priority,
       location: record.location,
       createdBy: record.createdBy,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
+      created_at: record.created_at,
+      updated_at: record.updated_at,
       reminderSent: record.reminderSent,
       followUpRequired: record.followUpRequired,
       followUpDate: record.followUpDate,
@@ -375,13 +405,39 @@ export class AppointmentService {
    * จัดรูปแบบวันที่และเวลาให้อ่านง่าย
    */
   static formatDateTime(date: string, time: string): string {
-    const appointmentDate = new Date(`${date}T${time}`);
-    return appointmentDate.toLocaleString('th-TH', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      // Handle undefined/null values
+      if (!date || !time) {
+        logger.warn('Missing date or time:', { date, time });
+        return 'ไม่ระบุวันที่';
+      }
+      
+      let appointmentDate: Date;
+      
+      // If date already contains time (ISO format), use it directly
+      if (date.includes('T') || date.includes(' ')) {
+        appointmentDate = new Date(date);
+      } else {
+        // If date is just a date string, combine with time
+        appointmentDate = new Date(`${date}T${time}`);
+      }
+      
+      // Check if date is valid
+      if (isNaN(appointmentDate.getTime())) {
+        logger.warn('Invalid date format:', { date, time });
+        return `${date} ${time}`;
+      }
+      
+      return appointmentDate.toLocaleString('th-TH', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      logger.error('Error formatting date:', error, { date, time });
+      return 'ไม่ระบุวันที่';
+    }
   }
 }

@@ -137,7 +137,7 @@ export class WebSocketService {
       };
 
       this.ws.send(JSON.stringify(message));
-      logger.('WebSocket message sent', { type, data });
+      logger.info('WebSocket message sent', { type, data });
       return true;
     } catch (error) {
       logger.error('Failed to send WebSocket message:', error);
@@ -215,7 +215,7 @@ export class WebSocketService {
    * จัดการข้อความที่ได้รับ
    */
   private handleMessage(message: WebSocketMessage): void {
-    logger.('WebSocket message received', { type: message.type });
+    logger.info('WebSocket message received', { type: message.type });
 
     // เรียกใช้ handlers ที่ลงทะเบียนไว้
     const handlers = this.eventHandlers.get(message.type);

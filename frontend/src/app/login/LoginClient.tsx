@@ -190,14 +190,25 @@ function LoginClientContent() {
         if (errorMessage.includes('verify your email') || 
             errorMessage.includes('email verification') ||
             errorMessage.includes('Please verify your email') ||
-            result.metadata?.requiresEmailVerification) {
+            result.meta?.requiresEmailVerification ||
+            result.metadata?.requiresEmailVerification ||
+            result.details?.requiresEmailVerification) {
           
           // Store email for verification page
-          const emailToStore = result.metadata?.email || formData.username;
-          setPendingEmail(emailToStore);
+          const emailToStore = result.metadata?.email || result.details?.email || formData.username;
           
-          // Show modal for user to choose
-          setShowEmailVerificationModal(true);
+          // Redirect to email verification required page (don't show error message)
+          router.push(`/email-verification-required?email=${encodeURIComponent(emailToStore)}`);
+          return;
+        }
+        
+        // Check if it's an admin approval error
+        if (result.metadata?.requiresAdminApproval || result.details?.requiresAdminApproval) {
+          const emailToStore = result.metadata?.email || result.details?.email || formData.username;
+          const userType = result.metadata?.userType || result.details?.userType || 'บุคลากรทางการแพทย์';
+          
+          // Redirect to admin approval required page (don't show error message)
+          router.push(`/admin-approval-required?email=${encodeURIComponent(emailToStore)}&type=${encodeURIComponent(userType)}`);
           return;
         }
         
@@ -207,24 +218,22 @@ function LoginClientContent() {
         if (statusCode === 401) {
           if (errorMessage.includes('Invalid credentials') || 
               errorMessage.includes('Invalid username or password') ||
-              errorMessage.includes('User not found')) {
-            displayMessage = '❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง\n\n💡 ข้อแนะนำ:\n• ตรวจสอบการสะกดชื่อผู้ใช้\n• ตรวจสอบรหัสผ่าน (ตัวพิมพ์เล็ก/ใหญ่)\n• ลองใช้ชื่อผู้ใช้แทนอีเมล';
+              errorMessage.includes('User not found') ||
+              errorMessage.includes('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')) {
+            displayMessage = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
           } else if (errorMessage.includes('Account is deactivated')) {
-            displayMessage = '🚫 บัญชีของคุณถูกระงับ\n\nกรุณาติดต่อผู้ดูแลระบบเพื่อเปิดใช้งานบัญชี';
-          } else if (errorMessage.includes('email verification') || 
-                     errorMessage.includes('verify your email')) {
-            displayMessage = '📧 ต้องยืนยันอีเมลก่อนเข้าสู่ระบบ\n\nกรุณาตรวจสอบอีเมลและคลิกลิงก์ยืนยัน';
+            displayMessage = 'บัญชีของคุณถูกระงับ กรุณาติดต่อผู้ดูแลระบบ';
           } else {
-            displayMessage = `❌ เข้าสู่ระบบไม่สำเร็จ (รหัส: ${statusCode})\n\n${errorMessage}`;
+            displayMessage = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
           }
         } else if (statusCode === 404) {
-          displayMessage = '❌ ไม่พบผู้ใช้\n\nกรุณาตรวจสอบชื่อผู้ใช้หรือสมัครสมาชิกใหม่';
+          displayMessage = 'ไม่พบผู้ใช้ กรุณาตรวจสอบชื่อผู้ใช้หรือสมัครสมาชิกใหม่';
         } else if (statusCode === 429) {
-          displayMessage = '⏰ ส่งคำขอมากเกินไป\n\nกรุณารอสักครู่แล้วลองใหม่';
+          displayMessage = 'ส่งคำขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่';
         } else if (statusCode >= 500) {
-          displayMessage = '🔧 เกิดข้อผิดพลาดจากเซิร์ฟเวอร์\n\nกรุณาลองใหม่อีกครั้งในภายหลัง';
+          displayMessage = 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้งในภายหลัง';
         } else {
-          displayMessage = `❌ เกิดข้อผิดพลาด (รหัส: ${statusCode})\n\n${errorMessage}`;
+          displayMessage = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
         }
         
         setErrors({ 
@@ -238,7 +247,7 @@ function LoginClientContent() {
     } catch (error: any) {
       let errorMessage = 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง';
       
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      if (error.name === 'TypeError' && (error as any).message.includes('fetch')) {
         errorMessage = '🔌 ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้\n\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต';
       } else if (error.response) {
         const status = error.response.status;
@@ -249,10 +258,10 @@ function LoginClientContent() {
         } else if (status >= 500) {
           errorMessage = '🔧 เกิดข้อผิดพลาดจากเซิร์ฟเวอร์\n\nกรุณาลองใหม่อีกครั้งในภายหลัง';
         } else {
-          errorMessage = `❌ เกิดข้อผิดพลาด (รหัส: ${status})\n\n${error.response.data?.message || error.message}`;
+          errorMessage = `❌ เกิดข้อผิดพลาด (รหัส: ${status})\n\n${(error as any).response?.data?.message || (error as any).message}`;
         }
-      } else if (error.message) {
-        errorMessage = `❌ เกิดข้อผิดพลาด\n\n${error.message}`;
+      } else if ((error as any).message) {
+        errorMessage = `❌ เกิดข้อผิดพลาด\n\n${(error as any).message}`;
       }
       
       setErrors({ 

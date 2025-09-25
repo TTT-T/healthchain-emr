@@ -18,7 +18,7 @@ interface PendingUser {
   email: string;
   name: string;
   role: string;
-  createdAt: string;
+  created_at: string;
   professionalInfo: {
     licenseNumber: string;
     specialization: string;
@@ -341,7 +341,7 @@ export default function PendingUsersPage() {
                           </div>
                         </div>
                         <p className="text-sm text-gray-500 mt-2">
-                          สมัครเมื่อ: {new Date(user.createdAt).toLocaleDaring('th-TH')}
+                          สมัครเมื่อ: {new Date(user.created_at).toLocaleString('th-TH')}
                         </p>
                       </div>
                       <div className="flex gap-2 ml-4">

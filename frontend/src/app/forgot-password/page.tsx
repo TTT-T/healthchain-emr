@@ -72,12 +72,12 @@ export default function ForgotPasswordPage() {
       // More robust error handling
       let errorMessage = 'เกิดข้อผิดพลาดในการส่งอีเมล กรุณาลองใหม่อีกครั้ง';
       
-      if (error.response?.data?.error?.message) {
-        errorMessage = error.response.data.error.message;
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
+      if ((error as any).response?.data?.error?.message) {
+        errorMessage = (error as any).response.data.error.message;
+      } else if ((error as any).response?.data?.message) {
+        errorMessage = (error as any).response.data.message;
+      } else if ((error as any).message) {
+        errorMessage = (error as any).message;
       }
       
       setError(errorMessage);

@@ -22,7 +22,7 @@ async function runMigrations() {
       CREATE TABLE IF NOT EXISTS migrations (
         id SERIAL PRIMARY KEY,
         migration_name VARCHAR(255) UNIQUE NOT NULL,
-        executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        executed_at TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'Asia/Bangkok'),
         execution_time_ms INTEGER,
         success BOOLEAN DEFAULT TRUE,
         error_message TEXT

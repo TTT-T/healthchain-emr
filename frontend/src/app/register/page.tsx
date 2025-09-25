@@ -87,12 +87,12 @@ export default function Register() {
       if (value === 'other') {
         setShowCustomTitle(true);
         setFormData(prev => ({ ...prev, [name]: '' }));
-      } else if (!showCustomTitle) {
-        // Only handle select dropdown values when not in custom mode
-        setShowCustomTitle(false);
+      } else if (showCustomTitle) {
+        // Handle custom input when in custom mode
         setFormData(prev => ({ ...prev, [name]: value }));
       } else {
-        // Handle custom input when in custom mode
+        // Handle dropdown selection
+        setShowCustomTitle(false);
         setFormData(prev => ({ ...prev, [name]: value }));
       }
     } else {
@@ -124,9 +124,9 @@ export default function Register() {
   const calculatePasswordStrength = (password: string): number => {
     let strength = 0;
     if (password.length >= 8) strength += 25;
-    if (/[a-z]/.(password)) strength += 25;
-    if (/[A-Z]/.(password)) strength += 25;
-    if (/[0-9]/.(password)) strength += 25;
+    if (/[a-z]/.test(password)) strength += 25;
+    if (/[A-Z]/.test(password)) strength += 25;
+    if (/[0-9]/.test(password)) strength += 25;
     return strength;
   };
 
@@ -155,7 +155,7 @@ export default function Register() {
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (formData.email && !emailRegex.(formData.email)) {
+    if (formData.email && !emailRegex.test(formData.email)) {
       newErrors.email = 'รูปแบบอีเมลไม่ถูกต้อง';
     }
 
@@ -166,28 +166,28 @@ export default function Register() {
 
     // Username validation
     const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
-    if (formData.username && !usernameRegex.(formData.username)) {
+    if (formData.username && !usernameRegex.test(formData.username)) {
       newErrors.username = 'ชื่อผู้ใช้ต้องเป็นตัวอักษรภาษาอังกฤษ ตัวเลข และ _ เท่านั้น (3-20 ตัวอักษร)';
     }
 
     // Phone validation
     const phoneRegex = /^[0-9]{10}$/;
-    if (formData.phone && !phoneRegex.(formData.phone.replace(/[-\s]/g, ''))) {
+    if (formData.phone && !phoneRegex.test(formData.phone.replace(/[-\s]/g, ''))) {
       newErrors.phone = 'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก';
     }
 
     // National ID validation
     const nationalIdRegex = /^[0-9]{13}$/;
-    if (formData.nationalId && !nationalIdRegex.(formData.nationalId.replace(/[-\s]/g, ''))) {
+    if (formData.nationalId && !nationalIdRegex.test(formData.nationalId.replace(/[-\s]/g, ''))) {
       newErrors.nationalId = 'เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก';
     }
 
     // English name validation
     const englishNameRegex = /^[a-zA-Z\s]+$/;
-    if (formData.firstNameEn && !englishNameRegex.(formData.firstNameEn)) {
+    if (formData.firstNameEn && !englishNameRegex.test(formData.firstNameEn)) {
       newErrors.firstNameEn = 'ชื่อภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษเท่านั้น';
     }
-    if (formData.lastNameEn && !englishNameRegex.(formData.lastNameEn)) {
+    if (formData.lastNameEn && !englishNameRegex.test(formData.lastNameEn)) {
       newErrors.lastNameEn = 'นามสกุลภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษเท่านั้น';
     }
 
@@ -250,6 +250,7 @@ export default function Register() {
         lastName: formData.lastNameEn,   // ใช้นามสกุลอังกฤษเป็น lastName
         thaiFirstName: formData.firstName, // เพิ่มชื่อไทย
         thaiLastName: formData.lastName,   // เพิ่มนามสกุลไทย
+        title: formData.titlePrefix,      // เพิ่มคำนำหน้าชื่อ
         phoneNumber: formData.phone,
         nationalId: formData.nationalId,
         birthDate: `${parseInt(formData.birthYear) - 543}-${formData.birthMonth.padStart(2, '0')}-${formData.birthDay.padStart(2, '0')}`,
@@ -257,29 +258,39 @@ export default function Register() {
         address: formData.address,
         idCardAddress: formData.idCardAddress,
         bloodType: formData.bloodType,
-      }) as { requiresEmailVerification?: boolean } | void;
+      }) as { requiresEmailVerification?: boolean; requiresAdminApproval?: boolean; emailSent?: boolean; email?: string } | void;
       
-      // Always redirect to verification required page for patients
-      if (result && 'requiresEmailVerification' in result && result.requiresEmailVerification) {
-        router.push(`/register/success?email=${encodeURIComponent(formData.email)}&verification=true`);
+      // Redirect to success page with appropriate parameters
+      if (result) {
+        const email = result.email || formData.email;
+        const params = new URLSearchParams({
+          email: email,
+          verification: result.requiresEmailVerification ? 'true' : 'false'
+        });
+        
+        if (result.requiresAdminApproval) {
+          params.append('adminApproval', 'true');
+        }
+        
+        router.push(`/register/success?${params.toString()}`);
       } else {
-        // For non-patient users, also show verification message
+        // Fallback redirect
         router.push(`/register/success?email=${encodeURIComponent(formData.email)}&verification=true`);
       }
     } catch (error: any) {
       logger.error('Registration error:', error);
       
       // Handle specific error cases
-      if (error.message?.includes('already exists') || error.message?.includes('409') || error.statusCode === 409) {
+      if ((error as any).message?.includes('already exists') || (error as any).message?.includes('409') || error.statusCode === 409) {
         const thaiMessage = error.details?.message || 'อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ';
         setErrors({ 
           email: 'อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่น',
           submit: thaiMessage
         });
-      } else if (error.message?.includes('validation')) {
+      } else if ((error as any).message?.includes('validation')) {
         setErrors({ submit: 'ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบข้อมูลและลองใหม่' });
       } else {
-        setErrors({ submit: error.message || 'เกิดข้อผิดพลาดในการสมัครสมาชิก กรุณาลองใหม่อีกครั้ง' });
+        setErrors({ submit: (error as any).message || 'เกิดข้อผิดพลาดในการสมัครสมาชิก กรุณาลองใหม่อีกครั้ง' });
       }
     }
   };

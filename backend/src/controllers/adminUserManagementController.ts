@@ -272,7 +272,8 @@ export const createUser = async (req: Request, res: Response) => {
       role,
       department_id,
       phone,
-      is_active = true
+      is_active = true,
+      title
     } = req.body;
 
     const userId = (req as any).user.id;
@@ -322,10 +323,10 @@ export const createUser = async (req: Request, res: Response) => {
     const createUserQuery = `
       INSERT INTO users (
         id, first_name, last_name, email, password, role, 
-        department_id, phone, is_active
+        department_id, phone, is_active, title
       )
       VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
       )
       RETURNING *
     `;
@@ -333,7 +334,7 @@ export const createUser = async (req: Request, res: Response) => {
     const newUserId = uuidv4();
     const userResult = await databaseManager.query(createUserQuery, [
       newUserId, first_name, last_name, email, hashedPassword, role,
-      validDepartmentId, phone, is_active
+      validDepartmentId, phone, is_active, title || null
     ]);
 
     const newUser = userResult.rows[0];

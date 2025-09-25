@@ -10,7 +10,7 @@ interface Token {
   token: string;
   type: 'api' | 'access' | 'refresh' | 'session';
   status: 'active' | 'expired' | 'revoked';
-  createdAt: string;
+  created_at: string;
   expiresAt: string;
   lastUsed: string;
   usageCount: number;
@@ -25,7 +25,7 @@ const mockTokens: Token[] = [
     token: 'hc_sk_live_123456789abcdef...',
     type: 'api',
     status: 'active',
-    createdAt: '2024-12-01 09:30:00',
+    created_at: '2024-12-01 09:30:00',
     expiresAt: '2025-06-01 09:30:00',
     lastUsed: '2024-12-19 14:25:30',
     usageCount: 1245,
@@ -38,7 +38,7 @@ const mockTokens: Token[] = [
     token: 'hc_sk_live_987654321fedcba...',
     type: 'api',
     status: 'active',
-    createdAt: '2024-11-15 14:20:00',
+    created_at: '2024-11-15 14:20:00',
     expiresAt: '2025-05-15 14:20:00',
     lastUsed: '2024-12-19 13:45:12',
     usageCount: 567,
@@ -51,7 +51,7 @@ const mockTokens: Token[] = [
     token: 'hc_sk_live_old123456789abc...',
     type: 'api',
     status: 'expired',
-    createdAt: '2024-06-01 10:00:00',
+    created_at: '2024-06-01 10:00:00',
     expiresAt: '2024-12-01 10:00:00',
     lastUsed: '2024-11-30 23:59:59',
     usageCount: 2891,
@@ -64,7 +64,7 @@ const mockTokens: Token[] = [
     token: 'hc_sk__tokenhere...',
     type: 'api',
     status: 'revoked',
-    createdAt: '2024-12-10 16:45:00',
+    created_at: '2024-12-10 16:45:00',
     expiresAt: '2025-01-10 16:45:00',
     lastUsed: '2024-12-15 11:20:30',
     usageCount: 89,
@@ -77,7 +77,7 @@ const mockTokens: Token[] = [
     token: 'sess_123456789abcdef...',
     type: 'session',
     status: 'active',
-    createdAt: '2024-12-19 08:00:00',
+    created_at: '2024-12-19 08:00:00',
     expiresAt: '2024-12-20 08:00:00',
     lastUsed: '2024-12-19 14:30:00',
     usageCount: 45,
@@ -158,7 +158,7 @@ export default function TokenMonitorPage() {
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text);
-        logger.('Token copied to clipboard');
+        logger.info('Token copied to clipboard');
       } else {
         // Fallback for non-secure contexts
         const textArea = document.createElement("textarea");
@@ -171,7 +171,7 @@ export default function TokenMonitorPage() {
         textArea.select();
         document.execCommand('copy');
         textArea.remove();
-        logger.('Token copied to clipboard (fallback method)');
+        logger.info('Token copied to clipboard (fallback method)');
       }
     } catch (error) {
       logger.error('Failed to copy to clipboard:', error);

@@ -106,8 +106,8 @@ export interface SystemStatsResponse {
     }>;
     top_performers: {
       doctors: Array<{
-        first_name: string;
-        last_name: string;
+        firstName: string;
+        lastName: string;
         visit_count: number;
         appointment_count: number;
         avg_visit_duration_hours: number;

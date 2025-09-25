@@ -39,36 +39,15 @@ export const getPatientAIInsights = async (req: Request, res: Response) => {
       }
       
       if (patientQuery.rows.length === 0) {
-        // If still no patient found, create one
-        const newPatientId = uuidv4();
-        await databaseManager.query(
-          `INSERT INTO patients (
-            id, user_id, email, first_name, last_name, 
-            date_of_birth, phone, emergency_contact, 
-            created_at, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-          [
-            newPatientId,
-            user.id,
-            user.email,
-            user.first_name || 'Patient',
-            user.last_name || 'User',
-            '1990-01-01', // Default date
-            user.phone || '',
-            '{}', // Empty JSON object for emergency contact
-            new Date(),
-            new Date()
-          ]
-        );
-        
+        // If still no patient found, create a virtual patient record from user data
         patient = {
-          id: newPatientId,
-          first_name: user.first_name || 'Patient',
-          last_name: user.last_name || 'User',
+          id: user.id, // Use user ID as patient ID
           user_id: user.id,
+          first_name: user.first_name,
+          last_name: user.last_name,
           email: user.email
         };
-        actualPatientId = newPatientId;
+        actualPatientId = user.id;
       } else {
         patient = patientQuery.rows[0];
         actualPatientId = patient.id;

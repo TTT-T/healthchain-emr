@@ -16,8 +16,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   
   // Actions
-  login: (username: string, password: string, rememberMe?: boolean) => Promise<void>;
-  register: (data: RegisterData) => Promise<{ success: boolean; message?: string }>;
+  login: (username: string, password: string, rememberMe?: boolean) => Promise<{ success: boolean; requiresEmailVerification?: boolean; email?: string; requiresAdminApproval?: boolean }>;
+  register: (data: RegisterData) => Promise<{ success: boolean; message?: string; requiresEmailVerification?: boolean; requiresAdminApproval?: boolean; emailSent?: boolean; email?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   
@@ -34,6 +34,7 @@ interface RegisterData {
   lastName: string;
   thaiFirstName?: string;
   thaiLastName?: string;
+  title?: string;
   phoneNumber?: string;
   nationalId?: string;
   birthDate?: string;
@@ -74,7 +75,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const token = apiClient.getAccessToken();
         // Initialize authentication context
         
-        if (token) {
+        // Check if we're on a public page that doesn't require authentication
+        const publicPages = [
+          '/',
+          '/login',
+          '/register',
+          '/register/success',
+          '/verify-email',
+          '/resend-verification',
+          '/forgot-password',
+          '/reset-password',
+          '/email-verification-required',
+          '/admin-approval-required',
+          '/admin/login',
+          '/doctor/login',
+          '/nurse/login',
+          '/medical-staff/register',
+          '/external-requesters/login',
+          '/external-requesters/register',
+          '/external-requesters/registration-success',
+          '/external-requesters/status'
+        ];
+        
+        const isPublicPage = typeof window !== 'undefined' && 
+          publicPages.some(page => window.location.pathname === page || window.location.pathname.startsWith(page + '/'));
+
+        if (token && !isPublicPage) {
           try {
             // Only try to get user profile if we're not on setup-profile page
             if (typeof window !== 'undefined' && !window.location.pathname.includes('/setup-profile')) {
@@ -103,13 +129,41 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
           }
         } else {
-          // Ensure everything is cleared if no token
+          // Ensure everything is cleared if no token or on public page
           setUser(null);
           setError(null);
         }
       } catch (error) {
         // Clear everything on init error
-        apiClient.clearTokens();
+        const publicPages = [
+          '/',
+          '/login',
+          '/register',
+          '/register/success',
+          '/verify-email',
+          '/resend-verification',
+          '/forgot-password',
+          '/reset-password',
+          '/email-verification-required',
+          '/admin-approval-required',
+          '/admin/login',
+          '/doctor/login',
+          '/nurse/login',
+          '/medical-staff/register',
+          '/external-requesters/login',
+          '/external-requesters/register',
+          '/external-requesters/registration-success',
+          '/external-requesters/status'
+        ];
+        
+        const isPublicPage = typeof window !== 'undefined' && 
+          publicPages.some(page => window.location.pathname === page || window.location.pathname.startsWith(page + '/'));
+        
+        if (!isPublicPage) {
+          apiClient.clearTokens();
+        } else {
+          apiClient.clearTokensSilently();
+        }
         // FormDataCleaner.clearAllFormData(); // Disabled to prevent refresh
         setUser(null);
         setError(null);
@@ -171,7 +225,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   /**
    * Login user
    */
-  const login = async (username: string, password: string, rememberMe: boolean = false): Promise<void> => {
+  const login = async (username: string, password: string, rememberMe: boolean = false): Promise<{ success: boolean; requiresEmailVerification?: boolean; email?: string; requiresAdminApproval?: boolean }> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -195,6 +249,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Show success notification
         showSuccess('เข้าสู่ระบบสำเร็จ', 'ยินดีต้อนรับสู่ระบบบันทึกสุขภาพอิเล็กทรอนิกส์');
         
+        return { success: true };
+        
       } else {
         setIsLoading(false);
         throw new Error(response.error?.message || 'Login failed');
@@ -203,7 +259,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsLoading(false);
       const apiError = error as APIError;
       
-      // Show error notification
+      // Check if it's an email verification error
+      if (apiError.statusCode === 401 && (apiError as any).details?.requiresEmailVerification) {
+        const email = (apiError as any).details?.email;
+        if (email) {
+          // Store email for resend verification page
+          localStorage.setItem('pendingVerificationEmail', email);
+        }
+        return {
+          success: false,
+          requiresEmailVerification: true,
+          email: email
+        };
+      }
+      
+      // Check if it's an admin approval error
+      if (apiError.statusCode === 401 && (apiError as any).details?.requiresAdminApproval) {
+        const email = (apiError as any).details?.email;
+        return {
+          success: false,
+          requiresAdminApproval: true,
+          email: email
+        };
+      }
+      
+      // Show error notification for other errors
       showError('เข้าสู่ระบบไม่สำเร็จ', apiError.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
       
       // Don't set error in context - let the component handle all errors
@@ -215,7 +295,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   /**
    * Register new user
    */
-  const register = async (data: RegisterData): Promise<{ success: boolean; message?: string }> => {
+  const register = async (data: RegisterData): Promise<{ success: boolean; message?: string; requiresEmailVerification?: boolean; requiresAdminApproval?: boolean; emailSent?: boolean; email?: string }> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -228,13 +308,47 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (response.data && !response.error) {
         // Clear the tokens and user data after successful registration
         // User needs to login again to access profile setup
-        apiClient.clearTokens();
+        // But don't redirect to login if we're on a public page
+        const publicPages = [
+          '/',
+          '/login',
+          '/register',
+          '/register/success',
+          '/verify-email',
+          '/resend-verification',
+          '/forgot-password',
+          '/reset-password',
+          '/email-verification-required',
+          '/admin-approval-required',
+          '/admin/login',
+          '/doctor/login',
+          '/nurse/login',
+          '/medical-staff/register',
+          '/external-requesters/login',
+          '/external-requesters/register',
+          '/external-requesters/registration-success',
+          '/external-requesters/status'
+        ];
+        
+        const isPublicPage = typeof window !== 'undefined' && 
+          publicPages.some(page => window.location.pathname === page || window.location.pathname.startsWith(page + '/'));
+        
+        if (!isPublicPage) {
+          apiClient.clearTokens();
+        } else {
+          // Just clear the tokens without redirecting
+          apiClient.clearTokensSilently();
+        }
         setUser(null);
         
         // Return response data for caller to handle
         return {
           success: true,
-          message: 'สมัครสมาชิกสำเร็จ'
+          message: 'สมัครสมาชิกสำเร็จ',
+          requiresEmailVerification: response.data.requiresEmailVerification || true,
+          requiresAdminApproval: response.data.requiresAdminApproval || false,
+          emailSent: response.data.emailSent || false,
+          email: response.data.email
         };
       } else {
         throw new Error(response.error?.message || 'Registration failed');

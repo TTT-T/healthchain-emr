@@ -104,9 +104,9 @@ export const showAPIError = (error: any, customMessage?: string): string => {
   let message = customMessage || CommonAlerts.UNKNOWN_ERROR;
   
   if (error?.response?.data?.message) {
-    message = error.response.data.message;
+    message = (error as any).message;
   } else if (error?.message) {
-    message = error.message;
+    message = (error as any).message;
   } else if (typeof error === 'string') {
     message = error;
   }

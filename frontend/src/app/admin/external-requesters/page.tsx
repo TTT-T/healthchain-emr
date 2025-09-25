@@ -11,8 +11,8 @@ interface ExternalRequesterRegistration {
   requesterName: string
   status: 'pending_review' | 'approved' | 'rejected'
   emailVerified: boolean
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 export default function ExternalRequestersAdminPage() {
@@ -38,8 +38,8 @@ export default function ExternalRequestersAdminPage() {
           requesterName: 'นาย ทดสอบ ระบบ',
           status: 'pending_review',
           emailVerified: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         },
         {
           id: '2',
@@ -49,8 +49,8 @@ export default function ExternalRequestersAdminPage() {
           requesterName: 'นาง สมบูรณ์ ครบถ้วน',
           status: 'approved',
           emailVerified: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }
       ]
       
@@ -71,7 +71,7 @@ export default function ExternalRequestersAdminPage() {
       setRegistrations(prev => 
         prev.map(reg => 
           reg.id === registration.id 
-            ? { ...reg, status: 'approved' as const, updatedAt: new Date().toISOString() }
+            ? { ...reg, status: 'approved' as const, updated_at: new Date().toISOString() }
             : reg
         )
       )
@@ -93,7 +93,7 @@ export default function ExternalRequestersAdminPage() {
       setRegistrations(prev => 
         prev.map(reg => 
           reg.id === registration.id 
-            ? { ...reg, status: 'rejected' as const, updatedAt: new Date().toISOString() }
+            ? { ...reg, status: 'rejected' as const, updated_at: new Date().toISOString() }
             : reg
         )
       )
@@ -257,7 +257,7 @@ export default function ExternalRequestersAdminPage() {
                       <div className="flex items-center">
                         {registration.email}
                         {registration.emailVerified && (
-                          <Mail className="h-4 w-4 text-green-500 ml-2" title="ยืนยันอีเมลแล้ว" />
+                          <Mail className="h-4 w-4 text-green-500 ml-2" />
                         )}
                       </div>
                     </td>
@@ -270,7 +270,7 @@ export default function ExternalRequestersAdminPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(registration.createdAt).toLocaleDaring('th-TH')}
+                      {new Date(registration.created_at).toLocaleString('th-TH')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">

@@ -36,14 +36,14 @@ export default function DoctorsManagement() {
       setLoading(true);
       setError(null);
       
-      logger.('🔄 Loading doctors...');
+      logger.info('🔄 Loading doctors...');
       const response = await DoctorService.getDoctors({
         limit: 100 // Load all doctors
       });
       
       if (response.statusCode === 200 && response.data) {
         setDoctors(response.data as Doctor[]);
-        logger.('✅ Doctors loaded successfully:', response.data);
+        logger.info('✅ Doctors loaded successfully:', response.data);
       } else {
         throw new Error('Failed to load doctors');
       }
@@ -59,11 +59,11 @@ export default function DoctorsManagement() {
     try {
       setLoading(true);
       
-      logger.('🔄 Creating doctor:', formData);
+      logger.info('🔄 Creating doctor:', formData);
       const response = await DoctorService.createDoctor(formData);
       
       if (response.statusCode === 201) {
-        logger.('✅ Doctor created successfully');
+        logger.info('✅ Doctor created successfully');
         setShowCreateModal(false);
         resetForm();
         await loadDoctors(); // Reload the list
@@ -84,11 +84,11 @@ export default function DoctorsManagement() {
     try {
       setLoading(true);
       
-      logger.('🔄 Updating doctor:', selectedDoctor.id, formData);
+      logger.info('🔄 Updating doctor:', selectedDoctor.id, formData);
       const response = await DoctorService.updateDoctor(selectedDoctor.id, formData);
       
       if (response.statusCode === 200) {
-        logger.('✅ Doctor updated successfully');
+        logger.info('✅ Doctor updated successfully');
         setShowEditModal(false);
         setSelectedDoctor(null);
         resetForm();
@@ -112,11 +112,11 @@ export default function DoctorsManagement() {
     try {
       setLoading(true);
       
-      logger.('🔄 Deleting doctor:', doctor.id);
+      logger.info('🔄 Deleting doctor:', doctor.id);
       const response = await DoctorService.deleteDoctor(doctor.id);
       
       if (response.statusCode === 200) {
-        logger.('✅ Doctor deleted successfully');
+        logger.info('✅ Doctor deleted successfully');
         await loadDoctors(); // Reload the list
       } else {
         throw new Error('Failed to delete doctor');
@@ -133,11 +133,11 @@ export default function DoctorsManagement() {
     try {
       setLoading(true);
       
-      logger.('🔄 Toggling availability for doctor:', doctor.id);
+      logger.info('🔄 Toggling availability for doctor:', doctor.id);
       const response = await DoctorService.updateAvailability(doctor.id, !doctor.isAvailable);
       
       if (response.statusCode === 200) {
-        logger.('✅ Doctor availability updated successfully');
+        logger.info('✅ Doctor availability updated successfully');
         await loadDoctors(); // Reload the list
       } else {
         throw new Error('Failed to update availability');

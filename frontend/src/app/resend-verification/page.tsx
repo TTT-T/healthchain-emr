@@ -60,7 +60,7 @@ function ResendVerificationContent() {
       }
     } catch (error: any) {
       logger.error('Resend verification error:', error);
-      const errorMessage = error.response?.data?.error?.message || 'เกิดข้อผิดพลาดในการส่งอีเมล';
+      const errorMessage = (error as any).response?.data?.error?.message || 'เกิดข้อผิดพลาดในการส่งอีเมล';
       setError(errorMessage);
     } finally {
       setIsLoading(false);

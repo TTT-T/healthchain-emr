@@ -32,6 +32,8 @@ export const searchUsersByNationalId = async (req: Request, res: Response) => {
         p.first_name,
         p.last_name,
         p.thai_name,
+        p.thai_last_name,
+        p.title,
         p.national_id,
         p.date_of_birth,
         p.gender,
@@ -96,6 +98,8 @@ export const searchUsersByNationalId = async (req: Request, res: Response) => {
         u.first_name,
         u.last_name,
         u.thai_name,
+        u.thai_last_name,
+        u.title,
         u.national_id,
         u.birth_date,
         u.gender,
@@ -127,7 +131,6 @@ export const searchUsersByNationalId = async (req: Request, res: Response) => {
         u.religion,
         u.race,
         u.current_address,
-        u.thai_last_name,
         u.birth_day,
         u.birth_month,
         u.birth_year,
@@ -249,6 +252,8 @@ export const getAllPatients = async (req: Request, res: Response) => {
         p.first_name,
         p.last_name,
         p.thai_name,
+        p.thai_last_name,
+        p.title,
         p.hospital_number,
         p.national_id,
         p.date_of_birth,
@@ -260,12 +265,23 @@ export const getAllPatients = async (req: Request, res: Response) => {
         p.blood_group,
         p.blood_type,
         p.emergency_contact,
+        p.emergency_contact_name,
         p.emergency_contact_phone,
         p.emergency_contact_relation,
         p.medical_history,
         p.allergies,
         p.drug_allergies,
+        p.food_allergies,
+        p.environment_allergies,
         p.chronic_diseases,
+        p.weight,
+        p.height,
+        p.occupation,
+        p.education,
+        p.marital_status,
+        p.religion,
+        p.race,
+        p.nationality,
         p.is_active,
         p.created_at,
         p.updated_at,
@@ -276,7 +292,6 @@ export const getAllPatients = async (req: Request, res: Response) => {
         u.birth_day,
         u.birth_month,
         u.birth_year,
-        u.insurance_type,
         v.visit_number,
         v.visit_type,
         v.visit_date,
@@ -319,6 +334,8 @@ export const getAllPatients = async (req: Request, res: Response) => {
         first_name: patient.first_name,
         last_name: patient.last_name,
         thai_name: patient.thai_name,
+        thai_last_name: patient.thai_last_name,
+        title: patient.title,
         hospital_number: patient.hospital_number,
         national_id: patient.national_id,
         birth_date: patient.date_of_birth,
@@ -328,7 +345,13 @@ export const getAllPatients = async (req: Request, res: Response) => {
         gender: patient.gender,
         age: patient.date_of_birth ? calculateAge(patient.date_of_birth) : 
              (patient.birth_year && patient.birth_month && patient.birth_day ? 
-              calculateAgeFromFields(patient.birth_year, patient.birth_month, patient.birth_day) : null)
+              calculateAgeFromFields(patient.birth_year, patient.birth_month, patient.birth_day) : null),
+        occupation: patient.occupation,
+        education: patient.education,
+        marital_status: patient.marital_status,
+        religion: patient.religion,
+        race: patient.race,
+        nationality: patient.nationality
       },
       contact_info: {
         phone: patient.phone,
@@ -342,10 +365,14 @@ export const getAllPatients = async (req: Request, res: Response) => {
         medical_history: patient.medical_history,
         allergies: patient.allergies,
         drug_allergies: patient.drug_allergies,
-        chronic_diseases: patient.chronic_diseases
+        food_allergies: patient.food_allergies,
+        environment_allergies: patient.environment_allergies,
+        chronic_diseases: patient.chronic_diseases,
+        weight: patient.weight,
+        height: patient.height
       },
       emergency_contact: {
-        name: patient.emergency_contact,
+        name: patient.emergency_contact_name,
         phone: patient.emergency_contact_phone,
         relation: patient.emergency_contact_relation
       },
@@ -435,6 +462,7 @@ export const getPatientById = async (req: Request, res: Response) => {
         p.blood_group,
         p.blood_type,
         p.emergency_contact,
+        p.emergency_contact_name,
         p.emergency_contact_phone,
         p.emergency_contact_relation,
         p.medical_history,
@@ -512,7 +540,7 @@ export const getPatientById = async (req: Request, res: Response) => {
         chronic_diseases: patient.chronic_diseases
       },
       emergency_contact: {
-        name: patient.emergency_contact,
+        name: patient.emergency_contact_name,
         phone: patient.emergency_contact_phone,
         relation: patient.emergency_contact_relation
       },
@@ -702,6 +730,83 @@ function calculateAgeFromFields(birthYear: number, birthMonth: number, birthDay:
 }
 
 /**
+ * Get patient by email (for patient portal)
+ * GET /api/medical/patients/by-email/:email
+ */
+export const getPatientByEmail = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.params;
+    const user = (req as any).user;
+
+    // Decode URL-encoded email
+    const decodedEmail = decodeURIComponent(email);
+
+    // Get patient details by email
+    const patientQuery = `
+      SELECT 
+        p.id,
+        p.first_name,
+        p.last_name,
+        p.thai_name,
+        p.hospital_number,
+        p.national_id,
+        p.date_of_birth,
+        p.gender,
+        p.phone,
+        p.email,
+        p.address,
+        p.current_address,
+        p.blood_group,
+        p.blood_type,
+        p.emergency_contact,
+        p.emergency_contact_name,
+        p.emergency_contact_phone,
+        p.emergency_contact_relation,
+        p.medical_history,
+        p.allergies,
+        p.drug_allergies,
+        p.chronic_diseases,
+        p.is_active,
+        p.created_at,
+        p.updated_at
+      FROM patients p
+      WHERE p.email = $1
+    `;
+
+    const patientResult = await databaseManager.query(patientQuery, [decodedEmail]);
+    
+    if (patientResult.rows.length === 0) {
+      return res.status(404).json({
+        data: null,
+        meta: null,
+        error: { message: 'Patient not found' },
+        statusCode: 404
+      });
+    }
+
+    const patient = patientResult.rows[0];
+
+    res.status(200).json({
+      data: patient,
+      meta: {
+        timestamp: new Date().toISOString()
+      },
+      error: null,
+      statusCode: 200
+    });
+
+  } catch (error) {
+    console.error('Error getting patient by email:', error);
+    res.status(500).json({
+      data: null,
+      meta: null,
+      error: { message: 'Internal server error' },
+      statusCode: 500
+    });
+  }
+};
+
+/**
  * Get patient by ID or HN (for patient portal)
  * GET /api/patients/:identifier
  */
@@ -711,7 +816,7 @@ export const getPatient = async (req: Request, res: Response) => {
     const user = (req as any).user;
 
     // Check if identifier is UUID (patient ID) or HN
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.(identifier);
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
     
     let whereClause = '';
     if (isUUID) {
@@ -738,6 +843,7 @@ export const getPatient = async (req: Request, res: Response) => {
         p.blood_group,
         p.blood_type,
         p.emergency_contact,
+        p.emergency_contact_name,
         p.emergency_contact_phone,
         p.emergency_contact_relation,
         p.medical_history,
@@ -798,7 +904,7 @@ export const getPatient = async (req: Request, res: Response) => {
         chronic_diseases: patient.chronic_diseases
       },
       emergency_contact: {
-        name: patient.emergency_contact,
+        name: patient.emergency_contact_name,
         phone: patient.emergency_contact_phone,
         relation: patient.emergency_contact_relation
       },

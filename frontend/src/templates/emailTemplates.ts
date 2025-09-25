@@ -25,7 +25,7 @@ export interface RecordUpdateEmailData extends EmailTemplateData {
   recordDescription: string;
   recordDetails?: any;
   createdByName: string;
-  createdAt: string;
+  created_at: string;
 }
 
 export interface RegistrationEmailData extends EmailTemplateData {
@@ -258,7 +258,7 @@ export const getRecordUpdateEmailTemplate = (data: RecordUpdateEmailData): strin
         <table class="table">
             <tr>
                 <th>วันที่อัปเดต</th>
-                <td>${new Date(data.createdAt).toLocaleString('th-TH')}</td>
+                <td>${new Date(data.created_at).toLocaleString('th-TH')}</td>
             </tr>
             <tr>
                 <th>อัปเดตโดย</th>
@@ -317,7 +317,7 @@ export const getRegistrationEmailTemplate = (data: RegistrationEmailData): strin
             </tr>
             <tr>
                 <th>วันที่ลงทะเบียน</th>
-                <td>${new Date(data.registrationDate).toLocaleDaring('th-TH')}</td>
+                <td>${new Date(data.registrationDate).toLocaleString('th-TH')}</td>
             </tr>
         </table>
     </div>

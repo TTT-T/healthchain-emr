@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { Request, Response } from 'express';
-import config from './config/index';
+import config from './config/config';
 import { databaseInitializer } from './database/init';
 import { setupSwagger } from './config/swagger';
 
@@ -19,7 +19,7 @@ import adminRoutes from './routes/admin';
 import securityRoutes from './routes/security';
 import externalRequestersRoutes from './routes/external-requesters';
 import healthRoutes from './routes/health';
-import emailRoutes from './routes/email-';
+import emailRoutes from './routes/email-test';
 import patientRegistrationRoutes from './routes/patientRegistration';
 
 // Middleware
@@ -120,7 +120,7 @@ class Application {
             status: 'ok',
             time: new Date().toISOString(),
             version: '1.0.0',
-            environment: config.server.nodeEnv,
+            environment: config.nodeEnv,
             services: {
               database: {
                 status: 'connected',
@@ -128,7 +128,7 @@ class Application {
               },
               api: {
                 status: 'running',
-                port: config.server.port
+                port: config.port
               }
             }
           },
@@ -189,15 +189,21 @@ class Application {
   /**
    * Start the server
    */
-  public async start(): Promise<void> {
+  public async start(): Promise<any> {
     try {
       // Initialize database system
       await databaseInitializer.initialize();
-      // Start server
-      const port = config.server.port || 3001;
       
-      this.app.listen(port, () => {
+      // Start server
+      const port = config.port || 3001;
+      
+      const httpServer = this.app.listen(port, () => {
+        console.log(`🚀 EMR Backend Server running on port ${port}`);
+        console.log(`📊 Environment: ${config.nodeEnv}`);
+        console.log(`🗄️ Database: ${config.database.host}:${config.database.port}/${config.database.database}`);
       });
+
+      return httpServer;
 
     } catch (error) {
       console.error('❌ Failed to start server:', error);

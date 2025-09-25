@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/api';
 import { logger } from '@/lib/logger';
-import { getThailandTime, formatBuddhistDate } from '@/utils/thailandTime';
+// import { getThailandTime, formatBuddhistDate } from '@/utils/thailandTime';
 
 interface DashboardStats {
   todayPatients: number;
@@ -30,7 +30,7 @@ interface QueueItem {
   status: 'waiting' | 'in_progress' | 'completed';
   department: string;
   waitTime: number;
-  priority: 'normal' | 'urgent' | 'emergency';
+  priority: 'normal' | 'urgent' | 'low' | 'high' | 'emergency';
 }
 
 interface RecentActivity {
@@ -78,7 +78,7 @@ export default function EMRDashboard() {
     setError(null);
     
     try {
-      logger.('📊 Loading dashboard data...');
+      logger.info('📊 Loading dashboard data...');
 
       // Fetch real data from API
       const promises = [
@@ -93,41 +93,41 @@ export default function EMRDashboard() {
       const visitsData = Array.isArray(visitsResponse.data) ? visitsResponse.data : [];
       const appointmentsData = Array.isArray(appointmentsResponse.data) ? appointmentsResponse.data : [];
       // Calculate today's patients (users with patient role created today)
-      const today = getThailandTime().toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
       const todayPatientsCount = patientsData.filter(patient => {
-        const isPatient = patient.role === 'patient';
-        const isToday = patient.created_at && patient.created_at.startsWith(today);
+        const isPatient = 'role' in patient && patient.role === 'patient';
+        const isToday = 'created_at' in patient && patient.created_at && typeof patient.created_at === 'string' && patient.created_at.startsWith(today);
         return isPatient && isToday;
       }).length;
 
       // Calculate total active patients
       const totalPatientsCount = patientsData.filter(patient => {
-        const isPatient = patient.role === 'patient';
-        const isActive = patient.is_active;
+        const isPatient = 'role' in patient && patient.role === 'patient';
+        const isActive = 'isActive' in patient && patient.isActive;
         return isPatient && isActive;
       }).length;
 
       // Calculate active queues (visits with in_progress status today)
       const activeQueueCount = visitsData.filter(visit => {
         // More flexible matching - check if visit is in_progress and created today or visit_date is today
-        const isInProgress = visit.status === 'in_progress';
-        const isToday = (visit.visit_date && visit.visit_date.startsWith(today)) || 
-                       (visit.created_at && visit.created_at.startsWith(today));
-        const shouldInclude = isInProgress && (visit.visit_date ? isToday : true);
+        const isInProgress = 'status' in visit && visit.status === 'in_progress';
+        const isToday = ('visit_date' in visit && visit.visit_date && typeof visit.visit_date === 'string' && visit.visit_date.startsWith(today)) || 
+                       ('created_at' in visit && visit.created_at && typeof visit.created_at === 'string' && visit.created_at.startsWith(today));
+        const shouldInclude = isInProgress && ('visit_date' in visit ? isToday : true);
         return shouldInclude;
       }).length;
 
       // Calculate completed visits today
       const completedVisitsCount = visitsData.filter(visit => {
-        const isCompleted = visit.status === 'completed';
-        const isToday = (visit.visit_date && visit.visit_date.startsWith(today)) || 
-                       (visit.created_at && visit.created_at.startsWith(today));
-        return isCompleted && (visit.visit_date ? isToday : true);
+        const isCompleted = 'status' in visit && visit.status === 'completed';
+        const isToday = ('visit_date' in visit && visit.visit_date && typeof visit.visit_date === 'string' && visit.visit_date.startsWith(today)) || 
+                       ('created_at' in visit && visit.created_at && typeof visit.created_at === 'string' && visit.created_at.startsWith(today));
+        return isCompleted && ('visit_date' in visit ? isToday : true);
       }).length;
 
       // Calculate upcoming appointments
       const upcomingAppointmentsCount = appointmentsData.filter(appointment => {
-        const isUpcoming = appointment.status === 'scheduled' || appointment.status === 'confirmed';
+        const isUpcoming = 'status' in appointment && (appointment.status === 'scheduled' || appointment.status === 'confirmed');
         return isUpcoming;
       }).length;
       // Set real stats from actual data
@@ -146,41 +146,62 @@ export default function EMRDashboard() {
       // Generate queue data from real visits
       const queueData: QueueItem[] = visitsData
         .filter(visit => {
-          const isToday = (visit.visit_date && visit.visit_date.startsWith(today)) || 
-                         (visit.created_at && visit.created_at.startsWith(today));
-          const isActive = visit.status === 'in_progress' || visit.status === 'waiting';
-          return isActive && isToday;
+          // Type guard to check if it's a MedicalVisit
+          if ('visit_date' in visit && 'status' in visit) {
+            const isToday = (visit.visit_date && visit.visit_date.startsWith(today)) || 
+                           (visit.created_at && visit.created_at.startsWith(today));
+            const isActive = visit.status === 'in_progress' || visit.status === 'checked_in';
+            return isActive && isToday;
+          }
+          return false;
         })
         .map(visit => {
-          const queueItem = {
-            id: visit.id,
-            queueNumber: visit.visit_number || `Q${visit.id.slice(-4)}`,
-            patientName: visit.patient_thai_name || `${visit.patient_first_name || ''} ${visit.patient_last_name || ''}`.trim(),
-            status: visit.status as 'waiting' | 'in_progress' | 'completed',
-            department: visit.department_name || 'ไม่ระบุ',
-            waitTime: 15, // Default 15 minutes
-            priority: visit.priority || 'normal'
-          };
-          return queueItem;
-        });
+          // Type guard to ensure it's a MedicalVisit
+          if ('visit_number' in visit && 'status' in visit) {
+            const queueItem = {
+              id: visit.id,
+              queueNumber: (visit.visit_number as string) || `Q${visit.id.slice(-4)}`,
+              patientName: 'ไม่ระบุ', // Will be populated from patient data
+              status: visit.status === 'completed' ? 'completed' as const : 
+                      visit.status === 'in_progress' ? 'in_progress' as const : 'waiting' as const,
+              department: 'ไม่ระบุ', // Will be populated from department data
+              waitTime: 15, // Default 15 minutes
+              priority: visit.priority || 'normal'
+            };
+            return queueItem;
+          }
+          return null;
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null);
       // If no active queues, show completed visits as queue items
       if (queueData.length === 0) {
         const completedQueues = visitsData
           .filter(visit => {
-            const isToday = (visit.visit_date && visit.visit_date.startsWith(today)) || 
-                           (visit.created_at && visit.created_at.startsWith(today));
-            return visit.status === 'completed' && isToday;
+            // Type guard to check if it's a MedicalVisit
+            if ('visit_date' in visit && 'status' in visit) {
+              const isToday = (visit.visit_date && visit.visit_date.startsWith(today)) || 
+                             (visit.created_at && visit.created_at.startsWith(today));
+              return visit.status === 'completed' && isToday;
+            }
+            return false;
           })
           .slice(0, 3)
-          .map(visit => ({
-            id: visit.id,
-            queueNumber: visit.visit_number || `Q${visit.id.slice(-4)}`,
-            patientName: visit.patient_thai_name || `${visit.patient_first_name || ''} ${visit.patient_last_name || ''}`.trim(),
-            status: 'completed' as const,
-            department: visit.department_name || 'ไม่ระบุ',
-            waitTime: 0,
-            priority: visit.priority || 'normal'
-          }));
+          .map(visit => {
+            // Type guard to ensure it's a MedicalVisit
+            if ('visitNumber' in visit && 'status' in visit) {
+              return {
+                id: visit.id,
+                queueNumber: visit.visitNumber || `Q${visit.id.slice(-4)}`,
+                patientName: 'ไม่ระบุ', // Will be populated from patient data
+                status: 'completed' as const,
+                department: 'ไม่ระบุ', // Will be populated from department data
+                waitTime: 0,
+                priority: visit.priority || 'normal'
+              };
+            }
+            return null;
+          })
+          .filter((item): item is NonNullable<typeof item> => item !== null);
         
         queueData.push(...completedQueues);
       }
@@ -191,38 +212,47 @@ export default function EMRDashboard() {
       
       // Add visit activities
       visitsData.slice(0, 3).forEach(visit => {
-        activities.push({
-          id: `visit-${visit.id}`,
-          type: 'visit' as const,
-          description: `ผู้ป่วย ${visit.patient_thai_name || visit.patient_first_name || 'ไม่ระบุ'} ${visit.status === 'completed' ? 'เสร็จสิ้นการรักษา' : visit.status === 'in_progress' ? 'กำลังรับการรักษา' : 'รอการรักษา'}`,
-          timestamp: visit.updated_at || visit.created_at || new Date().toISOString(),
-          user: visit.doctor_first_name ? `${visit.doctor_first_name} ${visit.doctor_last_name}` : 'แพทย์',
-          status: visit.status === 'completed' ? 'success' as const : visit.status === 'in_progress' ? 'warning' as const : 'error' as const
-        });
+        // Type guard to check if it's a MedicalVisit
+        if ('visit_date' in visit && 'status' in visit) {
+          activities.push({
+            id: `visit-${visit.id}`,
+            type: 'visit' as const,
+            description: `ผู้ป่วย ไม่ระบุ ${visit.status === 'completed' ? 'เสร็จสิ้นการรักษา' : visit.status === 'in_progress' ? 'กำลังรับการรักษา' : 'รอการรักษา'}`,
+            timestamp: visit.updated_at || visit.created_at || new Date().toISOString(),
+            user: 'แพทย์',
+            status: visit.status === 'completed' ? 'success' as const : visit.status === 'in_progress' ? 'warning' as const : 'error' as const
+          });
+        }
       });
       
       // Add patient registration activities
       patientsData.slice(0, 2).forEach(patient => {
-        activities.push({
-          id: `patient-${patient.id}`,
-          type: 'registration' as const,
-          description: `ลงทะเบียนผู้ป่วยใหม่: ${patient.thai_name || patient.first_name || 'ไม่ระบุ'}`,
-          timestamp: patient.created_at || new Date().toISOString(),
-          user: 'ระบบ',
-          status: 'success' as const
-        });
+        // Type guard to check if it's a MedicalPatient
+        if ('firstName' in patient && 'lastName' in patient) {
+          activities.push({
+            id: `patient-${patient.id}`,
+            type: 'registration' as const,
+            description: `ลงทะเบียนผู้ป่วยใหม่: ${patient.thaiName || patient.firstName || 'ไม่ระบุ'}`,
+            timestamp: patient.created_at || new Date().toISOString(),
+            user: 'ระบบ',
+            status: 'success' as const
+          });
+        }
       });
       
       // Add appointment activities
       appointmentsData.slice(0, 2).forEach(appointment => {
-        activities.push({
-          id: `appointment-${appointment.id}`,
-          type: 'appointment' as const,
-          description: `นัดหมาย: ${appointment.title || 'ไม่ระบุหัวข้อ'} - ${appointment.patient_name || 'ไม่ระบุผู้ป่วย'}`,
-          timestamp: appointment.appointment_date || new Date().toISOString(),
-          user: appointment.doctor_name || 'แพทย์',
-          status: appointment.status === 'confirmed' ? 'success' as const : 'warning' as const
-        });
+        // Type guard to check if it's an Appointment
+        if ('title' in appointment && 'status' in appointment) {
+          activities.push({
+            id: `appointment-${appointment.id}`,
+            type: 'appointment' as const,
+            description: `นัดหมาย: ${appointment.title || 'ไม่ระบุหัวข้อ'} - ไม่ระบุผู้ป่วย`,
+            timestamp: appointment.date || new Date().toISOString(),
+            user: appointment.physician?.name || 'แพทย์',
+            status: appointment.status === 'confirmed' ? 'success' as const : 'warning' as const
+          });
+        }
       });
       
       // Sort by timestamp (newest first) and limit to 5
@@ -261,7 +291,7 @@ export default function EMRDashboard() {
         if (completedVisitsCount > 0) {
           alertsData.push({
             id: '3',
-            type: 'success',
+            type: 'info',
             title: 'การรักษาเสร็จสิ้น',
             message: `เสร็จสิ้นการรักษา ${completedVisitsCount} รายวันนี้`,
             timestamp: new Date().toISOString(),
@@ -329,7 +359,7 @@ export default function EMRDashboard() {
       
       setAlerts(alertsData);
 
-      logger.('✅ Dashboard data loaded successfully');
+      logger.info('✅ Dashboard data loaded successfully');
     } catch (err: any) {
       console.error('❌ Error loading dashboard data:', err);
       logger.error('❌ Error loading dashboard data:', err);

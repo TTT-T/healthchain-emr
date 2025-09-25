@@ -70,7 +70,7 @@ export function AdminAuthProvider({ children }: AdminAuthProviderProps) {
         throw new Error(result.message || 'Login failed');
       }
     } catch (error: any) {
-      setError(error.message || 'Login failed');
+      setError((error as any).message || 'Login failed');
       throw error;
     } finally {
       setIsLoading(false);

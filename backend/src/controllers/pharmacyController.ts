@@ -137,7 +137,7 @@ export const createPharmacyDispensing = asyncHandler(async (req: Request, res: R
         patientPhone: patient.phone,
         patientEmail: patient.email,
         notificationType: 'prescription_ready',
-        title: `ยาเตรียมพร้อม: ${medications[0]?.medication_name || 'ยาตามใบสั่ง'}`,
+        title: `ยาเตรียมพร้อม: ${medications[0]?.medicationName || 'ยาตามใบสั่ง'}`,
         message: `ยาเตรียมพร้อมสำหรับคุณ ${patient.thai_name || patient.first_name} แล้ว กรุณามารับยาได้ที่แผนกเภสัชกรรม`,
         recordType: 'pharmacy_dispensing',
         recordId: dispensingRecord.id,

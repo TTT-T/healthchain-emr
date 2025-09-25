@@ -239,7 +239,7 @@ export default function AuditLogPage() {
   };
 
   const formatDate = (daring: string) => {
-    return new Date(daring).toLocaleDaring('th-TH', {
+    return new Date(daring).toLocaleString('th-TH', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

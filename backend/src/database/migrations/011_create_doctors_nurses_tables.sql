@@ -98,13 +98,31 @@ CREATE INDEX IF NOT EXISTS idx_nurses_department ON nurses(department);
 -- 4. CREATE TRIGGERS FOR AUTO-UPDATING TIMESTAMPS
 -- =============================================================================
 
--- Doctors table trigger
-CREATE TRIGGER update_doctors_updated_at BEFORE UPDATE ON doctors
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Doctors table trigger (only if it doesn't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.triggers 
+        WHERE trigger_name = 'update_doctors_updated_at' 
+        AND event_object_table = 'doctors'
+    ) THEN
+        CREATE TRIGGER update_doctors_updated_at BEFORE UPDATE ON doctors
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
 
--- Nurses table trigger
-CREATE TRIGGER update_nurses_updated_at BEFORE UPDATE ON nurses
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Nurses table trigger (only if it doesn't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.triggers 
+        WHERE trigger_name = 'update_nurses_updated_at' 
+        AND event_object_table = 'nurses'
+    ) THEN
+        CREATE TRIGGER update_nurses_updated_at BEFORE UPDATE ON nurses
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
 
 -- =============================================================================
 -- 5. ADD COMMENTS FOR DOCUMENTATION

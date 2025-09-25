@@ -77,7 +77,7 @@ class QueryOptimizationService {
       query: query.substring(0, 200), // Truncate for storage
       executionTime,
       rowCount,
-      timestamp: new Date()
+      timestamp: new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }))
     });
 
     // Keep only recent stats

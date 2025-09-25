@@ -34,7 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     logger.error('ErrorBoundary caught an error:', {
-      error: error.message,
+      error: (error as any).message,
       stack: error.stack,
       componentStack: errorInfo.componentStack
     });
@@ -84,7 +84,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   รายละเอียดข้อผิดพลาด (Development Mode):
                 </h3>
                 <pre className="text-xs text-red-700 whitespace-pre-wrap overflow-auto max-h-32">
-                  {this.state.error.message}
+                  {this.state.error?.message}
                   {this.state.error.stack}
                 </pre>
               </div>

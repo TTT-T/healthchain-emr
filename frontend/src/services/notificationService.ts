@@ -191,7 +191,7 @@ export class NotificationService {
         patientHn: data.patientHn,
         queueNumber: data.queueNumber,
         visitTime: data.visitTime,
-        createdAt: createLocalDateTimeString(new Date()),
+        created_at: createLocalDateTimeString(new Date()),
         read: false
       };
       
@@ -431,7 +431,7 @@ export class NotificationService {
         createdByName: data.createdByName,
         priority: 'high',
         actionRequired: false,
-        createdAt: createLocalDateTimeString(new Date()),
+        created_at: createLocalDateTimeString(new Date()),
         read: false
       };
       
@@ -595,7 +595,7 @@ export class NotificationService {
     };
 
     const recordTypeLabel = recordTypeLabels[data.recordType] || 'ข้อมูลทางการแพทย์';
-    const message = `โรงพยาบาลตัวอย่าง: มีการอัปเดต${recordTypeLabel}สำหรับคุณ ${data.patientName} โดย ${data.recordedBy} วันที่ ${new Date(data.recordedTime).toLocaleDaring('th-TH')}`;
+    const message = `โรงพยาบาลตัวอย่าง: มีการอัปเดต${recordTypeLabel}สำหรับคุณ ${data.patientName} โดย ${data.recordedBy} วันที่ ${new Date(data.recordedTime).toLocaleString('th-TH')}`;
     
     logger.info('SMS sent (simulated):', { to: data.patientPhone, message });
   }
@@ -616,7 +616,7 @@ export class NotificationService {
         recordDescription: data.message,
         recordDetails: data.chiefComplaint ? { chiefComplaint: data.chiefComplaint } : undefined,
         createdByName: data.recordedBy,
-        createdAt: data.recordedTime
+        created_at: data.recordedTime
       }, data.patientEmail);
       
       logger.info('Record update email notification sent', { patientHn: data.patientHn });
@@ -653,7 +653,7 @@ export class NotificationService {
       recordedTime: data.recordedTime,
       priority: 'medium',
       actionRequired: false,
-      createdAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
       read: false
     };
 

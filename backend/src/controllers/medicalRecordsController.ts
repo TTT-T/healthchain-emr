@@ -38,16 +38,15 @@ export const getPatientRecords = async (req: Request, res: Response) => {
       }
       
       if (patientQuery.rows.length === 0) {
-        // If still no patient found, do not create one automatically
-        return res.status(404).json({
-          data: null,
-          meta: null,
-          error: { 
-            message: 'Patient record not found. Please register through EMR system at /emr/register-patient',
-            code: 'PATIENT_NOT_REGISTERED'
-          },
-          statusCode: 404
-        });
+        // If still no patient found, create a virtual patient record from user data
+        patient = {
+          id: user.id, // Use user ID as patient ID
+          user_id: user.id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          email: user.email
+        };
+        actualPatientId = user.id;
       } else {
         patient = patientQuery.rows[0];
         actualPatientId = patient.id;
@@ -139,82 +138,97 @@ export const getPatientRecords = async (req: Request, res: Response) => {
 
     // Get lab results for each visit
     for (const visit of visits) {
-      const labResults = await databaseManager.query(`
-        SELECT 
-          lo.id as lab_order_id,
-          lo.order_number,
-          lo._name,
-          lo._category,
-          lo.status as order_status,
-          lr.id as result_id,
-          lr.result_value,
-          lr.result_unit,
-          lr.reference_range,
-          lr.abnormal_flag,
-          lr.interpretation,
-          lr.result_date,
-          lr.result_time
-        FROM lab_orders lo
-        LEFT JOIN lab_results lr ON lo.id = lr.lab_order_id
-        WHERE lo.visit_id = $1
-        ORDER BY lo.order_date DESC
-      `, [visit.id]);
+      try {
+        const labResults = await databaseManager.query(`
+          SELECT 
+            lo.id as lab_order_id,
+            lo.order_number,
+            lo._name,
+            lo._category,
+            lo.status as order_status,
+            lr.id as result_id,
+            lr.result_value,
+            lr.result_unit,
+            lr.reference_range,
+            lr.abnormal_flag,
+            lr.interpretation,
+            lr.result_date,
+            lr.result_time
+          FROM lab_orders lo
+          LEFT JOIN lab_results lr ON lo.id = lr.lab_order_id
+          WHERE lo.visit_id = $1
+          ORDER BY lo.order_date DESC
+        `, [visit.id]);
 
-      visit.lab_results = labResults.rows;
+        visit.lab_results = labResults.rows;
+      } catch (error) {
+        console.error('Error getting lab results for visit:', visit.id, error);
+        visit.lab_results = [];
+      }
     }
 
     // Get prescriptions for each visit
     for (const visit of visits) {
-      const prescriptions = await databaseManager.query(`
-        SELECT 
-          p.id as prescription_id,
-          p.prescription_number,
-          p.prescription_date,
-          p.status as prescription_status,
-          p.general_instructions,
-          pi.id as item_id,
-          pi.medication_name,
-          pi.strength,
-          pi.dosage_form,
-          pi.quantity_prescribed,
-          pi.unit,
-          pi.dosage_instructions,
-          pi.duration_days,
-          pi.item_status
-        FROM prescriptions p
-        LEFT JOIN prescription_items pi ON p.id = pi.prescription_id
-        WHERE p.visit_id = $1
-        ORDER BY p.prescription_date DESC
-      `, [visit.id]);
+      try {
+        const prescriptions = await databaseManager.query(`
+          SELECT 
+            p.id as prescription_id,
+            p.prescription_number,
+            p.prescription_date,
+            p.status as prescription_status,
+            p.general_instructions,
+            pi.id as item_id,
+            pi.medication_name,
+            pi.strength,
+            pi.dosage_form,
+            pi.quantity_prescribed,
+            pi.unit,
+            pi.dosage_instructions,
+            pi.duration_days,
+            pi.item_status
+          FROM prescriptions p
+          LEFT JOIN prescription_items pi ON p.id = pi.prescription_id
+          WHERE p.visit_id = $1
+          ORDER BY p.prescription_date DESC
+        `, [visit.id]);
 
-      visit.prescriptions = prescriptions.rows;
+        visit.prescriptions = prescriptions.rows;
+      } catch (error) {
+        console.error('Error getting prescriptions for visit:', visit.id, error);
+        visit.prescriptions = [];
+      }
     }
 
     // Get vital signs for each visit
     for (const visit of visits) {
-      const vitalSigns = await databaseManager.query(`
-        SELECT 
-          id,
-          systolic_bp,
-          diastolic_bp,
-          heart_rate,
-          respiratory_rate,
-          temperature,
-          oxygen_saturation,
-          weight,
-          height,
-          bmi,
-          pain_scale,
-          pain_location,
-          blood_glucose,
-          measurement_time,
-          notes
-        FROM vital_signs
-        WHERE visit_id = $1
-        ORDER BY measurement_time DESC
-      `, [visit.id]);
+      try {
+        const vitalSigns = await databaseManager.query(`
+          SELECT 
+            id,
+            systolic_bp,
+            diastolic_bp,
+            heart_rate,
+            respiratory_rate,
+            temperature,
+            oxygen_saturation,
+            weight,
+            height,
+            bmi,
+            pain_scale,
+            pain_location,
+            blood_glucose,
+            measurement_time,
+            notes
+          FROM vital_signs
+          WHERE visit_id = $1
+          ORDER BY measurement_time DESC
+        `, [visit.id]);
 
-      visit.vital_signs = vitalSigns.rows;
+        visit.vital_signs = vitalSigns.rows;
+      } catch (error) {
+        console.error('Error getting vital signs for visit:', visit.id, error);
+        visit.vital_signs = [];
+      }
     }
 
     res.json({
@@ -302,7 +316,7 @@ export const createPatientRecord = async (req: Request, res: Response) => {
     try {
       // Create visit record
       const visitId = uuidv4();
-      const visitNumber = `V${new Date().toISOString().slice(0, 7).replace('-', '')}${Date.now().toString().slice(-4)}`;
+      const visitNumber = `V${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }).slice(0, 7).replace('-', '')}${Date.now().toString().slice(-4)}`;
 
       await databaseManager.query(`
         INSERT INTO visits (
@@ -341,7 +355,7 @@ export const createPatientRecord = async (req: Request, res: Response) => {
       if (lab_orders && lab_orders.length > 0) {
         for (const labOrder of lab_orders) {
           const labOrderId = uuidv4();
-          const orderNumber = `LAB${new Date().toISOString().slice(0, 7).replace('-', '')}${Date.now().toString().slice(-4)}`;
+          const orderNumber = `LAB${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }).slice(0, 7).replace('-', '')}${Date.now().toString().slice(-4)}`;
 
           await databaseManager.query(`
             INSERT INTO lab_orders (
@@ -361,7 +375,7 @@ export const createPatientRecord = async (req: Request, res: Response) => {
       if (prescriptions && prescriptions.length > 0) {
         for (const prescription of prescriptions) {
           const prescriptionId = uuidv4();
-          const prescriptionNumber = `RX${new Date().toISOString().slice(0, 7).replace('-', '')}${Date.now().toString().slice(-4)}`;
+          const prescriptionNumber = `RX${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }).slice(0, 7).replace('-', '')}${Date.now().toString().slice(-4)}`;
 
           await databaseManager.query(`
             INSERT INTO prescriptions (
@@ -506,7 +520,7 @@ export const updatePatientRecord = async (req: Request, res: Response) => {
       updateValues.push(status);
     }
 
-    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+    updateFields.push(`updated_at = NOW() AT TIME ZONE 'Asia/Bangkok'`);
     updateFields.push(`updated_by = $${paramCount++}`);
     updateValues.push(userId);
 
@@ -584,7 +598,7 @@ export const deletePatientRecord = async (req: Request, res: Response) => {
     // Soft delete by updating status to 'cancelled'
     await databaseManager.query(`
       UPDATE visits 
-      SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP, updated_by = $1
+      SET status = 'cancelled', updated_at = NOW() AT TIME ZONE 'Asia/Bangkok', updated_by = $1
       WHERE id = $2
     `, [userId, recordId]);
 

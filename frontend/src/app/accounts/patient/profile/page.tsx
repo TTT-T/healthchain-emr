@@ -11,8 +11,8 @@ interface PatientData {
   id: string;
   username: string;
   email: string;
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
   phone_number?: string;
   
   // Patient specific info
@@ -72,8 +72,8 @@ function OriginalProfile() {
     id: '',
     username: '',
     email: '',
-    first_name: '',
-    last_name: '',
+    firstName: '',
+    lastName: '',
     phone_number: '',
     thai_name: '',
     phone: '',
@@ -158,34 +158,34 @@ function OriginalProfile() {
       setError(null);
       
       // Basic validation
-      if (!formData.first_name || !formData.last_name || !formData.email) {
+      if (!formData.firstName || !formData.lastName || !formData.email) {
         setError('กรุณากรอกข้อมูลที่จำเป็น (ชื่อ, นามสกุล, อีเมล)');
         return;
       }
       
       // Email validation
       const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailPattern.(formData.email)) {
+      if (!emailPattern.test(formData.email)) {
         setError('รูปแบบอีเมลไม่ถูกต้อง');
         return;
       }
       
       // Phone validation (if provided)
-      if (formData.phone && !/^[0-9\-\s\+\(\)]+$/.(formData.phone)) {
+      if (formData.phone && !/^[0-9\-\s\+\(\)]+$/.test(formData.phone)) {
         setError('รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง');
         return;
       }
       
       // National ID validation (if provided)
-      if (formData.national_id && !/^[0-9]{13}$/.(formData.national_id.replace(/\D/g, ''))) {
+      if (formData.national_id && !/^[0-9]{13}$/.test(formData.national_id.replace(/\D/g, ''))) {
         setError('เลขบัตรประชาชนต้องมี 13 หลัก');
         return;
       }
       
       // Transform data to match backend schema (camelCase)
       const transformedData = {
-        firstName: formData.first_name,
-        lastName: formData.last_name,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
         phoneNumber: formData.phone,
         emergencyContactName: formData.emergency_contact_name,
@@ -258,7 +258,7 @@ function OriginalProfile() {
               <div className="relative">
                 <div className="w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
                   <span className="text-white font-bold text-2xl md:text-3xl">
-                    {formData.first_name?.[0] || 'U'}{formData.last_name?.[0] || 'N'}
+                    {formData.firstName?.[0] || 'U'}{formData.lastName?.[0] || 'N'}
                   </span>
                 </div>
                 <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-400 border-2 border-white rounded-full"></div>
@@ -266,7 +266,7 @@ function OriginalProfile() {
               
               <div className="flex-1 text-center md:text-left">
                 <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-3">
-                  {formData.thai_name || `${formData.first_name} ${formData.last_name}`}
+                  {formData.thai_name || `${formData.firstName} ${formData.lastName}`}
                 </h2>
                 <div className="space-y-2 text-sm md:text-base text-slate-600">
                   <p className="flex items-center justify-center md:justify-start gap-2">
@@ -344,12 +344,12 @@ function OriginalProfile() {
                         <input
                           type="text"
                           name="first_name"
-                          value={formData.first_name}
+                          value={formData.firstName}
                           onChange={handleInputChange}
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       ) : (
-                        <p className="text-slate-800 py-2">{formData.first_name}</p>
+                        <p className="text-slate-800 py-2">{formData.firstName}</p>
                       )}
                     </div>
                     
@@ -359,12 +359,12 @@ function OriginalProfile() {
                         <input
                           type="text"
                           name="last_name"
-                          value={formData.last_name}
+                          value={formData.lastName}
                           onChange={handleInputChange}
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       ) : (
-                        <p className="text-slate-800 py-2">{formData.last_name}</p>
+                        <p className="text-slate-800 py-2">{formData.lastName}</p>
                       )}
                     </div>
                     
@@ -432,7 +432,7 @@ function OriginalProfile() {
                         <p className="text-slate-800 py-2">
                           {formData.birth_date ? (
                             <span>
-                              {new Date(formData.birth_date).toLocaleDaring('th-TH')}
+                              {new Date(formData.birth_date).toLocaleString('th-TH')}
                               {(() => {
                                 const birthDate = new Date(formData.birth_date);
                                 const today = new Date();

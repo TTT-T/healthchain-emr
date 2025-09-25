@@ -19,8 +19,8 @@ interface PatientDocument {
   issuedDate: string;
   validUntil?: string;
   recipientInfo?: any;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
   patient: {
     thaiName: string;
     nationalId: string;
@@ -87,7 +87,7 @@ export default function PatientDocuments() {
 
       if (response.statusCode === 200 && response.data) {
         // response.data เป็น array ของ documents
-        const documents = Array.isArray(response.data) ? response.data : [];
+        const documents = Array.isArray(response.data) ? Array.isArray(response.data) ? Array.isArray(response.data) ? response.data : []: [] : [];
         // Map backend data to frontend format
         const mappedDocuments = documents.map((doc: any) => ({
           ...doc,
@@ -366,7 +366,7 @@ export default function PatientDocuments() {
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Calendar className="h-4 w-4" />
-                      <span>{formatDateTime(document.issuedDate || document.createdAt)}</span>
+                      <span>{formatDateTime(document.issuedDate || document.created_at)}</span>
                     </div>
                     
                     {document.issuedBy && (
@@ -487,7 +487,7 @@ export default function PatientDocuments() {
                   <div className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-gray-500" />
                     <span className="font-medium">วันที่ออก:</span>
-                    <span>{formatDateTime(selectedDocument.issuedDate || selectedDocument.createdAt)}</span>
+                    <span>{formatDateTime(selectedDocument.issuedDate || selectedDocument.created_at)}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <User className="h-5 w-5 text-gray-500" />

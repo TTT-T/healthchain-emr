@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Search, FileText, Plus, Edit, Trash2, Download, CheckCircle, AlertCircle, Calendar, User } from 'lucide-react';
+import { Search, FileText, Plus, Edit, Trash2, Download, CheckCircle, AlertCircle, Calendar, User, Heart, Activity, Brain, Database, Shield, Stethoscope } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
 import { DocumentService } from '@/services/documentService';
@@ -48,43 +48,126 @@ export default function Documents() {
     if (!patient) return 0;
     
     try {
-      // First try birth_date if available
-      if (patient.birth_date) {
-        return calculateAge(patient.birth_date);
-      }
-      
-      // If birth_date is not available, try separate fields
-      if (patient.birth_year && patient.birth_month && patient.birth_day) {
-        let year = patient.birth_year;
-        
-        // Convert Buddhist year to Christian year if needed
-        if (year > 2500) {
-          year = year - 543;
-        }
-        
+      logger.info("Calculating age for patient:", {
+        birth_date: patient.birth_date,
+        birthYear: patient.birthYear,
+        birthMonth: patient.birthMonth,
+        birthDay: patient.birthDay
+      });
+
+      // Try to calculate age from separate birth fields first
+      const birthYear = patient.birthYear;
+      const birthMonth = patient.birthMonth;
+      const birthDay = patient.birthDay;
+
+      if (birthYear && birthMonth && birthDay) {
         const today = new Date();
-        const birthDate = new Date(year, patient.birth_month - 1, patient.birth_day);
-        
-        if (isNaN(birthDate.getTime())) {
-          return 0;
-        }
-        
-        let age = today.getFullYear() - birthDate.getFullYear();
-        const monthDiff = today.getMonth() - birthDate.getMonth();
-        
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        const adjustedBirthYear = birthYear > 2500 ? birthYear - 543 : birthYear;
+        const birth = new Date(adjustedBirthYear, birthMonth - 1, birthDay);
+        let age = today.getFullYear() - birth.getFullYear();
+        const monthDiff = today.getMonth() - birth.getMonth();
+
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
           age--;
         }
-        
-        return age;
+
+        logger.info("Calculated age from separate fields:", {
+          age,
+          adjustedBirthYear,
+          birthMonth,
+          birthDay
+        });
+
+        return Math.max(0, age);
       }
-      
+
+      // Fallback to birth_date
+      if (patient.birth_date) {
+        const age = calculateAge(patient.birth_date);
+        logger.info("Calculated age from birth_date:", { age, birth_date: patient.birth_date });
+        return Math.max(0, age);
+      }
+
+      // Try to parse birth_date from DD/MM/YYYY format
+      if (patient.birthDate) {
+        try {
+          const parts = patient.birthDate.split('/');
+          if (parts.length === 3) {
+            const day = parseInt(parts[0]);
+            const month = parseInt(parts[1]);
+            const year = parseInt(parts[2]);
+
+            if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+              const today = new Date();
+              const adjustedYear = year > 2500 ? year - 543 : year;
+              const birth = new Date(adjustedYear, month - 1, day);
+              let age = today.getFullYear() - birth.getFullYear();
+              const monthDiff = today.getMonth() - birth.getMonth();
+
+              if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+                age--;
+              }
+
+              logger.info("Calculated age from birthDate DD/MM/YYYY:", {
+                age,
+                adjustedYear,
+                month,
+                day
+              });
+
+              return Math.max(0, age);
+            }
+          }
+        } catch (error) {
+          logger.error("Error parsing birthDate:", error);
+        }
+      }
+
+      logger.info("No birth data available, returning 0");
       return 0;
     } catch (error) {
       logger.error("Error calculating age from fields:", error);
       return 0;
     }
   };
+  // Helper function to format gender
+  const formatGender = (gender: string): string => {
+    if (!gender) return 'ไม่ระบุ';
+    const genderMap: { [key: string]: string } = {
+      'male': 'ชาย',
+      'female': 'หญิง',
+      'ชาย': 'ชาย',
+      'หญิง': 'หญิง',
+      'M': 'ชาย',
+      'F': 'หญิง'
+    };
+    return genderMap[gender.toLowerCase()] || gender;
+  };
+
+  // Helper function to format patient name
+  const formatPatientName = (patient: MedicalPatient & { thaiLastName?: string }): string => {
+    // Check for Thai name first (most complete)
+    if (patient.thaiName && patient.thaiLastName) {
+      return `${patient.thaiName} ${patient.thaiLastName}`;
+    } else if (patient.thaiName) {
+      return patient.thaiName;
+    }
+    
+    // Check for English name
+    const firstName = patient.firstName || '';
+    const lastName = patient.lastName || '';
+    
+    if (firstName && lastName) {
+      return `${firstName} ${lastName}`;
+    } else if (firstName) {
+      return firstName;
+    } else if (lastName) {
+      return lastName;
+    }
+    
+    return 'ไม่ระบุ';
+  };
+
   const [success, setSuccess] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [documents, setDocuments] = useState<any[]>([]);
@@ -101,7 +184,7 @@ export default function Documents() {
     notes: '',
     issuedDate: new Date().toISOString().split('T')[0],
     validUntil: '',
-    doctorName: user?.thai_name || `${user?.first_name} ${user?.last_name}` || '',
+    doctorName: user?.thaiName || `${user?.firstName} ${user?.lastName}` || '',
     recipientInfo: {
       name: '',
       organization: '',
@@ -244,7 +327,7 @@ export default function Documents() {
 
   const handleDocumentTypeChange = (documentType: string) => {
     const template = documentTemplates[documentType as keyof typeof documentTemplates] || '';
-    const doctorName = documentData.doctorName || user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'แพทย์';
+    const doctorName = documentData.doctorName || user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'แพทย์';
     
     // Replace {{doctorName}} in template with actual doctor name
     const processedTemplate = template.replace(/\{\{doctorName\}\}/g, doctorName);
@@ -341,7 +424,7 @@ export default function Documents() {
         chiefComplaint: `เอกสาร: ${documentRecord.documentTitle}`,
         recordedBy: documentRecord.issuedBy,
         recordedTime: documentRecord.issuedDate,
-        message: `มีการออกเอกสารใหม่สำหรับคุณ ${patient.thai_name || `${patient.first_name} ${patient.last_name}`} โดย ${user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'แพทย์'}`
+        message: `มีการออกเอกสารใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'แพทย์'}`
       };
 
       await NotificationService.notifyPatientRecordUpdate(notificationData);
@@ -475,40 +558,149 @@ export default function Documents() {
 
           {/* Patient Info */}
           {selectedPatient && (
-            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-lg font-semibold text-indigo-800 mb-2">ข้อมูลผู้ป่วย</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium">HN:</span> {selectedPatient.hospital_number || selectedPatient.hn}
-                    </div>
-                    <div>
-                      <span className="font-medium">ชื่อ:</span> {selectedPatient.thai_name || `${selectedPatient.first_name} ${selectedPatient.last_name}`}
-                    </div>
-                    <div>
-                      <span className="font-medium">อายุ:</span> {calculateAgeFromFields(selectedPatient) > 0 ? `${calculateAgeFromFields(selectedPatient)} ปี` : 'ไม่ระบุ'}
-                    </div>
-                    <div>
-                      <span className="font-medium">เพศ:</span> {selectedPatient.gender || 'ไม่ระบุ'}
-                    </div>
+            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-6 mb-6">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-indigo-100 rounded-lg">
+                    <User className="h-6 w-6 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-indigo-900">ข้อมูลผู้ป่วย</h3>
+                    <p className="text-indigo-700">ข้อมูลสำหรับการออกเอกสารทางการแพทย์</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowForm(!showForm)}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+                  className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-5 w-5" />
                   {showForm ? "ปิดฟอร์ม" : "สร้างเอกสาร"}
                 </button>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Basic Information */}
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3">
+                    <User className="h-5 w-5 text-blue-600" />
+                    <h4 className="font-semibold text-gray-900">ข้อมูลพื้นฐาน</h4>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">HN:</span>
+                      <span className="font-medium text-gray-900">{selectedPatient.hospitalNumber || selectedPatient.hn || 'ไม่ระบุ'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">ชื่อ-นามสกุล:</span>
+                      <span className="font-medium text-gray-900">{formatPatientName(selectedPatient)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">อายุ:</span>
+                      <span className="font-medium text-gray-900">
+                        {(() => {
+                          const age = calculateAgeFromFields(selectedPatient);
+                          if (age > 0) {
+                            return `${age} ปี`;
+                          } else if (selectedPatient.birth_date || selectedPatient.birthDate || selectedPatient.birthYear) {
+                            return 'ไม่สามารถคำนวณได้';
+                          } else {
+                            return 'ไม่ระบุ';
+                          }
+                        })()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">เพศ:</span>
+                      <span className="font-medium text-gray-900">{formatGender(selectedPatient.gender)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">กรุ๊ปเลือด:</span>
+                      <span className="font-medium text-gray-900">{selectedPatient.bloodType || 'ไม่ระบุ'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Medical Information */}
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Heart className="h-5 w-5 text-red-600" />
+                    <h4 className="font-semibold text-gray-900">ข้อมูลทางการแพทย์</h4>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <span className="text-gray-600">แพ้ยา:</span>
+                      <span className="font-medium text-gray-900 ml-2">{selectedPatient.drugAllergies || 'ไม่มี'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">แพ้อาหาร:</span>
+                      <span className="font-medium text-gray-900 ml-2">{selectedPatient.foodAllergies || 'ไม่มี'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">โรคประจำตัว:</span>
+                      <span className="font-medium text-gray-900 ml-2">{selectedPatient.chronicDiseases || 'ไม่มี'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">ยาที่ใช้ประจำ:</span>
+                      <span className="font-medium text-gray-900 ml-2">{selectedPatient.currentMedications || 'ไม่มี'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Physical Information */}
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Activity className="h-5 w-5 text-green-600" />
+                    <h4 className="font-semibold text-gray-900">ข้อมูลร่างกาย</h4>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">น้ำหนัก:</span>
+                      <span className="font-medium text-gray-900">{selectedPatient.weight ? `${selectedPatient.weight} กก.` : 'ไม่ระบุ'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">ส่วนสูง:</span>
+                      <span className="font-medium text-gray-900">{selectedPatient.height ? `${selectedPatient.height} ซม.` : 'ไม่ระบุ'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">BMI:</span>
+                      <span className="font-medium text-gray-900">
+                        {selectedPatient.weight && selectedPatient.height ? 
+                          (selectedPatient.weight / Math.pow(selectedPatient.height / 100, 2)).toFixed(1) : 'ไม่ระบุ'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">สถานะ:</span>
+                      <span className="font-medium text-gray-900">ปกติ</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Instructions for Document Creation */}
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Stethoscope className="h-5 w-5 text-blue-600" />
+                  <h4 className="font-semibold text-blue-900">คำแนะนำสำหรับการออกเอกสาร</h4>
+                </div>
+                <p className="text-blue-800 text-sm">
+                  กรุณาตรวจสอบข้อมูลผู้ป่วยให้ครบถ้วนก่อนออกเอกสาร และระบุข้อมูลที่จำเป็นสำหรับเอกสารแต่ละประเภท
+                </p>
               </div>
             </div>
           )}
 
           {/* Document Form */}
           {selectedPatient && showForm && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">สร้างเอกสารใหม่</h3>
+            <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-indigo-100 rounded-lg">
+                  <FileText className="h-6 w-6 text-indigo-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">สร้างเอกสารใหม่</h3>
+                  <p className="text-gray-600">กรอกข้อมูลเพื่อสร้างเอกสารทางการแพทย์</p>
+                </div>
+              </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
@@ -630,14 +822,22 @@ export default function Documents() {
           {/* Documents History Cards */}
           {selectedPatient && (
             <div className="mt-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-indigo-600" />
-                  ประวัติการออกเอกสาร
-                </h3>
-                <span className="text-sm text-gray-500">
-                  {documents.length} เอกสาร
-                </span>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-100 rounded-lg">
+                    <FileText className="h-6 w-6 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">ประวัติการออกเอกสาร</h3>
+                    <p className="text-gray-600">รายการเอกสารที่ออกให้ผู้ป่วย</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-indigo-600">{documents.length}</div>
+                    <div className="text-sm text-gray-500">เอกสารทั้งหมด</div>
+                  </div>
+                </div>
               </div>
               
               {documents.length > 0 ? (
@@ -670,12 +870,12 @@ export default function Documents() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Calendar className="h-3 w-3" />
-                          <span>วันที่ออก: {new Date(document.issuedDate).toLocaleDaring('th-TH')}</span>
+                          <span>วันที่ออก: {new Date(document.issuedDate).toLocaleString('th-TH')}</span>
                         </div>
                         {document.validUntil && (
                           <div className="flex items-center gap-2">
                             <AlertCircle className="h-3 w-3" />
-                            <span>หมดอายุ: {new Date(document.validUntil).toLocaleDaring('th-TH')}</span>
+                            <span>หมดอายุ: {new Date(document.validUntil).toLocaleString('th-TH')}</span>
                           </div>
                         )}
                       </div>
@@ -699,15 +899,19 @@ export default function Documents() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h4 className="text-lg font-medium text-gray-900 mb-2">ยังไม่มีเอกสาร</h4>
-                  <p className="text-gray-500 mb-4">ผู้ป่วยนี้ยังไม่เคยออกเอกสารใดๆ</p>
+                <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border-2 border-dashed border-gray-300">
+                  <div className="p-4 bg-white rounded-full w-20 h-20 mx-auto mb-6 shadow-sm">
+                    <FileText className="h-12 w-12 text-gray-400 mx-auto" />
+                  </div>
+                  <h4 className="text-xl font-semibold text-gray-900 mb-2">ยังไม่มีเอกสาร</h4>
+                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                    ผู้ป่วยนี้ยังไม่เคยออกเอกสารใดๆ คุณสามารถสร้างเอกสารทางการแพทย์ได้ที่นี่
+                  </p>
                   <button
                     onClick={() => setShowForm(true)}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2 mx-auto"
+                    className="bg-indigo-600 text-white px-6 py-3 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2 mx-auto"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-5 w-5" />
                     สร้างเอกสารแรก
                   </button>
                 </div>
@@ -717,19 +921,29 @@ export default function Documents() {
 
           {/* Success/Error Messages */}
           {success && (
-            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                <p className="text-green-800 whitespace-pre-line">{success}</p>
+            <div className="mt-6 p-6 bg-green-50 border border-green-200 rounded-lg shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-lg font-semibold text-green-900 mb-1">สำเร็จ!</h4>
+                  <p className="text-green-800 whitespace-pre-line">{success}</p>
+                </div>
               </div>
             </div>
           )}
 
           {error && (
-            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-red-600" />
-                <p className="text-red-800 whitespace-pre-line">{error}</p>
+            <div className="mt-6 p-6 bg-red-50 border border-red-200 rounded-lg shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <AlertCircle className="h-6 w-6 text-red-600" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-lg font-semibold text-red-900 mb-1">เกิดข้อผิดพลาด</h4>
+                  <p className="text-red-800 whitespace-pre-line">{error}</p>
+                </div>
               </div>
             </div>
           )}

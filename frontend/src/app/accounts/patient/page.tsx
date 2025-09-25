@@ -12,13 +12,13 @@ export default function PatientPage() {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      logger.("🔒 Patient page: Not authenticated, redirecting to login");
+      logger.info("🔒 Patient page: Not authenticated, redirecting to login");
       router.push("/login");
       return;
     }
 
     if (user && isAuthenticated) {
-      logger.("✅ Patient page: Authenticated, redirecting to dashboard");
+      logger.info("✅ Patient page: Authenticated, redirecting to dashboard");
       router.push("/accounts/patient/dashboard");
       return;
     }
@@ -44,7 +44,7 @@ export default function PatientPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                สวัสดีคุณ {(user as any).first_name} {(user as any).last_name}
+                สวัสดีคุณ {(user as any).firstName} {(user as any).lastName}
               </h1>
               <p className="text-gray-800 mt-1">
                 ยินดีต้อนรับสู่ระบบผู้ป่วย - HealthChain

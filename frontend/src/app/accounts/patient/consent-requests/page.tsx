@@ -341,8 +341,8 @@ export default function ConsentRequests() {
                             <p><span className="font-medium text-gray-700">ระดับความลับ:</span> <span className={`font-medium ${getSensitivityColor(request.data_sensitivity)}`}>{request.data_sensitivity}</span></p>
                           </div>
                           <div>
-                            <p><span className="font-medium text-gray-700">วันที่ขอ:</span> <span className="text-gray-900">{new Date(request.requested_date).toLocaleDaring('th-TH')}</span></p>
-                            <p><span className="font-medium text-gray-700">กำหนดตอบกลับ:</span> <span className="text-gray-900">{new Date(request.response_deadline).toLocaleDaring('th-TH')}</span></p>
+                            <p><span className="font-medium text-gray-700">วันที่ขอ:</span> <span className="text-gray-900">{new Date(request.requested_date).toLocaleString('th-TH')}</span></p>
+                            <p><span className="font-medium text-gray-700">กำหนดตอบกลับ:</span> <span className="text-gray-900">{new Date(request.response_deadline).toLocaleString('th-TH')}</span></p>
                             <p><span className="font-medium text-gray-700">ระยะเวลาเก็บ:</span> <span className="text-gray-900">{request.retention_period}</span></p>
                           </div>
                         </div>

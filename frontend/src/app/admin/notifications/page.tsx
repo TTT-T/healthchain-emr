@@ -36,7 +36,7 @@ interface Notification {
   recipient: string
   status: 'sent' | 'delivered' | 'failed' | 'pending'
   priority: 'low' | 'medium' | 'high' | 'urgent'
-  createdAt: string
+  created_at: string
   sentAt?: string
   deliveredAt?: string
   readAt?: string
@@ -50,7 +50,7 @@ interface NotificationTemplate {
   content: string
   variables: string[]
   isActive: boolean
-  createdAt: string
+  created_at: string
 }
 
 const mockNotifications: Notification[] = [
@@ -63,7 +63,7 @@ const mockNotifications: Notification[] = [
     recipient: 'admin@hospital.com',
     status: 'delivered',
     priority: 'high',
-    createdAt: new Date(Date.now() - 300000).toISOString(),
+    created_at: new Date(Date.now() - 300000).toISOString(),
     sentAt: new Date(Date.now() - 300000).toISOString(),
     deliveredAt: new Date(Date.now() - 299000).toISOString(),
     readAt: new Date(Date.now() - 250000).toISOString()
@@ -77,7 +77,7 @@ const mockNotifications: Notification[] = [
     recipient: '+66-123-456-789',
     status: 'sent',
     priority: 'medium',
-    createdAt: new Date(Date.now() - 1800000).toISOString(),
+    created_at: new Date(Date.now() - 1800000).toISOString(),
     sentAt: new Date(Date.now() - 1800000).toISOString()
   },
   {
@@ -89,7 +89,7 @@ const mockNotifications: Notification[] = [
     recipient: 'admin@hospital.com',
     status: 'delivered',
     priority: 'low',
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
+    created_at: new Date(Date.now() - 3600000).toISOString(),
     sentAt: new Date(Date.now() - 3600000).toISOString(),
     deliveredAt: new Date(Date.now() - 3590000).toISOString()
   },
@@ -102,7 +102,7 @@ const mockNotifications: Notification[] = [
     recipient: 'compliance@hospital.com',
     status: 'failed',
     priority: 'high',
-    createdAt: new Date(Date.now() - 7200000).toISOString(),
+    created_at: new Date(Date.now() - 7200000).toISOString(),
     sentAt: new Date(Date.now() - 7200000).toISOString()
   },
   {
@@ -114,7 +114,7 @@ const mockNotifications: Notification[] = [
     recipient: 'system@hospital.com',
     status: 'delivered',
     priority: 'medium',
-    createdAt: new Date(Date.now() - 10800000).toISOString(),
+    created_at: new Date(Date.now() - 10800000).toISOString(),
     sentAt: new Date(Date.now() - 10800000).toISOString(),
     deliveredAt: new Date(Date.now() - 10790000).toISOString()
   }
@@ -129,7 +129,7 @@ const mockTemplates: NotificationTemplate[] = [
     content: 'A new login was detected for your account {{userEmail}} from {{deviceInfo}} at {{timestamp}}.',
     variables: ['userEmail', 'deviceInfo', 'timestamp'],
     isActive: true,
-    createdAt: new Date().toISOString()
+    created_at: new Date().toISOString()
   },
   {
     id: '2',
@@ -139,7 +139,7 @@ const mockTemplates: NotificationTemplate[] = [
     content: 'System maintenance scheduled for {{date}} at {{time}}. Expected downtime: {{duration}}.',
     variables: ['date', 'time', 'duration'],
     isActive: true,
-    createdAt: new Date().toISOString()
+    created_at: new Date().toISOString()
   },
   {
     id: '3',
@@ -149,7 +149,7 @@ const mockTemplates: NotificationTemplate[] = [
     content: 'Data backup completed successfully. {{size}} of data backed up at {{timestamp}}.',
     variables: ['size', 'timestamp'],
     isActive: true,
-    createdAt: new Date().toISOString()
+    created_at: new Date().toISOString()
   }
 ]
 
@@ -456,7 +456,7 @@ export default function NotificationsPage() {
                                 <span>{notification.category}</span>
                               </div>
                               <span>To: {notification.recipient}</span>
-                              <span>Created: {formatTimestamp(notification.createdAt)}</span>
+                              <span>Created: {formatTimestamp(notification.created_at)}</span>
                               {notification.sentAt && (
                                 <span>Sent: {formatTimestamp(notification.sentAt)}</span>
                               )}

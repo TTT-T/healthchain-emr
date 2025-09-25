@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { CheckCircle, Mail, Clock, UserCheck, AlertCircle } from 'lucide-react'
 
@@ -13,7 +13,7 @@ interface RegistrationStatus {
   requiresAdminApproval: boolean
 }
 
-export default function RegistrationSuccessPage() {
+function RegistrationSuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [status, setStatus] = useState<RegistrationStatus | null>(null)
@@ -46,7 +46,8 @@ export default function RegistrationSuccessPage() {
     setIsLoading(false)
   }, [searchParams])
 
-  const handleResendEmail = async () => {
+  const handleResendEmail = async () => {
+
     alert('ฟีเจอร์ส่งอีเมลซ้ำจะเปิดใช้งานเร็วๆ นี้')
   }
 
@@ -173,5 +174,20 @@ export default function RegistrationSuccessPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function RegistrationSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">กำลังโหลด...</p>
+        </div>
+      </div>
+    }>
+      <RegistrationSuccessContent />
+    </Suspense>
   )
 }

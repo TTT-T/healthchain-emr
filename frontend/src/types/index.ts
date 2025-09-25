@@ -46,8 +46,8 @@ export interface Appointment {
     notes?: string;
     doctor: Doctor;
     type: AppointmentType;
-    createdAt: string;
-    updatedAt: string;
+    created_at: string;
+    updated_at: string;
     cancelledAt?: string;
     cancelledBy?: number;
     cancellationReason?: string;

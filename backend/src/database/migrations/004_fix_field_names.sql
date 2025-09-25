@@ -41,13 +41,29 @@ CREATE INDEX IF NOT EXISTS idx_visits_status ON visits(status);
 -- 3. ADD MISSING CONSTRAINTS
 -- =============================================================================
 
--- Add unique constraint for hospital_number
-ALTER TABLE patients 
-ADD CONSTRAINT unique_hospital_number UNIQUE (hospital_number);
+-- Add unique constraint for hospital_number (only if it doesn't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'unique_hospital_number'
+    ) THEN
+        ALTER TABLE patients 
+        ADD CONSTRAINT unique_hospital_number UNIQUE (hospital_number);
+    END IF;
+END $$;
 
--- Add unique constraint for national_id if provided
-ALTER TABLE patients 
-ADD CONSTRAINT unique_national_id UNIQUE (national_id);
+-- Add unique constraint for national_id if provided (only if it doesn't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'unique_national_id'
+    ) THEN
+        ALTER TABLE patients 
+        ADD CONSTRAINT unique_national_id UNIQUE (national_id);
+    END IF;
+END $$;
 
 -- =============================================================================
 -- 4. UPDATE SEQUENCES AND DEFAULTS

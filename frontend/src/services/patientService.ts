@@ -30,10 +30,12 @@ export class PatientService {
             id: patient.id,
             hn: patient.personal_info?.hospital_number,
             hospital_number: patient.personal_info?.hospital_number,
-            thai_name: patient.personal_info?.thai_name,
+            thaiName: patient.personal_info?.thai_name,
+            thaiLastName: patient.personal_info?.thai_last_name,
             firstName: patient.personal_info?.first_name,
             lastName: patient.personal_info?.last_name,
-            national_id: patient.personal_info?.national_id,
+            title: patient.personal_info?.title,
+            nationalId: patient.personal_info?.national_id,
             birthDate: patient.personal_info?.birth_date,
             birth_day: patient.personal_info?.birth_day,
             birth_month: patient.personal_info?.birth_month,
@@ -44,11 +46,24 @@ export class PatientService {
             email: patient.contact_info?.email,
             address: patient.contact_info?.address,
             current_address: patient.contact_info?.current_address,
-            blood_type: patient.medical_info?.blood_type,
-            medical_history: patient.medical_info?.medical_history,
+            bloodType: patient.medical_info?.blood_type,
+            medicalHistory: patient.medical_info?.medical_history,
             allergies: patient.medical_info?.allergies,
-            drug_allergies: patient.medical_info?.drug_allergies,
-            chronic_diseases: patient.medical_info?.chronic_diseases,
+            drugAllergies: patient.medical_info?.drug_allergies,
+            foodAllergies: patient.medical_info?.food_allergies,
+            environmentAllergies: patient.medical_info?.environment_allergies,
+            chronicDiseases: patient.medical_info?.chronic_diseases,
+            weight: patient.medical_info?.weight,
+            height: patient.medical_info?.height,
+            emergencyContactName: patient.emergency_contact?.name,
+            emergencyContactPhone: patient.emergency_contact?.phone,
+            emergencyContactRelation: patient.emergency_contact?.relation,
+            occupation: patient.personal_info?.occupation,
+            education: patient.personal_info?.education,
+            maritalStatus: patient.personal_info?.marital_status,
+            religion: patient.personal_info?.religion,
+            race: patient.personal_info?.race,
+            nationality: patient.personal_info?.nationality,
             status: patient.status,
             department: patient.department,
             created_at: patient.created_at,
@@ -64,22 +79,22 @@ export class PatientService {
       }
 
       // For national ID search (when type is 'name' but query is 13 digits), search in users table
-      if (type === 'name' && /^\d{13}$/.(query)) {
+      if (type === 'name' && /^\d{13}$/.test(query)) {
         const usersResponse = await apiClient.searchUsersByNationalId(query);
         if (usersResponse.data && usersResponse.data.length > 0) {
           // Convert users to patient format
           const convertedPatients = usersResponse.data.map((user: any) => ({
             id: user.id,
-            hn: user.hospital_number || user.national_id, // Use hospital_number if available, fallback to national_id
+            hn: user.hospitalNumber || user.national_id, // Use hospital_number if available, fallback to national_id
             national_id: user.national_id,
-            thai_name: user.thai_name,
+            thai_name: user.thaiName,
             thai_lastName: user.thai_lastName,
             firstName: user.firstName,
             lastName: user.lastName,
             birthDate: user.birthDate,
-            birth_day: user.birth_day,
-            birth_month: user.birth_month,
-            birth_year: user.birth_year,
+            birth_day: user.birthDay,
+            birth_month: user.birthMonth,
+            birth_year: user.birthYear,
             gender: user.gender,
             phone: user.phone,
             email: user.email,
@@ -133,11 +148,11 @@ export class PatientService {
       
       if (type === 'queue') {
         // For queue search, if query looks like HN number, search by HN instead
-        if (query.startsWith('HN') || /^HN\d+$/.(query)) {
+        if (query.startsWith('HN') || /^HN\d+$/.test(query)) {
           logger.info('Queue search detected HN format, using HN search instead', { query, type });
           params.hn = query;
         } else {
-          logger.info('Queue search using visit_number search', { query, type });
+          logger.info('Queue search using visitNumber search', { query, type });
           params.queue = query;
         }
       } else if (type === 'hn' as any) {
@@ -249,8 +264,8 @@ export class PatientService {
             // Visit information - ใช้ข้อมูลจริงจาก database
             status: 'active',
             department: null,
-            createdAt: '2025-09-11T02:11:08.474233Z',
-            updatedAt: '2025-09-11T02:11:08.474233Z'
+            created_at: '2025-09-11T02:11:08.474233Z',
+            updated_at: '2025-09-11T02:11:08.474233Z'
           }],
           meta: {
             total: 1,
@@ -299,8 +314,8 @@ export class PatientService {
             drug_allergies: 'เพนิซิล',
             chronic_diseases: 'โรคหัวใจ',
             // Visit information - ใช้ข้อมูลจริงจาก database
-            createdAt: '2025-09-11T02:11:08.474233Z',
-            updatedAt: '2025-09-11T02:11:08.474233Z'
+            created_at: '2025-09-11T02:11:08.474233Z',
+            updated_at: '2025-09-11T02:11:08.474233Z'
           }],
           meta: {
             total: 1,
@@ -416,7 +431,7 @@ export class PatientService {
       }
       
       // Return sample data for ing when API fails (non-auth errors)
-      logger.('Using fallback data for listPatients');
+      logger.info('Using fallback data for listPatients');
       return {
         data: [
           {
@@ -439,8 +454,8 @@ export class PatientService {
             allergies: ['แพ้เมีย'],
             drug_allergies: 'เพนิซิล',
             chronic_diseases: 'โรคหัวใจ',
-            createdAt: '2025-09-11T02:11:08.474233Z',
-            updatedAt: '2025-09-11T02:11:08.474233Z'
+            created_at: '2025-09-11T02:11:08.474233Z',
+            updated_at: '2025-09-11T02:11:08.474233Z'
           }
         ],
         meta: {

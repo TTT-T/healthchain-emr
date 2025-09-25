@@ -45,17 +45,15 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
         patientResult = await databaseManager.query(patientQuery, [user.id]);
       }
       
-      // If still no patient found, do not create one automatically
+      // If still no patient found, create a virtual patient record from user data
       if (patientResult.rows.length === 0) {
-        return res.status(404).json({
-          data: null,
-          meta: null,
-          error: { 
-            message: 'Patient record not found. Please register through EMR system at /emr/register-patient',
-            code: 'PATIENT_NOT_REGISTERED'
-          },
-          statusCode: 404
-        });
+        patient = {
+          id: user.id, // Use user ID as patient ID
+          user_id: user.id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          email: user.email
+        };
       } else {
         patient = patientResult.rows[0];
       }
@@ -93,7 +91,7 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
     const queryParams: any[] = [actualPatientId];
 
     if (Category) {
-      whereClause += ` AND mr._type ILIKE $${queryParams.length + 1}`;
+      whereClause += ` AND mr.test_type ILIKE $${queryParams.length + 1}`;
       queryParams.push(`%${Category}%`);
     }
 
@@ -118,9 +116,9 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
     const labResultsQuery = `
       SELECT 
         mr.id as lab_result_id,
-        mr._type,
-        mr._name,
-        mr._results,
+        mr.test_type,
+        mr.test_name,
+        mr.test_results,
         mr.overall_result,
         mr.interpretation,
         mr.recommendations,
@@ -130,8 +128,8 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
         mr.recorded_by,
         mr.created_at,
         mr.updated_at,
-        u.first_name as ed_by_first_name,
-        u.last_name as ed_by_last_name,
+        u.first_name as ordered_by_first_name,
+        u.last_name as ordered_by_last_name,
         v.visit_number,
         v.visit_date,
         v.diagnosis
@@ -157,19 +155,19 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
 
     // Format lab results from medical_records
     const formattedResults = labResults.map((result: any) => {
-      // Parse _results JSON
+      // Parse test_results JSON
       let Results = [];
-      if (result._results) {
+      if (result.test_results) {
         try {
-          if (typeof result._results === 'string') {
-            Results = JSON.parse(result._results);
-          } else if (Array.isArray(result._results)) {
-            Results = result._results;
-          } else if (typeof result._results === 'object') {
-            Results = [result._results];
+          if (typeof result.test_results === 'string') {
+            Results = JSON.parse(result.test_results);
+          } else if (Array.isArray(result.test_results)) {
+            Results = result.test_results;
+          } else if (typeof result.test_results === 'object') {
+            Results = [result.test_results];
           }
         } catch (error) {
-          console.error('Error parsing _results JSON:', error);
+          console.error('Error parsing test_results JSON:', error);
           Results = [];
         }
       }
@@ -193,17 +191,17 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
 
       return {
         id: result.lab_result_id,
-        _type: result._type,
-        _name: result._name,
-        _results: Results,
+        test_type: result.test_type,
+        test_name: result.test_name,
+        test_results: Results,
         overall_result: result.overall_result,
         interpretation: result.interpretation,
         recommendations: result.recommendations,
         attachments: attachments,
         notes: result.notes,
         result_date: result.result_date,
-        ed_by: {
-          name: `${result.ed_by_first_name || ''} ${result.ed_by_last_name || ''}`.trim() || 'ไม่ระบุ'
+        ordered_by: {
+          name: `${result.ordered_by_first_name || ''} ${result.ordered_by_last_name || ''}`.trim() || 'ไม่ระบุ'
         },
         visit: {
           number: result.visit_number || 'ไม่ระบุ',
@@ -429,12 +427,12 @@ export const createPatientLabResult = async (req: Request, res: Response) => {
         overall_result, interpretation, recommendations, attachments,
         notes, recorded_by, recorded_time, created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW() AT TIME ZONE 'Asia/Bangkok', NOW() AT TIME ZONE 'Asia/Bangkok')
       RETURNING *
     `, [
       resultId, patientId, 'lab_result', Type, Name, JSON.stringify(Results || []),
       overallResult, interpretation, recommendations, JSON.stringify(attachments || []),
-      notes, userId, edTime || new Date().toISOString()
+      notes, userId, edTime || new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
     ]);
 
     // Get created lab result
@@ -611,7 +609,7 @@ export const updatePatientLabResult = async (req: Request, res: Response) => {
       if (validated) {
         updateFields.push(`validated_by = $${paramCount++}`);
         updateValues.push(userId);
-        updateFields.push(`validated_at = CURRENT_TIMESTAMP`);
+        updateFields.push(`validated_at = NOW() AT TIME ZONE 'Asia/Bangkok'`);
       }
     }
     if (method !== undefined) {
@@ -631,7 +629,7 @@ export const updatePatientLabResult = async (req: Request, res: Response) => {
       updateValues.push(pathologist_notes);
     }
 
-    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+    updateFields.push(`updated_at = NOW() AT TIME ZONE 'Asia/Bangkok'`);
     updateValues.push(resultId);
 
     const updateQuery = `

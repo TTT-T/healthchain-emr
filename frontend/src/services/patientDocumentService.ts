@@ -13,7 +13,7 @@ export interface PatientDocument {
   fileUrl: string;
   fileSize: number;
   mimeType: string;
-  createdAt: string;
+  created_at: string;
   createdBy: string;
   createdByName: string;
   visitId?: string;
@@ -90,7 +90,7 @@ export class PatientDocumentService {
         fileUrl: this.generateFileUrl(request.fileName, request.fileContent),
         fileSize: this.calculateFileSize(request.fileContent),
         mimeType: request.mimeType,
-        createdAt: new Date().toISOString(),
+        created_at: new Date().toISOString(),
         createdBy: request.createdBy,
         createdByName: request.createdByName,
         visitId: request.visitId,
@@ -142,14 +142,14 @@ export class PatientDocumentService {
       if (query.dateFrom) {
         const fromDate = new Date(query.dateFrom);
         filteredDocuments = filteredDocuments.filter(doc => 
-          new Date(doc.createdAt) >= fromDate
+          new Date(doc.created_at) >= fromDate
         );
       }
 
       if (query.dateTo) {
         const toDate = new Date(query.dateTo);
         filteredDocuments = filteredDocuments.filter(doc => 
-          new Date(doc.createdAt) <= toDate
+          new Date(doc.created_at) <= toDate
         );
       }
 
@@ -173,7 +173,7 @@ export class PatientDocumentService {
 
       // เรียงลำดับตามวันที่สร้าง (ใหม่สุดก่อน)
       filteredDocuments.sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
 
       // Pagination
@@ -310,7 +310,7 @@ export class PatientDocumentService {
         recordType: 'document',
         recordId: document.id,
         recordedBy: document.createdBy || 'system',
-        recordedTime: document.createdAt || new Date().toISOString(),
+        recordedTime: document.created_at || new Date().toISOString(),
         message: `มีเอกสารใหม่: ${document.documentTitle}`
       });
 
@@ -422,9 +422,9 @@ export class PatientDocumentService {
         
         <div class="patient-info">
           <h3>ข้อมูลผู้ป่วย</h3>
-          <p><strong>ชื่อ:</strong> ${patientInfo.patientName}</p>
+          <p><strong>ชื่อ:</strong> ${patientInfo.patient_name}</p>
           <p><strong>หมายเลข HN:</strong> ${patientInfo.patientHn}</p>
-          <p><strong>วันที่สร้าง:</strong> ${new Date().toLocaleDaring('th-TH')}</p>
+          <p><strong>วันที่สร้าง:</strong> ${new Date().toLocaleString('th-TH')}</p>
         </div>
         
         <div class="content">

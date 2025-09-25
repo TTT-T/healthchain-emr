@@ -14,8 +14,8 @@ interface UserEditModalProps {
 
 export default function UserEditModal({ isOpen, onClose, user, onSave, loading = false }: UserEditModalProps) {
   const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     role: '',
     is_active: true
@@ -25,8 +25,8 @@ export default function UserEditModal({ isOpen, onClose, user, onSave, loading =
   useEffect(() => {
     if (user) {
       setFormData({
-        first_name: user.name.split(' ')[0] || '',
-        last_name: user.name.split(' ').slice(1).join(' ') || '',
+        firstName: user.name.split(' ')[0] || '',
+        lastName: user.name.split(' ').slice(1).join(' ') || '',
         email: user.email,
         role: user.role,
         is_active: user.status === 'active'
@@ -40,8 +40,8 @@ export default function UserEditModal({ isOpen, onClose, user, onSave, loading =
 
     // Validation
     const newErrors: Record<string, string> = {};
-    if (!formData.first_name.trim()) newErrors.first_name = 'กรุณากรอกชื่อ';
-    if (!formData.last_name.trim()) newErrors.last_name = 'กรุณากรอกนามสกุล';
+    if (!formData.firstName.trim()) newErrors.firstName = 'กรุณากรอกชื่อ';
+    if (!formData.lastName.trim()) newErrors.lastName = 'กรุณากรอกนามสกุล';
     if (!formData.email.trim()) newErrors.email = 'กรุณากรอกอีเมล';
     if (!formData.role) newErrors.role = 'กรุณาเลือกบทบาท';
 
@@ -52,8 +52,8 @@ export default function UserEditModal({ isOpen, onClose, user, onSave, loading =
 
     try {
       await onSave({
-        first_name: formData.first_name,
-        last_name: formData.last_name,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
         role: formData.role,
         status: formData.is_active ? 'active' : 'inactive'
@@ -96,19 +96,19 @@ export default function UserEditModal({ isOpen, onClose, user, onSave, loading =
               <User size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                value={formData.first_name}
+                value={formData.firstName}
                 onChange={(e) => handleInputChange('first_name', e.target.value)}
                 className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.first_name ? 'border-red-500' : 'border-gray-300'
+                  errors.firstName ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="กรอกชื่อ"
                 disabled={loading}
               />
             </div>
-            {errors.first_name && (
+            {errors.firstName && (
               <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
                 <AlertCircle size={14} />
-                {errors.first_name}
+                {errors.firstName}
               </p>
             )}
           </div>
@@ -121,19 +121,19 @@ export default function UserEditModal({ isOpen, onClose, user, onSave, loading =
               <User size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                value={formData.last_name}
+                value={formData.lastName}
                 onChange={(e) => handleInputChange('last_name', e.target.value)}
                 className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.last_name ? 'border-red-500' : 'border-gray-300'
+                  errors.lastName ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="กรอกนามสกุล"
                 disabled={loading}
               />
             </div>
-            {errors.last_name && (
+            {errors.lastName && (
               <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
                 <AlertCircle size={14} />
-                {errors.last_name}
+                {errors.lastName}
               </p>
             )}
           </div>

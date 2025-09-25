@@ -27,7 +27,7 @@ export const useErrorHandler = (options: ErrorHandlerOptions = {}) => {
       let title = 'เกิดข้อผิดพลาด';
 
       if (error?.message) {
-        message = error.message;
+        message = (error as any).message;
       } else if (typeof error === 'string') {
         message = error;
       }

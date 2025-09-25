@@ -105,10 +105,10 @@ export async function POST(request: NextRequest) {
       // Metadata
       profileCompletedAt: new Date(body.profileCompletedAt),
       profileVersion: body.profileVersion,
-      updatedAt: new Date()
+      updated_at: new Date()
     };
 
-    logger.('Profile data to save:', profileData);
+    logger.info('Profile data to save:', profileData);
 
     // บันทึกข้อมูล profile ลง database (จำลอง)
     // const profile = await db.userProfile.create({ data: profileData });

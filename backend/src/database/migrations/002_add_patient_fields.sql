@@ -27,9 +27,17 @@ CREATE INDEX IF NOT EXISTS idx_patients_national_id ON patients(national_id);
 CREATE INDEX IF NOT EXISTS idx_patients_birth_date ON patients(birth_date);
 CREATE INDEX IF NOT EXISTS idx_patients_blood_group ON patients(blood_group);
 
--- Add constraint for national_id uniqueness if provided
-ALTER TABLE patients 
-ADD CONSTRAINT unique_national_id UNIQUE (national_id);
+-- Add constraint for national_id uniqueness if provided (only if it doesn't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'unique_national_id'
+    ) THEN
+        ALTER TABLE patients 
+        ADD CONSTRAINT unique_national_id UNIQUE (national_id);
+    END IF;
+END $$;
 
 -- Update gender constraint to match frontend
 ALTER TABLE patients 

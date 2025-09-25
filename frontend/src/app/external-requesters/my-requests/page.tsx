@@ -33,7 +33,7 @@ interface DataRequest {
   dataTypes: string[]
   status: 'pending' | 'approved' | 'rejected' | 'completed' | 'expired'
   submittedAt: string
-  updatedAt: string
+  updated_at: string
   purpose: string
   urgencyLevel: 'low' | 'medium' | 'high' | 'emergency'
   validUntil: string
@@ -100,13 +100,13 @@ export default function MyRequestsPage() {
           setRequests(requestsData.map((req: Record<string, unknown>) => ({
             id: req.id,
             requestId: req.id,
-            patientName: req.patientName || 'ไม่ระบุ',
+            patientName: req.patient_name || 'ไม่ระบุ',
             patientId: req.patientId || 'ไม่ระบุ',
             requestType: req.requestType,
             dataTypes: req.requestedDataTypes || [],
             status: req.status,
-            submittedAt: req.createdAt,
-            updatedAt: req.updatedAt,
+            submittedAt: req.created_at,
+            updated_at: req.updated_at,
             purpose: req.purpose,
             urgencyLevel: req.urgencyLevel || 'medium',
             validUntil: req.validUntil || req.expiresAt,
@@ -136,7 +136,7 @@ export default function MyRequestsPage() {
   })
 
   const formatDate = (daring: string) => {
-    return new Date(daring).toLocaleDaring('th-TH', {
+    return new Date(daring).toLocaleString('th-TH', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -208,8 +208,8 @@ export default function MyRequestsPage() {
  สถานะ: ${(requestData as any).status}
  ประเภทคำขอ: ${(requestData as any).requestType}
  วัตถุประสงค์: ${(requestData as any).purpose}
- วันที่ส่ง: ${(requestData as any).createdAt ? new Date((requestData as any).createdAt).toLocaleDaring('th-TH') : 'ไม่ระบุ'}
- วันที่อัปเดต: ${(requestData as any).updatedAt ? new Date((requestData as any).updatedAt).toLocaleDaring('th-TH') : 'ไม่ระบุ'}
+  วันที่ส่ง: ${(requestData as any).created_at ? new Date((requestData as any).created_at).toLocaleString('th-TH') : 'ไม่ระบุ'}
+  วันที่อัปเดต: ${(requestData as any).updated_at ? new Date((requestData as any).updated_at).toLocaleString('th-TH') : 'ไม่ระบุ'}
         `
         
         // For now, we'll use alert but in a real app, this should be a modal
@@ -407,7 +407,7 @@ export default function MyRequestsPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium text-gray-900">วันที่อัปเดตล่าสุด:</span>
-                      <span className="ml-2 text-gray-700">{formatDate(request.updatedAt)}</span>
+                      <span className="ml-2 text-gray-700">{formatDate(request.updated_at)}</span>
                     </div>
                     <div>
                       <span className="font-medium text-gray-900">ใช้ได้ถึง:</span>

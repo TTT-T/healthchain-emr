@@ -39,15 +39,15 @@ const db = {
     const query = `
       INSERT INTO users (
         username, email, password_hash, first_name, last_name, 
-        thai_name, thai_last_name, phone, role, is_active, email_verified, profile_completed,
+        thai_name, thai_last_name, title, phone, role, is_active, email_verified, profile_completed,
         national_id, birth_date, gender, address, id_card_address, blood_type
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, $12, $13, $14, $15, $16, $17)
-      RETURNING id, username, email, first_name, last_name, thai_name, thai_last_name, role, is_active, email_verified, profile_completed
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, false, $13, $14, $15, $16, $17, $18)
+      RETURNING id, username, email, first_name, last_name, thai_name, thai_last_name, title, phone, role, is_active, email_verified, profile_completed, national_id, birth_date, gender, address, id_card_address, blood_type
     `;
     const result = await db.query(query, [
       userData.username, userData.email, userData.password,
-      userData.firstName, userData.lastName, userData.thaiFirstName, userData.thaiLastName, // Thai names
+      userData.firstName, userData.lastName, userData.thaiFirstName, userData.thaiLastName, userData.title, // Thai names and title
       userData.phoneNumber, userData.role, userData.isActive, userData.isEmailVerified,
       userData.nationalId, userData.birthDate, userData.gender, 
       userData.address, userData.idCardAddress, userData.bloodType
@@ -235,6 +235,7 @@ export const register = async (req: Request, res: Response) => {
         lastName: validatedData.lastName,
         thaiFirstName: validatedData.thaiFirstName,
         thaiLastName: validatedData.thaiLastName,
+        title: validatedData.title,
         phoneNumber: validatedData.phoneNumber,
         role: validatedData.role || 'patient',
         isActive: validatedData.role === 'patient' ? true : false, // Only patients are active by default
@@ -486,6 +487,7 @@ export const login = async (req: Request, res: Response) => {
         errorResponse('Username is required', 400)
       );
     }
+    
     // Find user by username only
     const user = await db.getUserByUsername(username);
     if (!user) {

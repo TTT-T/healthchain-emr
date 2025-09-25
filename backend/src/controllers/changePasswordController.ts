@@ -235,10 +235,10 @@ export const validatePasswordStrength = async (req: Request, res: Response) => {
       feedback: [] as string[],
       requirements: {
         minLength: password.length >= 8,
-        hasUppercase: /[A-Z]/.(password),
-        hasLowercase: /[a-z]/.(password),
-        hasNumbers: /\d/.(password),
-        hasSpecialChars: /[!@#$%^&*(),.?":{}|<>]/.(password)
+        hasUppercase: /[A-Z]/.test(password),
+        hasLowercase: /[a-z]/.test(password),
+        hasNumbers: /\d/.test(password),
+        hasSpecialChars: /[!@#$%^&*(),.?":{}|<>]/.test(password)
       }
     };
 

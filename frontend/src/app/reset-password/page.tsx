@@ -55,19 +55,19 @@ function ResetPasswordPageContent() {
       errors.push('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร');
     }
     
-    if (!/[A-Z]/.(password)) {
+    if (!/[A-Z]/.test(password)) {
       errors.push('รหัสผ่านต้องมีตัวอักษรพิมพ์ใหญ่อย่างน้อย 1 ตัว');
     }
     
-    if (!/[a-z]/.(password)) {
+    if (!/[a-z]/.test(password)) {
       errors.push('รหัสผ่านต้องมีตัวอักษรพิมพ์เล็กอย่างน้อย 1 ตัว');
     }
     
-    if (!/[0-9]/.(password)) {
+    if (!/[0-9]/.test(password)) {
       errors.push('รหัสผ่านต้องมีตัวเลขอย่างน้อย 1 ตัว');
     }
     
-    if (!/[!@#$%^&*(),.?":{}|<>]/.(password)) {
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
       errors.push('รหัสผ่านต้องมีอักขระพิเศษอย่างน้อย 1 ตัว');
     }
     
@@ -122,7 +122,7 @@ function ResetPasswordPageContent() {
       }
     } catch (error: any) {
       logger.error('Reset password error:', error);
-      const errorMessage = error.response?.data?.error?.message || 'เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน';
+      const errorMessage = (error as any).response?.data?.error?.message || 'เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน';
       setError(errorMessage);
       showError(errorMessage, 'เกิดข้อผิดพลาด');
     } finally {

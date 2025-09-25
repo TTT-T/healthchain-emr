@@ -149,6 +149,7 @@ export const UpdateProfileSchema = z.object({
   phone: ProfileFieldValidators.phone,
   thaiName: ProfileFieldValidators.thaiName,
   thaiLastName: z.string().min(1).max(100).optional().nullable(),
+  title: z.string().max(50).optional().nullable(),
   
   // Personal Information
   nationalId: ProfileFieldValidators.nationalId,
@@ -213,6 +214,7 @@ export const ProfileTransformers = {
     phone: data.phone && data.phone !== '' ? data.phone : null,
     thai_name: data.thaiName && data.thaiName !== '' ? data.thaiName : null,
     thai_last_name: data.thaiLastName && data.thaiLastName !== '' ? data.thaiLastName : null,
+    title: data.title && data.title !== '' ? data.title : null,
     
     // Personal Info
     national_id: data.nationalId && data.nationalId !== '' ? data.nationalId : null,
@@ -276,6 +278,7 @@ export const ProfileTransformers = {
     phone: data.phone,
     thaiName: data.thai_name,
     thaiLastName: data.thai_last_name,
+    title: data.title,
     role: data.role,
     
     // Personal Info

@@ -55,7 +55,7 @@ export default function ExternalRequesterLogin() {
       }
 
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.(formData.email)) {
+        if (!emailRegex.test(formData.email)) {
         setLoginResult({
           success: false,
           message: 'รูปแบบอีเมลไม่ถูกต้อง'
