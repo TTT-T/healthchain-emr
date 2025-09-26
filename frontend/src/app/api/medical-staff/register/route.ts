@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     };
     
     // Call backend API
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
     const backendEndpoint = `${backendUrl}/api/auth/register`;
     let response;
     try {

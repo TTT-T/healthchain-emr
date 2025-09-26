@@ -264,7 +264,6 @@ export const getAllPatients = async (req: Request, res: Response) => {
         p.current_address,
         p.blood_group,
         p.blood_type,
-        p.emergency_contact,
         p.emergency_contact_name,
         p.emergency_contact_phone,
         p.emergency_contact_relation,
@@ -285,7 +284,6 @@ export const getAllPatients = async (req: Request, res: Response) => {
         p.is_active,
         p.created_at,
         p.updated_at,
-        d.department_name,
         u.first_name as user_first_name,
         u.last_name as user_last_name,
         u.email as user_email,
@@ -302,11 +300,10 @@ export const getAllPatients = async (req: Request, res: Response) => {
         doc_user.last_name as doctor_last_name,
         doc_user.thai_name as doctor_thai_name
       FROM patients p
-      LEFT JOIN departments d ON p.department_id = d.id
       LEFT JOIN users u ON p.user_id = u.id
       LEFT JOIN visits v ON p.id = v.patient_id AND v.status = 'in_progress'
       LEFT JOIN users doc_user ON v.attending_doctor_id = doc_user.id
-      LEFT JOIN doctors doc ON v.attending_doctor_id = doc.user_id
+      LEFT JOIN doctors doc ON v.attending_doctor_id = doc.id
       ${whereClause}
       ORDER BY p.${validSortBy} ${validSortOrder}
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
@@ -321,7 +318,6 @@ export const getAllPatients = async (req: Request, res: Response) => {
     const countQuery = `
       SELECT COUNT(*) as total
       FROM patients p
-      LEFT JOIN departments d ON p.department_id = d.id
       ${whereClause}
     `;
     const countResult = await databaseManager.query(countQuery, queryParams.slice(0, -2));
@@ -461,7 +457,6 @@ export const getPatientById = async (req: Request, res: Response) => {
         p.current_address,
         p.blood_group,
         p.blood_type,
-        p.emergency_contact,
         p.emergency_contact_name,
         p.emergency_contact_phone,
         p.emergency_contact_relation,
@@ -472,12 +467,10 @@ export const getPatientById = async (req: Request, res: Response) => {
         p.is_active,
         p.created_at,
         p.updated_at,
-        d.department_name,
         u.first_name as user_first_name,
         u.last_name as user_last_name,
         u.email as user_email
       FROM patients p
-      LEFT JOIN departments d ON p.department_id = d.id
       LEFT JOIN users u ON p.user_id = u.id
       WHERE p.id = $1
     `;
@@ -741,14 +734,14 @@ export const getPatientByEmail = async (req: Request, res: Response) => {
     // Decode URL-encoded email
     const decodedEmail = decodeURIComponent(email);
 
-    // Get patient details by email
+    // First try to get patient details from patients table
     const patientQuery = `
       SELECT 
         p.id,
         p.first_name,
         p.last_name,
-        p.thai_name,
-        p.hospital_number,
+        p.thai_first_name as thai_name,
+        p.patient_number as hospital_number,
         p.national_id,
         p.date_of_birth,
         p.gender,
@@ -756,16 +749,13 @@ export const getPatientByEmail = async (req: Request, res: Response) => {
         p.email,
         p.address,
         p.current_address,
-        p.blood_group,
         p.blood_type,
-        p.emergency_contact,
         p.emergency_contact_name,
         p.emergency_contact_phone,
         p.emergency_contact_relation,
         p.medical_history,
         p.allergies,
-        p.drug_allergies,
-        p.chronic_diseases,
+        p.current_medications,
         p.is_active,
         p.created_at,
         p.updated_at
@@ -775,16 +765,72 @@ export const getPatientByEmail = async (req: Request, res: Response) => {
 
     const patientResult = await databaseManager.query(patientQuery, [decodedEmail]);
     
+    let patient;
+    
     if (patientResult.rows.length === 0) {
-      return res.status(404).json({
-        data: null,
-        meta: null,
-        error: { message: 'Patient not found' },
-        statusCode: 404
-      });
+      // If no patient found in patients table, check if user exists in users table
+      const userQuery = `
+        SELECT 
+          u.id,
+          u.first_name,
+          u.last_name,
+          u.thai_name,
+          u.email,
+          u.phone,
+          u.address,
+          u.blood_type,
+          u.emergency_contact_name,
+          u.emergency_contact_phone,
+          u.emergency_contact_relation,
+          u.medical_history,
+          u.allergies,
+          u.current_medications,
+          u.created_at,
+          u.updated_at
+        FROM users u
+        WHERE u.email = $1 AND u.role = 'patient'
+      `;
+      
+      const userResult = await databaseManager.query(userQuery, [decodedEmail]);
+      
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({
+          data: null,
+          meta: null,
+          error: { message: 'Patient not found' },
+          statusCode: 404
+        });
+      }
+      
+      // Create virtual patient record from user data
+      const userData = userResult.rows[0];
+      patient = {
+        id: userData.id,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        thai_name: userData.thai_name,
+        hospital_number: null, // No hospital number for virtual patients
+        national_id: null,
+        date_of_birth: null,
+        gender: null,
+        phone: userData.phone,
+        email: userData.email,
+        address: userData.address,
+        current_address: userData.address,
+        blood_type: userData.blood_type,
+        emergency_contact_name: userData.emergency_contact_name,
+        emergency_contact_phone: userData.emergency_contact_phone,
+        emergency_contact_relation: userData.emergency_contact_relation,
+        medical_history: userData.medical_history,
+        allergies: userData.allergies,
+        current_medications: userData.current_medications,
+        is_active: true,
+        created_at: userData.created_at,
+        updated_at: userData.updated_at
+      };
+    } else {
+      patient = patientResult.rows[0];
     }
-
-    const patient = patientResult.rows[0];
 
     res.status(200).json({
       data: patient,
@@ -842,7 +888,6 @@ export const getPatient = async (req: Request, res: Response) => {
         p.current_address,
         p.blood_group,
         p.blood_type,
-        p.emergency_contact,
         p.emergency_contact_name,
         p.emergency_contact_phone,
         p.emergency_contact_relation,
@@ -853,12 +898,10 @@ export const getPatient = async (req: Request, res: Response) => {
         p.is_active,
         p.created_at,
         p.updated_at,
-        d.department_name,
         u.first_name as user_first_name,
         u.last_name as user_last_name,
         u.email as user_email
       FROM patients p
-      LEFT JOIN departments d ON p.department_id = d.id
       LEFT JOIN users u ON p.user_id = u.id
       WHERE ${whereClause}
     `;
@@ -1158,7 +1201,6 @@ export const searchPatients = async (req: Request, res: Response) => {
         p.created_at,
         d.department_name
       FROM patients p
-      LEFT JOIN departments d ON p.department_id = d.id
       WHERE (
         p.first_name ILIKE $1 OR 
         p.last_name ILIKE $1 OR 
@@ -1307,7 +1349,6 @@ export const listPatients = async (req: Request, res: Response) => {
         p.updated_at,
         d.department_name
       FROM patients p
-      LEFT JOIN departments d ON p.department_id = d.id
       ${whereClause}
       ORDER BY p.${validSortBy} ${validSortOrder}
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
@@ -1322,7 +1363,6 @@ export const listPatients = async (req: Request, res: Response) => {
     const countQuery = `
       SELECT COUNT(*) as total
       FROM patients p
-      LEFT JOIN departments d ON p.department_id = d.id
       ${whereClause}
     `;
     const countResult = await databaseManager.query(countQuery, queryParams.slice(0, -2));

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
+import { getBackendApiUrl } from '@/lib/backend-url';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,8 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Call backend API to verify email
-    const backendUrl = 'http://localhost:3001';
-    const response = await fetch(`${backendUrl}/api/auth/verify-email`, {
+    const response = await fetch(getBackendApiUrl('/auth/verify-email'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

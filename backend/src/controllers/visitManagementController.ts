@@ -139,7 +139,7 @@ export const getAllVisits = async (req: Request, res: Response) => {
 
     if (doctor_id) {
       paramCount++;
-      whereClause += ` AND v.doctor_id = $${paramCount}`;
+      whereClause += ` AND v.attending_doctor_id = $${paramCount}`;
       queryParams.push(doctor_id);
     }
 
@@ -205,7 +205,7 @@ export const getAllVisits = async (req: Request, res: Response) => {
         dept.department_name
       FROM visits v
       LEFT JOIN patients p ON v.patient_id = p.id
-      LEFT JOIN users d ON v.doctor_id = d.id
+      LEFT JOIN users d ON v.attending_doctor_id = d.id
       LEFT JOIN departments dept ON v.department_id = dept.id
       ${whereClause}
       ORDER BY v.${validSortBy} ${validSortOrder}
@@ -222,7 +222,7 @@ export const getAllVisits = async (req: Request, res: Response) => {
       SELECT COUNT(*) as total
       FROM visits v
       LEFT JOIN patients p ON v.patient_id = p.id
-      LEFT JOIN users d ON v.doctor_id = d.id
+      LEFT JOIN users d ON v.attending_doctor_id = d.id
       LEFT JOIN departments dept ON v.department_id = dept.id
       ${whereClause}
     `;
@@ -611,7 +611,7 @@ export const getVisitById = async (req: Request, res: Response) => {
         dept.department_name
       FROM visits v
       LEFT JOIN patients p ON v.patient_id = p.id
-      LEFT JOIN users d ON v.doctor_id = d.id
+      LEFT JOIN users d ON v.attending_doctor_id = d.id
       LEFT JOIN departments dept ON v.department_id = dept.id
       WHERE v.id = $1
     `;
