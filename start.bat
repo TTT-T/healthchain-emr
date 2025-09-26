@@ -152,10 +152,124 @@ if not exist "backend\node_modules" (
     echo [SUCCESS] Backend dependencies found
 )
 
-echo [7/10] Checking critical libraries...
+echo [INFO] Checking critical backend libraries...
+cd backend
+echo [INFO] Checking essential backend dependencies...
+
+REM Check critical backend libraries from package.json
+if not exist "node_modules\express" (
+    echo [WARNING] Express not found!
+    echo [INFO] Installing Express...
+    npm install express@^4.21.2
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install Express!
+        cd ..
+        pause
+        goto MAIN_MENU
+    )
+    echo [SUCCESS] Express installed
+) else (
+    echo [OK] Express found
+)
+
+if not exist "node_modules\pg" (
+    echo [WARNING] PostgreSQL driver not found!
+    echo [INFO] Installing PostgreSQL driver...
+    npm install pg@^8.16.3
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install PostgreSQL driver!
+        cd ..
+        pause
+        goto MAIN_MENU
+    )
+    echo [SUCCESS] PostgreSQL driver installed
+) else (
+    echo [OK] PostgreSQL driver found
+)
+
+if not exist "node_modules\redis" (
+    echo [WARNING] Redis client not found!
+    echo [INFO] Installing Redis client...
+    npm install redis@^4.7.1
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install Redis client!
+        cd ..
+        pause
+        goto MAIN_MENU
+    )
+    echo [SUCCESS] Redis client installed
+) else (
+    echo [OK] Redis client found
+)
+
+if not exist "node_modules\jsonwebtoken" (
+    echo [WARNING] JWT library not found!
+    echo [INFO] Installing JWT library...
+    npm install jsonwebtoken@^9.0.2
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install JWT library!
+        cd ..
+        pause
+        goto MAIN_MENU
+    )
+    echo [SUCCESS] JWT library installed
+) else (
+    echo [OK] JWT library found
+)
+
+if not exist "node_modules\bcryptjs" (
+    echo [WARNING] bcryptjs not found!
+    echo [INFO] Installing bcryptjs...
+    npm install bcryptjs@^2.4.3
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install bcryptjs!
+        cd ..
+        pause
+        goto MAIN_MENU
+    )
+    echo [SUCCESS] bcryptjs installed
+) else (
+    echo [OK] bcryptjs found
+)
+
+if not exist "node_modules\socket.io" (
+    echo [WARNING] Socket.IO not found!
+    echo [INFO] Installing Socket.IO...
+    npm install socket.io@^4.8.1
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install Socket.IO!
+        cd ..
+        pause
+        goto MAIN_MENU
+    )
+    echo [SUCCESS] Socket.IO installed
+) else (
+    echo [OK] Socket.IO found
+)
+
+if not exist "node_modules\winston" (
+    echo [WARNING] Winston logger not found!
+    echo [INFO] Installing Winston logger...
+    npm install winston@^3.17.0
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install Winston logger!
+        cd ..
+        pause
+        goto MAIN_MENU
+    )
+    echo [SUCCESS] Winston logger installed
+) else (
+    echo [OK] Winston logger found
+)
+cd ..
+
+echo [7/10] Checking critical frontend libraries...
 cd frontend
+echo [INFO] Checking essential frontend dependencies...
+
+REM Check critical frontend libraries from package.json
 if not exist "node_modules\react-hot-toast" (
-    echo [WARNING] react-hot-toast library not found!
+    echo [WARNING] react-hot-toast not found!
     echo [INFO] Installing react-hot-toast...
     npm install react-hot-toast
     if %errorlevel% neq 0 (
@@ -166,7 +280,97 @@ if not exist "node_modules\react-hot-toast" (
     )
     echo [SUCCESS] react-hot-toast installed
 ) else (
-    echo [SUCCESS] react-hot-toast library found
+    echo [OK] react-hot-toast found
+)
+
+if not exist "node_modules\next" (
+    echo [WARNING] Next.js not found!
+    echo [INFO] Installing Next.js...
+    npm install next@15.3.4
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install Next.js!
+        cd ..
+        pause
+        goto MAIN_MENU
+    )
+    echo [SUCCESS] Next.js installed
+) else (
+    echo [OK] Next.js found
+)
+
+if not exist "node_modules\react" (
+    echo [WARNING] React not found!
+    echo [INFO] Installing React...
+    npm install react@^19.0.0 react-dom@^19.0.0
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install React!
+        cd ..
+        pause
+        goto MAIN_MENU
+    )
+    echo [SUCCESS] React installed
+) else (
+    echo [OK] React found
+)
+
+if not exist "node_modules\axios" (
+    echo [WARNING] Axios not found!
+    echo [INFO] Installing Axios...
+    npm install axios@^1.10.0
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install Axios!
+        cd ..
+        pause
+        goto MAIN_MENU
+    )
+    echo [SUCCESS] Axios installed
+) else (
+    echo [OK] Axios found
+)
+
+if not exist "node_modules\@tanstack\react-query" (
+    echo [WARNING] TanStack Query not found!
+    echo [INFO] Installing TanStack Query...
+    npm install @tanstack/react-query@^5.81.5
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install TanStack Query!
+        cd ..
+        pause
+        goto MAIN_MENU
+    )
+    echo [SUCCESS] TanStack Query installed
+) else (
+    echo [OK] TanStack Query found
+)
+
+if not exist "node_modules\react-hook-form" (
+    echo [WARNING] React Hook Form not found!
+    echo [INFO] Installing React Hook Form...
+    npm install react-hook-form@^7.60.0
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install React Hook Form!
+        cd ..
+        pause
+        goto MAIN_MENU
+    )
+    echo [SUCCESS] React Hook Form installed
+) else (
+    echo [OK] React Hook Form found
+)
+
+if not exist "node_modules\socket.io-client" (
+    echo [WARNING] Socket.IO Client not found!
+    echo [INFO] Installing Socket.IO Client...
+    npm install socket.io-client@^4.7.4
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install Socket.IO Client!
+        cd ..
+        pause
+        goto MAIN_MENU
+    )
+    echo [SUCCESS] Socket.IO Client installed
+) else (
+    echo [OK] Socket.IO Client found
 )
 cd ..
 
@@ -566,56 +770,139 @@ if not exist "backend\node_modules" (
 
 echo [7/8] Checking critical frontend libraries...
 cd frontend
+echo [INFO] Checking essential frontend dependencies from package.json...
+
+REM Check critical frontend libraries from package.json
 if not exist "node_modules\react-hot-toast" (
     echo [WARNING] react-hot-toast not found!
-    echo [SOLUTION] Run: npm install react-hot-toast
+    echo [SOLUTION] Run: npm install react-hot-toast@^2.6.0
 ) else (
     echo [OK] react-hot-toast found
 )
 
 if not exist "node_modules\next" (
     echo [WARNING] Next.js not found!
-    echo [SOLUTION] Run: npm install
+    echo [SOLUTION] Run: npm install next@15.3.4
 ) else (
     echo [OK] Next.js found
 )
 
 if not exist "node_modules\react" (
     echo [WARNING] React not found!
-    echo [SOLUTION] Run: npm install
+    echo [SOLUTION] Run: npm install react@^19.0.0 react-dom@^19.0.0
 ) else (
     echo [OK] React found
 )
 
 if not exist "node_modules\axios" (
     echo [WARNING] Axios not found!
-    echo [SOLUTION] Run: npm install axios
+    echo [SOLUTION] Run: npm install axios@^1.10.0
 ) else (
     echo [OK] Axios found
+)
+
+if not exist "node_modules\@tanstack\react-query" (
+    echo [WARNING] TanStack Query not found!
+    echo [SOLUTION] Run: npm install @tanstack/react-query@^5.81.5
+) else (
+    echo [OK] TanStack Query found
+)
+
+if not exist "node_modules\react-hook-form" (
+    echo [WARNING] React Hook Form not found!
+    echo [SOLUTION] Run: npm install react-hook-form@^7.60.0
+) else (
+    echo [OK] React Hook Form found
+)
+
+if not exist "node_modules\socket.io-client" (
+    echo [WARNING] Socket.IO Client not found!
+    echo [SOLUTION] Run: npm install socket.io-client@^4.7.4
+) else (
+    echo [OK] Socket.IO Client found
+)
+
+if not exist "node_modules\lucide-react" (
+    echo [WARNING] Lucide React icons not found!
+    echo [SOLUTION] Run: npm install lucide-react@^0.525.0
+) else (
+    echo [OK] Lucide React icons found
+)
+
+if not exist "node_modules\zod" (
+    echo [WARNING] Zod validation not found!
+    echo [SOLUTION] Run: npm install zod@^3.25.74
+) else (
+    echo [OK] Zod validation found
 )
 cd ..
 
 echo [8/8] Checking critical backend libraries...
 cd backend
+echo [INFO] Checking essential backend dependencies from package.json...
+
+REM Check critical backend libraries from package.json
 if not exist "node_modules\express" (
     echo [WARNING] Express not found!
-    echo [SOLUTION] Run: npm install
+    echo [SOLUTION] Run: npm install express@^4.21.2
 ) else (
     echo [OK] Express found
 )
 
 if not exist "node_modules\pg" (
     echo [WARNING] PostgreSQL driver not found!
-    echo [SOLUTION] Run: npm install
+    echo [SOLUTION] Run: npm install pg@^8.16.3
 ) else (
     echo [OK] PostgreSQL driver found
 )
 
 if not exist "node_modules\redis" (
     echo [WARNING] Redis client not found!
-    echo [SOLUTION] Run: npm install
+    echo [SOLUTION] Run: npm install redis@^4.7.1
 ) else (
     echo [OK] Redis client found
+)
+
+if not exist "node_modules\jsonwebtoken" (
+    echo [WARNING] JWT library not found!
+    echo [SOLUTION] Run: npm install jsonwebtoken@^9.0.2
+) else (
+    echo [OK] JWT library found
+)
+
+if not exist "node_modules\bcryptjs" (
+    echo [WARNING] bcryptjs not found!
+    echo [SOLUTION] Run: npm install bcryptjs@^2.4.3
+) else (
+    echo [OK] bcryptjs found
+)
+
+if not exist "node_modules\socket.io" (
+    echo [WARNING] Socket.IO not found!
+    echo [SOLUTION] Run: npm install socket.io@^4.8.1
+) else (
+    echo [OK] Socket.IO found
+)
+
+if not exist "node_modules\winston" (
+    echo [WARNING] Winston logger not found!
+    echo [SOLUTION] Run: npm install winston@^3.17.0
+) else (
+    echo [OK] Winston logger found
+)
+
+if not exist "node_modules\cors" (
+    echo [WARNING] CORS middleware not found!
+    echo [SOLUTION] Run: npm install cors@^2.8.5
+) else (
+    echo [OK] CORS middleware found
+)
+
+if not exist "node_modules\helmet" (
+    echo [WARNING] Helmet security not found!
+    echo [SOLUTION] Run: npm install helmet@^7.2.0
+) else (
+    echo [OK] Helmet security found
 )
 cd ..
 
