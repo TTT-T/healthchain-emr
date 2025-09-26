@@ -23,7 +23,7 @@ echo  [5] View System Logs
 echo  [6] Reset System (Clear Data)
 echo  [7] Open Website
 echo  [8] Start pgAdmin (Database Manager)
-echo  [9] Check Dependencies & Libraries
+echo  [9] Check Dependencies and Libraries
 echo  [10] Exit Program
 echo.
 echo  ========================================
@@ -154,9 +154,9 @@ if not exist "backend\node_modules" (
 
 echo [INFO] Checking critical backend libraries...
 cd backend
-echo [INFO] Checking essential backend dependencies...
+echo [INFO] Checking essential backend dependencies from package.json...
 
-REM Check critical backend libraries from package.json
+REM Check only the most critical backend libraries that cause common errors
 if not exist "node_modules\express" (
     echo [WARNING] Express not found!
     echo [INFO] Installing Express...
@@ -216,62 +216,17 @@ if not exist "node_modules\jsonwebtoken" (
 ) else (
     echo [OK] JWT library found
 )
-
-if not exist "node_modules\bcryptjs" (
-    echo [WARNING] bcryptjs not found!
-    echo [INFO] Installing bcryptjs...
-    npm install bcryptjs@^2.4.3
-    if %errorlevel% neq 0 (
-        echo [ERROR] Failed to install bcryptjs!
-        cd ..
-        pause
-        goto MAIN_MENU
-    )
-    echo [SUCCESS] bcryptjs installed
-) else (
-    echo [OK] bcryptjs found
-)
-
-if not exist "node_modules\socket.io" (
-    echo [WARNING] Socket.IO not found!
-    echo [INFO] Installing Socket.IO...
-    npm install socket.io@^4.8.1
-    if %errorlevel% neq 0 (
-        echo [ERROR] Failed to install Socket.IO!
-        cd ..
-        pause
-        goto MAIN_MENU
-    )
-    echo [SUCCESS] Socket.IO installed
-) else (
-    echo [OK] Socket.IO found
-)
-
-if not exist "node_modules\winston" (
-    echo [WARNING] Winston logger not found!
-    echo [INFO] Installing Winston logger...
-    npm install winston@^3.17.0
-    if %errorlevel% neq 0 (
-        echo [ERROR] Failed to install Winston logger!
-        cd ..
-        pause
-        goto MAIN_MENU
-    )
-    echo [SUCCESS] Winston logger installed
-) else (
-    echo [OK] Winston logger found
-)
 cd ..
 
 echo [7/10] Checking critical frontend libraries...
 cd frontend
-echo [INFO] Checking essential frontend dependencies...
+echo [INFO] Checking essential frontend dependencies from package.json...
 
-REM Check critical frontend libraries from package.json
+REM Check only the most critical frontend libraries that cause common errors
 if not exist "node_modules\react-hot-toast" (
     echo [WARNING] react-hot-toast not found!
     echo [INFO] Installing react-hot-toast...
-    npm install react-hot-toast
+    npm install react-hot-toast@^2.6.0
     if %errorlevel% neq 0 (
         echo [ERROR] Failed to install react-hot-toast!
         cd ..
@@ -326,51 +281,6 @@ if not exist "node_modules\axios" (
     echo [SUCCESS] Axios installed
 ) else (
     echo [OK] Axios found
-)
-
-if not exist "node_modules\@tanstack\react-query" (
-    echo [WARNING] TanStack Query not found!
-    echo [INFO] Installing TanStack Query...
-    npm install @tanstack/react-query@^5.81.5
-    if %errorlevel% neq 0 (
-        echo [ERROR] Failed to install TanStack Query!
-        cd ..
-        pause
-        goto MAIN_MENU
-    )
-    echo [SUCCESS] TanStack Query installed
-) else (
-    echo [OK] TanStack Query found
-)
-
-if not exist "node_modules\react-hook-form" (
-    echo [WARNING] React Hook Form not found!
-    echo [INFO] Installing React Hook Form...
-    npm install react-hook-form@^7.60.0
-    if %errorlevel% neq 0 (
-        echo [ERROR] Failed to install React Hook Form!
-        cd ..
-        pause
-        goto MAIN_MENU
-    )
-    echo [SUCCESS] React Hook Form installed
-) else (
-    echo [OK] React Hook Form found
-)
-
-if not exist "node_modules\socket.io-client" (
-    echo [WARNING] Socket.IO Client not found!
-    echo [INFO] Installing Socket.IO Client...
-    npm install socket.io-client@^4.7.4
-    if %errorlevel% neq 0 (
-        echo [ERROR] Failed to install Socket.IO Client!
-        cd ..
-        pause
-        goto MAIN_MENU
-    )
-    echo [SUCCESS] Socket.IO Client installed
-) else (
-    echo [OK] Socket.IO Client found
 )
 cd ..
 
@@ -710,7 +620,7 @@ goto MAIN_MENU
 :CHECK_DEPENDENCIES
 cls
 echo.
-echo  Checking Dependencies & Libraries
+echo  Checking Dependencies and Libraries
 echo  ========================================
 echo.
 
@@ -772,7 +682,7 @@ echo [7/8] Checking critical frontend libraries...
 cd frontend
 echo [INFO] Checking essential frontend dependencies from package.json...
 
-REM Check critical frontend libraries from package.json
+REM Check only the most critical frontend libraries that cause common errors
 if not exist "node_modules\react-hot-toast" (
     echo [WARNING] react-hot-toast not found!
     echo [SOLUTION] Run: npm install react-hot-toast@^2.6.0
@@ -800,48 +710,13 @@ if not exist "node_modules\axios" (
 ) else (
     echo [OK] Axios found
 )
-
-if not exist "node_modules\@tanstack\react-query" (
-    echo [WARNING] TanStack Query not found!
-    echo [SOLUTION] Run: npm install @tanstack/react-query@^5.81.5
-) else (
-    echo [OK] TanStack Query found
-)
-
-if not exist "node_modules\react-hook-form" (
-    echo [WARNING] React Hook Form not found!
-    echo [SOLUTION] Run: npm install react-hook-form@^7.60.0
-) else (
-    echo [OK] React Hook Form found
-)
-
-if not exist "node_modules\socket.io-client" (
-    echo [WARNING] Socket.IO Client not found!
-    echo [SOLUTION] Run: npm install socket.io-client@^4.7.4
-) else (
-    echo [OK] Socket.IO Client found
-)
-
-if not exist "node_modules\lucide-react" (
-    echo [WARNING] Lucide React icons not found!
-    echo [SOLUTION] Run: npm install lucide-react@^0.525.0
-) else (
-    echo [OK] Lucide React icons found
-)
-
-if not exist "node_modules\zod" (
-    echo [WARNING] Zod validation not found!
-    echo [SOLUTION] Run: npm install zod@^3.25.74
-) else (
-    echo [OK] Zod validation found
-)
 cd ..
 
 echo [8/8] Checking critical backend libraries...
 cd backend
 echo [INFO] Checking essential backend dependencies from package.json...
 
-REM Check critical backend libraries from package.json
+REM Check only the most critical backend libraries that cause common errors
 if not exist "node_modules\express" (
     echo [WARNING] Express not found!
     echo [SOLUTION] Run: npm install express@^4.21.2
@@ -868,41 +743,6 @@ if not exist "node_modules\jsonwebtoken" (
     echo [SOLUTION] Run: npm install jsonwebtoken@^9.0.2
 ) else (
     echo [OK] JWT library found
-)
-
-if not exist "node_modules\bcryptjs" (
-    echo [WARNING] bcryptjs not found!
-    echo [SOLUTION] Run: npm install bcryptjs@^2.4.3
-) else (
-    echo [OK] bcryptjs found
-)
-
-if not exist "node_modules\socket.io" (
-    echo [WARNING] Socket.IO not found!
-    echo [SOLUTION] Run: npm install socket.io@^4.8.1
-) else (
-    echo [OK] Socket.IO found
-)
-
-if not exist "node_modules\winston" (
-    echo [WARNING] Winston logger not found!
-    echo [SOLUTION] Run: npm install winston@^3.17.0
-) else (
-    echo [OK] Winston logger found
-)
-
-if not exist "node_modules\cors" (
-    echo [WARNING] CORS middleware not found!
-    echo [SOLUTION] Run: npm install cors@^2.8.5
-) else (
-    echo [OK] CORS middleware found
-)
-
-if not exist "node_modules\helmet" (
-    echo [WARNING] Helmet security not found!
-    echo [SOLUTION] Run: npm install helmet@^7.2.0
-) else (
-    echo [OK] Helmet security found
 )
 cd ..
 
