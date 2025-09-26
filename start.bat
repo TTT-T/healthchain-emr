@@ -23,10 +23,11 @@ echo  [5] View System Logs
 echo  [6] Reset System (Clear Data)
 echo  [7] Open Website
 echo  [8] Start pgAdmin (Database Manager)
-echo  [9] Exit Program
+echo  [9] Check Dependencies & Libraries
+echo  [10] Exit Program
 echo.
 echo  ========================================
-set /p choice="Please select number (1-9): "
+set /p choice="Please select number (1-10): "
 
 if "%choice%"=="1" goto START_SYSTEM
 if "%choice%"=="2" goto STOP_SYSTEM
@@ -36,10 +37,11 @@ if "%choice%"=="5" goto VIEW_LOGS
 if "%choice%"=="6" goto RESET_SYSTEM
 if "%choice%"=="7" goto OPEN_WEBSITE
 if "%choice%"=="8" goto START_PGADMIN
-if "%choice%"=="9" goto EXIT_PROGRAM
+if "%choice%"=="9" goto CHECK_DEPENDENCIES
+if "%choice%"=="10" goto EXIT_PROGRAM
 
 echo.
-echo [ERROR] Please select number 1-9 only
+echo [ERROR] Please select number 1-10 only
 timeout /t 2 /nobreak >nul
 goto MAIN_MENU
 
@@ -50,7 +52,34 @@ echo  Starting EMR System...
 echo  ========================================
 echo.
 
-echo [1/7] Checking Docker installation...
+echo [1/10] Checking Node.js installation...
+node --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Node.js is not installed!
+    echo.
+    echo How to fix:
+    echo    1. Download Node.js from: https://nodejs.org/
+    echo    2. Install Node.js (version 18 or higher)
+    echo    3. Restart your computer
+    echo    4. Try again
+    echo.
+    pause
+    goto MAIN_MENU
+)
+echo [SUCCESS] Node.js is available
+
+echo [2/10] Checking npm installation...
+npm --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] npm is not available!
+    echo [TIP] npm should come with Node.js installation
+    echo.
+    pause
+    goto MAIN_MENU
+)
+echo [SUCCESS] npm is available
+
+echo [3/10] Checking Docker installation...
 docker --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo [ERROR] Docker is not installed or not running!
@@ -66,7 +95,7 @@ if %errorlevel% neq 0 (
 )
 echo [SUCCESS] Docker is available
 
-echo [2/7] Checking Docker Compose...
+echo [4/10] Checking Docker Compose...
 docker-compose --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo [ERROR] Docker Compose is not available!
@@ -77,7 +106,63 @@ if %errorlevel% neq 0 (
 )
 echo [SUCCESS] Docker Compose is available
 
-echo [3/7] Checking port availability...
+echo [5/10] Checking frontend dependencies...
+if not exist "frontend\node_modules" (
+    echo [WARNING] Frontend dependencies not found!
+    echo [INFO] Installing frontend dependencies...
+    cd frontend
+    npm install
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install frontend dependencies!
+        echo [TIP] Check your internet connection and try again
+        cd ..
+        pause
+        goto MAIN_MENU
+    )
+    cd ..
+    echo [SUCCESS] Frontend dependencies installed
+) else (
+    echo [SUCCESS] Frontend dependencies found
+)
+
+echo [6/10] Checking backend dependencies...
+if not exist "backend\node_modules" (
+    echo [WARNING] Backend dependencies not found!
+    echo [INFO] Installing backend dependencies...
+    cd backend
+    npm install
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install backend dependencies!
+        echo [TIP] Check your internet connection and try again
+        cd ..
+        pause
+        goto MAIN_MENU
+    )
+    cd ..
+    echo [SUCCESS] Backend dependencies installed
+) else (
+    echo [SUCCESS] Backend dependencies found
+)
+
+echo [7/10] Checking critical libraries...
+cd frontend
+if not exist "node_modules\react-hot-toast" (
+    echo [WARNING] react-hot-toast library not found!
+    echo [INFO] Installing react-hot-toast...
+    npm install react-hot-toast
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install react-hot-toast!
+        cd ..
+        pause
+        goto MAIN_MENU
+    )
+    echo [SUCCESS] react-hot-toast installed
+) else (
+    echo [SUCCESS] react-hot-toast library found
+)
+cd ..
+
+echo [8/10] Checking port availability...
 netstat -an | find "3000" | find "LISTENING" >nul 2>&1
 if %errorlevel% equ 0 (
     echo [WARNING] Port 3000 is in use. Stopping existing containers...
@@ -93,7 +178,7 @@ if %errorlevel% equ 0 (
 )
 echo [SUCCESS] Ports are available
 
-echo [4/7] Creating and starting containers...
+echo [9/10] Creating and starting containers...
 echo [INFO] Please wait... This may take several minutes on first run
 docker-compose up -d
 
@@ -109,14 +194,14 @@ if %errorlevel% neq 0 (
     goto MAIN_MENU
 )
 
-echo [5/7] Waiting for services to start...
+echo [10/10] Waiting for services to start...
 echo [INFO] Waiting for services to initialize...
 timeout /t 15 /nobreak >nul
 
-echo [6/7] Checking service status...
+echo [INFO] Checking service status...
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | findstr "project_"
 
-echo [7/8] Setting up pgAdmin Database Manager...
+echo [INFO] Setting up pgAdmin Database Manager...
 echo [INFO] Checking if pgAdmin is available...
 docker ps -a | findstr pgadmin >nul 2>&1
 if %errorlevel% equ 0 (
@@ -143,7 +228,7 @@ if %errorlevel% equ 0 (
     )
 )
 
-echo [8/8] Opening website...
+echo [INFO] Opening website...
 timeout /t 2 /nobreak >nul
 start http://localhost:3000
 
@@ -406,6 +491,136 @@ echo.
 echo  ========================================
 echo.
 echo [SUCCESS] pgAdmin is ready to use!
+echo.
+pause
+goto MAIN_MENU
+
+:CHECK_DEPENDENCIES
+cls
+echo.
+echo  Checking Dependencies & Libraries
+echo  ========================================
+echo.
+
+echo [1/8] Checking Node.js installation...
+node --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Node.js is not installed!
+    echo [SOLUTION] Download from: https://nodejs.org/
+) else (
+    for /f "tokens=*" %%i in ('node --version') do set NODE_VERSION=%%i
+    echo [OK] Node.js version: %NODE_VERSION%
+)
+
+echo [2/8] Checking npm installation...
+npm --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] npm is not available!
+) else (
+    for /f "tokens=*" %%i in ('npm --version') do set NPM_VERSION=%%i
+    echo [OK] npm version: %NPM_VERSION%
+)
+
+echo [3/8] Checking Docker installation...
+docker --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Docker is not installed or not running!
+    echo [SOLUTION] Download Docker Desktop from: https://www.docker.com/products/docker-desktop
+) else (
+    for /f "tokens=*" %%i in ('docker --version') do set DOCKER_VERSION=%%i
+    echo [OK] Docker: %DOCKER_VERSION%
+)
+
+echo [4/8] Checking Docker Compose...
+docker-compose --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Docker Compose is not available!
+) else (
+    for /f "tokens=*" %%i in ('docker-compose --version') do set COMPOSE_VERSION=%%i
+    echo [OK] Docker Compose: %COMPOSE_VERSION%
+)
+
+echo [5/8] Checking frontend dependencies...
+if not exist "frontend\node_modules" (
+    echo [WARNING] Frontend node_modules not found!
+    echo [SOLUTION] Run: cd frontend && npm install
+) else (
+    echo [OK] Frontend dependencies found
+)
+
+echo [6/8] Checking backend dependencies...
+if not exist "backend\node_modules" (
+    echo [WARNING] Backend node_modules not found!
+    echo [SOLUTION] Run: cd backend && npm install
+) else (
+    echo [OK] Backend dependencies found
+)
+
+echo [7/8] Checking critical frontend libraries...
+cd frontend
+if not exist "node_modules\react-hot-toast" (
+    echo [WARNING] react-hot-toast not found!
+    echo [SOLUTION] Run: npm install react-hot-toast
+) else (
+    echo [OK] react-hot-toast found
+)
+
+if not exist "node_modules\next" (
+    echo [WARNING] Next.js not found!
+    echo [SOLUTION] Run: npm install
+) else (
+    echo [OK] Next.js found
+)
+
+if not exist "node_modules\react" (
+    echo [WARNING] React not found!
+    echo [SOLUTION] Run: npm install
+) else (
+    echo [OK] React found
+)
+
+if not exist "node_modules\axios" (
+    echo [WARNING] Axios not found!
+    echo [SOLUTION] Run: npm install axios
+) else (
+    echo [OK] Axios found
+)
+cd ..
+
+echo [8/8] Checking critical backend libraries...
+cd backend
+if not exist "node_modules\express" (
+    echo [WARNING] Express not found!
+    echo [SOLUTION] Run: npm install
+) else (
+    echo [OK] Express found
+)
+
+if not exist "node_modules\pg" (
+    echo [WARNING] PostgreSQL driver not found!
+    echo [SOLUTION] Run: npm install
+) else (
+    echo [OK] PostgreSQL driver found
+)
+
+if not exist "node_modules\redis" (
+    echo [WARNING] Redis client not found!
+    echo [SOLUTION] Run: npm install
+) else (
+    echo [OK] Redis client found
+)
+cd ..
+
+echo.
+echo  ========================================
+echo     Dependency Check Complete
+echo  ========================================
+echo.
+echo [TIP] If you see any warnings or errors above,
+echo      use the solutions provided to fix them.
+echo.
+echo [TIP] You can also select option 1 to automatically
+echo      install missing dependencies.
 echo.
 pause
 goto MAIN_MENU
