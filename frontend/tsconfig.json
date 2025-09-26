@@ -1,0 +1,42 @@
+{
+  "compilerOptions": { // กำหนดตัวเลือกสำหรับ TypeScript compiler
+    "target": "ES2017", // กำหนดให้คอมไพล์โค้ดเป็นมาตรฐาน ECMAScript 2017
+    "lib": ["dom", "dom.iterable", "esnext"], // ใช้ไลบรารี DOM, DOM iterable, และ ESNext
+    "allowJs": true, // อนุญาตให้ใช้ไฟล์ .js ในโปรเจกต์ร่วมกับ TypeScript ได้
+    "skipLibCheck": true, // ข้ามการตรวจสอบ type ของไฟล์ไลบรารี (ช่วยให้ build เร็วขึ้น)
+    "strict": true, // เปิด strict mode (ตรวจสอบ type เข้มงวด)
+    "noEmit": true, // ไม่สร้างไฟล์ output (ใช้สำหรับตรวจสอบ type เท่านั้น)
+    "esModuleInterop": true, // รองรับการ import/export แบบ CommonJS และ ES Module
+    "module": "esnext", // ใช้ระบบ module แบบ ESNext
+    "moduleResolution": "bundler", // ใช้การ resolve module แบบ bundler (เหมาะกับ Next.js)
+    "resolveJsonModule": true, // อนุญาตให้ import ไฟล์ .json ได้
+    "isolatedModules": true, // บังคับให้แต่ละไฟล์เป็นโมดูลแยกกัน (จำเป็นสำหรับ Next.js)
+    "jsx": "preserve", // JSX จะไม่ถูกแปลง ให้ Next.js จัดการเอง
+    "incremental": true, // เปิด incremental build (build เฉพาะไฟล์ที่เปลี่ยน)
+    "plugins": [ // ปลั๊กอินเสริมสำหรับ TypeScript
+      {
+        "name": "next" // ใช้ปลั๊กอินของ Next.js เพื่อรองรับฟีเจอร์เฉพาะ
+      }
+    ],
+    "paths": { // กำหนด alias สำหรับ import module
+      "@/*": ["./src/*"] // ให้ @/ หมายถึง ./src/ เช่น @/components/Button = src/components/Button
+    }
+  },
+  "include": [ // ระบุไฟล์ที่ TypeScript จะตรวจสอบ type
+    "next-env.d.ts", // ไฟล์ environment ของ Next.js
+    "**/*.ts", // ไฟล์ .ts ทั้งหมดในโปรเจกต์
+    "**/*.tsx", // ไฟล์ .tsx ทั้งหมดในโปรเจกต์
+    ".next/types/**/*.ts" // ไฟล์ type ที่สร้างโดย Next.js
+  ],
+  "exclude": [
+    "node_modules", // ไม่ตรวจสอบไฟล์ใน node_modules
+    "**/__tests__/**", // ไม่ตรวจสอบไฟล์ test
+    "**/*.test.ts", // ไม่ตรวจสอบไฟล์ test .ts
+    "**/*.test.tsx", // ไม่ตรวจสอบไฟล์ test .tsx
+    "**/*.spec.ts", // ไม่ตรวจสอบไฟล์ spec .ts
+    "**/*.spec.tsx", // ไม่ตรวจสอบไฟล์ spec .tsx
+    "src/__tests__/**", // ไม่ตรวจสอบโฟลเดอร์ tests
+    "src/components/__tests__/**", // ไม่ตรวจสอบ component tests
+    "src/hooks/__tests__/**" // ไม่ตรวจสอบ hooks tests
+  ]
+}
