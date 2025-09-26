@@ -68,6 +68,9 @@ if %errorlevel% neq 0 (
 ) else (
     for /f "tokens=*" %%i in ('node --version 2^>nul') do set NODE_VERSION=%%i
     echo [SUCCESS] Node.js is available - Version: %NODE_VERSION%
+    if "%NODE_VERSION%"=="" (
+        echo [SUCCESS] Node.js is available (version check failed)
+    )
 )
 
 echo [2/10] Checking npm installation...
@@ -81,6 +84,9 @@ if %errorlevel% neq 0 (
 ) else (
     for /f "tokens=*" %%i in ('npm --version 2^>nul') do set NPM_VERSION=%%i
     echo [SUCCESS] npm is available - Version: %NPM_VERSION%
+    if "%NPM_VERSION%"=="" (
+        echo [SUCCESS] npm is available (version check failed)
+    )
 )
 
 echo [3/10] Checking Docker installation...
@@ -632,6 +638,9 @@ if %errorlevel% neq 0 (
 ) else (
     for /f "tokens=*" %%i in ('node --version 2^>nul') do set NODE_VERSION=%%i
     echo [OK] Node.js version: %NODE_VERSION%
+    if "%NODE_VERSION%"=="" (
+        echo [OK] Node.js is available (version check failed)
+    )
 )
 
 echo [2/8] Checking npm installation...
@@ -641,6 +650,9 @@ if %errorlevel% neq 0 (
 ) else (
     for /f "tokens=*" %%i in ('npm --version 2^>nul') do set NPM_VERSION=%%i
     echo [OK] npm version: %NPM_VERSION%
+    if "%NPM_VERSION%"=="" (
+        echo [OK] npm is available (version check failed)
+    )
 )
 
 echo [3/8] Checking Docker installation...
