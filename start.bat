@@ -65,8 +65,10 @@ if %errorlevel% neq 0 (
     echo.
     pause
     goto MAIN_MENU
+) else (
+    for /f "tokens=*" %%i in ('node --version 2^>nul') do set NODE_VERSION=%%i
+    echo [SUCCESS] Node.js is available - Version: %NODE_VERSION%
 )
-echo [SUCCESS] Node.js is available
 
 echo [2/10] Checking npm installation...
 npm --version >nul 2>&1
@@ -76,8 +78,10 @@ if %errorlevel% neq 0 (
     echo.
     pause
     goto MAIN_MENU
+) else (
+    for /f "tokens=*" %%i in ('npm --version 2^>nul') do set NPM_VERSION=%%i
+    echo [SUCCESS] npm is available - Version: %NPM_VERSION%
 )
-echo [SUCCESS] npm is available
 
 echo [3/10] Checking Docker installation...
 docker --version >nul 2>&1
@@ -92,8 +96,10 @@ if %errorlevel% neq 0 (
     echo.
     pause
     goto MAIN_MENU
+) else (
+    for /f "tokens=*" %%i in ('docker --version 2^>nul') do set DOCKER_VERSION=%%i
+    echo [SUCCESS] Docker is available - %DOCKER_VERSION%
 )
-echo [SUCCESS] Docker is available
 
 echo [4/10] Checking Docker Compose...
 docker-compose --version >nul 2>&1
@@ -103,8 +109,10 @@ if %errorlevel% neq 0 (
     echo.
     pause
     goto MAIN_MENU
+) else (
+    for /f "tokens=*" %%i in ('docker-compose --version 2^>nul') do set COMPOSE_VERSION=%%i
+    echo [SUCCESS] Docker Compose is available - %COMPOSE_VERSION%
 )
-echo [SUCCESS] Docker Compose is available
 
 echo [5/10] Checking frontend dependencies...
 if not exist "frontend\node_modules" (
@@ -508,7 +516,7 @@ if %errorlevel% neq 0 (
     echo [ERROR] Node.js is not installed!
     echo [SOLUTION] Download from: https://nodejs.org/
 ) else (
-    for /f "tokens=*" %%i in ('node --version') do set NODE_VERSION=%%i
+    for /f "tokens=*" %%i in ('node --version 2^>nul') do set NODE_VERSION=%%i
     echo [OK] Node.js version: %NODE_VERSION%
 )
 
@@ -517,7 +525,7 @@ npm --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo [ERROR] npm is not available!
 ) else (
-    for /f "tokens=*" %%i in ('npm --version') do set NPM_VERSION=%%i
+    for /f "tokens=*" %%i in ('npm --version 2^>nul') do set NPM_VERSION=%%i
     echo [OK] npm version: %NPM_VERSION%
 )
 
@@ -527,7 +535,7 @@ if %errorlevel% neq 0 (
     echo [ERROR] Docker is not installed or not running!
     echo [SOLUTION] Download Docker Desktop from: https://www.docker.com/products/docker-desktop
 ) else (
-    for /f "tokens=*" %%i in ('docker --version') do set DOCKER_VERSION=%%i
+    for /f "tokens=*" %%i in ('docker --version 2^>nul') do set DOCKER_VERSION=%%i
     echo [OK] Docker: %DOCKER_VERSION%
 )
 
@@ -536,7 +544,7 @@ docker-compose --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo [ERROR] Docker Compose is not available!
 ) else (
-    for /f "tokens=*" %%i in ('docker-compose --version') do set COMPOSE_VERSION=%%i
+    for /f "tokens=*" %%i in ('docker-compose --version 2^>nul') do set COMPOSE_VERSION=%%i
     echo [OK] Docker Compose: %COMPOSE_VERSION%
 )
 
