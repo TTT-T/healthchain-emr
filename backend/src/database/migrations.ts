@@ -77,12 +77,19 @@ export class MigrationManager {
         }
       },
       {
-        name: '004_create_appointment_tables',
-        description: 'Create appointment management tables',
+        name: '004_fix_field_names',
+        description: 'Fix field names for consistency',
         up: async () => {
-          await this.createAppointmentTables();
+          await this.runSqlMigration('004_fix_field_names.sql');
         }
       },
+      // {
+      //   name: '004_create_appointment_tables',
+      //   description: 'Create appointment management tables',
+      //   up: async () => {
+      //     await this.createAppointmentTables();
+      //   }
+      // },
       {
         name: '005_create_audit_tables',
         description: 'Create audit and logging tables',
@@ -364,7 +371,7 @@ export class MigrationManager {
       CREATE TABLE IF NOT EXISTS appointments (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
-        physician_id UUID NOT NULL REFERENCES users(id),
+        doctor_id UUID NOT NULL REFERENCES users(id),
         title VARCHAR(200) NOT NULL,
         description TEXT,
         appointment_type VARCHAR(50) NOT NULL DEFAULT 'consultation'
@@ -418,7 +425,7 @@ export class MigrationManager {
 
       -- Create indexes
       CREATE INDEX IF NOT EXISTS idx_appointments_patient_id ON appointments(patient_id);
-      CREATE INDEX IF NOT EXISTS idx_appointments_physician_id ON appointments(physician_id);
+      CREATE INDEX IF NOT EXISTS idx_appointments_doctor_id ON appointments(doctor_id);
       CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(appointment_date);
       CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status);
       CREATE INDEX IF NOT EXISTS idx_appointment_history_appointment_id ON appointment_history(appointment_id);

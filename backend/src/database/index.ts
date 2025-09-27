@@ -578,21 +578,28 @@ export class DatabaseSchema {
    * Insert default departments
    */
   private static async insertDefaultDepartments(): Promise<void> {
-    const departments = [
-      { code: 'OPD', name: 'Out Patient Department', type: 'clinical' },
-      { code: 'ER', name: 'Emergency Room', type: 'clinical' },
-      { code: 'LAB', name: 'Laboratory', type: 'diagnostic' },
-      { code: 'PHARM', name: 'Pharmacy', type: 'support' },
-      { code: 'RADIO', name: 'Radiology', type: 'diagnostic' },
-      { code: 'ADMIN', name: 'Administration', type: 'support' },
-    ];
+    // Check if departments table is empty before inserting default data
+    const countResult = await this.db.query('SELECT COUNT(*) as count FROM departments');
+    const departmentCount = parseInt(countResult.rows[0].count);
+    
+    // Only insert default departments if the table is completely empty
+    if (departmentCount === 0) {
+      const departments = [
+        { code: 'OPD', name: 'Out Patient Department', type: 'clinical' },
+        { code: 'ER', name: 'Emergency Room', type: 'clinical' },
+        { code: 'LAB', name: 'Laboratory', type: 'diagnostic' },
+        { code: 'PHARM', name: 'Pharmacy', type: 'support' },
+        { code: 'RADIO', name: 'Radiology', type: 'diagnostic' },
+        { code: 'ADMIN', name: 'Administration', type: 'support' },
+      ];
 
-    for (const dept of departments) {
-      await this.db.query(
-        `INSERT INTO departments (department_code, department_name, department_type) 
-         VALUES ($1, $2, $3) ON CONFLICT (department_code) DO NOTHING`,
-        [dept.code, dept.name, dept.type]
-      );
+      for (const dept of departments) {
+        await this.db.query(
+          `INSERT INTO departments (department_code, department_name, department_type) 
+           VALUES ($1, $2, $3) ON CONFLICT (department_code) DO NOTHING`,
+          [dept.code, dept.name, dept.type]
+        );
+      }
     }
   }
 

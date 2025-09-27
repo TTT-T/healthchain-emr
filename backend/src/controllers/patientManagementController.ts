@@ -32,7 +32,7 @@ export const searchUsersByNationalId = async (req: Request, res: Response) => {
         p.first_name,
         p.last_name,
         p.thai_name,
-        p.thai_last_name,
+        NULL as thai_last_name,
         p.title,
         p.national_id,
         p.date_of_birth,
@@ -58,7 +58,7 @@ export const searchUsersByNationalId = async (req: Request, res: Response) => {
         p.chronic_diseases,
         p.emergency_contact_name,
         p.emergency_contact_phone,
-        p.emergency_contact_relation,
+        p.emergency_contact_relationship,
         p.created_at,
         p.updated_at,
         u.birth_day,
@@ -252,7 +252,7 @@ export const getAllPatients = async (req: Request, res: Response) => {
         p.first_name,
         p.last_name,
         p.thai_name,
-        p.thai_last_name,
+        NULL as thai_last_name,
         p.title,
         p.hospital_number,
         p.national_id,
@@ -266,7 +266,7 @@ export const getAllPatients = async (req: Request, res: Response) => {
         p.blood_type,
         p.emergency_contact_name,
         p.emergency_contact_phone,
-        p.emergency_contact_relation,
+        p.emergency_contact_relationship,
         p.medical_history,
         p.allergies,
         p.drug_allergies,
@@ -370,7 +370,7 @@ export const getAllPatients = async (req: Request, res: Response) => {
       emergency_contact: {
         name: patient.emergency_contact_name,
         phone: patient.emergency_contact_phone,
-        relation: patient.emergency_contact_relation
+        relation: patient.emergency_contact_relationship
       },
       status: patient.is_active ? 'active' : 'inactive',
       department: patient.department_name,
@@ -459,7 +459,7 @@ export const getPatientById = async (req: Request, res: Response) => {
         p.blood_type,
         p.emergency_contact_name,
         p.emergency_contact_phone,
-        p.emergency_contact_relation,
+        p.emergency_contact_relationship,
         p.medical_history,
         p.allergies,
         p.drug_allergies,
@@ -535,7 +535,7 @@ export const getPatientById = async (req: Request, res: Response) => {
       emergency_contact: {
         name: patient.emergency_contact_name,
         phone: patient.emergency_contact_phone,
-        relation: patient.emergency_contact_relation
+        relation: patient.emergency_contact_relationship
       },
       status: patient.is_active ? 'active' : 'inactive',
       department: patient.department_name,
@@ -623,7 +623,7 @@ export const updatePatient = async (req: Request, res: Response) => {
     const allowedFields = [
       'first_name', 'last_name', 'thai_name', 'phone', 'email', 'address', 'current_address',
       'blood_group', 'blood_type', 'emergency_contact', 'emergency_contact_phone',
-      'emergency_contact_relation', 'medical_history', 'allergies', 'drug_allergies',
+      'emergency_contact_relationship', 'medical_history', 'allergies', 'drug_allergies',
       'chronic_diseases', 'department_id', 'is_active'
     ];
 
@@ -740,8 +740,8 @@ export const getPatientByEmail = async (req: Request, res: Response) => {
         p.id,
         p.first_name,
         p.last_name,
-        p.thai_first_name as thai_name,
-        p.patient_number as hospital_number,
+        p.thai_name,
+        p.hospital_number,
         p.national_id,
         p.date_of_birth,
         p.gender,
@@ -752,7 +752,7 @@ export const getPatientByEmail = async (req: Request, res: Response) => {
         p.blood_type,
         p.emergency_contact_name,
         p.emergency_contact_phone,
-        p.emergency_contact_relation,
+        p.emergency_contact_relationship,
         p.medical_history,
         p.allergies,
         p.current_medications,
@@ -820,7 +820,7 @@ export const getPatientByEmail = async (req: Request, res: Response) => {
         blood_type: userData.blood_type,
         emergency_contact_name: userData.emergency_contact_name,
         emergency_contact_phone: userData.emergency_contact_phone,
-        emergency_contact_relation: userData.emergency_contact_relation,
+        emergency_contact_relationship: userData.emergency_contact_relationship,
         medical_history: userData.medical_history,
         allergies: userData.allergies,
         current_medications: userData.current_medications,
@@ -890,7 +890,7 @@ export const getPatient = async (req: Request, res: Response) => {
         p.blood_type,
         p.emergency_contact_name,
         p.emergency_contact_phone,
-        p.emergency_contact_relation,
+        p.emergency_contact_relationship,
         p.medical_history,
         p.allergies,
         p.drug_allergies,
@@ -949,7 +949,7 @@ export const getPatient = async (req: Request, res: Response) => {
       emergency_contact: {
         name: patient.emergency_contact_name,
         phone: patient.emergency_contact_phone,
-        relation: patient.emergency_contact_relation
+        relation: patient.emergency_contact_relationship
       },
       status: patient.is_active ? 'active' : 'inactive',
       department: patient.department_name,
@@ -1115,7 +1115,7 @@ export const getPatientProfile = async (req: Request, res: Response) => {
       emergency_contact: {
         name: userData.emergency_contact_name,
         phone: userData.emergency_contact_phone,
-        relation: userData.emergency_contact_relation
+        relation: userData.emergency_contact_relationship
       },
       personal_details: {
         occupation: userData.occupation,

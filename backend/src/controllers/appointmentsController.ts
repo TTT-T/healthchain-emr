@@ -55,7 +55,7 @@ export const getAllAppointments = async (req: Request, res: Response) => {
 
     if (doctorId) {
       paramCount++;
-      whereClause += ` AND a.physician_id = $${paramCount}`;
+      whereClause += ` AND a.doctor_id = $${paramCount}`;
       queryParams.push(doctorId);
     }
 
@@ -87,7 +87,7 @@ export const getAllAppointments = async (req: Request, res: Response) => {
         u.phone as doctor_phone,
         u.email as doctor_email
       FROM appointments a
-      LEFT JOIN users u ON a.physician_id = u.id
+      LEFT JOIN users u ON a.doctor_id = u.id
       ${whereClause}
       ORDER BY a.appointment_date DESC, a.appointment_time DESC
       LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
@@ -102,7 +102,7 @@ export const getAllAppointments = async (req: Request, res: Response) => {
     const countQuery = `
       SELECT COUNT(*) as total
       FROM appointments a
-      LEFT JOIN users u ON a.physician_id = u.id
+      LEFT JOIN users u ON a.doctor_id = u.id
       ${whereClause}
     `;
     const countResult = await databaseManager.query(countQuery, queryParams.slice(0, -2));
@@ -235,19 +235,19 @@ export const getPatientAppointments = async (req: Request, res: Response) => {
 
     if (startDate) {
       const paramIndex = queryParams.length + 1;
-      whereClause += ` AND a.appointment_date >= $${paramIndex}`;
+      whereClause += ` AND DATE(a.start_time) >= $${paramIndex}`;
       queryParams.push(startDate);
     }
 
     if (endDate) {
       const paramIndex = queryParams.length + 1;
-      whereClause += ` AND a.appointment_date <= $${paramIndex}`;
+      whereClause += ` AND DATE(a.start_time) <= $${paramIndex}`;
       queryParams.push(endDate);
     }
 
     if (type) {
       const paramIndex = queryParams.length + 1;
-      whereClause += ` AND a.appointment_type = $${paramIndex}`;
+      whereClause += ` AND a.type_id = $${paramIndex}`;
       queryParams.push(type);
     }
 
@@ -255,33 +255,31 @@ export const getPatientAppointments = async (req: Request, res: Response) => {
     const appointmentsQuery = `
       SELECT 
         a.id,
-        a.title,
-        a.description,
-        a.appointment_type,
+        a.patient_id,
+        a.doctor_id,
+        a.type_id,
+        a.start_time,
+        a.end_time,
         a.status,
-        a.priority,
-        a.appointment_date,
-        a.appointment_time,
-        a.duration_minutes,
-        a.location,
         a.notes,
-        a.preparations,
-        a.follow_up_required,
-        a.follow_up_notes,
-        a.reminder_sent,
-        a.reminder_sent_at,
-        a.can_reschedule,
-        a.can_cancel,
+        a.reason,
         a.created_at,
         a.updated_at,
+        a.cancelled_at,
+        a.cancelled_by,
+        a.cancellation_reason,
         u.first_name as doctor_first_name,
         u.last_name as doctor_last_name,
         u.phone as doctor_phone,
-        u.email as doctor_email
+        u.email as doctor_email,
+        at.name as appointment_type_name,
+        at.duration_minutes,
+        at.color as appointment_type_color
       FROM appointments a
-      LEFT JOIN users u ON a.physician_id = u.id
+      LEFT JOIN users u ON a.doctor_id = u.id
+      LEFT JOIN appointment_types at ON a.type_id = at.id
       ${whereClause}
-      ORDER BY a.appointment_date DESC, a.appointment_time DESC
+      ORDER BY a.start_time DESC
       LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
     `;
 
@@ -381,7 +379,7 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
       preparations,
       follow_up_required = false,
       follow_up_notes,
-      physician_id,
+      doctor_id,
       can_reschedule = true,
       can_cancel = true
     } = req.body;
@@ -406,7 +404,7 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
     // Validate physician exists
     const physicianExists = await databaseManager.query(
       'SELECT id, first_name, last_name FROM users WHERE id = $1 AND role = $2',
-      [physician_id, 'doctor']
+      [doctor_id, 'doctor']
     );
 
     if (physicianExists.rows.length === 0) {
@@ -421,11 +419,11 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
     // Check for conflicting appointments
     const conflictingAppointment = await databaseManager.query(`
       SELECT id FROM appointments 
-      WHERE physician_id = $1 
+      WHERE doctor_id = $1 
       AND appointment_date = $2 
       AND appointment_time = $3 
       AND status IN ('scheduled', 'confirmed')
-    `, [physician_id, appointment_date, appointment_time]);
+    `, [doctor_id, appointment_date, appointment_time]);
 
     if (conflictingAppointment.rows.length > 0) {
       return res.status(409).json({
@@ -464,14 +462,14 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
 
     await databaseManager.query(`
       INSERT INTO appointments (
-        id, patient_id, physician_id, title, description, appointment_type,
+        id, patient_id, doctor_id, title, description, appointment_type,
         status, priority, appointment_date, appointment_time, duration_minutes,
         location, notes, preparations, follow_up_required, follow_up_notes,
         can_reschedule, can_cancel, created_by
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
     `, [
-      appointmentId, patientId, physician_id, title, description, mappedAppointmentType,
+      appointmentId, patientId, doctor_id, title, description, mappedAppointmentType,
       'scheduled', priority, appointment_date, appointment_time, duration_minutes,
       locationData, notes, preparationsData, follow_up_required, follow_up_notes,
       can_reschedule, can_cancel, userId
@@ -486,7 +484,7 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
         a.can_reschedule, a.can_cancel, a.created_at,
         u.first_name as doctor_first_name, u.last_name as doctor_last_name
       FROM appointments a
-      LEFT JOIN users u ON a.physician_id = u.id
+      LEFT JOIN users u ON a.doctor_id = u.id
       WHERE a.id = $1
     `, [appointmentId]);
 
@@ -540,7 +538,7 @@ export const updatePatientAppointment = async (req: Request, res: Response) => {
       preparations,
       follow_up_required,
       follow_up_notes,
-      physician_id,
+      doctor_id,
       can_reschedule,
       can_cancel
     } = req.body;
@@ -575,10 +573,10 @@ export const updatePatientAppointment = async (req: Request, res: Response) => {
     }
 
     // If changing physician, date, or time, check for conflicts
-    if (physician_id || appointment_date || appointment_time) {
+    if (doctor_id || appointment_date || appointment_time) {
       const conflictQuery = `
         SELECT id FROM appointments 
-        WHERE physician_id = $1 
+        WHERE doctor_id = $1 
         AND appointment_date = $2 
         AND appointment_time = $3 
         AND status IN ('scheduled', 'confirmed')
@@ -586,7 +584,7 @@ export const updatePatientAppointment = async (req: Request, res: Response) => {
       `;
       
       const conflictParams = [
-        physician_id || (await databaseManager.query('SELECT physician_id FROM appointments WHERE id = $1', [appointmentId])).rows[0].physician_id,
+        doctor_id || (await databaseManager.query('SELECT doctor_id FROM appointments WHERE id = $1', [appointmentId])).rows[0].doctor_id,
         appointment_date || (await databaseManager.query('SELECT appointment_date FROM appointments WHERE id = $1', [appointmentId])).rows[0].appointment_date,
         appointment_time || (await databaseManager.query('SELECT appointment_time FROM appointments WHERE id = $1', [appointmentId])).rows[0].appointment_time,
         appointmentId
@@ -661,9 +659,9 @@ export const updatePatientAppointment = async (req: Request, res: Response) => {
       updateFields.push(`follow_up_notes = $${paramCount++}`);
       updateValues.push(follow_up_notes);
     }
-    if (physician_id !== undefined) {
-      updateFields.push(`physician_id = $${paramCount++}`);
-      updateValues.push(physician_id);
+    if (doctor_id !== undefined) {
+      updateFields.push(`doctor_id = $${paramCount++}`);
+      updateValues.push(doctor_id);
     }
     if (can_reschedule !== undefined) {
       updateFields.push(`can_reschedule = $${paramCount++}`);
@@ -697,7 +695,7 @@ export const updatePatientAppointment = async (req: Request, res: Response) => {
         a.can_reschedule, a.can_cancel, a.updated_at,
         u.first_name as doctor_first_name, u.last_name as doctor_last_name
       FROM appointments a
-      LEFT JOIN users u ON a.physician_id = u.id
+      LEFT JOIN users u ON a.doctor_id = u.id
       WHERE a.id = $1
     `, [appointmentId]);
 

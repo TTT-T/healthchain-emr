@@ -13,8 +13,8 @@ CREATE TABLE appointment_types (
 -- Create appointments table
 CREATE TABLE appointments (
     id SERIAL PRIMARY KEY,
-    patient_id INTEGER NOT NULL REFERENCES users(id),
-    doctor_id INTEGER NOT NULL REFERENCES users(id),
+    patient_id UUID NOT NULL REFERENCES patients(id),
+    doctor_id UUID NOT NULL REFERENCES users(id),
     type_id INTEGER NOT NULL REFERENCES appointment_types(id),
     start_time TIMESTAMP WITH TIME ZONE NOT NULL,
     end_time TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE appointments (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     cancelled_at TIMESTAMP WITH TIME ZONE,
-    cancelled_by INTEGER REFERENCES users(id),
+    cancelled_by UUID REFERENCES users(id),
     cancellation_reason TEXT,
     
     -- Add constraints

@@ -78,10 +78,10 @@ export const getAllUsers = async (req: Request, res: Response) => {
         GROUP BY attending_doctor_id
       ) visit_counts ON u.id = visit_counts.attending_doctor_id
       LEFT JOIN (
-        SELECT physician_id, COUNT(*) as appointment_count 
+        SELECT doctor_id, COUNT(*) as appointment_count 
         FROM appointments 
-        GROUP BY physician_id
-      ) appointment_counts ON u.id = appointment_counts.physician_id
+        GROUP BY doctor_id
+      ) appointment_counts ON u.id = appointment_counts.doctor_id
       ${whereClause}
       ORDER BY u.${validSortBy} ${validSortOrder}
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
@@ -179,7 +179,7 @@ export const getUserById = async (req: Request, res: Response) => {
       FROM users u
       LEFT JOIN departments d ON u.department_id = d.id
       LEFT JOIN visits v ON u.id = v.attending_doctor_id
-      LEFT JOIN appointments a ON u.id = a.physician_id
+      LEFT JOIN appointments a ON u.id = a.doctor_id
       LEFT JOIN patients p ON u.id = p.user_id
       WHERE u.id = $1
       GROUP BY u.id, d.department_name
@@ -208,10 +208,10 @@ export const getUserById = async (req: Request, res: Response) => {
     `, [id]);
 
     const recentAppointments = await databaseManager.query(`
-      SELECT id, appointment_date, patient_id, status
+      SELECT id, start_time as appointment_date, patient_id, status
       FROM appointments 
-      WHERE physician_id = $1 
-      ORDER BY appointment_date DESC 
+      WHERE doctor_id = $1 
+      ORDER BY start_time DESC 
       LIMIT 5
     `, [id]);
 
@@ -322,7 +322,7 @@ export const createUser = async (req: Request, res: Response) => {
     // Create user
     const createUserQuery = `
       INSERT INTO users (
-        id, first_name, last_name, email, password, role, 
+        id, first_name, last_name, email, password_hash, role, 
         department_id, phone, is_active, title
       )
       VALUES (
