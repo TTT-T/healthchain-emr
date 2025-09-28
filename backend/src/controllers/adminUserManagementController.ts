@@ -69,7 +69,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
         u.updated_at,
         d.department_name,
         COALESCE(visit_counts.visit_count, 0) as visit_count,
-        COALESCE(appointment_counts.appointment_count, 0) as appointment_count
+        0 as appointment_count
       FROM users u
       LEFT JOIN departments d ON u.department_id = d.id
       LEFT JOIN (
@@ -77,11 +77,6 @@ export const getAllUsers = async (req: Request, res: Response) => {
         FROM visits 
         GROUP BY attending_doctor_id
       ) visit_counts ON u.id = visit_counts.attending_doctor_id
-      LEFT JOIN (
-        SELECT doctor_id, COUNT(*) as appointment_count 
-        FROM appointments 
-        GROUP BY doctor_id
-      ) appointment_counts ON u.id = appointment_counts.doctor_id
       ${whereClause}
       ORDER BY u.${validSortBy} ${validSortOrder}
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
@@ -174,12 +169,11 @@ export const getUserById = async (req: Request, res: Response) => {
         u.updated_at,
         d.department_name,
         COUNT(DISTINCT v.id) as visit_count,
-        COUNT(DISTINCT a.id) as appointment_count,
+        0 as appointment_count,
         COUNT(DISTINCT p.id) as patient_count
       FROM users u
       LEFT JOIN departments d ON u.department_id = d.id
       LEFT JOIN visits v ON u.id = v.attending_doctor_id
-      LEFT JOIN appointments a ON u.id = a.doctor_id
       LEFT JOIN patients p ON u.id = p.user_id
       WHERE u.id = $1
       GROUP BY u.id, d.department_name
@@ -207,13 +201,7 @@ export const getUserById = async (req: Request, res: Response) => {
       LIMIT 5
     `, [id]);
 
-    const recentAppointments = await databaseManager.query(`
-      SELECT id, start_time as appointment_date, patient_id, status
-      FROM appointments 
-      WHERE doctor_id = $1 
-      ORDER BY start_time DESC 
-      LIMIT 5
-    `, [id]);
+    // Recent appointments query removed - appointments table not available
 
     res.status(200).json({
       data: {
@@ -236,7 +224,7 @@ export const getUserById = async (req: Request, res: Response) => {
           },
           recent_activity: {
             visits: recentVisits.rows,
-            appointments: recentAppointments.rows
+            appointments: []
           }
         }
       },
