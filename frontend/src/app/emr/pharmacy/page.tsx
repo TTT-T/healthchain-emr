@@ -6,6 +6,7 @@ import { PatientService } from '@/services/patientService';
 import { PharmacyService } from '@/services/pharmacyService';
 import { NotificationService } from '@/services/notificationService';
 import { PatientDocumentService } from '@/services/patientDocumentService';
+import { AIResearchDataService } from '@/services/aiResearchDataService';
 import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
 
@@ -145,21 +146,7 @@ export default function Pharmacy() {
     paymentMethod: 'cash',
     notes: '',
     dispensedTime: new Date().toISOString().slice(0, 16),
-    dispensedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || "เภสัชกร",
-    // AI Research Fields for Pharmacy
-    aiResearchData: {
-      drugInteractions: '', // ปฏิกิริยาระหว่างยา
-      allergyWarnings: '', // คำเตือนการแพ้
-      dosageAdjustments: '', // การปรับขนาดยา
-      contraindications: '', // ข้อห้ามใช้
-      sideEffects: '', // ผลข้างเคียงที่คาดหวัง
-      monitoringRequirements: '', // ความต้องการติดตาม
-      patientCompliance: '', // การปฏิบัติตามคำแนะนำ
-      effectiveness: '', // ประสิทธิภาพของยา
-      costEffectiveness: '', // ความคุ้มค่า
-      alternativeMedications: '', // ยาทางเลือก
-      researchNotes: '' // หมายเหตุสำหรับการวิจัย
-    }
+    dispensedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || "เภสัชกร"
   });
 
   const handleSearch = async () => {
@@ -238,6 +225,21 @@ export default function Pharmacy() {
     });
   };
 
+  const updateMedicationAIResearch = (index: number, field: string, value: any) => {
+    setPharmacyData(prev => {
+      const updatedMedications = [...prev.medications];
+      if (!updatedMedications[index].aiResearchData) {
+        updatedMedications[index].aiResearchData = {};
+      }
+      updatedMedications[index].aiResearchData[field] = value;
+      
+      return {
+        ...prev,
+        medications: updatedMedications
+      };
+    });
+  };
+
   const handleSubmit = async () => {
     if (!selectedPatient) return;
     
@@ -283,6 +285,23 @@ export default function Pharmacy() {
         // Create document for patient
         await createPatientDocument(selectedPatient, response.data);
         
+        // Save AI Research Data to dedicated table
+        try {
+          const aiResearchData = pharmacyData.medications[0]?.aiResearchData;
+          if (aiResearchData) {
+            await AIResearchDataService.saveEMRFormData(
+              selectedPatient.id,
+              'pharmacy',
+              response.data.id,
+              aiResearchData
+            );
+            logger.info('AI Research data saved for pharmacy');
+          }
+        } catch (aiError) {
+          logger.error('Failed to save AI Research data:', aiError);
+          // Don't fail the main operation if AI Research fails
+        }
+        
         setSuccess("บันทึกการจ่ายยาสำเร็จ!\n\n✅ ระบบได้ส่งการแจ้งเตือนและเอกสารให้ผู้ป่วยแล้ว");
         
         // Reset form
@@ -295,21 +314,7 @@ export default function Pharmacy() {
             paymentMethod: 'cash',
             notes: '',
             dispensedTime: new Date().toISOString().slice(0, 16),
-            dispensedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || "เภสัชกร",
-            // Reset AI Research Data
-            aiResearchData: {
-              drugInteractions: '',
-              allergyWarnings: '',
-              dosageAdjustments: '',
-              contraindications: '',
-              sideEffects: '',
-              monitoringRequirements: '',
-              patientCompliance: '',
-              effectiveness: '',
-              costEffectiveness: '',
-              alternativeMedications: '',
-              researchNotes: ''
-            }
+            dispensedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || "เภสัชกร"
           });
           setSuccess(null);
         }, 3000);
@@ -828,11 +833,8 @@ export default function Pharmacy() {
                           ปฏิกิริยาระหว่างยา
                         </label>
                         <textarea
-                          value={pharmacyData.aiResearchData.drugInteractions}
-                          onChange={(e) => setPharmacyData(prev => ({
-                            ...prev,
-                            aiResearchData: { ...prev.aiResearchData, drugInteractions: e.target.value }
-                          }))}
+                          value={pharmacyData.medications[0]?.aiResearchData?.drugInteractions || ''}
+                          onChange={(e) => updateMedicationAIResearch(0, 'drugInteractions', e.target.value)}
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           rows={3}
                           placeholder="เช่น ยา A กับยา B อาจทำให้เกิดผลข้างเคียง"
@@ -844,11 +846,8 @@ export default function Pharmacy() {
                           คำเตือนการแพ้
                         </label>
                         <textarea
-                          value={pharmacyData.aiResearchData.allergyWarnings}
-                          onChange={(e) => setPharmacyData(prev => ({
-                            ...prev,
-                            aiResearchData: { ...prev.aiResearchData, allergyWarnings: e.target.value }
-                          }))}
+                          value={pharmacyData.medications[0]?.aiResearchData?.allergyWarnings || ''}
+                          onChange={(e) => updateMedicationAIResearch(0, 'allergyWarnings', e.target.value)}
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           rows={3}
                           placeholder="เช่น ระวังการแพ้ในผู้ป่วยที่มีประวัติแพ้ยา"
@@ -860,11 +859,8 @@ export default function Pharmacy() {
                           ข้อห้ามใช้
                         </label>
                         <textarea
-                          value={pharmacyData.aiResearchData.contraindications}
-                          onChange={(e) => setPharmacyData(prev => ({
-                            ...prev,
-                            aiResearchData: { ...prev.aiResearchData, contraindications: e.target.value }
-                          }))}
+                          value={pharmacyData.medications[0]?.aiResearchData?.contraindications || ''}
+                          onChange={(e) => updateMedicationAIResearch(0, 'contraindications', e.target.value)}
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           rows={3}
                           placeholder="เช่น ห้ามใช้ในผู้ป่วยโรคไต, ห้ามใช้ในสตรีมีครรภ์"
@@ -882,11 +878,8 @@ export default function Pharmacy() {
                           ประสิทธิภาพของยา
                         </label>
                         <select
-                          value={pharmacyData.aiResearchData.effectiveness}
-                          onChange={(e) => setPharmacyData(prev => ({
-                            ...prev,
-                            aiResearchData: { ...prev.aiResearchData, effectiveness: e.target.value }
-                          }))}
+                          value={pharmacyData.medications[0]?.aiResearchData?.effectiveness || ''}
+                          onChange={(e) => updateMedicationAIResearch(0, 'effectiveness', e.target.value)}
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         >
                           <option value="">เลือกประสิทธิภาพ</option>
@@ -902,11 +895,8 @@ export default function Pharmacy() {
                           ความต้องการติดตาม
                         </label>
                         <textarea
-                          value={pharmacyData.aiResearchData.monitoringRequirements}
-                          onChange={(e) => setPharmacyData(prev => ({
-                            ...prev,
-                            aiResearchData: { ...prev.aiResearchData, monitoringRequirements: e.target.value }
-                          }))}
+                          value={pharmacyData.medications[0]?.aiResearchData?.monitoringRequirements || ''}
+                          onChange={(e) => updateMedicationAIResearch(0, 'monitoringRequirements', e.target.value)}
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           rows={3}
                           placeholder="เช่น ตรวจเลือดทุก 3 เดือน, วัดความดันทุกสัปดาห์"
@@ -918,11 +908,8 @@ export default function Pharmacy() {
                           ผลข้างเคียงที่คาดหวัง
                         </label>
                         <textarea
-                          value={pharmacyData.aiResearchData.sideEffects}
-                          onChange={(e) => setPharmacyData(prev => ({
-                            ...prev,
-                            aiResearchData: { ...prev.aiResearchData, sideEffects: e.target.value }
-                          }))}
+                          value={pharmacyData.medications[0]?.aiResearchData?.sideEffects || ''}
+                          onChange={(e) => updateMedicationAIResearch(0, 'sideEffects', e.target.value)}
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           rows={3}
                           placeholder="เช่น คลื่นไส้, ง่วงนอน, ปวดหัว"
@@ -939,11 +926,8 @@ export default function Pharmacy() {
                       การปรับขนาดยา
                     </label>
                     <textarea
-                      value={pharmacyData.aiResearchData.dosageAdjustments}
-                      onChange={(e) => setPharmacyData(prev => ({
-                        ...prev,
-                        aiResearchData: { ...prev.aiResearchData, dosageAdjustments: e.target.value }
-                      }))}
+                      value={pharmacyData.medications[0]?.aiResearchData?.dosageAdjustments || ''}
+                      onChange={(e) => updateMedicationAIResearch(0, 'dosageAdjustments', e.target.value)}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       rows={3}
                       placeholder="เช่น ลดขนาดยาในผู้ป่วยสูงอายุ, เพิ่มขนาดยาในผู้ป่วยอ้วน"
@@ -955,11 +939,8 @@ export default function Pharmacy() {
                       ยาทางเลือก
                     </label>
                     <textarea
-                      value={pharmacyData.aiResearchData.alternativeMedications}
-                      onChange={(e) => setPharmacyData(prev => ({
-                        ...prev,
-                        aiResearchData: { ...prev.aiResearchData, alternativeMedications: e.target.value }
-                      }))}
+                      value={pharmacyData.medications[0]?.aiResearchData?.alternativeMedications || ''}
+                      onChange={(e) => updateMedicationAIResearch(0, 'alternativeMedications', e.target.value)}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       rows={3}
                       placeholder="เช่น ยา A, ยา B, ยา C"
@@ -972,11 +953,8 @@ export default function Pharmacy() {
                     หมายเหตุสำหรับการวิจัยเภสัชกรรม
                   </label>
                   <textarea
-                    value={pharmacyData.aiResearchData.researchNotes}
-                    onChange={(e) => setPharmacyData(prev => ({
-                      ...prev,
-                      aiResearchData: { ...prev.aiResearchData, researchNotes: e.target.value }
-                    }))}
+                    value={pharmacyData.medications[0]?.aiResearchData?.researchNotes || ''}
+                    onChange={(e) => updateMedicationAIResearch(0, 'researchNotes', e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     rows={4}
                     placeholder="ข้อมูลเพิ่มเติมที่สำคัญสำหรับการวิจัยเภสัชกรรมและพัฒนาระบบ AI"

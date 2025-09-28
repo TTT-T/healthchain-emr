@@ -12,6 +12,25 @@ import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
 import { addTokenExpiryButton } from '@/utils/tokenExpiry';
 import { createLocalDateTimeString, formatToBuddhistEra, TimeInfo } from '@/utils/timeUtils';
+import { getThailandTime, formatThailandTime } from '@/utils/thailandTime';
+
+// ฟังก์ชันช่วยสำหรับการจัดการเวลาประเทศไทย
+const getThaiTime = (): string => {
+  // ใช้เวลาปัจจุบันของ browser
+  return new Date().toISOString();
+};
+
+// ฟังก์ชันสำหรับแสดงเวลาปัจจุบันของประเทศไทย
+const getCurrentThaiTime = (): string => {
+  // ใช้เวลาปัจจุบันของ browser โดยตรง (เนื่องจาก browser อยู่ใน timezone UTC+7 อยู่แล้ว)
+  const now = new Date();
+  
+  const hours = now.getHours().toString().padStart(2, '0');
+  const minutes = now.getMinutes().toString().padStart(2, '0');
+  const seconds = now.getSeconds().toString().padStart(2, '0');
+  
+  return `${hours}:${minutes}:${seconds}`;
+};
 
 interface Patient {
   hn: string;
@@ -35,6 +54,14 @@ interface CheckInData {
   visitTime: string;
   symptoms: string;
   notes: string;
+  // เพิ่มฟิลด์ตาม visits table
+  visitType: string;
+  priority: string;
+  departmentId: string;
+  assignedNurse: string;
+  followUpRequired: boolean;
+  followUpDate: string;
+  followUpNotes: string;
 }
 
 export default function CheckIn() {
@@ -54,9 +81,17 @@ export default function CheckIn() {
     patientNationalId: "",
     treatmentType: "",
     assignedDoctor: "",
-    visitTime: createLocalDateTimeString(new Date()),
+    visitTime: getThaiTime(), // เวลาประเทศไทย
     symptoms: "",
-    notes: ""
+    notes: "",
+    // เพิ่มฟิลด์ใหม่
+    visitType: "walk_in",
+    priority: "normal",
+    departmentId: "",
+    assignedNurse: "",
+    followUpRequired: false,
+    followUpDate: "",
+    followUpNotes: ""
   });
 
   const [showCalendarModal, setShowCalendarModal] = useState(false);
@@ -68,6 +103,7 @@ export default function CheckIn() {
 
   const [errors, setErrors] = useState<Partial<CheckInData>>({});
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [currentTime, setCurrentTime] = useState<string>(getCurrentThaiTime());
 
   useEffect(() => {
     if (user) {
@@ -148,7 +184,7 @@ export default function CheckIn() {
 
   useEffect(() => {
     if (user) {
-      const currentTime = createLocalDateTimeString(new Date());
+      const currentTime = getThaiTime(); // เวลาประเทศไทย
       setCheckInData(prev => ({
         ...prev,
         visitTime: currentTime
@@ -156,7 +192,18 @@ export default function CheckIn() {
     }
   }, [user]);
 
+  // อัปเดตเวลาทุกวินาที
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(getCurrentThaiTime());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   const handleSearch = async () => {
+    console.log('🔍 Starting patient search...', { searchQuery, searchType });
+    
     if (!searchQuery.trim()) {
       setError("กรุณากรอกข้อมูลที่ต้องการค้นหา");
       return;
@@ -176,7 +223,10 @@ export default function CheckIn() {
     setError(null);
 
     try {
+      console.log('📤 Searching for patient:', { searchQuery, searchType });
       const response = await PatientService.searchPatients(searchQuery, searchType === "nationalId" ? "name" : searchType);
+      
+      console.log('📥 Patient search response:', response);
       
       if (response.statusCode === 200 && response.data && response.data.length > 0) {
         const exactMatch = response.data.find((p: any) => {
@@ -188,18 +238,8 @@ export default function CheckIn() {
         });
         
         if (exactMatch) {
-          // Debug: Log the patient data to see what fields are available
-          console.log('Patient data received:', exactMatch);
+          console.log('✅ Patient found:', exactMatch);
           console.log('Available fields:', Object.keys(exactMatch));
-          console.log('Emergency contact relation:', exactMatch.emergency_contact_relation);
-          console.log('Emergency contact relationship:', exactMatch.emergency_contact_relationship);
-          console.log('Thai name fields:', {
-            thaiName: exactMatch.thai_name,
-            thaiFirstName: exactMatch.thai_first_name,
-            thaiLastName: exactMatch.thai_last_name,
-            thaiNameFull: exactMatch.thai_name,
-            allFields: Object.keys(exactMatch).filter(key => key.toLowerCase().includes('thai'))
-          });
           
           setSelectedPatient(exactMatch);
           setCheckInData(prev => ({
@@ -208,13 +248,16 @@ export default function CheckIn() {
             patientNationalId: exactMatch.national_id || ''
           }));
         } else {
+          console.log('❌ No exact match found');
           setError("ไม่พบข้อมูลผู้ป่วย กรุณาตรวจสอบข้อมูลหรือลงทะเบียนใหม่");
         }
       } else {
+        console.log('❌ No patients found in response');
         setError("ไม่พบข้อมูลผู้ป่วย กรุณาตรวจสอบข้อมูลหรือลงทะเบียนใหม่");
       }
       
     } catch (error) {
+      console.error("❌ Error searching patient:", error);
       logger.error("Error searching patient:", error);
       setError("เกิดข้อผิดพลาดในการค้นหา กรุณาลองอีกครั้ง");
     } finally {
@@ -246,57 +289,91 @@ export default function CheckIn() {
     }
 
     if (!checkInData.visitTime) {
-      newErrors.visitTime = "กรุณาเลือกเวลานัดหมาย";
-    } else {
-      const visitDateTime = new Date(checkInData.visitTime);
-      const oneMinuteAgo = new Date(Date.now() - 60000);
-      
-      if (visitDateTime < oneMinuteAgo) {
-        newErrors.visitTime = "ไม่สามารถเลือกเวลาในอดีตได้ กรุณาเลือกเวลาปัจจุบันหรืออนาคต";
-      }
+      newErrors.visitTime = "กรุณาเลือกเวลามาพบแพทย์";
+    }
+
+    if (checkInData.followUpRequired && !checkInData.followUpDate) {
+      newErrors.followUpDate = "กรุณาเลือกวันที่นัดติดตาม";
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setError(null); // Clear any previous errors
+    
+    if (Object.keys(newErrors).length > 0) {
+      setError("กรุณากรอกข้อมูลให้ครบถ้วน");
+      return false;
+    }
+    
+    return true;
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return;
+    console.log('🔄 Starting check-in process...');
+    
+    if (!validateForm()) {
+      console.log('❌ Form validation failed');
+      return;
+    }
     
     setIsSubmitting(true);
     setError(null);
     
     try {
-      const visitDate = new Date(checkInData.visitTime);
-      const formattedDate = visitDate.toISOString().split('T')[0];
+      console.log('📋 Check-in data:', checkInData);
+      console.log('👤 Selected patient:', selectedPatient);
       
       const visitData = {
         patientId: selectedPatient!.id,
-        visitType: 'walk_in',
-        visitTime: checkInData.visitTime,
+        visitType: checkInData.visitType,
+        visitTime: new Date().toISOString(), // ใช้เวลาปัจจุบัน
         chiefComplaint: checkInData.symptoms || 'ไม่ระบุ',
         presentIllness: checkInData.notes,
-        priority: 'normal' as const,
+        priority: checkInData.priority,
         attendingDoctorId: checkInData.assignedDoctor,
+        followUpRequired: checkInData.followUpRequired,
+        followUpDate: checkInData.followUpDate || null,
+        followUpNotes: checkInData.followUpNotes || null,
       };
       
+      console.log('📤 Sending visit data:', visitData);
+      
       const response = await VisitService.createVisit(visitData as any);
+      
+      console.log('📥 Visit creation response:', response);
       
       if (response.statusCode === 200 || response.statusCode === 201) {
         const queueNumber = `Q${String(Math.floor(Math.random() * 999) + 1).padStart(3, '0')}`;
         const selectedDoc = doctors.find(d => d.id === checkInData.assignedDoctor);
         
         setGeneratedQueueNumber(queueNumber);
-        setSuccess(`เช็คอินสำเร็จ!\n\nผู้ป่วย: ${selectedPatient?.thaiName || `${selectedPatient?.firstName} ${selectedPatient?.lastName}`}\nHN: ${selectedPatient?.hn || selectedPatient?.hospitalNumber}\nหมายเลขคิว: ${queueNumber}\nแพทย์: ${selectedDoc?.name}\nประเภทการรักษา: ${getTreatmentTypeLabel(checkInData.treatmentType)}\nวันที่และเวลา: ${formatToBuddhistEra(new Date(checkInData.visitTime))}\n\n✅ ระบบได้ส่งการแจ้งเตือนให้ผู้ป่วยแล้ว`);
+        const visitTypeLabel = {
+          'walk_in': 'Walk-in (มาโดยไม่นัด)',
+          'appointment': 'นัดหมาย',
+          'emergency': 'ฉุกเฉิน',
+          'follow_up': 'ติดตามผล',
+          'referral': 'ส่งต่อ'
+        }[checkInData.visitType] || checkInData.visitType;
+
+        const priorityLabel = {
+          'low': 'ต่ำ',
+          'normal': 'ปกติ',
+          'high': 'สูง',
+          'urgent': 'ฉุกเฉิน'
+        }[checkInData.priority] || checkInData.priority;
+
+        setSuccess(`เช็คอินสำเร็จ!\n\nผู้ป่วย: ${selectedPatient?.thaiName || `${selectedPatient?.firstName} ${selectedPatient?.lastName}`}\nHN: ${selectedPatient?.hn || selectedPatient?.hospitalNumber}\nหมายเลขคิว: ${queueNumber}\nแพทย์: ${selectedDoc?.name}\nประเภทการมา: ${visitTypeLabel}\nระดับความสำคัญ: ${priorityLabel}\nเวลา: ${currentTime}\n${checkInData.followUpRequired ? `นัดติดตาม: ${checkInData.followUpDate}` : ''}\n\n✅ ระบบได้ส่งการแจ้งเตือนให้ผู้ป่วยแล้ว`);
         
+        console.log('✅ Check-in successful!');
         await loadDoctors();
       } else {
-        setError("เกิดข้อผิดพลาดในการสร้างข้อมูล visit");
+        console.error('❌ Visit creation failed:', response);
+        setError(`เกิดข้อผิดพลาดในการสร้างข้อมูล visit: ${response.error?.message || 'ไม่ทราบสาเหตุ'}`);
       }
       
     } catch (error) {
+      console.error("❌ Error creating visit:", error);
       logger.error("Error creating visit:", error);
-      setError("เกิดข้อผิดพลาดในการเช็คอิน กรุณาลองอีกครั้ง");
+      setError(`เกิดข้อผิดพลาดในการเช็คอิน: ${error instanceof Error ? error.message : 'ไม่ทราบสาเหตุ'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -311,9 +388,16 @@ export default function CheckIn() {
       patientNationalId: "",
       treatmentType: "",
       assignedDoctor: "",
-      visitTime: createLocalDateTimeString(new Date()),
+      visitTime: getThaiTime(), // เวลาประเทศไทย
       symptoms: "",
-      notes: ""
+      notes: "",
+      visitType: "walk_in",
+      priority: "normal",
+      departmentId: "",
+      assignedNurse: "",
+      followUpRequired: false,
+      followUpDate: "",
+      followUpNotes: ""
     });
     setError(null);
     setSuccess(null);
@@ -907,6 +991,53 @@ export default function CheckIn() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  เวลามาพบแพทย์
+                </label>
+                <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-700">
+                  {currentTime}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  เวลาปัจจุบันประเทศไทย (ไม่สามารถแก้ไขได้)
+                  <br />
+                  Debug: UTC={new Date().toISOString()} | Local={new Date().toLocaleString()} | Thai={getCurrentThaiTime()}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ประเภทการมา
+                </label>
+                <select
+                  value={checkInData.visitType}
+                  onChange={(e) => handleInputChange('visitType', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="walk_in">Walk-in (มาโดยไม่นัด)</option>
+                  <option value="appointment">นัดหมาย</option>
+                  <option value="emergency">ฉุกเฉิน</option>
+                  <option value="follow_up">ติดตามผล</option>
+                  <option value="referral">ส่งต่อ</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ระดับความสำคัญ
+                </label>
+                <select
+                  value={checkInData.priority}
+                  onChange={(e) => handleInputChange('priority', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="low">ต่ำ</option>
+                  <option value="normal">ปกติ</option>
+                  <option value="high">สูง</option>
+                  <option value="urgent">ฉุกเฉิน</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   อาการ/อาการแสดง
                 </label>
                 <textarea
@@ -929,6 +1060,52 @@ export default function CheckIn() {
                   rows={2}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+
+              <div className="border-t pt-4">
+                <h4 className="text-md font-semibold text-gray-800 mb-3">การติดตามผล</h4>
+                
+                <div className="flex items-center mb-3">
+                  <input
+                    type="checkbox"
+                    id="followUpRequired"
+                    checked={checkInData.followUpRequired}
+                    onChange={(e) => setCheckInData(prev => ({ ...prev, followUpRequired: e.target.checked }))}
+                    className="mr-2"
+                  />
+                  <label htmlFor="followUpRequired" className="text-sm font-medium text-gray-700">
+                    ต้องการนัดติดตามผล
+                  </label>
+                </div>
+
+                {checkInData.followUpRequired && (
+                  <>
+                    <div className="mb-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        วันที่นัดติดตาม
+                      </label>
+                      <input
+                        type="date"
+                        value={checkInData.followUpDate}
+                        onChange={(e) => handleInputChange('followUpDate', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        หมายเหตุการติดตาม
+                      </label>
+                      <textarea
+                        value={checkInData.followUpNotes}
+                        onChange={(e) => handleInputChange('followUpNotes', e.target.value)}
+                        placeholder="หมายเหตุสำหรับการนัดติดตาม"
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="flex space-x-4">

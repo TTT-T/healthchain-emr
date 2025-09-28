@@ -408,7 +408,7 @@ async function getPatientAdditionalData(patientId: string) {
 
     // ดึงข้อมูล Lab Results ล่าสุด
     const labResultsResult = await databaseManager.query(`
-      SELECT lr.*, lo.test_name 
+      SELECT lr.*, lo._name as test_name 
       FROM lab_results lr
       INNER JOIN lab_orders lo ON lr.lab_order_id = lo.id
       WHERE lo.patient_id = $1

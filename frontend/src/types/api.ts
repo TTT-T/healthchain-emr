@@ -555,6 +555,17 @@ export interface CreateVitalSignsRequest {
   notes?: string;
   measurementTime?: string;
   measuredBy?: string;
+  // Enhanced AI Analysis fields
+  bodyFatPercentage?: number;
+  muscleMass?: number;
+  boneDensity?: string;
+  skinFoldThickness?: number;
+  hydrationStatus?: string;
+  sleepQuality?: number;
+  stressLevel?: number;
+  depressionScore?: number;
+  anxietyLevel?: number;
+  qualityOfLifeScore?: number;
 }
 
 // Lab Order Types

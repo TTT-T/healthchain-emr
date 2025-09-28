@@ -6,6 +6,7 @@ import { PatientService } from '@/services/patientService';
 import { LabResultService } from '@/services/labResultService';
 import { NotificationService } from '@/services/notificationService';
 import { PatientDocumentService } from '@/services/patientDocumentService';
+import { AIResearchDataService } from '@/services/aiResearchDataService';
 import { EnhancedDataService } from '@/services/enhancedDataService';
 import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
@@ -272,6 +273,23 @@ export default function LabResult() {
         
         // Create document for patient
         await createPatientDocument(selectedPatient, response.data);
+        
+        // Save AI Research Data to dedicated table
+        try {
+          const aiResearchData = labResultData.aiResearchData;
+          if (aiResearchData) {
+            await AIResearchDataService.saveEMRFormData(
+              selectedPatient.id,
+              'lab_result',
+              response.data.id,
+              aiResearchData
+            );
+            logger.info('AI Research data saved for lab result');
+          }
+        } catch (aiError) {
+          logger.error('Failed to save AI Research data:', aiError);
+          // Don't fail the main operation if AI Research fails
+        }
         
         setSuccess("บันทึกผลแลบสำเร็จ!\n\n✅ ระบบได้ส่งการแจ้งเตือนและเอกสารให้ผู้ป่วยแล้ว");
         

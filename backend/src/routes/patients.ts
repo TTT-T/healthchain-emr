@@ -6,7 +6,8 @@ import {
   searchPatients,
   updatePatient,
   deletePatient,
-  listPatients
+  listPatients,
+  getPatientByHn
 } from '../controllers/patientManagementController';
 import { authenticate, authorize } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
@@ -96,6 +97,12 @@ router.get('/',
 router.get('/search', 
   authorize(['doctor', 'nurse', 'admin']), 
   searchPatients
+);
+
+// Get patient by HN
+router.get('/by-hn/:hn', 
+  authorize(['doctor', 'nurse', 'admin']), 
+  getPatientByHn
 );
 
 // Get specific patient by ID or HN

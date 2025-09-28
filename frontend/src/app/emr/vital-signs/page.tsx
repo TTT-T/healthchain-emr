@@ -177,6 +177,16 @@ export default function VitalSigns() {
   });
 
   const [errors, setErrors] = useState<Partial<VitalSigns>>({});
+  const [currentTime, setCurrentTime] = useState<string>(getCurrentThailandTimeString());
+
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(getCurrentThailandTimeString());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   // Calculate BMI when weight or height changes
   useEffect(() => {
@@ -603,8 +613,19 @@ export default function VitalSigns() {
         painLevel: vitalSigns.painLevel ? parseFloat(vitalSigns.painLevel) : undefined,
         generalCondition: vitalSigns.generalCondition || undefined,
         notes: vitalSigns.notes || undefined,
-        measurementTime: vitalSigns.measurementTime || undefined,
-        measuredBy: vitalSigns.measuredBy || undefined
+        measurementTime: currentTime || undefined,
+        measuredBy: vitalSigns.measuredBy || undefined,
+        // Enhanced AI Analysis fields
+        bodyFatPercentage: vitalSigns.bodyFatPercentage ? parseFloat(vitalSigns.bodyFatPercentage) : undefined,
+        muscleMass: vitalSigns.muscleMass ? parseFloat(vitalSigns.muscleMass) : undefined,
+        boneDensity: vitalSigns.boneDensity || undefined,
+        skinFoldThickness: vitalSigns.skinFoldThickness ? parseFloat(vitalSigns.skinFoldThickness) : undefined,
+        hydrationStatus: vitalSigns.hydrationStatus || undefined,
+        sleepQuality: vitalSigns.sleepQuality ? parseInt(vitalSigns.sleepQuality) : undefined,
+        stressLevel: vitalSigns.stressLevel ? parseInt(vitalSigns.stressLevel) : undefined,
+        depressionScore: vitalSigns.depressionScore ? parseInt(vitalSigns.depressionScore) : undefined,
+        anxietyLevel: vitalSigns.anxietyLevel ? parseInt(vitalSigns.anxietyLevel) : undefined,
+        qualityOfLifeScore: vitalSigns.qualityOfLifeScore ? parseInt(vitalSigns.qualityOfLifeScore) : undefined
       };
       
       // บันทึก vital signs ใช้ endpoint ที่ถูกต้อง
@@ -661,7 +682,7 @@ ${visit.visitNumber ? '🔄 ใช้ Visit ที่มีอยู่แล้
           painLevel: "",
           generalCondition: "",
           notes: "",
-          measurementTime: createLocalDateTimeString(new Date()),
+          measurementTime: getCurrentThailandTimeString(),
           measuredBy: "พยาบาลสมหญิง",
           // Enhanced AI Analysis Fields
           bodyFatPercentage: "",
@@ -677,36 +698,6 @@ ${visit.visitNumber ? '🔄 ใช้ Visit ที่มีอยู่แล้
         });
         
         logger.info('Vital signs saved:', vitalResponse.data);
-        
-        // Save enhanced data for AI analysis
-        try {
-          const enhancedData = {
-            bodyFatPercentage: vitalSigns.bodyFatPercentage,
-            muscleMass: vitalSigns.muscleMass,
-            boneDensity: vitalSigns.boneDensity,
-            skinFoldThickness: vitalSigns.skinFoldThickness,
-            hydrationStatus: vitalSigns.hydrationStatus,
-            sleepQuality: vitalSigns.sleepQuality,
-            stressLevel: vitalSigns.stressLevel,
-            depressionScore: vitalSigns.depressionScore,
-            anxietyLevel: vitalSigns.anxietyLevel,
-            qualityOfLifeScore: vitalSigns.qualityOfLifeScore,
-            testDate: createLocalDateTimeString(new Date())
-          };
-          
-          // Only save if there's actual data
-          const hasEnhancedData = Object.values(enhancedData).some(value => 
-            value !== undefined && value !== null && value !== ''
-          );
-          
-          if (hasEnhancedData) {
-            await EnhancedDataService.saveEnhancedVitalSigns(selectedPatient.id, enhancedData);
-            logger.info('Enhanced vital signs data saved for AI analysis');
-          }
-        } catch (enhancedError) {
-          logger.warn('Failed to save enhanced data, but vital signs were saved:', enhancedError);
-          // Don't throw error here as vital signs were saved successfully
-        }
         
       } else {
         logger.error('❌ Vital signs creation failed:', {
@@ -1823,12 +1814,12 @@ ${visit.visitNumber ? '🔄 ใช้ Visit ที่มีอยู่แล้
                       <label className="block text-sm font-medium text-slate-700 mb-2">
                         เวลาที่วัด
                       </label>
-                      <input
-                        type="datetime-local"
-                        value={vitalSigns.measurementTime}
-                        onChange={(e) => handleInputChange("measurementTime", e.target.value)}
-                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                      />
+                      <div className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
+                        {currentTime}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        เวลาปัจจุบันประเทศไทย (อัปเดตอัตโนมัติ)
+                      </p>
                     </div>
 
                     <div>

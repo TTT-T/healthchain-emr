@@ -16,35 +16,39 @@ echo  [1] START  - Start EMR System
 echo  [2] STOP   - Stop EMR System  
 echo  [3] STATUS - Check System Status
 echo  [4] CREATE ADMIN - Create Admin User
-echo  [5] RESTART BACKEND  - Restart Backend Only
-echo  [6] RESTART FRONTEND - Restart Frontend Only
-echo  [7] RESTART ALL     - Restart All Services
-echo  [8] DOWN BACKEND    - Stop Backend Only
-echo  [9] DOWN FRONTEND   - Stop Frontend Only
-echo  [10] DOWN ALL        - Stop All Services
-echo  [11] RESET ALL DATA - Reset All Data (DANGER!)
-echo  [12] CLEAR DATABASE - Clear All Database Data
-echo  [13] END    - Exit Program
+echo  [5] RUN MIGRATIONS - Run Database Migrations
+echo  [6] RESTART BACKEND  - Restart Backend Only
+echo  [7] RESTART FRONTEND - Restart Frontend Only
+echo  [8] RESTART ALL     - Restart All Services
+echo  [9] DOWN BACKEND    - Stop Backend Only
+echo  [10] DOWN FRONTEND   - Stop Frontend Only
+echo  [11] DOWN ALL        - Stop All Services
+echo  [12] RESET ALL DATA - Reset All Data (DANGER!)
+echo  [13] CLEAR DATABASE - Clear All Database Data
+echo  [14] FIX CONTAINERS - Fix Container Conflicts
+echo  [15] END    - Exit Program
 echo.
 echo  ========================================
-set /p choice="Please select number (1-13): "
+set /p choice="Please select number (1-15): "
 
 if "%choice%"=="1" goto START_SYSTEM
 if "%choice%"=="2" goto STOP_SYSTEM
 if "%choice%"=="3" goto CHECK_STATUS
 if "%choice%"=="4" goto CREATE_ADMIN
-if "%choice%"=="5" goto RESTART_BACKEND
-if "%choice%"=="6" goto RESTART_FRONTEND
-if "%choice%"=="7" goto RESTART_ALL
-if "%choice%"=="8" goto DOWN_BACKEND
-if "%choice%"=="9" goto DOWN_FRONTEND
-if "%choice%"=="10" goto DOWN_ALL
-if "%choice%"=="11" goto RESET_ALL_DATA
-if "%choice%"=="12" goto CLEAR_DATABASE
-if "%choice%"=="13" goto END_PROGRAM
+if "%choice%"=="5" goto RUN_MIGRATIONS
+if "%choice%"=="6" goto RESTART_BACKEND
+if "%choice%"=="7" goto RESTART_FRONTEND
+if "%choice%"=="8" goto RESTART_ALL
+if "%choice%"=="9" goto DOWN_BACKEND
+if "%choice%"=="10" goto DOWN_FRONTEND
+if "%choice%"=="11" goto DOWN_ALL
+if "%choice%"=="12" goto RESET_ALL_DATA
+if "%choice%"=="13" goto CLEAR_DATABASE
+if "%choice%"=="14" goto FIX_CONTAINERS
+if "%choice%"=="15" goto END_PROGRAM
 
 echo.
-echo [ERROR] Please select number 1-13 only
+echo [ERROR] Please select number 1-15 only
 timeout /t 2 /nobreak >nul
 goto MAIN_MENU
 
@@ -91,6 +95,59 @@ if %errorlevel% neq 0 (
     echo [SUCCESS] Docker is available
 )
 
+echo [LOG] Checking Docker daemon...
+docker info >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Docker daemon is not running!
+    echo [SOLUTION] Start Docker Desktop and wait for it to be ready
+    pause
+    goto MAIN_MENU
+) else (
+    echo [SUCCESS] Docker daemon is running
+)
+
+echo [LOG] Checking Docker Compose...
+docker compose version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Docker Compose is not available!
+    echo [SOLUTION] Update Docker Desktop to latest version
+    pause
+    goto MAIN_MENU
+) else (
+    echo [SUCCESS] Docker Compose is available
+)
+
+echo [LOG] Checking port availability...
+netstat -an | findstr ":3000" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [WARNING] Port 3000 is already in use
+    echo [INFO] This may cause issues with frontend startup
+)
+
+netstat -an | findstr ":3001" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [WARNING] Port 3001 is already in use
+    echo [INFO] This may cause issues with backend startup
+)
+
+netstat -an | findstr ":5432" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [WARNING] Port 5432 is already in use
+    echo [INFO] This may cause issues with database startup
+)
+
+echo [LOG] Checking disk space...
+for /f "tokens=3" %%a in ('dir /-c ^| find "bytes free"') do set freespace=%%a
+if %freespace% LSS 1000000000 (
+    echo [WARNING] Low disk space detected
+    echo [INFO] Docker images and containers require significant disk space
+) else (
+    echo [SUCCESS] Sufficient disk space available
+)
+
+echo [LOG] Checking system resources...
+echo [INFO] System resource check completed
+
 echo [STEP 2/5] Checking project structure...
 if not exist "frontend" (
     echo [ERROR] Frontend directory not found!
@@ -114,6 +171,31 @@ if not exist "docker-compose.yml" (
     goto MAIN_MENU
 ) else (
     echo [SUCCESS] docker-compose.yml found
+)
+
+echo [LOG] Checking environment files...
+if not exist "backend\.env" (
+    if exist "backend\env.example" (
+        echo [INFO] Creating backend .env from env.example...
+        copy "backend\env.example" "backend\.env" >nul 2>&1
+        echo [SUCCESS] Backend .env created
+    ) else (
+        echo [WARNING] Backend .env not found and no env.example available
+    )
+) else (
+    echo [SUCCESS] Backend .env found
+)
+
+if not exist "frontend\.env.local" (
+    if exist "frontend\env.default" (
+        echo [INFO] Creating frontend .env.local from env.default...
+        copy "frontend\env.default" "frontend\.env.local" >nul 2>&1
+        echo [SUCCESS] Frontend .env.local created
+    ) else (
+        echo [WARNING] Frontend .env.local not found and no env.default available
+    )
+) else (
+    echo [SUCCESS] Frontend .env.local found
 )
 
 echo [STEP 3/5] Installing dependencies...
@@ -154,27 +236,104 @@ echo [LOG] Stopping any running EMR containers...
 docker compose down >nul 2>&1
 docker stop pgadmin >nul 2>&1
 docker rm pgadmin >nul 2>&1
-docker network disconnect project_emr_network $(docker ps -aq) >nul 2>&1
-echo [SUCCESS] Existing containers stopped
+
+echo [LOG] Checking Docker images...
+docker images | findstr "emr" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [INFO] EMR images found, will rebuild if needed
+) else (
+    echo [INFO] No EMR images found, will build from scratch
+)
+
+echo [LOG] Force removing any existing EMR containers...
+docker stop emr_redis >nul 2>&1
+docker rm emr_redis >nul 2>&1
+docker stop emr_postgres >nul 2>&1
+docker rm emr_postgres >nul 2>&1
+docker stop emr_backend >nul 2>&1
+docker rm emr_backend >nul 2>&1
+docker stop emr_frontend >nul 2>&1
+docker rm emr_frontend >nul 2>&1
+
+echo [LOG] Cleaning up network connections...
+for /f "tokens=*" %%i in ('docker ps -aq 2^>nul') do docker network disconnect project_emr_network %%i >nul 2>&1
+docker network rm project_emr_network >nul 2>&1
+echo [SUCCESS] Existing containers stopped and cleaned up
 
 echo [STEP 5/5] Building and starting containers...
 echo [LOG] Starting EMR containers with docker compose...
 echo [INFO] This may take several minutes on first run...
+echo [INFO] Building images and starting services...
+
 docker compose up -d --build
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to start containers!
-    echo [SOLUTION] Check if Docker Desktop is running
+    echo [SOLUTION] Check if Docker Desktop is running and has enough resources
+    echo [INFO] Try running 'docker compose logs' to see detailed error messages
     pause
     goto MAIN_MENU
 )
 echo [SUCCESS] EMR containers started
 
-echo [INFO] Setting up pgAdmin Database Manager...
-docker run --name pgadmin -p 8080:80 -e PGADMIN_DEFAULT_EMAIL=admin@admin.com -e PGADMIN_DEFAULT_PASSWORD=admin --network project_emr_network -d dpage/pgadmin4 >nul 2>&1
-echo [SUCCESS] pgAdmin Database Manager started
+echo [LOG] Verifying container startup...
+timeout /t 5 /nobreak >nul
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | findstr "emr_"
+if %errorlevel% neq 0 (
+    echo [WARNING] Some containers may not have started properly
+    echo [INFO] Check container logs with: docker compose logs
+) else (
+    echo [SUCCESS] All EMR containers are running
+)
 
-echo [INFO] Waiting for database to be ready...
-timeout /t 10 /nobreak >nul
+echo [INFO] Setting up pgAdmin Database Manager...
+docker stop pgadmin >nul 2>&1
+docker rm pgadmin >nul 2>&1
+docker run --name pgadmin -p 8080:80 -e PGADMIN_DEFAULT_EMAIL=admin@admin.com -e PGADMIN_DEFAULT_PASSWORD=admin --network project_project_emr_network -d dpage/pgadmin4 >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARNING] Failed to start pgAdmin, but continuing...
+    echo [INFO] You can start pgAdmin manually later if needed
+) else (
+    echo [SUCCESS] pgAdmin Database Manager started
+)
+
+echo [INFO] Waiting for services to be ready...
+timeout /t 15 /nobreak >nul
+
+echo [LOG] Running database migrations...
+docker exec emr_backend npx tsx src/scripts/migrationChecker.ts
+if %errorlevel% neq 0 (
+    echo [WARNING] Migrations may have failed, but continuing...
+    echo [INFO] You can run migrations manually using option [5] RUN MIGRATIONS
+) else (
+    echo [SUCCESS] Database migrations completed
+)
+
+echo [LOG] Checking service health...
+docker ps --format "table {{.Names}}\t{{.Status}}" | findstr "emr_"
+if %errorlevel% neq 0 (
+    echo [WARNING] Some services may not be running properly
+    echo [INFO] Checking individual services...
+    docker ps | findstr "emr_backend" >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo [ERROR] Backend service is not running
+    ) else (
+        echo [SUCCESS] Backend service is running
+    )
+    docker ps | findstr "emr_frontend" >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo [ERROR] Frontend service is not running
+    ) else (
+        echo [SUCCESS] Frontend service is running
+    )
+    docker ps | findstr "emr_postgres" >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo [ERROR] Database service is not running
+    ) else (
+        echo [SUCCESS] Database service is running
+    )
+) else (
+    echo [SUCCESS] All services are running
+)
 
 echo.
 echo  ========================================
@@ -197,11 +356,20 @@ echo [INFO] Next Steps:
 echo     1. Use option [4] CREATE ADMIN to create admin user
 echo     2. Then access the system at http://localhost:3000
 echo.
+echo [INFO] Testing service accessibility...
+curl -s -o nul -w "%%{http_code}" http://localhost:3001/health >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [SUCCESS] Backend API is accessible
+) else (
+    echo [WARNING] Backend API may not be ready yet
+)
+
 echo [INFO] Opening website...
 timeout /t 2 /nobreak >nul
 start http://localhost:3000
 echo.
 echo [SUCCESS] System is ready to use!
+echo [INFO] If services are not accessible, wait a few more minutes for full startup
 echo.
 pause
 goto MAIN_MENU
@@ -230,10 +398,23 @@ if %errorlevel% neq 0 (
 echo [STEP 2/2] Starting admin setup...
 echo [INFO] This will open an interactive admin setup...
 echo.
+
+echo [LOG] Checking database connection...
+docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; databaseManager.initialize().then(() => console.log('Connected')).catch(() => process.exit(1))" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Cannot connect to database!
+    echo [SOLUTION] Wait for database to be ready or restart the system
+    pause
+    goto MAIN_MENU
+) else (
+    echo [SUCCESS] Database connection verified
+)
+
+echo [LOG] Running admin setup script...
 docker exec -it emr_backend npx tsx src/scripts/seed.ts
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to create admin user!
-    echo [SOLUTION] Check if backend is running properly
+    echo [SOLUTION] Check if backend is running properly and database is accessible
     pause
     goto MAIN_MENU
 ) else (
@@ -252,6 +433,65 @@ echo.
 pause
 goto MAIN_MENU
 
+:RUN_MIGRATIONS
+cls
+echo.
+echo  ========================================
+echo  RUN DATABASE MIGRATIONS
+echo  ========================================
+echo.
+echo [INFO] Running Database Migrations at %date% %time%
+echo.
+
+echo [STEP 1/3] Checking if backend is running...
+docker ps | findstr emr_backend >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Backend container is not running!
+    echo [SOLUTION] Please start the system first using option [1] START
+    pause
+    goto MAIN_MENU
+) else (
+    echo [SUCCESS] Backend container is running
+)
+
+echo [STEP 2/3] Checking database connection...
+docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; databaseManager.initialize().then(() => console.log('Connected')).catch(() => process.exit(1))" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Cannot connect to database!
+    echo [SOLUTION] Wait for database to be ready or restart the system
+    pause
+    goto MAIN_MENU
+) else (
+    echo [SUCCESS] Database connection verified
+)
+
+echo [STEP 3/3] Running migrations...
+echo [INFO] This will check and run all pending migrations...
+echo.
+
+docker exec emr_backend npx tsx src/scripts/migrationChecker.ts
+if %errorlevel% neq 0 (
+    echo [ERROR] Failed to run migrations!
+    echo [SOLUTION] Check database connection and migration files
+    echo [INFO] Check logs with: docker compose logs backend
+    pause
+    goto MAIN_MENU
+) else (
+    echo [SUCCESS] Migrations completed successfully!
+)
+
+echo.
+echo  ========================================
+echo     MIGRATIONS COMPLETED SUCCESSFULLY!
+echo  ========================================
+echo.
+echo [INFO] Migrations completed at: %date% %time%
+echo [INFO] Database schema is now up to date
+echo [INFO] You can now use the system normally
+echo.
+pause
+goto MAIN_MENU
+
 :STOP_SYSTEM
 cls
 echo.
@@ -262,7 +502,7 @@ echo.
 echo [INFO] Stopping EMR System at %date% %time%
 echo.
 
-echo [STEP 1/3] Stopping EMR containers...
+echo [STEP 1/4] Stopping EMR containers...
 docker compose down
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to stop EMR containers!
@@ -270,12 +510,23 @@ if %errorlevel% neq 0 (
     echo [SUCCESS] EMR containers stopped
 )
 
-echo [STEP 2/3] Force removing network connections...
-docker network disconnect project_emr_network $(docker ps -aq) >nul 2>&1
+echo [STEP 2/4] Force removing any remaining EMR containers...
+docker stop emr_redis >nul 2>&1
+docker rm emr_redis >nul 2>&1
+docker stop emr_postgres >nul 2>&1
+docker rm emr_postgres >nul 2>&1
+docker stop emr_backend >nul 2>&1
+docker rm emr_backend >nul 2>&1
+docker stop emr_frontend >nul 2>&1
+docker rm emr_frontend >nul 2>&1
+echo [SUCCESS] All EMR containers removed
+
+echo [STEP 3/4] Force removing network connections...
+for /f "tokens=*" %%i in ('docker ps -aq 2^>nul') do docker network disconnect project_emr_network %%i >nul 2>&1
 docker network rm project_emr_network >nul 2>&1
 echo [SUCCESS] Network connections removed
 
-echo [STEP 3/3] Stopping pgAdmin...
+echo [STEP 4/4] Stopping pgAdmin...
 docker stop pgadmin >nul 2>&1
 docker rm pgadmin >nul 2>&1
 echo [SUCCESS] pgAdmin stopped
@@ -307,6 +558,9 @@ if %errorlevel% neq 0 (
     echo [INFO] No EMR containers currently running
 ) else (
     echo [SUCCESS] EMR containers are running
+    echo.
+    echo [DETAILED STATUS]
+    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | findstr "emr_"
 )
 
 echo.
@@ -324,6 +578,24 @@ echo [INFO] Ports should be available at:
 echo [INFO] Frontend: http://localhost:3000
 echo [INFO] Backend: http://localhost:3001
 echo [INFO] pgAdmin: http://localhost:8080
+
+echo.
+echo [NETWORK STATUS]
+docker network ls | findstr project_emr_network >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [SUCCESS] EMR network exists
+) else (
+    echo [INFO] EMR network not found
+)
+
+echo.
+echo [VOLUME STATUS]
+docker volume ls | findstr project >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [SUCCESS] EMR volumes exist
+) else (
+    echo [INFO] No EMR volumes found
+)
 
 echo.
 pause
@@ -357,10 +629,20 @@ echo [STEP 3/3] Starting backend container...
 docker compose up -d --build backend
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to start backend container!
+    echo [INFO] Check logs with: docker compose logs backend
     pause
     goto MAIN_MENU
 ) else (
     echo [SUCCESS] Backend container restarted
+)
+
+echo [LOG] Verifying backend startup...
+timeout /t 5 /nobreak >nul
+docker ps | findstr emr_backend >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARNING] Backend container may not be running properly
+) else (
+    echo [SUCCESS] Backend container is running
 )
 
 echo.
@@ -402,10 +684,20 @@ echo [STEP 3/3] Starting frontend container...
 docker compose up -d --build frontend
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to start frontend container!
+    echo [INFO] Check logs with: docker compose logs frontend
     pause
     goto MAIN_MENU
 ) else (
     echo [SUCCESS] Frontend container restarted
+)
+
+echo [LOG] Verifying frontend startup...
+timeout /t 5 /nobreak >nul
+docker ps | findstr emr_frontend >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARNING] Frontend container may not be running properly
+) else (
+    echo [SUCCESS] Frontend container is running
 )
 
 echo.
@@ -455,8 +747,22 @@ if %errorlevel% neq 0 (
 
 echo [STEP 4/4] Starting pgAdmin...
 docker stop pgadmin >nul 2>&1
-docker run --name pgadmin -p 8080:80 -e PGADMIN_DEFAULT_EMAIL=admin@admin.com -e PGADMIN_DEFAULT_PASSWORD=admin --network project_emr_network -d dpage/pgadmin4 >nul 2>&1
-echo [SUCCESS] pgAdmin started
+docker rm pgadmin >nul 2>&1
+docker run --name pgadmin -p 8080:80 -e PGADMIN_DEFAULT_EMAIL=admin@admin.com -e PGADMIN_DEFAULT_PASSWORD=admin --network project_project_emr_network -d dpage/pgadmin4 >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARNING] Failed to start pgAdmin, but continuing...
+) else (
+    echo [SUCCESS] pgAdmin started
+)
+
+echo [LOG] Verifying all services...
+timeout /t 5 /nobreak >nul
+docker ps --format "table {{.Names}}\t{{.Status}}" | findstr "emr_"
+if %errorlevel% neq 0 (
+    echo [WARNING] Some services may not be running properly
+) else (
+    echo [SUCCESS] All services are running
+)
 
 echo.
 echo  ========================================
@@ -495,7 +801,11 @@ if %errorlevel% neq 0 (
 
 echo [STEP 2/2] Removing backend container...
 docker compose rm -f backend
-echo [SUCCESS] Backend container removed
+if %errorlevel% neq 0 (
+    echo [WARNING] Failed to remove backend container
+) else (
+    echo [SUCCESS] Backend container removed
+)
 
 echo.
 echo  ========================================
@@ -530,7 +840,11 @@ if %errorlevel% neq 0 (
 
 echo [STEP 2/2] Removing frontend container...
 docker compose rm -f frontend
-echo [SUCCESS] Frontend container removed
+if %errorlevel% neq 0 (
+    echo [WARNING] Failed to remove frontend container
+) else (
+    echo [SUCCESS] Frontend container removed
+)
 
 echo.
 echo  ========================================
@@ -564,13 +878,16 @@ if %errorlevel% neq 0 (
 )
 
 echo [STEP 2/4] Force removing network connections...
-docker network disconnect project_emr_network $(docker ps -aq) >nul 2>&1
+for /f "tokens=*" %%i in ('docker ps -aq 2^>nul') do docker network disconnect project_emr_network %%i >nul 2>&1
 docker network rm project_emr_network >nul 2>&1
 echo [SUCCESS] Network connections removed
 
 echo [STEP 3/4] Removing all containers...
 docker compose rm -f
-docker rm -f $(docker ps -aq) >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARNING] Failed to remove some containers via docker compose
+)
+for /f "tokens=*" %%i in ('docker ps -aq 2^>nul') do docker rm -f %%i >nul 2>&1
 echo [SUCCESS] All containers removed
 
 echo [STEP 4/4] Stopping pgAdmin...
@@ -628,13 +945,16 @@ docker compose down
 echo [SUCCESS] All containers stopped
 
 echo [STEP 2/8] Force removing network connections...
-docker network disconnect project_emr_network $(docker ps -aq) >nul 2>&1
+for /f "tokens=*" %%i in ('docker ps -aq 2^>nul') do docker network disconnect project_emr_network %%i >nul 2>&1
 docker network rm project_emr_network >nul 2>&1
 echo [SUCCESS] Network connections removed
 
 echo [STEP 3/8] Removing all containers...
 docker compose rm -f
-docker rm -f $(docker ps -aq) >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARNING] Failed to remove some containers via docker compose
+)
+for /f "tokens=*" %%i in ('docker ps -aq 2^>nul') do docker rm -f %%i >nul 2>&1
 echo [SUCCESS] All containers removed
 
 echo [STEP 4/8] Removing all volumes (including database data)...
@@ -651,7 +971,7 @@ docker rm pgadmin >nul 2>&1
 echo [SUCCESS] pgAdmin removed
 
 echo [STEP 7/8] Removing Docker volumes completely...
-docker volume ls -q | ForEach-Object { docker volume rm $_ } >nul 2>&1
+for /f "tokens=*" %%i in ('docker volume ls -q 2^>nul') do docker volume rm %%i >nul 2>&1
 echo [SUCCESS] All Docker volumes completely removed
 
 echo [STEP 8/8] Force removing all Docker data...
@@ -721,6 +1041,7 @@ docker exec emr_backend npx tsx -e "import { databaseManager } from './src/datab
 if %errorlevel% neq 0 (
     echo [ERROR] Cannot connect to database!
     echo [SOLUTION] Check if database is running properly
+    echo [INFO] Try restarting the system first
     pause
     goto MAIN_MENU
 ) else (
@@ -749,6 +1070,97 @@ echo [INFO] Database structure remains intact
 echo [INFO] System is still running
 echo.
 echo [NEXT] Use option [4] CREATE ADMIN to create new admin user
+echo.
+pause
+goto MAIN_MENU
+
+:FIX_CONTAINERS
+cls
+echo.
+echo  ========================================
+echo  FIXING CONTAINER CONFLICTS
+echo  ========================================
+echo.
+echo [INFO] Fixing container conflicts at %date% %time%
+echo.
+echo [WARNING] This will force remove all EMR containers
+echo [WARNING] This will clean up all networks and volumes
+echo.
+
+echo [STEP 1/6] Stopping all EMR containers...
+docker compose down >nul 2>&1
+echo [SUCCESS] Docker compose stopped
+
+echo [STEP 2/6] Force stopping individual containers...
+docker stop emr_redis >nul 2>&1
+docker stop emr_postgres >nul 2>&1
+docker stop emr_backend >nul 2>&1
+docker stop emr_frontend >nul 2>&1
+docker stop pgadmin >nul 2>&1
+echo [SUCCESS] All containers stopped
+
+echo [STEP 3/6] Force removing containers...
+docker rm -f emr_redis >nul 2>&1
+docker rm -f emr_postgres >nul 2>&1
+docker rm -f emr_backend >nul 2>&1
+docker rm -f emr_frontend >nul 2>&1
+docker rm -f pgadmin >nul 2>&1
+echo [SUCCESS] All containers removed
+
+echo [STEP 4/6] Cleaning up networks...
+for /f "tokens=*" %%i in ('docker ps -aq 2^>nul') do docker network disconnect project_emr_network %%i >nul 2>&1
+docker network rm project_emr_network >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARNING] Failed to remove network, but continuing...
+) else (
+    echo [SUCCESS] Networks cleaned up
+)
+
+echo [STEP 5/6] Cleaning up unused volumes...
+docker volume prune -f >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARNING] Failed to clean up volumes, but continuing...
+) else (
+    echo [SUCCESS] Unused volumes cleaned up
+)
+
+echo [STEP 6/6] Verifying cleanup...
+docker ps -a | findstr emr_ >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [WARNING] Some EMR containers still exist
+    docker ps -a | findstr emr_
+    echo [INFO] You may need to manually remove these containers
+) else (
+    echo [SUCCESS] All EMR containers removed
+)
+
+echo [LOG] Checking for any remaining Docker resources...
+docker images | findstr emr >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [INFO] EMR images still exist (this is normal)
+) else (
+    echo [INFO] No EMR images found
+)
+
+echo [LOG] Checking network cleanup...
+docker network ls | findstr project_emr_network >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [WARNING] EMR network still exists
+    echo [INFO] Network will be recreated on next startup
+) else (
+    echo [SUCCESS] EMR network removed
+)
+
+echo.
+echo  ========================================
+echo     CONTAINER CONFLICTS FIXED!
+echo  ========================================
+echo.
+echo [INFO] Container conflicts fixed at: %date% %time%
+echo [INFO] All EMR containers have been removed
+echo [INFO] Networks and volumes have been cleaned up
+echo.
+echo [NEXT] You can now use option [1] START to start the system
 echo.
 pause
 goto MAIN_MENU

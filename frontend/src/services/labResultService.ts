@@ -83,7 +83,7 @@ export class LabResultService {
    */
   static async createLabResult(data: CreateLabResultRequest): Promise<APIResponse<LabResultRecord>> {
     try {
-      const response = await apiClient.post(`/medical/patients/${data.patientId}/lab-results`, data);
+      const response = await apiClient.post(`/medical/lab-results`, data);
       return response as APIResponse<LabResultRecord>;
     } catch (error) {
       logger.error('Error creating lab result record:', error);
@@ -150,7 +150,6 @@ export class LabResultService {
     return {
       patientId,
       visitId: labResultData.visitId,
-      labOrderId: labResultData.labOrderId,
       Type: labResultData.Type,
       Name: labResultData.Name,
       Results: labResultData.Results || [],

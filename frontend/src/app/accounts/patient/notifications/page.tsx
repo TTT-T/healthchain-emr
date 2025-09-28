@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Bell, CheckCircle, Clock, FileText, Stethoscope, Pill, TestTube, Calendar, X, RefreshCw } from 'lucide-react';
+import { Bell, CheckCircle, Clock, FileText, Stethoscope, Pill, TestTube, Calendar, X, RefreshCw, Activity, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { apiClient } from '@/lib/api';
@@ -168,6 +168,10 @@ export default function Notifications() {
         return <CheckCircle className="w-5 h-5 text-green-600" />;
       case 'history_taking_recorded':
         return <Stethoscope className="w-5 h-5 text-emerald-600" />;
+      case 'vital_signs_recorded':
+        return <Activity className="w-5 h-5 text-cyan-600" />;
+      case 'patient_registered':
+        return <User className="w-5 h-5 text-green-600" />;
       default:
         return <Bell className="w-5 h-5 text-gray-600" />;
     }
@@ -183,7 +187,9 @@ export default function Notifications() {
       'prescription_ready': 'ยาเตรียมพร้อม',
       'queue_assigned': 'ได้รับคิว',
       'visit_completed': 'เสร็จสิ้นการรักษา',
-      'history_taking_recorded': 'บันทึกประวัติ'
+      'history_taking_recorded': 'บันทึกประวัติ',
+      'vital_signs_recorded': 'บันทึกสัญญาณชีพ',
+      'patient_registered': 'ลงทะเบียนผู้ป่วย'
     };
     
     return labels[type] || 'การแจ้งเตือน';

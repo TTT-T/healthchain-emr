@@ -41,7 +41,6 @@ import {
   updateLabOrder
 } from '../controllers/labOrdersController';
 import {
-  createLabResult,
   getLabResults,
   getLabOrdersByVisit
 } from '../controllers/labController';
@@ -75,6 +74,13 @@ import {
   deletePharmacyDispensing
 } from '../controllers/pharmacyController';
 import {
+  createAIResearchData,
+  getPatientAIResearchData,
+  updateAIResearchData,
+  deleteAIResearchData
+} from '../controllers/aiResearchDataController';
+import {
+  createLabResult,
   getLabResultsByPatient,
   getLabResultById,
   updateLabResult,
@@ -144,12 +150,7 @@ import {
   createPatientLabResult as createPatientLabResultFromController,
   updatePatientLabResult
 } from '../controllers/labResultsController';
-import {
-  getPatientAppointments,
-  createPatientAppointment,
-  updatePatientAppointment,
-  cancelPatientAppointment
-} from '../controllers/appointmentsController';
+// Appointments handled by patientRoutes
 import {
   uploadPatientDocument,
   deletePatientDocument,
@@ -311,6 +312,12 @@ router.get('/lab-results/:id', authorize(['lab_tech', 'doctor', 'nurse', 'admin'
 router.put('/lab-results/:id', authorize(['lab_tech', 'doctor', 'admin']), asyncHandler(updateLabResult));
 router.delete('/lab-results/:id', authorize(['lab_tech', 'admin']), asyncHandler(deleteLabResult));
 
+// AI Research Data routes
+router.post('/patients/:id/ai-research-data', authorize(['doctor', 'nurse', 'pharmacist', 'admin']), asyncHandler(createAIResearchData));
+router.get('/patients/:id/ai-research-data', authorize(['doctor', 'nurse', 'pharmacist', 'admin']), asyncHandler(getPatientAIResearchData));
+router.put('/patients/:id/ai-research-data/:researchId', authorize(['doctor', 'nurse', 'pharmacist', 'admin']), asyncHandler(updateAIResearchData));
+router.delete('/patients/:id/ai-research-data/:researchId', authorize(['doctor', 'nurse', 'pharmacist', 'admin']), asyncHandler(deleteAIResearchData));
+
 // Appointments routes
 router.get('/appointments', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAllAppointments));
 // router.get('/patients/:patientId/appointments', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAppointmentsByPatient));
@@ -347,11 +354,7 @@ router.post('/patients/:id/records', authorize(['doctor', 'nurse']), asyncHandle
 router.put('/patients/:id/records/:recordId', authorize(['doctor', 'nurse']), asyncHandler(updatePatientRecord));
 router.delete('/patients/:id/records/:recordId', authorize(['doctor', 'nurse', 'admin']), asyncHandler(deletePatientRecord));
 
-// Appointments
-router.get('/patients/:id/appointments', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(getPatientAppointments));
-router.post('/patients/:id/appointments', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(createPatientAppointment));
-router.put('/patients/:id/appointments/:appointmentId', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(updatePatientAppointment));
-router.delete('/patients/:id/appointments/:appointmentId', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(cancelPatientAppointment));
+// Appointments - handled by patientRoutes
 
 // Vital signs
 router.get('/patients/:id/vitals', authorize(['doctor', 'nurse', 'admin']), asyncHandler(async (req, res) => {

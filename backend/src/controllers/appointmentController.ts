@@ -76,8 +76,8 @@ export const createAppointment = asyncHandler(async (req: Request, res: Response
     const client = await databaseManager.getClient();
     
     // Check if patient exists
-    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM users WHERE id = $1 AND role = $2';
-    const patientResult = await client.query(patientQuery, [patientId, 'patient']);
+    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM patients WHERE id = $1';
+    const patientResult = await client.query(patientQuery, [patientId]);
     
     if (patientResult.rows.length === 0) {
       return res.status(404).json({
@@ -225,10 +225,10 @@ export const getAppointmentsByPatient = asyncHandler(async (req: Request, res: R
     
     const query = `
       SELECT mr.*, 
-             u.thai_name as patient_name, u.national_id, u.hospital_number,
+             p.thai_name as patient_name, p.national_id, p.hospital_number,
              d.thai_name as doctor_name
       FROM medical_records mr
-      JOIN users u ON mr.patient_id = u.id
+      JOIN patients p ON mr.patient_id = p.id
       LEFT JOIN users d ON mr.doctor_id = d.id
       WHERE mr.patient_id = $1 AND mr.record_type = 'appointment'
       ORDER BY mr.appointment_date DESC, mr.appointment_time DESC
@@ -301,9 +301,9 @@ export const getAppointmentsByDoctor = asyncHandler(async (req: Request, res: Re
     
     let query = `
       SELECT mr.*, 
-             u.thai_name as patient_name, u.national_id, u.hospital_number
+             p.thai_name as patient_name, p.national_id, p.hospital_number
       FROM medical_records mr
-      JOIN users u ON mr.patient_id = u.id
+      JOIN patients p ON mr.patient_id = p.id
       WHERE mr.doctor_id = $1 AND mr.record_type = 'appointment'
     `;
     
@@ -380,10 +380,10 @@ export const getAppointmentById = asyncHandler(async (req: Request, res: Respons
     
     const query = `
       SELECT mr.*, 
-             u.thai_name as patient_name, u.national_id, u.hospital_number,
+             p.thai_name as patient_name, p.national_id, p.hospital_number,
              d.thai_name as doctor_name
       FROM medical_records mr
-      JOIN users u ON mr.patient_id = u.id
+      JOIN patients p ON mr.patient_id = p.id
       LEFT JOIN users d ON mr.doctor_id = d.id
       WHERE mr.id = $1 AND mr.record_type = 'appointment'
     `;

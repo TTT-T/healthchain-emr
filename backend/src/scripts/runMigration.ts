@@ -1,10 +1,14 @@
 import { MigrationManager } from '../database/migrations';
+import { databaseManager } from '../database/connection';
 
 /**
  * Run database migrations
  */
 async function runMigrations() {
   try {
+    // Initialize database connection first
+    await databaseManager.initialize();
+    
     const migrationManager = MigrationManager.getInstance();
     await migrationManager.initialize();
   } catch (error) {

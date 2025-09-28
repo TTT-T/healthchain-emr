@@ -3,6 +3,9 @@ import { databaseManager } from '../database/connection';
 
 async function createDefaultUsers() {
   try {
+    // Initialize database connection first
+    await databaseManager.initialize();
+    
     // Create admin user
     const adminPassword = await hashPassword('admin123');
     await databaseManager.query(`

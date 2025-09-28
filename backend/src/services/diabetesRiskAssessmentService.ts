@@ -190,11 +190,11 @@ export class DiabetesRiskAssessmentService {
       const labResultsResult = await databaseManager.query(`
         SELECT 
           lr.result_value, lr.result_numeric, lr.result_unit,
-          lo.test_name, lr.result_date
+          lo._name as test_name, lr.result_date
         FROM lab_results lr
         INNER JOIN lab_orders lo ON lr.lab_order_id = lo.id
         WHERE lo.patient_id = $1
-        AND lo.test_name ILIKE ANY(ARRAY['%glucose%', '%hba1c%', '%a1c%', '%sugar%'])
+        AND lo._name ILIKE ANY(ARRAY['%glucose%', '%hba1c%', '%a1c%', '%sugar%'])
         ORDER BY lr.result_date DESC
         LIMIT 5
       `, [patientId]);

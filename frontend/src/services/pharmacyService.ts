@@ -204,11 +204,14 @@ export class PharmacyService {
    * คำนวณยอดรวม
    */
   static calculateTotalAmount(medications: any[]): number {
-    return medications.reduce((total, med) => {
+    const total = medications.reduce((total, med) => {
       const price = med.price || 0;
       const quantity = med.dispensedQuantity || med.quantity || 1;
       return total + (price * quantity);
     }, 0);
+    
+    // Ensure total doesn't exceed DECIMAL(10,2) limit (99,999,999.99)
+    return Math.min(Math.max(total, 0), 99999999.99);
   }
 
   /**
@@ -260,6 +263,11 @@ export class PharmacyService {
 
     if (!data.dispensedBy?.trim()) {
       errors.push('กรุณากรอกชื่อผู้จ่ายยา');
+    }
+
+    // Check if total amount exceeds database limit
+    if (data.totalAmount && data.totalAmount > 99999999.99) {
+      errors.push('ยอดรวมเกินขีดจำกัดที่อนุญาต (สูงสุด 99,999,999.99 บาท)');
     }
 
     return {

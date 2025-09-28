@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     
     -- Notification Details
     notification_type VARCHAR(50) NOT NULL 
-        CHECK (notification_type IN ('document_created', 'record_updated', 'appointment_created', 'lab_result_ready', 'prescription_ready', 'queue_assigned', 'visit_completed')),
+        CHECK (notification_type IN ('document_created', 'record_updated', 'appointment_created', 'lab_result_ready', 'prescription_ready', 'queue_assigned', 'visit_completed', 'history_taking_recorded', 'vital_signs_recorded', 'patient_registered')),
     
     title VARCHAR(200) NOT NULL,
     message TEXT NOT NULL,

@@ -5,6 +5,7 @@ import {
   errorResponse
 } from '../utils/index';
 import { databaseManager } from '../database/connection';
+import { NotificationService } from '../services/notificationService';
 
 // Create a database helper
 const db = {
@@ -146,22 +147,22 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
     // Create patient record in EMR system
     const patientResult = await db.query(`
       INSERT INTO patients (
-        user_id, hospital_number, first_name, last_name, thai_name, thai_last_name,
+        user_id, hospital_number, first_name, last_name, thai_name,
         date_of_birth, gender, national_id, phone, email, address, blood_type,
         allergies, medical_history, current_medications, chronic_diseases,
-        emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
+        emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
         drug_allergies, food_allergies, environment_allergies,
-        weight, height, religion, race, occupation, education, marital_status,
+        weight, height, race, occupation, education, marital_status,
         current_address, title, created_by
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31
       )
-      RETURNING id, hospital_number, first_name, last_name, thai_name, thai_last_name,
+      RETURNING id, hospital_number, first_name, last_name, thai_name,
                 date_of_birth, gender, national_id, phone, email, address, blood_type,
                 allergies, medical_history, current_medications, chronic_diseases,
-                emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
+                emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
                 drug_allergies, food_allergies, environment_allergies,
-                weight, height, religion, race, occupation, education, marital_status,
+                weight, height, race, occupation, education, marital_status,
                 current_address, title, created_at, updated_at
     `, [
       validatedData.userId,
@@ -169,7 +170,6 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
       validatedData.firstName,
       validatedData.lastName,
       validatedData.thaiFirstName || null,
-      validatedData.thaiLastName || null,
       validatedData.dateOfBirth,
       validatedData.gender,
       validatedData.nationalId || null,
@@ -189,7 +189,6 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
       validatedData.environmentAllergies || null,
       validatedData.weight || null,
       validatedData.height || null,
-      validatedData.religion || null,
       validatedData.race || null,
       validatedData.occupation || null,
       validatedData.education || null,
@@ -207,6 +206,32 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
       SET role = 'patient', updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
     `, [validatedData.userId]);
+    
+    // ส่งการแจ้งเตือนให้ผู้ป่วย
+    try {
+      await NotificationService.sendPatientNotification({
+        patientId: newPatient.id,
+        patientHn: newPatient.hospital_number || '',
+        patientName: newPatient.thai_name || `${newPatient.first_name} ${newPatient.last_name}`,
+        patientPhone: newPatient.phone,
+        patientEmail: newPatient.email,
+        notificationType: 'patient_registered',
+        title: `ลงทะเบียนสำเร็จ: ${newPatient.hospital_number}`,
+        message: `ยินดีต้อนรับคุณ ${newPatient.thai_name || newPatient.first_name} เข้าสู่ระบบ EMR ของโรงพยาบาล`,
+        recordType: 'patient_registration',
+        recordId: newPatient.id,
+        createdBy: validatedData.userId,
+        createdByName: user.first_name || user.username,
+        metadata: {
+          hospitalNumber: newPatient.hospital_number,
+          registrationDate: newPatient.created_at,
+          userRole: 'patient'
+        }
+      });
+    } catch (notificationError) {
+      console.error('❌ Failed to send patient registration notification:', notificationError);
+      // ไม่ throw error เพื่อไม่ให้กระทบการลงทะเบียน
+    }
     
     // Log audit
     await db.query(`
@@ -233,7 +258,7 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
           firstName: newPatient.first_name,
           lastName: newPatient.last_name,
           thaiFirstName: newPatient.thai_name,
-          thaiLastName: newPatient.thai_last_name,
+          thaiLastName: null,
           dateOfBirth: newPatient.date_of_birth,
           gender: newPatient.gender,
           nationalId: newPatient.national_id,
@@ -244,7 +269,7 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
           allergies: newPatient.allergies,
           medicalHistory: newPatient.medical_history,
           currentMedications: newPatient.current_medications,
-          chronicDiseases: newPatient.chronic_diseases,
+          chronicDiseases: newPatient.chronic_conditions,
           emergencyContactName: newPatient.emergency_contact_name,
           emergencyContactPhone: newPatient.emergency_contact_phone,
           emergencyContactRelation: newPatient.emergency_contact_relation,
@@ -289,9 +314,9 @@ export const getPatientByUserId = async (req: Request, res: Response) => {
     // Get patient information
     const patientResult = await db.query(`
       SELECT 
-        p.id, p.hospital_number, p.first_name, p.last_name, p.thai_name, p.thai_last_name,
+        p.id, p.hospital_number, p.first_name, p.last_name, p.thai_name,
         p.date_of_birth, p.gender, p.national_id, p.phone, p.email, p.address, p.blood_type,
-        p.allergies, p.medical_history, p.current_medications, p.chronic_diseases,
+        p.allergies, p.medical_history, p.current_medications, p.chronic_conditions,
         p.emergency_contact_name, p.emergency_contact_phone, p.emergency_contact_relation,
         p.insurance_type, p.insurance_number, p.insurance_expiry_date,
         p.title, p.created_at, p.updated_at,
@@ -317,7 +342,7 @@ export const getPatientByUserId = async (req: Request, res: Response) => {
           firstName: patient.first_name,
           lastName: patient.last_name,
           thaiFirstName: patient.thai_name,
-          thaiLastName: patient.thai_last_name,
+          thaiLastName: null,
           dateOfBirth: patient.date_of_birth,
           gender: patient.gender,
           nationalId: patient.national_id,
@@ -328,7 +353,7 @@ export const getPatientByUserId = async (req: Request, res: Response) => {
           allergies: patient.allergies,
           medicalHistory: patient.medical_history,
           currentMedications: patient.current_medications,
-          chronicDiseases: patient.chronic_diseases,
+          chronicDiseases: patient.chronic_conditions,
           emergencyContactName: patient.emergency_contact_name,
           emergencyContactPhone: patient.emergency_contact_phone,
           emergencyContactRelation: patient.emergency_contact_relation,

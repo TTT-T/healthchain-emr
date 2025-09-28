@@ -6,6 +6,7 @@ import { PatientService } from '@/services/patientService';
 import { DoctorVisitService } from '@/services/doctorVisitService';
 import { NotificationService } from '@/services/notificationService';
 import { PatientDocumentService } from '@/services/patientDocumentService';
+import { AIResearchDataService } from '@/services/aiResearchDataService';
 import { AIDashboardService, PatientDiabetesRiskDetail } from '@/services/aiDashboardService';
 import { MedicalPatient } from '@/types/api';
 import { logger } from '@/lib/logger';
@@ -208,6 +209,23 @@ export default function DoctorVisit() {
         
         // Create document for patient
         await createPatientDocument(selectedPatient, response.data);
+        
+        // Save AI Research Data to dedicated table
+        try {
+          const aiResearchData = doctorVisitData.aiResearchData;
+          if (aiResearchData) {
+            await AIResearchDataService.saveEMRFormData(
+              selectedPatient.id,
+              'doctor_visit',
+              response.data.id,
+              aiResearchData
+            );
+            logger.info('AI Research data saved for doctor visit');
+          }
+        } catch (aiError) {
+          logger.error('Failed to save AI Research data:', aiError);
+          // Don't fail the main operation if AI Research fails
+        }
         
         setSuccess("บันทึกการตรวจโดยแพทย์สำเร็จ!\n\n✅ ระบบได้ส่งการแจ้งเตือนและเอกสารให้ผู้ป่วยแล้ว");
         

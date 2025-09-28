@@ -7,7 +7,7 @@ export interface PatientNotificationData {
   patientName: string;
   patientPhone?: string;
   patientEmail?: string;
-  notificationType: 'document_created' | 'record_updated' | 'appointment_created' | 'lab_result_ready' | 'prescription_ready' | 'history_taking_recorded' | 'queue_created' | 'vital_signs_recorded';
+  notificationType: 'document_created' | 'record_updated' | 'appointment_created' | 'lab_result_ready' | 'prescription_ready' | 'history_taking_recorded' | 'queue_created' | 'vital_signs_recorded' | 'patient_registered';
   title: string;
   message: string;
   recordType?: string;
@@ -186,6 +186,15 @@ export class NotificationService {
       case 'prescription_ready':
         return `🏥 ${hospitalName}\nยาเตรียมพร้อม: ${data.title}\nสำหรับคุณ ${data.patientName}\nเวลา: ${timestamp}`;
       
+      case 'history_taking_recorded':
+        return `🏥 ${hospitalName}\nบันทึกประวัติ: ${data.title}\nสำหรับคุณ ${data.patientName}\nโดย: ${data.createdByName}\nเวลา: ${timestamp}`;
+      
+      case 'vital_signs_recorded':
+        return `🏥 ${hospitalName}\nบันทึกสัญญาณชีพ: ${data.title}\nสำหรับคุณ ${data.patientName}\nโดย: ${data.createdByName}\nเวลา: ${timestamp}`;
+      
+      case 'patient_registered':
+        return `🏥 ${hospitalName}\nลงทะเบียนสำเร็จ: ${data.title}\nยินดีต้อนรับคุณ ${data.patientName}\nเวลา: ${timestamp}`;
+      
       default:
         return `🏥 ${hospitalName}\n${data.title}\nสำหรับคุณ ${data.patientName}\nเวลา: ${timestamp}`;
     }
@@ -266,7 +275,10 @@ export class NotificationService {
       'record_updated': 'อัปเดตข้อมูล',
       'appointment_created': 'นัดหมายใหม่',
       'lab_result_ready': 'ผลแลบพร้อม',
-      'prescription_ready': 'ยาเตรียมพร้อม'
+      'prescription_ready': 'ยาเตรียมพร้อม',
+      'history_taking_recorded': 'บันทึกประวัติ',
+      'vital_signs_recorded': 'บันทึกสัญญาณชีพ',
+      'patient_registered': 'ลงทะเบียนผู้ป่วย'
     };
     
     return labels[type] || 'การแจ้งเตือน';

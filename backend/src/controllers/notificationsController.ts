@@ -118,8 +118,7 @@ export const getPatientNotifications = async (req: Request, res: Response) => {
         n.message,
         n.notification_type,
         n.read_at,
-        n.is_read,
-        n.priority,
+        CASE WHEN n.read_at IS NOT NULL THEN true ELSE false END as is_read,
         n.metadata,
         n.created_at,
         n.updated_at,
@@ -359,6 +358,7 @@ export const deletePatientNotification = async (req: Request, res: Response) => 
  */
 export const createPatientNotification = async (req: Request, res: Response) => {
   try {
+    console.log('Creating patient notification with data:', req.body);
     const { id: patientId } = req.params;
     const {
       title,
@@ -367,7 +367,10 @@ export const createPatientNotification = async (req: Request, res: Response) => 
       priority = 'normal',
       action_required = false,
       action_url,
-      expires_at
+      expires_at,
+      record_type,
+      record_id,
+      metadata
     } = req.body;
 
     const userId = (req as any).user.id;
@@ -393,12 +396,13 @@ export const createPatientNotification = async (req: Request, res: Response) => 
     await databaseManager.query(`
       INSERT INTO notifications (
         id, patient_id, title, message, notification_type, priority,
-        action_required, action_url, expires_at, created_by
+        action_required, action_url, expires_at, created_by, record_type, record_id, metadata
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
     `, [
       notificationId, patientId, title, message, notification_type, priority,
-      action_required, action_url, expires_at, userId
+      action_required, action_url, expires_at, userId, record_type || null, record_id || null, 
+      metadata ? JSON.stringify(metadata) : null
     ]);
 
     // Get created notification
@@ -433,6 +437,12 @@ export const createPatientNotification = async (req: Request, res: Response) => 
 
   } catch (error) {
     console.error('Error creating patient notification:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      body: req.body,
+      params: req.params
+    });
     res.status(500).json({
       data: null,
       meta: null,

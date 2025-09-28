@@ -12,7 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - emr_network
+      - project_emr_network
     restart: unless-stopped
 
   # Redis Cache
@@ -24,7 +24,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - emr_network
+      - project_emr_network
     restart: unless-stopped
 
   # Backend API
@@ -54,7 +54,7 @@ services:
       - postgres
       - redis
     networks:
-      - emr_network
+      - project_emr_network
     restart: unless-stopped
     command: npm run dev
 
@@ -78,7 +78,7 @@ services:
     depends_on:
       - backend
     networks:
-      - emr_network
+      - project_emr_network
     restart: unless-stopped
     command: npm run dev
 
@@ -87,5 +87,5 @@ volumes:
   redis_data:
 
 networks:
-  emr_network:
+  project_emr_network:
     driver: bridge

@@ -98,18 +98,17 @@ export const saveCriticalLabValues = async (req: Request, res: Response) => {
     // Insert critical lab values
     const result = await databaseManager.query(`
       INSERT INTO critical_lab_values (
-        patient_id, lab_result_id, hba1c, fasting_insulin, c_peptide,
+        patient_id, hba1c, fasting_insulin, c_peptide,
         total_cholesterol, hdl_cholesterol, ldl_cholesterol, triglycerides,
         bun, creatinine, egfr, alt, ast, alp, bilirubin,
         tsh, t3, t4, crp, esr, vitamin_d, b12, folate,
         iron, ferritin, uric_acid, test_date, created_by
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-        $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
+        $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28
       ) RETURNING *
     `, [
       patientId,
-      labValues.labResultId || null,
       labValues.hba1c || null,
       labValues.fastingInsulin || null,
       labValues.cPeptide || null,

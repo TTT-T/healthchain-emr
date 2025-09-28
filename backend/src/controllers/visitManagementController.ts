@@ -326,7 +326,13 @@ export const createVisit = async (req: Request, res: Response) => {
       treatmentPlan, // Support camelCase from frontend
       doctor_notes,
       doctorNotes, // Support camelCase from frontend
-      priority = 'normal'
+      priority = 'normal',
+      follow_up_required,
+      followUpRequired, // Support camelCase from frontend
+      follow_up_date,
+      followUpDate, // Support camelCase from frontend
+      follow_up_notes,
+      followUpNotes // Support camelCase from frontend
     } = req.body;
     
     // Normalize field names (prefer snake_case from database, fallback to camelCase from frontend)
@@ -342,7 +348,10 @@ export const createVisit = async (req: Request, res: Response) => {
       diagnosis: diagnosis,
       treatment_plan: treatment_plan || treatmentPlan,
       doctor_notes: doctor_notes || doctorNotes,
-      priority: priority
+      priority: priority,
+      follow_up_required: follow_up_required || followUpRequired || false,
+      follow_up_date: follow_up_date || followUpDate,
+      follow_up_notes: follow_up_notes || followUpNotes
     };
     const userId = (req as any).user.id;
     // Validate required fields using normalized data
@@ -417,10 +426,12 @@ export const createVisit = async (req: Request, res: Response) => {
         id, patient_id, attending_doctor_id, department_id, visit_number,
         visit_date, visit_time, visit_type, chief_complaint,
         present_illness, physical_examination, diagnosis,
-        treatment_plan, doctor_notes, status, priority, created_by, updated_by
+        treatment_plan, doctor_notes, status, priority, 
+        follow_up_required, follow_up_date, follow_up_notes,
+        created_by, updated_by
       )
       VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
       )
       RETURNING *
     `;
@@ -503,6 +514,7 @@ export const createVisit = async (req: Request, res: Response) => {
       visitDate, visitTimeStr, normalizedData.visit_type, normalizedData.chief_complaint,
       normalizedData.present_illness, normalizedData.physical_examination, normalizedData.diagnosis,
       normalizedData.treatment_plan, normalizedData.doctor_notes, 'in_progress', normalizedData.priority,
+      normalizedData.follow_up_required, normalizedData.follow_up_date, normalizedData.follow_up_notes,
       validUserId, validUserId // created_by, updated_by
     ]);
 

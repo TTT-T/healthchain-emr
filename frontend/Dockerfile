@@ -20,6 +20,9 @@ RUN adduser -S nodejs -u 1001
 # Copy source code
 COPY --chown=nodejs:nodejs . .
 
+# Create .next directory with proper permissions
+RUN mkdir -p /app/.next && chown -R nodejs:nodejs /app/.next
+
 # Change ownership
 RUN chown -R nodejs:nodejs /app
 USER nodejs
@@ -31,8 +34,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:3000 || exit 1
 
-# Build application
-RUN npm run build
-
-# Start application (production mode)
-CMD ["npm", "start"]
+# Start application (development mode)
+CMD ["npm", "run", "dev"]

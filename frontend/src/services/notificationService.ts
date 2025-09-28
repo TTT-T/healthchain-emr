@@ -329,20 +329,23 @@ export class NotificationService {
    */
   static async notifyPatientRecordUpdate(data: PatientRecordUpdateNotificationData): Promise<void> {
     try {
-      // 1. ส่ง SMS (ถ้ามีเบอร์โทรศัพท์)
+      // 1. ส่งการแจ้งเตือนผ่าน Backend API
+      await this.sendNotificationToBackend(data);
+      
+      // 2. ส่ง SMS (ถ้ามีเบอร์โทรศัพท์)
       if (data.patientPhone) {
         await this.sendRecordUpdateSMS(data);
       }
       
-      // 2. ส่ง Email (ถ้ามีอีเมล)
+      // 3. ส่ง Email (ถ้ามีอีเมล)
       if (data.patientEmail) {
         await this.sendRecordUpdateEmail(data);
       }
       
-      // 3. ส่งการแจ้งเตือนในระบบ
+      // 4. ส่งการแจ้งเตือนในระบบ
       await this.sendRecordUpdateInAppNotification(data);
       
-      // 4. บันทึกการแจ้งเตือน
+      // 5. บันทึกการแจ้งเตือน
       await this.logRecordUpdateNotification(data);
       
       logger.info('Patient record update notification sent successfully', {
@@ -580,6 +583,90 @@ export class NotificationService {
   // =============================================================================
   // PRIVATE HELPER METHODS FOR RECORD UPDATE NOTIFICATIONS
   // =============================================================================
+
+  /**
+   * ส่งการแจ้งเตือนไปยัง Backend API
+   */
+  private static async sendNotificationToBackend(data: PatientRecordUpdateNotificationData): Promise<void> {
+    try {
+      // Map record types to notification types
+      const notificationTypeMap: { [key: string]: string } = {
+        'history_taking': 'history_taking_recorded',
+        'vital_signs': 'vital_signs_recorded',
+        'doctor_visit': 'record_updated',
+        'lab_result': 'lab_result_ready',
+        'prescription': 'prescription_ready',
+        'document': 'document_created',
+        'appointment': 'appointment_created',
+        'patient_registration': 'patient_registered'
+      };
+
+      const notificationType = notificationTypeMap[data.recordType] || 'record_updated';
+      
+      // Get patient ID - we need to fetch it from the backend using HN
+      // For now, we'll use a mapping approach or fetch from API
+      let patientId = data.patientHn; // This should be the actual patient UUID
+      
+      // Try to get patient ID from backend if we only have HN
+      if (data.patientHn && !data.patientHn.includes('-')) {
+        try {
+          const { apiClient } = await import('@/lib/api');
+          const patientResponse = await apiClient.get(`/medical/patients/by-hn/${data.patientHn}`);
+          if (patientResponse.data && patientResponse.data.id) {
+            patientId = patientResponse.data.id;
+          }
+        } catch (error) {
+          logger.warn('Could not fetch patient ID from HN, using HN as fallback', { hn: data.patientHn });
+        }
+      }
+      
+      const notificationPayload = {
+        title: this.getNotificationTitle(data.recordType),
+        message: data.message,
+        notification_type: notificationType,
+        priority: 'normal',
+        action_required: false,
+        metadata: {
+          recordType: data.recordType,
+          recordId: data.recordId,
+          recordedBy: data.recordedBy,
+          recordedTime: data.recordedTime
+        }
+      };
+
+      // Import apiClient dynamically to avoid circular dependencies
+      const { apiClient } = await import('@/lib/api');
+      
+      await apiClient.post(`/medical/patients/${patientId}/notifications`, notificationPayload);
+      
+      logger.info('Notification sent to backend successfully', {
+        patientId,
+        notificationType,
+        recordType: data.recordType
+      });
+    } catch (error) {
+      logger.error('Failed to send notification to backend:', error);
+      // Don't throw error to avoid breaking the main flow
+    }
+  }
+
+  /**
+   * สร้างหัวข้อการแจ้งเตือนตามประเภท
+   */
+  private static getNotificationTitle(recordType: string): string {
+    const titles: { [key: string]: string } = {
+      'history_taking': 'บันทึกประวัติผู้ป่วย',
+      'vital_signs': 'บันทึกสัญญาณชีพ',
+      'doctor_visit': 'การตรวจโดยแพทย์',
+      'lab_result': 'ผลแลบพร้อม',
+      'prescription': 'ยาเตรียมพร้อม',
+      'document': 'เอกสารใหม่',
+      'appointment': 'นัดหมายใหม่',
+      'patient_registration': 'ลงทะเบียนผู้ป่วยสำเร็จ'
+    };
+    
+    return titles[recordType] || 'อัปเดตข้อมูลทางการแพทย์';
+  }
 
   /**
    * ส่ง SMS แจ้งเตือนการอัปเดตข้อมูล

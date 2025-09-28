@@ -105,12 +105,15 @@ export const createPharmacyDispensing = asyncHandler(async (req: Request, res: R
       RETURNING *
     `;
 
+    // Ensure totalAmount doesn't exceed DECIMAL(10,2) limit (99,999,999.99)
+    const safeTotalAmount = Math.min(Math.max(totalAmount || 0, 0), 99999999.99);
+    
     const values = [
       patientId,
       visitId || null,
       'pharmacy_dispensing',
       JSON.stringify(medications),
-      totalAmount || 0,
+      safeTotalAmount,
       paymentMethod || 'cash',
       notes || null,
       dispensedBy,

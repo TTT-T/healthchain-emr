@@ -342,8 +342,11 @@ export default function RegisterPatient() {
             birthYear: item.birth_year,
             role: item.role, // เพิ่ม role information
             hasPatientRecord: isExistingPatient,
+            isExistingPatient: isExistingPatient,
+            insurance_type: item.insurance_type,
+            hospital_number: item.hospital_number,
             patientData: isExistingPatient ? {
-              hospital_number: item.hospitalNumber,
+              hospitalNumber: item.hospital_number,
               id: item.id
             } : null
           };
@@ -1125,7 +1128,7 @@ export default function RegisterPatient() {
                         })() : 
                         'ไม่ระบุ'
                     }</p>
-                    <p><strong>ประเภทประกัน:</strong> {user.insuranceType || 'ไม่ระบุ'}</p>
+                    <p><strong>ประเภทประกัน:</strong> {user.insuranceType || user.insurance_type || 'ไม่ระบุ'}</p>
                         <p><strong>ที่อยู่:</strong> {user.address || 'ไม่ระบุ'}</p>
                         <p><strong>หมู่เลือด:</strong> {user.bloodType || 'ไม่ระบุ'}</p>
                         <p><strong>ศาสนา:</strong> {user.religion || 'ไม่ระบุ'}</p>
@@ -1139,8 +1142,8 @@ export default function RegisterPatient() {
                         {user.medicalHistory && <p><strong>ประวัติการเจ็บป่วย:</strong> {user.medicalHistory}</p>}
                         {user.currentMedications && <p><strong>ยาที่ใช้อยู่:</strong> {user.currentMedications}</p>}
                         {user.chronicDiseases && <p><strong>โรคประจำตัว:</strong> {user.chronicDiseases}</p>}
-                        {user.hasPatientRecord && user.patientData && (
-                          <p className="text-green-600 font-semibold"><strong>หมายเลข HN:</strong> {user.patientData.hospitalNumber}</p>
+                        {(user.hasPatientRecord || user.isExistingPatient) && (user.patientData?.hospitalNumber || user.hospital_number) && (
+                          <p className="text-green-600 font-semibold"><strong>หมายเลข HN:</strong> {user.patientData?.hospitalNumber || user.hospital_number}</p>
                         )}
                       </div>
                     </div>

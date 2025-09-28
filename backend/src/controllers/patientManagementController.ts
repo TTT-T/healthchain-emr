@@ -32,7 +32,7 @@ export const searchUsersByNationalId = async (req: Request, res: Response) => {
         p.first_name,
         p.last_name,
         p.thai_name,
-        NULL as thai_last_name,
+        p.thai_last_name,
         p.title,
         p.national_id,
         p.date_of_birth,
@@ -41,7 +41,7 @@ export const searchUsersByNationalId = async (req: Request, res: Response) => {
         p.email,
         p.address,
         p.blood_type,
-        p.religion,
+        u.religion,
         p.race,
         p.occupation,
         p.education,
@@ -64,7 +64,8 @@ export const searchUsersByNationalId = async (req: Request, res: Response) => {
         u.birth_day,
         u.birth_month,
         u.birth_year,
-        u.insurance_type
+        u.insurance_type,
+        u.role
       FROM patients p
       LEFT JOIN users u ON p.user_id = u.id
       WHERE p.national_id = $1
@@ -252,7 +253,7 @@ export const getAllPatients = async (req: Request, res: Response) => {
         p.first_name,
         p.last_name,
         p.thai_name,
-        NULL as thai_last_name,
+        p.thai_last_name,
         p.title,
         p.hospital_number,
         p.national_id,
@@ -264,6 +265,7 @@ export const getAllPatients = async (req: Request, res: Response) => {
         p.current_address,
         p.blood_group,
         p.blood_type,
+        p.nationality,
         p.emergency_contact_name,
         p.emergency_contact_phone,
         p.emergency_contact_relationship,
@@ -278,7 +280,7 @@ export const getAllPatients = async (req: Request, res: Response) => {
         p.occupation,
         p.education,
         p.marital_status,
-        p.religion,
+        u.religion,
         p.race,
         p.nationality,
         p.is_active,
@@ -457,6 +459,7 @@ export const getPatientById = async (req: Request, res: Response) => {
         p.current_address,
         p.blood_group,
         p.blood_type,
+        p.nationality,
         p.emergency_contact_name,
         p.emergency_contact_phone,
         p.emergency_contact_relationship,
@@ -750,6 +753,7 @@ export const getPatientByEmail = async (req: Request, res: Response) => {
         p.address,
         p.current_address,
         p.blood_type,
+        p.nationality,
         p.emergency_contact_name,
         p.emergency_contact_phone,
         p.emergency_contact_relationship,
@@ -888,6 +892,7 @@ export const getPatient = async (req: Request, res: Response) => {
         p.current_address,
         p.blood_group,
         p.blood_type,
+        p.nationality,
         p.emergency_contact_name,
         p.emergency_contact_phone,
         p.emergency_contact_relationship,
@@ -1191,6 +1196,11 @@ export const searchPatients = async (req: Request, res: Response) => {
         p.first_name,
         p.last_name,
         p.thai_name,
+        p.thai_last_name,
+        p.nationality,
+        p.emergency_contact_name,
+        p.emergency_contact_phone,
+        p.emergency_contact_relationship,
         p.hospital_number,
         p.national_id,
         p.date_of_birth,
@@ -1241,6 +1251,8 @@ export const searchPatients = async (req: Request, res: Response) => {
         first_name: patient.first_name,
         last_name: patient.last_name,
         thai_name: patient.thai_name,
+        thai_last_name: patient.thai_last_name,
+        nationality: patient.nationality,
         hospital_number: patient.hospital_number,
         national_id: patient.national_id,
         birth_date: patient.date_of_birth,
@@ -1250,6 +1262,11 @@ export const searchPatients = async (req: Request, res: Response) => {
       contact_info: {
         phone: patient.phone,
         email: patient.email
+      },
+      emergency_contact: {
+        name: patient.emergency_contact_name,
+        phone: patient.emergency_contact_phone,
+        relation: patient.emergency_contact_relationship
       },
       status: patient.is_active ? 'active' : 'inactive',
       department: patient.department_name,
@@ -1532,3 +1549,118 @@ async function generateHospitalNumber(): Promise<string> {
   const count = parseInt(result.rows[0].count) + 1;
   return `HN${year}${count.toString().padStart(6, '0')}`;
 }
+
+/**
+ * Get patient by hospital number (HN)
+ * GET /api/medical/patients/by-hn/:hn
+ */
+export const getPatientByHn = async (req: Request, res: Response) => {
+  try {
+    const { hn } = req.params;
+
+    if (!hn) {
+      return res.status(400).json({
+        data: null,
+        meta: null,
+        error: { message: 'Hospital number is required' },
+        statusCode: 400
+      });
+    }
+
+    // Query patient by hospital number
+    const patientQuery = `
+      SELECT 
+        p.id,
+        p.hospital_number,
+        p.first_name,
+        p.last_name,
+        p.thai_name,
+        p.thai_last_name,
+        p.title,
+        p.national_id,
+        p.date_of_birth,
+        p.gender,
+        p.phone,
+        p.email,
+        p.address,
+        p.blood_type,
+        p.race,
+        p.occupation,
+        p.education,
+        p.marital_status,
+        p.drug_allergies,
+        p.food_allergies,
+        p.emergency_contact_name,
+        p.emergency_contact_phone,
+        p.emergency_contact_relationship,
+        p.insurance_type,
+        p.insurance_number,
+        p.is_active,
+        p.created_at,
+        p.updated_at
+      FROM patients p
+      WHERE p.hospital_number = $1 AND p.is_active = true
+    `;
+
+    const result = await databaseManager.query(patientQuery, [hn]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        data: null,
+        meta: null,
+        error: { message: 'Patient not found' },
+        statusCode: 404
+      });
+    }
+
+    const patient = result.rows[0];
+
+    res.json({
+      data: {
+        id: patient.id,
+        hospital_number: patient.hospital_number,
+        first_name: patient.first_name,
+        last_name: patient.last_name,
+        thai_name: patient.thai_name,
+        thai_last_name: patient.thai_last_name,
+        title: patient.title,
+        national_id: patient.national_id,
+        date_of_birth: patient.date_of_birth,
+        gender: patient.gender,
+        phone: patient.phone,
+        email: patient.email,
+        address: patient.address,
+        blood_type: patient.blood_type,
+        race: patient.race,
+        occupation: patient.occupation,
+        education: patient.education,
+        marital_status: patient.marital_status,
+        drug_allergies: patient.drug_allergies,
+        food_allergies: patient.food_allergies,
+        emergency_contact_name: patient.emergency_contact_name,
+        emergency_contact_phone: patient.emergency_contact_phone,
+        emergency_contact_relationship: patient.emergency_contact_relationship,
+        insurance_type: patient.insurance_type,
+        insurance_number: patient.insurance_number,
+        is_active: patient.is_active,
+        created_at: patient.created_at,
+        updated_at: patient.updated_at
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        hospitalNumber: hn
+      },
+      error: null,
+      statusCode: 200
+    });
+
+  } catch (error) {
+    console.error('Error getting patient by HN:', error);
+    res.status(500).json({
+      data: null,
+      meta: null,
+      error: { message: 'Internal server error' },
+      statusCode: 500
+    });
+  }
+};

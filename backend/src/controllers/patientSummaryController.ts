@@ -14,12 +14,12 @@ export const getPatientSummary = asyncHandler(async (req: Request, res: Response
     
     // Get patient basic information from patients table with user data
     const patientQuery = `
-      SELECT p.id, p.thai_name, p.first_name, p.last_name, p.national_id, p.hospital_number, 
-             p.gender, p.phone, p.email, p.address, p.emergency_contact, 
+      SELECT p.id, p.thai_name, p.thai_last_name, p.first_name, p.last_name, p.national_id, p.hospital_number, 
+             p.gender, p.phone, p.email, p.address, p.emergency_contact_name, p.emergency_contact_phone, p.emergency_contact_relationship,
+             p.nationality, p.race, p.occupation, p.education, p.marital_status, p.weight, p.height,
+             p.drug_allergies, p.food_allergies, p.environment_allergies, p.chronic_diseases, p.medical_history, p.current_medications,
              p.created_at, p.updated_at,
-             u.birth_day, u.birth_month, u.birth_year, u.insurance_type,
-             u.drug_allergies, u.food_allergies, u.environment_allergies,
-             u.weight, u.height, u.religion, u.race, u.occupation, u.education, u.marital_status
+             u.birth_day, u.birth_month, u.birth_year, u.insurance_type, u.religion
       FROM patients p
       LEFT JOIN users u ON p.user_id = u.id
       WHERE p.id = $1
@@ -227,6 +227,7 @@ export const getPatientSummary = asyncHandler(async (req: Request, res: Response
         patient: {
           id: patient.id,
           thaiName: patient.thai_name,
+          thaiLastName: patient.thai_last_name,
           firstName: patient.first_name,
           lastName: patient.last_name,
           nationalId: patient.national_id,
@@ -236,7 +237,10 @@ export const getPatientSummary = asyncHandler(async (req: Request, res: Response
           phone: patient.phone,
           email: patient.email,
           address: patient.address,
-          emergencyContact: patient.emergency_contact,
+          nationality: patient.nationality,
+          emergencyContactName: patient.emergency_contact_name,
+          emergencyContactPhone: patient.emergency_contact_phone,
+          emergencyContactRelationship: patient.emergency_contact_relationship,
           birthDay: patient.birth_day,
           birthMonth: patient.birth_month,
           birthYear: patient.birth_year,
@@ -244,6 +248,9 @@ export const getPatientSummary = asyncHandler(async (req: Request, res: Response
           drugAllergies: patient.drug_allergies,
           foodAllergies: patient.food_allergies,
           environmentAllergies: patient.environment_allergies,
+          chronicDiseases: patient.chronic_diseases,
+          medicalHistory: patient.medical_history,
+          currentMedications: patient.current_medications,
           weight: patient.weight,
           height: patient.height,
           religion: patient.religion,

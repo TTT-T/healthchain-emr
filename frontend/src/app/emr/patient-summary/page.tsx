@@ -135,11 +135,13 @@ export default function PatientSummary() {
         const patientData = response.data[0];
         console.log('👤 Raw patient data:', patientData);
         
+        // Patient service already flattens the data, so we can use it directly
         const formattedPatient: MedicalPatient = {
           id: patientData.id,
           hn: patientData.hn || patientData.hospital_number,
           hospitalNumber: patientData.hn || patientData.hospital_number,
           thaiName: patientData.thaiName,
+          thaiLastName: patientData.thaiLastName,
           firstName: patientData.firstName,
           lastName: patientData.lastName,
           nationalId: patientData.nationalId,
@@ -151,12 +153,14 @@ export default function PatientSummary() {
           address: patientData.address,
           currentAddress: patientData.current_address,
           bloodType: patientData.bloodType,
+          nationality: patientData.nationality,
           medicalHistory: patientData.medicalHistory,
           allergies: patientData.allergies,
           drugAllergies: patientData.drugAllergies,
           foodAllergies: patientData.foodAllergies,
           environmentAllergies: patientData.environmentAllergies,
           chronicDiseases: patientData.chronicDiseases,
+          currentMedications: patientData.currentMedications,
           weight: patientData.weight,
           height: patientData.height,
           occupation: patientData.occupation,
@@ -164,6 +168,11 @@ export default function PatientSummary() {
           maritalStatus: patientData.maritalStatus,
           religion: patientData.religion,
           race: patientData.race,
+          emergencyContact: patientData.emergencyContact || {
+            name: patientData.emergencyContactName,
+            phone: patientData.emergencyContactPhone,
+            relation: patientData.emergencyContactRelation
+          },
           created_at: patientData.created_at,
           updated_at: patientData.updated_at
         };
@@ -422,7 +431,7 @@ export default function PatientSummary() {
                   <h4 className="text-sm font-medium text-blue-800 mb-3">ข้อมูลพื้นฐาน</h4>
                   <div className="space-y-2 text-sm">
                     <div><span className="font-medium text-gray-700">HN:</span> <span className="text-gray-900">{selectedPatient.hn || selectedPatient.hospitalNumber || 'ไม่ระบุ'}</span></div>
-                    <div><span className="font-medium text-gray-700">ชื่อไทย:</span> <span className="text-gray-900">{selectedPatient.thaiName || 'ไม่ระบุ'}</span></div>
+                    <div><span className="font-medium text-gray-700">ชื่อไทย:</span> <span className="text-gray-900">{patientSummary?.patient?.thaiName || selectedPatient.thaiName || 'ไม่ระบุ'}{patientSummary?.patient?.thaiLastName || selectedPatient.thaiLastName ? ` ${patientSummary?.patient?.thaiLastName || selectedPatient.thaiLastName}` : ''}</span></div>
                     <div><span className="font-medium text-gray-700">ชื่ออังกฤษ:</span> <span className="text-gray-900">{selectedPatient.firstName || 'ไม่ระบุ'} {selectedPatient.lastName || ''}</span></div>
                     <div><span className="font-medium text-gray-700">เลขบัตรประชาชน:</span> <span className="text-gray-900">{selectedPatient.nationalId || 'ไม่ระบุ'}</span></div>
                   </div>
@@ -446,9 +455,9 @@ export default function PatientSummary() {
                     <div><span className="font-medium text-gray-700">โทรศัพท์:</span> <span className="text-gray-900">{selectedPatient.phone || 'ไม่ระบุ'}</span></div>
                     <div><span className="font-medium text-gray-700">อีเมล:</span> <span className="text-gray-900">{selectedPatient.email || 'ไม่ระบุ'}</span></div>
                     <div><span className="font-medium text-gray-700">ที่อยู่:</span> <span className="text-gray-900">{selectedPatient.address || 'ไม่ระบุ'}</span></div>
-                    <div><span className="font-medium text-gray-700">ผู้ติดต่อฉุกเฉิน:</span> <span className="text-gray-900">ไม่ระบุ</span></div>
-                    <div><span className="font-medium text-gray-700">เบอร์ติดต่อฉุกเฉิน:</span> <span className="text-gray-900">ไม่ระบุ</span></div>
-                    <div><span className="font-medium text-gray-700">ความสัมพันธ์:</span> <span className="text-gray-900">ไม่ระบุ</span></div>
+                    <div><span className="font-medium text-gray-700">ผู้ติดต่อฉุกเฉิน:</span> <span className="text-gray-900">{patientSummary?.patient?.emergencyContactName || selectedPatient.emergencyContact?.name || 'ไม่ระบุ'}</span></div>
+                    <div><span className="font-medium text-gray-700">เบอร์ติดต่อฉุกเฉิน:</span> <span className="text-gray-900">{patientSummary?.patient?.emergencyContactPhone || selectedPatient.emergencyContact?.phone || 'ไม่ระบุ'}</span></div>
+                    <div><span className="font-medium text-gray-700">ความสัมพันธ์:</span> <span className="text-gray-900">{patientSummary?.patient?.emergencyContactRelationship || selectedPatient.emergencyContact?.relation || 'ไม่ระบุ'}</span></div>
                   </div>
                 </div>
               </div>
@@ -571,7 +580,7 @@ export default function PatientSummary() {
                     <div><span className="font-medium text-gray-700">สถานภาพ:</span> <span className="text-gray-900">{selectedPatient.maritalStatus === 'single' ? 'โสด' : selectedPatient.maritalStatus === 'married' ? 'แต่งงาน' : selectedPatient.maritalStatus === 'divorced' ? 'หย่าร้าง' : selectedPatient.maritalStatus === 'widowed' ? 'ม่าย' : 'ไม่ระบุ'}</span></div>
                     <div><span className="font-medium text-gray-700">ศาสนา:</span> <span className="text-gray-900">{selectedPatient.religion || 'ไม่ระบุ'}</span></div>
                     <div><span className="font-medium text-gray-700">เชื้อชาติ:</span> <span className="text-gray-900">{selectedPatient.race || 'ไม่ระบุ'}</span></div>
-                    <div><span className="font-medium text-gray-700">สัญชาติ:</span> <span className="text-gray-900">ไม่ระบุ</span></div>
+                    <div><span className="font-medium text-gray-700">สัญชาติ:</span> <span className="text-gray-900">{patientSummary?.patient?.nationality || selectedPatient.nationality || 'ไม่ระบุ'}</span></div>
                   </div>
                 </div>
               </div>

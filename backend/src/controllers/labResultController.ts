@@ -86,8 +86,8 @@ export const createLabResult = asyncHandler(async (req: Request, res: Response) 
     const client = await databaseManager.getClient();
     
     // Check if patient exists
-    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM users WHERE id = $1 AND role = $2';
-    const patientResult = await client.query(patientQuery, [patientId, 'patient']);
+    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM patients WHERE id = $1';
+    const patientResult = await client.query(patientQuery, [patientId]);
     
     if (patientResult.rows.length === 0) {
       return res.status(404).json({
@@ -109,10 +109,9 @@ export const createLabResult = asyncHandler(async (req: Request, res: Response) 
         patient_id,
         visit_id,
         record_type,
-        lab_order_id,
-        _type,
-        _name,
-        _results,
+        test_type,
+        test_name,
+        test_results,
         overall_result,
         interpretation,
         recommendations,
@@ -120,11 +119,9 @@ export const createLabResult = asyncHandler(async (req: Request, res: Response) 
         notes,
         recorded_by,
         recorded_time,
-        reviewed_by,
-        reviewed_time,
         created_at,
         updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
       RETURNING *
     `;
 
@@ -132,7 +129,6 @@ export const createLabResult = asyncHandler(async (req: Request, res: Response) 
       patientId,
       visitId || null,
       'lab_result',
-      labOrderId || null,
       Type,
       Name,
       JSON.stringify(Results),
@@ -142,9 +138,7 @@ export const createLabResult = asyncHandler(async (req: Request, res: Response) 
       attachments ? JSON.stringify(attachments) : null,
       notes || null,
       edBy,
-      edTime || new Date().toISOString(),
-      reviewedBy || null,
-      reviewedTime || null
+      edTime || new Date().toISOString()
     ];
 
     const result = await client.query(insertQuery, values);
@@ -163,20 +157,17 @@ export const createLabResult = asyncHandler(async (req: Request, res: Response) 
         id: labResultRecord.id,
         patientId: labResultRecord.patient_id,
         visitId: labResultRecord.visit_id,
-        labOrderId: labResultRecord.lab_order_id,
         recordType: labResultRecord.record_type,
-        Type: labResultRecord._type,
-        Name: labResultRecord._name,
-        Results: JSON.parse(labResultRecord._results || '[]'),
+        Type: labResultRecord.test_type,
+        Name: labResultRecord.test_name,
+        Results: typeof labResultRecord.test_results === 'string' ? JSON.parse(labResultRecord.test_results || '[]') : labResultRecord.test_results || [],
         overallResult: labResultRecord.overall_result,
         interpretation: labResultRecord.interpretation,
         recommendations: labResultRecord.recommendations,
-        attachments: labResultRecord.attachments ? JSON.parse(labResultRecord.attachments) : [],
+        attachments: labResultRecord.attachments ? (typeof labResultRecord.attachments === 'string' ? JSON.parse(labResultRecord.attachments) : labResultRecord.attachments) : [],
         notes: labResultRecord.notes,
         edBy: labResultRecord.recorded_by,
         edTime: labResultRecord.recorded_time,
-        reviewedBy: labResultRecord.reviewed_by,
-        reviewedTime: labResultRecord.reviewed_time,
         createdAt: labResultRecord.created_at,
         updatedAt: labResultRecord.updated_at
       },
@@ -214,9 +205,9 @@ export const getLabResultsByPatient = asyncHandler(async (req: Request, res: Res
     const client = await databaseManager.getClient();
     
     const query = `
-      SELECT mr.*, u.thai_name, u.national_id, u.hospital_number
+      SELECT mr.*, p.thai_name, p.national_id, p.hospital_number
       FROM medical_records mr
-      JOIN users u ON mr.patient_id = u.id
+      JOIN patients p ON mr.patient_id = p.id
       WHERE mr.patient_id = $1 AND mr.record_type = 'lab_result'
       ORDER BY mr.recorded_time DESC
     `;
@@ -227,20 +218,17 @@ export const getLabResultsByPatient = asyncHandler(async (req: Request, res: Res
       id: record.id,
       patientId: record.patient_id,
       visitId: record.visit_id,
-      labOrderId: record.lab_order_id,
       recordType: record.record_type,
-      Type: record._type,
-      Name: record._name,
-      Results: JSON.parse(record._results || '[]'),
+      Type: record.test_type,
+      Name: record.test_name,
+      Results: typeof record.test_results === 'string' ? JSON.parse(record.test_results || '[]') : record.test_results || [],
       overallResult: record.overall_result,
       interpretation: record.interpretation,
       recommendations: record.recommendations,
-      attachments: record.attachments ? JSON.parse(record.attachments) : [],
+      attachments: record.attachments ? (typeof record.attachments === 'string' ? JSON.parse(record.attachments) : record.attachments) : [],
       notes: record.notes,
       edBy: record.recorded_by,
       edTime: record.recorded_time,
-      reviewedBy: record.reviewed_by,
-      reviewedTime: record.reviewed_time,
       createdAt: record.created_at,
       updatedAt: record.updated_at,
       patient: {
@@ -283,9 +271,9 @@ export const getLabResultById = asyncHandler(async (req: Request, res: Response)
     const client = await databaseManager.getClient();
     
     const query = `
-      SELECT mr.*, u.thai_name, u.national_id, u.hospital_number
+      SELECT mr.*, p.thai_name, p.national_id, p.hospital_number
       FROM medical_records mr
-      JOIN users u ON mr.patient_id = u.id
+      JOIN patients p ON mr.patient_id = p.id
       WHERE mr.id = $1 AND mr.record_type = 'lab_result'
     `;
 
@@ -312,20 +300,17 @@ export const getLabResultById = asyncHandler(async (req: Request, res: Response)
         id: record.id,
         patientId: record.patient_id,
         visitId: record.visit_id,
-        labOrderId: record.lab_order_id,
         recordType: record.record_type,
-        Type: record._type,
-        Name: record._name,
-        Results: JSON.parse(record._results || '[]'),
+        Type: record.test_type,
+        Name: record.test_name,
+        Results: typeof record.test_results === 'string' ? JSON.parse(record.test_results || '[]') : record.test_results || [],
         overallResult: record.overall_result,
         interpretation: record.interpretation,
         recommendations: record.recommendations,
-        attachments: record.attachments ? JSON.parse(record.attachments) : [],
+        attachments: record.attachments ? (typeof record.attachments === 'string' ? JSON.parse(record.attachments) : record.attachments) : [],
         notes: record.notes,
         edBy: record.recorded_by,
         edTime: record.recorded_time,
-        reviewedBy: record.reviewed_by,
-        reviewedTime: record.reviewed_time,
         createdAt: record.created_at,
         updatedAt: record.updated_at,
         patient: {
@@ -432,20 +417,17 @@ export const updateLabResult = asyncHandler(async (req: Request, res: Response) 
         id: updatedRecord.id,
         patientId: updatedRecord.patient_id,
         visitId: updatedRecord.visit_id,
-        labOrderId: updatedRecord.lab_order_id,
         recordType: updatedRecord.record_type,
-        Type: updatedRecord._type,
-        Name: updatedRecord._name,
-        Results: JSON.parse(updatedRecord._results || '[]'),
+        Type: updatedRecord.test_type,
+        Name: updatedRecord.test_name,
+        Results: typeof updatedRecord.test_results === 'string' ? JSON.parse(updatedRecord.test_results || '[]') : updatedRecord.test_results || [],
         overallResult: updatedRecord.overall_result,
         interpretation: updatedRecord.interpretation,
         recommendations: updatedRecord.recommendations,
-        attachments: updatedRecord.attachments ? JSON.parse(updatedRecord.attachments) : [],
+        attachments: updatedRecord.attachments ? (typeof updatedRecord.attachments === 'string' ? JSON.parse(updatedRecord.attachments) : updatedRecord.attachments) : [],
         notes: updatedRecord.notes,
         edBy: updatedRecord.recorded_by,
         edTime: updatedRecord.recorded_time,
-        reviewedBy: updatedRecord.reviewed_by,
-        reviewedTime: updatedRecord.reviewed_time,
         createdAt: updatedRecord.created_at,
         updatedAt: updatedRecord.updated_at
       }

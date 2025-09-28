@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { databaseManager } from '../database/connection';
 import { v4 as uuidv4 } from 'uuid';
+import { NotificationService } from '../services/notificationService';
 
 /**
  * Appointments Controller
@@ -31,19 +32,19 @@ export const getAllAppointments = async (req: Request, res: Response) => {
 
     if (startDate) {
       paramCount++;
-      whereClause += ` AND a.appointment_date >= $${paramCount}`;
+      whereClause += ` AND DATE(a.start_time) >= $${paramCount}`;
       queryParams.push(startDate);
     }
 
     if (endDate) {
       paramCount++;
-      whereClause += ` AND a.appointment_date <= $${paramCount}`;
+      whereClause += ` AND DATE(a.start_time) <= $${paramCount}`;
       queryParams.push(endDate);
     }
 
     if (type) {
       paramCount++;
-      whereClause += ` AND a.appointment_type = $${paramCount}`;
+      whereClause += ` AND a.type_id = $${paramCount}`;
       queryParams.push(type);
     }
 
@@ -63,33 +64,31 @@ export const getAllAppointments = async (req: Request, res: Response) => {
     const appointmentsQuery = `
       SELECT 
         a.id,
-        a.title,
-        a.description,
-        a.appointment_type,
+        a.patient_id,
+        a.doctor_id,
+        a.type_id,
+        a.start_time,
+        a.end_time,
         a.status,
-        a.priority,
-        a.appointment_date,
-        a.appointment_time,
-        a.duration_minutes,
-        a.location,
         a.notes,
-        a.preparations,
-        a.follow_up_required,
-        a.follow_up_notes,
-        a.reminder_sent,
-        a.reminder_sent_at,
-        a.can_reschedule,
-        a.can_cancel,
+        a.reason,
         a.created_at,
         a.updated_at,
+        a.cancelled_at,
+        a.cancelled_by,
+        a.cancellation_reason,
         u.first_name as doctor_first_name,
         u.last_name as doctor_last_name,
         u.phone as doctor_phone,
-        u.email as doctor_email
+        u.email as doctor_email,
+        at.name as appointment_type_name,
+        at.duration_minutes,
+        at.color as appointment_type_color
       FROM appointments a
       LEFT JOIN users u ON a.doctor_id = u.id
+      LEFT JOIN appointment_types at ON a.type_id = at.id
       ${whereClause}
-      ORDER BY a.appointment_date DESC, a.appointment_time DESC
+      ORDER BY a.start_time DESC
       LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
     `;
 
@@ -111,23 +110,23 @@ export const getAllAppointments = async (req: Request, res: Response) => {
     // Format appointments data
     const formattedAppointments = appointments.map(appointment => ({
       id: appointment.id,
-      title: appointment.title,
-      description: appointment.description,
-      appointmentType: appointment.appointment_type,
+      title: appointment.appointment_type_name || 'นัดหมาย',
+      description: appointment.notes || appointment.reason,
+      appointmentType: appointment.appointment_type_name,
       status: appointment.status,
-      priority: appointment.priority,
-      appointmentDate: appointment.appointment_date,
-      appointmentTime: appointment.appointment_time,
-      durationMinutes: appointment.duration_minutes,
-      location: appointment.location,
+      priority: 'normal',
+      appointmentDate: appointment.start_time ? appointment.start_time.split('T')[0] : null,
+      appointmentTime: appointment.start_time ? appointment.start_time.split('T')[1]?.split('.')[0] : null,
+      durationMinutes: appointment.duration_minutes || 30,
+      location: 'ห้องตรวจ',
       notes: appointment.notes,
-      preparations: appointment.preparations,
-      followUpRequired: appointment.follow_up_required,
-      followUpNotes: appointment.follow_up_notes,
-      reminderSent: appointment.reminder_sent,
-      reminderSentAt: appointment.reminder_sent_at,
-      canReschedule: appointment.can_reschedule,
-      canCancel: appointment.can_cancel,
+      preparations: [],
+      followUpRequired: false,
+      followUpNotes: null,
+      reminderSent: false,
+      reminderSentAt: null,
+      canReschedule: true,
+      canCancel: true,
       createdAt: appointment.created_at,
       updatedAt: appointment.updated_at,
       doctor: appointment.doctor_first_name ? {
@@ -487,6 +486,48 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
       LEFT JOIN users u ON a.doctor_id = u.id
       WHERE a.id = $1
     `, [appointmentId]);
+
+    // ส่งการแจ้งเตือนให้ผู้ป่วย
+    try {
+      const user = (req as any).user;
+      
+      // ดึงข้อมูลผู้ป่วย
+      const patientResult = await databaseManager.query(`
+        SELECT p.id, p.hospital_number, p.first_name, p.last_name, p.thai_name, p.phone, p.email
+        FROM patients p
+        WHERE p.id = $1
+      `, [patientId]);
+      
+      if (patientResult.rows.length > 0) {
+        const patient = patientResult.rows[0];
+        
+        await NotificationService.sendPatientNotification({
+          patientId: patient.id,
+          patientHn: patient.hospital_number || '',
+          patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+          patientPhone: patient.phone,
+          patientEmail: patient.email,
+          notificationType: 'appointment_created',
+          title: `นัดหมายใหม่: ${title}`,
+          message: `คุณ ${patient.thai_name || patient.first_name} มีนัดหมายใหม่ "${title}" กับ ${createdAppointment.rows[0].doctor_first_name} ${createdAppointment.rows[0].doctor_last_name} ในวันที่ ${appointment_date} เวลา ${appointment_time}`,
+          recordType: 'appointment',
+          recordId: appointmentId,
+          createdBy: user?.id,
+          createdByName: user?.thai_name || `${user?.first_name} ${user?.last_name}`,
+          metadata: {
+            appointmentType: appointment_type,
+            appointmentDate: appointment_date,
+            appointmentTime: appointment_time,
+            doctorName: `${createdAppointment.rows[0].doctor_first_name} ${createdAppointment.rows[0].doctor_last_name}`,
+            location: location,
+            duration: duration_minutes
+          }
+        });
+      }
+    } catch (notificationError) {
+      console.error('❌ Failed to send appointment notification:', notificationError);
+      // ไม่ throw error เพื่อไม่ให้กระทบการสร้างนัดหมาย
+    }
 
     res.status(201).json({
       data: {
