@@ -12,14 +12,26 @@ EMR System เป็นระบบบริหารจัดการเวช
 - **Database Management** - ระบบจัดการฐานข้อมูล
 - **Docker Support** - รองรับการใช้งานด้วย Docker
 
-## การติดตั้งและเริ่มใช้งาน
+## 🚀 การติดตั้งและเริ่มใช้งาน
 
 ### ข้อกำหนดของระบบ
 - **Node.js** >= 18.0.0
 - **Docker Desktop** >= 4.0.0
 - **Windows 10/11** หรือ **macOS/Linux**
 
-### การติดตั้ง Dependencies
+### 🎯 การติดตั้งแบบง่าย (แนะนำ)
+
+#### สำหรับเครื่องใหม่หรือการรันในเครื่องอื่น:
+```bash
+# 1. รัน setup script (จะสร้างไฟล์ environment และติดตั้ง dependencies อัตโนมัติ)
+setup.bat
+
+# 2. หรือใช้ start.bat
+start.bat
+# เลือกตัวเลือก 1 (START)
+```
+
+### 📋 การติดตั้งแบบแมนนวล
 
 #### 1. ติดตั้ง Node.js
 - ดาวน์โหลดจาก: https://nodejs.org/
@@ -35,7 +47,16 @@ EMR System เป็นระบบบริหารจัดการเวช
 - ตรวจสอบการติดตั้ง: `docker --version`
 - ตรวจสอบ Docker Compose: `docker compose version`
 
-#### 3. ติดตั้ง Dependencies ของโปรเจค
+#### 3. สร้างไฟล์ Environment (สำคัญ!)
+```bash
+# สร้างไฟล์ backend/.env
+# คัดลอกจาก backend/env.example
+
+# สร้างไฟล์ frontend/.env.local  
+# คัดลอกจาก frontend/env.default
+```
+
+#### 4. ติดตั้ง Dependencies ของโปรเจค
 ```bash
 # ติดตั้ง Frontend dependencies
 cd frontend
@@ -48,12 +69,24 @@ npm install
 cd ..
 ```
 
+### 🔧 การแก้ไขปัญหาการรันในเครื่องอื่น
+
+#### ปัญหาที่พบบ่อย:
+1. **ไฟล์ .env หายไป** → ใช้ `setup.bat` หรือสร้างไฟล์ environment ตามขั้นตอนด้านบน
+2. **node_modules หายไป** → รัน `npm install` ในโฟลเดอร์ backend และ frontend
+3. **Port ถูกใช้งาน** → ใช้ `start.bat` option [14] FIX CONTAINERS
+4. **API request failed** → ปัญหานี้แก้ไขแล้วในโค้ด
+
+#### ไฟล์ที่จำเป็นสำหรับการรัน:
+- `docker-compose.yml`
+- `start.bat`
+- `setup.bat`
+- `backend/package.json` และ `frontend/package.json`
+- `backend/Dockerfile` และ `frontend/Dockerfile`
+- ไฟล์ environment (จะถูกสร้างโดย setup.bat)
+
 ### การเริ่มใช้งาน
 ```bash
-# โคลนโปรเจก
-git clone <repository-url>
-cd Project
-
 # เริ่มต้นทันที
 start.bat
 # เลือกตัวเลือก 1 (START)

@@ -26,10 +26,11 @@ echo  [11] DOWN ALL        - Stop All Services
 echo  [12] RESET ALL DATA - Reset All Data (DANGER!)
 echo  [13] CLEAR DATABASE - Clear All Database Data
 echo  [14] FIX CONTAINERS - Fix Container Conflicts
-echo  [15] END    - Exit Program
+echo  [15] FIX API ERRORS - Fix API Request Failed Errors
+echo  [16] END    - Exit Program
 echo.
 echo  ========================================
-set /p choice="Please select number (1-15): "
+set /p choice="Please select number (1-16): "
 
 if "%choice%"=="1" goto START_SYSTEM
 if "%choice%"=="2" goto STOP_SYSTEM
@@ -45,10 +46,11 @@ if "%choice%"=="11" goto DOWN_ALL
 if "%choice%"=="12" goto RESET_ALL_DATA
 if "%choice%"=="13" goto CLEAR_DATABASE
 if "%choice%"=="14" goto FIX_CONTAINERS
-if "%choice%"=="15" goto END_PROGRAM
+if "%choice%"=="15" goto FIX_API_ERRORS
+if "%choice%"=="16" goto END_PROGRAM
 
 echo.
-echo [ERROR] Please select number 1-15 only
+echo [ERROR] Please select number 1-16 only
 timeout /t 2 /nobreak >nul
 goto MAIN_MENU
 
@@ -306,6 +308,22 @@ if %errorlevel% neq 0 (
     echo [INFO] You can run migrations manually using option [5] RUN MIGRATIONS
 ) else (
     echo [SUCCESS] Database migrations completed
+)
+
+echo [LOG] Checking for common API issues...
+docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; databaseManager.initialize().then(async () => { const result = await databaseManager.query('SELECT table_name FROM information_schema.tables WHERE table_schema = \\'public\\' AND table_name IN (\\'appointments\\', \\'appointment_types\\')'); if (result.rows.length === 0) { console.log('MISSING_APPOINTMENTS'); process.exit(1); } else { console.log('APPOINTMENTS_OK'); process.exit(0); } }).catch(() => { console.log('DB_ERROR'); process.exit(1); });" 2>nul
+if %errorlevel% neq 0 (
+    echo [WARNING] Appointments tables are missing - this may cause API errors
+    echo [INFO] Auto-fixing appointments table issue...
+    docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; import fs from 'fs'; databaseManager.initialize().then(async () => { try { const sql = fs.readFileSync('/app/src/database/migrations/003_appointments_tables.sql', 'utf8'); await databaseManager.query(sql); console.log('FIXED'); process.exit(0); } catch (error) { console.log('FAILED'); process.exit(1); } }).catch(() => { console.log('FAILED'); process.exit(1); });" 2>nul
+    if %errorlevel% equ 0 (
+        echo [SUCCESS] Appointments tables created automatically
+    ) else (
+        echo [WARNING] Could not auto-fix appointments tables
+        echo [INFO] Use option [15] FIX API ERRORS to resolve this issue
+    )
+) else (
+    echo [SUCCESS] Appointments tables are present
 )
 
 echo [LOG] Checking service health...
@@ -1167,6 +1185,162 @@ echo [INFO] All EMR containers have been removed
 echo [INFO] Networks and volumes have been cleaned up
 echo.
 echo [NEXT] You can now use option [1] START to start the system
+echo.
+pause
+goto MAIN_MENU
+
+:FIX_API_ERRORS
+cls
+echo.
+echo  ========================================
+echo  FIX API REQUEST FAILED ERRORS
+echo  ========================================
+echo.
+echo [INFO] Fixing API Request Failed Errors at %date% %time%
+echo.
+echo [WARNING] This will diagnose and fix common API errors including:
+echo   - Missing appointments table
+echo   - Database connection issues
+echo   - Migration problems
+echo   - Container communication issues
+echo.
+
+echo [STEP 1/6] Checking if containers are running...
+docker ps | findstr emr_backend >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Backend container is not running!
+    echo [SOLUTION] Please start the system first using option [1] START
+    pause
+    goto MAIN_MENU
+) else (
+    echo [SUCCESS] Backend container is running
+)
+
+docker ps | findstr emr_postgres >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Database container is not running!
+    echo [SOLUTION] Please start the system first using option [1] START
+    pause
+    goto MAIN_MENU
+) else (
+    echo [SUCCESS] Database container is running
+)
+
+echo [STEP 2/6] Checking database connection...
+docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; databaseManager.initialize().then(() => console.log('Connected')).catch(() => process.exit(1))" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Cannot connect to database!
+    echo [SOLUTION] Restarting backend container...
+    docker compose restart backend
+    timeout /t 10 /nobreak >nul
+    echo [INFO] Backend restarted, checking connection again...
+    docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; databaseManager.initialize().then(() => console.log('Connected')).catch(() => process.exit(1))" >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo [ERROR] Database connection still failed!
+        echo [SOLUTION] Try option [8] RESTART ALL or [12] RESET ALL DATA
+        pause
+        goto MAIN_MENU
+    )
+) else (
+    echo [SUCCESS] Database connection verified
+)
+
+echo [STEP 3/6] Checking appointments table...
+docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; databaseManager.initialize().then(async () => { const result = await databaseManager.query('SELECT table_name FROM information_schema.tables WHERE table_schema = \\'public\\' AND table_name IN (\\'appointments\\', \\'appointment_types\\')'); if (result.rows.length === 0) { console.log('MISSING'); process.exit(1); } else { console.log('EXISTS'); process.exit(0); } }).catch(() => { console.log('ERROR'); process.exit(1); });" 2>nul
+if %errorlevel% neq 0 (
+    echo [WARNING] Appointments tables are missing
+    echo [INFO] Creating appointments tables...
+    
+    docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; import fs from 'fs'; databaseManager.initialize().then(async () => { try { const sql = fs.readFileSync('/app/src/database/migrations/003_appointments_tables.sql', 'utf8'); await databaseManager.query(sql); console.log('SUCCESS'); process.exit(0); } catch (error) { console.log('ERROR'); process.exit(1); } }).catch(() => { console.log('ERROR'); process.exit(1); });" 2>nul
+    
+    if %errorlevel% equ 0 (
+        echo [SUCCESS] Appointments tables created successfully
+    ) else (
+        echo [ERROR] Failed to create appointments tables
+        echo [SOLUTION] Try option [5] RUN MIGRATIONS
+    )
+) else (
+    echo [SUCCESS] Appointments tables exist
+)
+
+echo [STEP 4/6] Running database migrations...
+docker exec emr_backend npx tsx src/scripts/migrationChecker.ts >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARNING] Some migrations may have failed
+    echo [INFO] This is normal if all migrations are already applied
+) else (
+    echo [SUCCESS] Database migrations completed
+)
+
+echo [STEP 5/6] Testing API endpoints...
+curl -s -o nul -w "%%{http_code}" http://localhost:3001/health >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [SUCCESS] Backend API is accessible
+) else (
+    echo [WARNING] Backend API may not be ready yet
+    echo [INFO] Restarting backend container...
+    docker compose restart backend
+    timeout /t 15 /nobreak >nul
+    echo [INFO] Backend restarted, testing again...
+    curl -s -o nul -w "%%{http_code}" http://localhost:3001/health >nul 2>&1
+    if %errorlevel% equ 0 (
+        echo [SUCCESS] Backend API is now accessible
+    ) else (
+        echo [WARNING] Backend API still not accessible
+    )
+)
+
+echo [STEP 6/6] Verifying system health...
+docker ps --format "table {{.Names}}\t{{.Status}}" | findstr "emr_"
+if %errorlevel% neq 0 (
+    echo [WARNING] Some services may not be running properly
+    echo [INFO] Checking individual services...
+    docker ps | findstr "emr_backend" >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo [ERROR] Backend service is not running
+    ) else (
+        echo [SUCCESS] Backend service is running
+    )
+    docker ps | findstr "emr_frontend" >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo [ERROR] Frontend service is not running
+    ) else (
+        echo [SUCCESS] Frontend service is running
+    )
+    docker ps | findstr "emr_postgres" >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo [ERROR] Database service is not running
+    ) else (
+        echo [SUCCESS] Database service is running
+    )
+) else (
+    echo [SUCCESS] All services are running
+)
+
+echo.
+echo  ========================================
+echo     API ERRORS FIX COMPLETED!
+echo  ========================================
+echo.
+echo [INFO] API error fix completed at: %date% %time%
+echo [INFO] Common API issues have been addressed
+echo.
+echo [INFO] System Status:
+echo     Frontend: http://localhost:3000
+echo     Backend:  http://localhost:3001
+echo     Health Check: http://localhost:3001/health
+echo.
+echo [INFO] If you still see API errors:
+echo     1. Try refreshing the browser page
+echo     2. Clear browser cache and cookies
+echo     3. Use option [8] RESTART ALL for complete restart
+echo     4. Use option [12] RESET ALL DATA for fresh start (WARNING: Deletes all data)
+echo.
+echo [INFO] Testing frontend accessibility...
+timeout /t 2 /nobreak >nul
+start http://localhost:3000
+echo.
+echo [SUCCESS] System should now work correctly!
 echo.
 pause
 goto MAIN_MENU

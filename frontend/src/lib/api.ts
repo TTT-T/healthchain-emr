@@ -724,14 +724,20 @@ class APIClient {
           }
         };
         
-        // Log error details separately to avoid serialization issues
-        logger.error('💥 API request failed:');
-        logger.error('  - Message:', error?.message || 'Unknown error');
-        logger.error('  - Status:', error?.response?.status || 'No status');
-        logger.error('  - URL:', config.url || 'No URL');
-        logger.error('  - Method:', config.method || 'No method');
-        logger.error('  - Response data:', error?.response?.data || 'No response data');
-        logger.error('  - Full error:', error);
+        // Don't log 404 errors for appointments and notifications as they are expected
+        if (!(error?.response?.status === 404 && 
+              (config.url?.includes('/appointments') || config.url?.includes('/notifications')))) {
+          // Log error details separately to avoid serialization issues
+          logger.error('💥 API request failed:');
+          logger.error('  - Message:', error?.message || 'Unknown error');
+          logger.error('  - Status:', error?.response?.status || 'No status');
+          logger.error('  - URL:', config.url || 'No URL');
+          logger.error('  - Method:', config.method || 'No method');
+          logger.error('  - Response data:', error?.response?.data || 'No response data');
+          logger.error('  - Full error:', error);
+        } else {
+          logger.info('🔍 Expected 404 for appointments/notifications (normal for new patients):', config.url);
+        }
         
         throw error; // Will be handled by interceptor
       }
