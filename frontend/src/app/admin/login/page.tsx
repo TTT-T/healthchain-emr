@@ -198,7 +198,7 @@ export default function AdminLogin() {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     className="w-full pl-12 pr-12 py-4 text-gray-900 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-white hover:border-gray-300"
-                    placeholder="••••••••"
+                    placeholder="11111111"
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
                     required

@@ -7,8 +7,17 @@
 -- =============================================================================
 
 -- Fix patients table field names
-ALTER TABLE patients 
-RENAME COLUMN patient_number TO hospital_number;
+-- Only rename if patient_number column exists
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'patients' 
+        AND column_name = 'patient_number'
+    ) THEN
+        ALTER TABLE patients RENAME COLUMN patient_number TO hospital_number;
+    END IF;
+END $$;
 
 -- Add missing fields if not exist
 ALTER TABLE patients 
