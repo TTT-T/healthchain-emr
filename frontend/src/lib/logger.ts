@@ -44,28 +44,69 @@ class Logger {
     
     // Handle undefined or null message and args
     const safeMessage = message || 'No message provided';
+    
+    // More robust argument handling
     const safeArgs = args.map(arg => {
-      if (arg === undefined) return 'undefined';
-      if (arg === null) return 'null';
-      if (typeof arg === 'string') return arg;
-      if (arg instanceof Error) return arg.message;
-      return String(arg);
+      try {
+        if (arg === undefined) return 'undefined';
+        if (arg === null) return 'null';
+        if (typeof arg === 'string') return arg;
+        if (typeof arg === 'number' || typeof arg === 'boolean') return String(arg);
+        if (arg instanceof Error) {
+          return {
+            name: arg.name,
+            message: arg.message,
+            stack: arg.stack?.split('\n').slice(0, 3).join('\n') // Limit stack trace
+          };
+        }
+        if (typeof arg === 'object') {
+          // Try to safely stringify objects
+          try {
+            return JSON.stringify(arg, null, 2);
+          } catch (jsonError) {
+            return '[Object - unable to serialize]';
+          }
+        }
+        return String(arg);
+      } catch (conversionError) {
+        return '[Argument - unable to convert]';
+      }
     });
     
     try {
+      // Use a more robust logging approach
+      const logMessage = `${prefix} ${safeMessage}`;
+      
       switch (level) {
         case 'info':
-          console.info(prefix, safeMessage, ...safeArgs);
+          if (safeArgs.length > 0) {
+            console.info(logMessage, ...safeArgs);
+          } else {
+            console.info(logMessage);
+          }
           break;
         case 'warn':
-          console.warn(prefix, safeMessage, ...safeArgs);
+          if (safeArgs.length > 0) {
+            console.warn(logMessage, ...safeArgs);
+          } else {
+            console.warn(logMessage);
+          }
           break;
         case 'error':
-          console.error(prefix, safeMessage, ...safeArgs);
+          if (safeArgs.length > 0) {
+            console.error(logMessage, ...safeArgs);
+          } else {
+            console.error(logMessage);
+          }
           break;
       }
     } catch (error) {
-      // Fallback if console methods fail
+      // Ultimate fallback - just log the basic message
+      try {
+        console.log(`[${timestamp}] [FALLBACK] ${safeMessage}`);
+      } catch (fallbackError) {
+        // If even this fails, we can't do anything more
+      }
     }
   }
 
@@ -113,6 +154,37 @@ class Logger {
       this.formatMessage('error', message, safeError);
     } catch (logError) {
       // Ultimate fallback - just use console.log
+    }
+  }
+
+  // API-specific error logging that's extra safe
+  apiError(message: string, error?: unknown): void {
+    try {
+      // Extract only the essential information
+      let errorInfo = 'Unknown error';
+      
+      if (error && typeof error === 'object') {
+        const errorObj = error as any;
+        const parts = [];
+        
+        if (errorObj.message) parts.push(`Message: ${errorObj.message}`);
+        if (errorObj.status) parts.push(`Status: ${errorObj.status}`);
+        if (errorObj.statusText) parts.push(`StatusText: ${errorObj.statusText}`);
+        if (errorObj.code) parts.push(`Code: ${errorObj.code}`);
+        
+        errorInfo = parts.length > 0 ? parts.join(', ') : 'Error object without readable properties';
+      } else if (error) {
+        errorInfo = String(error);
+      }
+      
+      this.formatMessage('error', message, errorInfo);
+    } catch (logError) {
+      // Ultimate fallback
+      try {
+        console.log(`[${new Date().toISOString()}] [ERROR] ${message} - [Error details unavailable]`);
+      } catch (fallbackError) {
+        // If even this fails, we can't do anything more
+      }
     }
   }
 

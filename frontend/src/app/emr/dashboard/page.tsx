@@ -87,11 +87,31 @@ export default function EMRDashboard() {
         apiClient.getAppointments({ page: 1, limit: 10 }),
       ];
 
-      const [patientsResponse, visitsResponse, appointmentsResponse] = await Promise.all(promises);
-      // Calculate stats from real data
-      const patientsData = Array.isArray(patientsResponse.data) ? patientsResponse.data : [];
-      const visitsData = Array.isArray(visitsResponse.data) ? visitsResponse.data : [];
-      const appointmentsData = Array.isArray(appointmentsResponse.data) ? appointmentsResponse.data : [];
+      const [patientsResult, visitsResult, appointmentsResult] = await Promise.allSettled(promises);
+      
+      // Extract data from settled promises, handling both fulfilled and rejected cases
+      const patientsData = patientsResult.status === 'fulfilled' && patientsResult.value?.data 
+        ? (Array.isArray(patientsResult.value.data) ? patientsResult.value.data : [])
+        : [];
+      
+      const visitsData = visitsResult.status === 'fulfilled' && visitsResult.value?.data 
+        ? (Array.isArray(visitsResult.value.data) ? visitsResult.value.data : [])
+        : [];
+      
+      const appointmentsData = appointmentsResult.status === 'fulfilled' && appointmentsResult.value?.data 
+        ? (Array.isArray(appointmentsResult.value.data) ? appointmentsResult.value.data : [])
+        : [];
+      
+      // Log any failed requests for debugging
+      if (patientsResult.status === 'rejected') {
+        logger.warn('Failed to load patients data:', patientsResult.reason?.message || 'Unknown error');
+      }
+      if (visitsResult.status === 'rejected') {
+        logger.warn('Failed to load visits data:', visitsResult.reason?.message || 'Unknown error');
+      }
+      if (appointmentsResult.status === 'rejected') {
+        logger.warn('Failed to load appointments data:', appointmentsResult.reason?.message || 'Unknown error');
+      }
       // Calculate today's patients (users with patient role created today)
       const today = new Date().toISOString().split('T')[0];
       const todayPatientsCount = patientsData.filter(patient => {

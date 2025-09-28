@@ -727,14 +727,15 @@ class APIClient {
         // Don't log 404 errors for appointments and notifications as they are expected
         if (!(error?.response?.status === 404 && 
               (config.url?.includes('/appointments') || config.url?.includes('/notifications')))) {
-          // Log error details separately to avoid serialization issues
-          logger.error('💥 API request failed:');
-          logger.error('  - Message:', error?.message || 'Unknown error');
-          logger.error('  - Status:', error?.response?.status || 'No status');
-          logger.error('  - URL:', config.url || 'No URL');
-          logger.error('  - Method:', config.method || 'No method');
-          logger.error('  - Response data:', error?.response?.data || 'No response data');
-          logger.error('  - Full error:', error);
+          // Use the safer API error logging method
+          logger.apiError('💥 API request failed:', {
+            message: error?.message || 'Unknown error',
+            status: error?.response?.status || 'No status',
+            statusText: error?.response?.statusText || 'No status text',
+            url: config.url || 'No URL',
+            method: config.method || 'No method',
+            code: error?.code || 'No code'
+          });
         } else {
           logger.info('🔍 Expected 404 for appointments/notifications (normal for new patients):', config.url);
         }
