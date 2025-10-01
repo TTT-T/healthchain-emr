@@ -289,10 +289,10 @@ export default function Appointments() {
       if (response && (response.statusCode === 200 || response.statusCode === 404) && response.data) {
         logger.info("Successfully loaded appointments:", response.data);
         
-        // The appointments are in response.data.appointments
-        const appointmentsData = response.data.appointments || [];
+        // The appointments are directly in response.data (not response.data.appointments)
+        const appointmentsData = Array.isArray(response.data) ? response.data : [];
         
-        setAppointments(Array.isArray(appointmentsData) ? appointmentsData : []);
+        setAppointments(appointmentsData);
         // Clear any previous errors
         setError(null);
       } else if (response && response.statusCode === 404) {
@@ -1276,8 +1276,8 @@ export default function Appointments() {
                             </span>
                             <span className="text-gray-500">
                               {AppointmentService.formatDateTime(
-                                appointment.appointment_date,
-                                appointment.appointment_time
+                                appointment.appointmentDate,
+                                appointment.appointmentTime
                               )}
                             </span>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${AppointmentService.getStatusColor(appointment.status)}`}>
@@ -1291,9 +1291,9 @@ export default function Appointments() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
                             <div>
                               <span className="font-medium">ประเภท:</span> {
-                                typeof appointment.appointment_type === 'object' 
-                                  ? (appointment.appointment_type.display || appointment.appointment_type.name || appointment.appointment_type.type || JSON.stringify(appointment.appointment_type))
-                                  : (appointment.appointment_type || 'ไม่ระบุ')
+                                typeof appointment.appointmentType === 'object' 
+                                  ? (appointment.appointmentType.display || appointment.appointmentType.name || appointment.appointmentType.type || JSON.stringify(appointment.appointmentType))
+                                  : (appointment.appointmentType || 'ไม่ระบุ')
                               }
                             </div>
                             <div>

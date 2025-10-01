@@ -108,6 +108,7 @@ export const getPatientRecords = async (req: Request, res: Response) => {
         v.treatment_plan,
         v.doctor_notes,
         v.status,
+        v.status as visit_status,
         v.priority,
         u.first_name as doctor_first_name,
         u.last_name as doctor_last_name,

@@ -34,6 +34,8 @@ import {
  */
 async function sendPatientVisitNotification(visit: any, doctorId: string, createdBy: string) {
   try {
+    console.log('🔔 sendPatientVisitNotification called with:', { visitId: visit.id, doctorId, createdBy });
+    
     // Get patient information
     const patientQuery = `
       SELECT 
@@ -99,7 +101,7 @@ async function sendPatientVisitNotification(visit: any, doctorId: string, create
       patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
       patientPhone: patient.phone,
       patientEmail: patient.email || patient.user_email,
-      notificationType: 'queue_created',
+      notificationType: 'queue_assigned',
       title: `ได้รับหมายเลขคิว ${visit.visit_number}`,
       message: `คุณ ${patient.thai_name || patient.first_name} ได้รับหมายเลขคิว ${visit.visit_number} สำหรับตรวจกับ ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`,
       recordType: 'visit',
@@ -214,7 +216,8 @@ async function sendVisitStartedNotification(visit: any) {
       notificationData.is_read,
       notificationData.user_id, // created_by
       notificationData.created_at
-    ]);
+    ]);
+
     if (patient.phone) {
     }
     
@@ -236,12 +239,19 @@ const createVisitSchema = z.object({
   }).default('walk_in'),
   chiefComplaint: z.string().min(1, "กรุณากรอกอาการสำคัญ").max(1000),
   presentIllness: z.string().optional(),
+  physicalExamination: z.string().optional(),
+  diagnosis: z.string().optional(),
+  treatmentPlan: z.string().optional(),
+  doctorNotes: z.string().optional(),
   priority: z.enum(['low', 'normal', 'high', 'urgent'], {
     errorMap: () => ({ message: "ระดับความสำคัญไม่ถูกต้อง" })
   }).default('normal'),
   attendingDoctorId: z.string().uuid("Doctor ID ต้องเป็น UUID").optional(),
   assignedNurseId: z.string().uuid("Nurse ID ต้องเป็น UUID").optional(),
-  departmentId: z.string().uuid("Department ID ต้องเป็น UUID").optional()
+  departmentId: z.string().uuid("Department ID ต้องเป็น UUID").optional(),
+  followUpRequired: z.boolean().optional(),
+  followUpDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD)").optional().nullable(),
+  followUpNotes: z.string().optional().nullable()
 });
 
 const updateVisitSchema = z.object({
@@ -251,8 +261,8 @@ const updateVisitSchema = z.object({
   doctorNotes: z.string().optional(),
   status: z.enum(['scheduled', 'checked_in', 'in_progress', 'completed', 'cancelled', 'no_show']).optional(),
   followUpRequired: z.boolean().optional(),
-  followUpDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD)").optional(),
-  followUpNotes: z.string().optional()
+  followUpDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD)").optional().nullable(),
+  followUpNotes: z.string().optional().nullable()
 });
 
 const visitSearchSchema = z.object({
@@ -333,9 +343,10 @@ export const createVisit = async (req: Request, res: Response) => {
       const visitResult = await client.query(`
             INSERT INTO visits (
               patient_id, visit_number, visit_type, chief_complaint, 
-              present_illness, priority, attending_doctor_id, 
+              present_illness, physical_examination, diagnosis, treatment_plan,
+              doctor_notes, priority, attending_doctor_id, 
               assigned_nurse_id, department_id, status, visit_date, visit_time, created_by, updated_by
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $12, $13, $11, $11)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $17)
             RETURNING *
       `, [
         validatedData.patientId,
@@ -343,14 +354,18 @@ export const createVisit = async (req: Request, res: Response) => {
         validatedData.visitType,
         validatedData.chiefComplaint,
         validatedData.presentIllness || null,
+        validatedData.physicalExamination || null,
+        validatedData.diagnosis || null,
+        validatedData.treatmentPlan || null,
+        validatedData.doctorNotes || null,
         validatedData.priority,
         finalDoctorId || null,
         validatedData.assignedNurseId || null,
         validatedData.departmentId || null,
         'in_progress', // Set status to in_progress for new visits
-        req.user?.id,
         getCurrentThailandDaring(),
-        getCurrentThailandTimeOnlyString()
+        getCurrentThailandTimeOnlyString(),
+        req.user?.id
       ]);
       
       return visitResult.rows[0];
@@ -372,7 +387,11 @@ export const createVisit = async (req: Request, res: Response) => {
 
     // Send notification to patient
     try {
+      console.log('🔔 Attempting to send patient notification for visit:', result.id);
+      console.log('🔔 Doctor ID:', finalDoctorId);
+      console.log('🔔 Created by:', req.user?.id);
       await sendPatientVisitNotification(result, finalDoctorId, req.user?.id);
+      console.log('✅ Patient notification sent successfully');
     } catch (notificationError) {
       console.error('❌ Failed to send patient notification:', notificationError);
       // Don't fail the visit creation if notification fails

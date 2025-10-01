@@ -62,6 +62,12 @@ export const createAIResearchData = async (req: Request, res: Response) => {
     // Create AI research data record
     const researchId = uuidv4();
 
+    // For appointment records, record_id is integer, so we'll store it as text in research_data
+    const processedResearchData = {
+      ...researchData,
+      originalRecordId: recordId // Store the original record ID for reference
+    };
+
     await databaseManager.query(`
       INSERT INTO ai_research_data (
         id, patient_id, record_type, record_id, research_data,
@@ -70,7 +76,7 @@ export const createAIResearchData = async (req: Request, res: Response) => {
       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW() AT TIME ZONE 'Asia/Bangkok')
       RETURNING *
     `, [
-      researchId, patientId, recordType, recordId, JSON.stringify(researchData),
+      researchId, patientId, recordType, null, JSON.stringify(processedResearchData), // Set record_id to null for appointments
       dataVersion, userId
     ]);
 

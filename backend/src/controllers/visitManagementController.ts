@@ -78,7 +78,7 @@ async function sendPatientVisitNotification(visit: any, doctorId: string, queueC
       patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
       patientPhone: patient.phone,
       patientEmail: patient.email || patient.user_email,
-      notificationType: 'queue_created',
+      notificationType: 'queue_assigned',
       title: `ได้รับหมายเลขคิว ${visit.visit_number}`,
       message: `คุณ ${patient.thai_name || patient.first_name} ได้รับหมายเลขคิว ${visit.visit_number} สำหรับตรวจกับ ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`,
       recordType: 'visit',

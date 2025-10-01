@@ -147,7 +147,7 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
     // Create patient record in EMR system
     const patientResult = await db.query(`
       INSERT INTO patients (
-        user_id, hospital_number, first_name, last_name, thai_name,
+        user_id, hospital_number, first_name, last_name, thai_name, thai_last_name,
         date_of_birth, gender, national_id, phone, email, address, blood_type,
         allergies, medical_history, current_medications, chronic_diseases,
         emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
@@ -155,9 +155,9 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
         weight, height, race, occupation, education, marital_status,
         current_address, title, created_by
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32
       )
-      RETURNING id, hospital_number, first_name, last_name, thai_name,
+      RETURNING id, hospital_number, first_name, last_name, thai_name, thai_last_name,
                 date_of_birth, gender, national_id, phone, email, address, blood_type,
                 allergies, medical_history, current_medications, chronic_diseases,
                 emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
@@ -170,6 +170,7 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
       validatedData.firstName,
       validatedData.lastName,
       validatedData.thaiFirstName || null,
+      validatedData.thaiLastName || null,
       validatedData.dateOfBirth,
       validatedData.gender,
       validatedData.nationalId || null,
@@ -258,7 +259,7 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
           firstName: newPatient.first_name,
           lastName: newPatient.last_name,
           thaiFirstName: newPatient.thai_name,
-          thaiLastName: null,
+          thaiLastName: newPatient.thai_last_name,
           dateOfBirth: newPatient.date_of_birth,
           gender: newPatient.gender,
           nationalId: newPatient.national_id,
@@ -269,10 +270,10 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
           allergies: newPatient.allergies,
           medicalHistory: newPatient.medical_history,
           currentMedications: newPatient.current_medications,
-          chronicDiseases: newPatient.chronic_conditions,
+          chronicDiseases: newPatient.chronic_diseases,
           emergencyContactName: newPatient.emergency_contact_name,
           emergencyContactPhone: newPatient.emergency_contact_phone,
-          emergencyContactRelation: newPatient.emergency_contact_relation,
+          emergencyContactRelation: newPatient.emergency_contact_relationship,
           insuranceType: newPatient.insurance_type,
           insuranceNumber: newPatient.insurance_number,
           insuranceExpiryDate: newPatient.insurance_expiry_date,

@@ -9,6 +9,7 @@ import {
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/api';
+import { VisitService } from '@/services/visitService';
 import { logger } from '@/lib/logger';
 // import { getThailandTime, formatBuddhistDate } from '@/utils/thailandTime';
 
@@ -72,31 +73,60 @@ export default function EMRDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   const loadDashboardData = useCallback(async () => {
-    if (!isAuthenticated) return;
+    console.log('🔍 loadDashboardData called');
+    console.log('🔍 isAuthenticated:', isAuthenticated);
+    console.log('🔍 user:', user);
+    
+    if (!isAuthenticated) {
+      console.log('❌ Not authenticated, returning early');
+      return;
+    }
     
     setIsLoading(true);
     setError(null);
     
     try {
       logger.info('📊 Loading dashboard data...');
+      console.log('🔍 Dashboard: Starting to load data...');
 
-      // Fetch real data from API
+      // Check authentication first
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      console.log('🔍 Dashboard: Token exists:', !!token);
+      console.log('🔍 Dashboard: Current user:', user);
+      console.log('🔍 Dashboard: User role:', user?.role);
+      console.log('🔍 Dashboard: User ID:', user?.id);
+
+      // Fetch real data from API - filter by current doctor
       const promises = [
         apiClient.getPatients({ page: 1, limit: 100 }),
-        apiClient.getVisits({ page: 1, limit: 100 }),
+        apiClient.getVisits({ page: 1, limit: 100, doctor_id: user?.id }), // Filter by current doctor
         apiClient.getAppointments({ page: 1, limit: 10 }),
       ];
 
       const [patientsResult, visitsResult, appointmentsResult] = await Promise.allSettled(promises);
       
       // Extract data from settled promises, handling both fulfilled and rejected cases
-      const patientsData = patientsResult.status === 'fulfilled' && patientsResult.value?.data 
-        ? (Array.isArray(patientsResult.value.data) ? patientsResult.value.data : [])
-        : [];
+      let patientsData = [];
+      let visitsData = [];
       
-      const visitsData = visitsResult.status === 'fulfilled' && visitsResult.value?.data 
-        ? (Array.isArray(visitsResult.value.data) ? visitsResult.value.data : [])
-        : [];
+      if (patientsResult.status === 'fulfilled' && patientsResult.value?.data) {
+        if (Array.isArray(patientsResult.value.data)) {
+          patientsData = patientsResult.value.data;
+        } else if (patientsResult.value.data.patients) {
+          patientsData = patientsResult.value.data.patients;
+        }
+      }
+      
+      if (visitsResult.status === 'fulfilled' && visitsResult.value?.data) {
+        if (Array.isArray(visitsResult.value.data)) {
+          visitsData = visitsResult.value.data;
+        } else if (visitsResult.value.data.visits) {
+          visitsData = visitsResult.value.data.visits;
+        }
+      }
+      
+      console.log('🔍 After extraction - Patients Data Length:', patientsData.length);
+      console.log('🔍 After extraction - Visits Data Length:', visitsData.length);
       
       const appointmentsData = appointmentsResult.status === 'fulfilled' && appointmentsResult.value?.data 
         ? (Array.isArray(appointmentsResult.value.data) ? appointmentsResult.value.data : [])
@@ -105,44 +135,61 @@ export default function EMRDashboard() {
       // Log any failed requests for debugging
       if (patientsResult.status === 'rejected') {
         logger.warn('Failed to load patients data:', patientsResult.reason?.message || 'Unknown error');
+        console.error('❌ Patients API failed:', patientsResult.reason);
       }
       if (visitsResult.status === 'rejected') {
         logger.warn('Failed to load visits data:', visitsResult.reason?.message || 'Unknown error');
+        console.error('❌ Visits API failed:', visitsResult.reason);
       }
       if (appointmentsResult.status === 'rejected') {
         logger.warn('Failed to load appointments data:', appointmentsResult.reason?.message || 'Unknown error');
+        console.error('❌ Appointments API failed:', appointmentsResult.reason);
       }
-      // Calculate today's patients (users with patient role created today)
+
+      // Debug logging
+      console.log('🔍 Dashboard Debug Info:');
+      console.log('📊 Patients Result:', patientsResult.status, patientsData.length, 'patients');
+      console.log('📊 Visits Result:', visitsResult.status, visitsData.length, 'visits');
+      console.log('📊 Appointments Result:', appointmentsResult.status, appointmentsData.length, 'appointments');
+      console.log('📊 Raw Patients Result:', patientsResult);
+      console.log('📊 Raw Visits Result:', visitsResult);
+      console.log('📊 Patients Data:', patientsData);
+      console.log('📊 Visits Data:', visitsData);
+      console.log('📊 Filtered visits for doctor:', user?.id, visitsData.length);
+      
+      // Additional debug for data extraction
+      if (patientsResult.status === 'fulfilled') {
+        console.log('🔍 Patients Result Value:', patientsResult.value);
+        console.log('🔍 Patients Result Data:', patientsResult.value?.data);
+        console.log('🔍 Patients Result Data Patients:', patientsResult.value?.data?.patients);
+      }
+      
+      if (visitsResult.status === 'fulfilled') {
+        console.log('🔍 Visits Result Value:', visitsResult.value);
+        console.log('🔍 Visits Result Data:', visitsResult.value?.data);
+        console.log('🔍 Visits Result Data Visits:', visitsResult.value?.data?.visits);
+      }
+      // Calculate today's patients (patients with visits today by this doctor)
       const today = new Date().toISOString().split('T')[0];
-      const todayPatientsCount = patientsData.filter(patient => {
-        const isPatient = 'role' in patient && patient.role === 'patient';
-        const isToday = 'created_at' in patient && patient.created_at && typeof patient.created_at === 'string' && patient.created_at.startsWith(today);
-        return isPatient && isToday;
-      }).length;
-
-      // Calculate total active patients
-      const totalPatientsCount = patientsData.filter(patient => {
-        const isPatient = 'role' in patient && patient.role === 'patient';
-        const isActive = 'isActive' in patient && patient.isActive;
-        return isPatient && isActive;
-      }).length;
-
-      // Calculate active queues (visits with in_progress status today)
-      const activeQueueCount = visitsData.filter(visit => {
-        // More flexible matching - check if visit is in_progress and created today or visit_date is today
-        const isInProgress = 'status' in visit && visit.status === 'in_progress';
+      const todayPatientsCount = visitsData.filter(visit => {
         const isToday = ('visit_date' in visit && visit.visit_date && typeof visit.visit_date === 'string' && visit.visit_date.startsWith(today)) || 
                        ('created_at' in visit && visit.created_at && typeof visit.created_at === 'string' && visit.created_at.startsWith(today));
-        const shouldInclude = isInProgress && ('visit_date' in visit ? isToday : true);
-        return shouldInclude;
+        return isToday;
       }).length;
 
-      // Calculate completed visits today
+      // Calculate total patients for this doctor
+      const totalPatientsCount = visitsData.length;
+
+      // Calculate active queues (visits with in_progress status for this doctor)
+      const activeQueueCount = visitsData.filter(visit => {
+        const isInProgress = 'status' in visit && visit.status === 'in_progress';
+        return isInProgress;
+      }).length;
+
+      // Calculate completed visits for this doctor
       const completedVisitsCount = visitsData.filter(visit => {
         const isCompleted = 'status' in visit && visit.status === 'completed';
-        const isToday = ('visit_date' in visit && visit.visit_date && typeof visit.visit_date === 'string' && visit.visit_date.startsWith(today)) || 
-                       ('created_at' in visit && visit.created_at && typeof visit.created_at === 'string' && visit.created_at.startsWith(today));
-        return isCompleted && ('visit_date' in visit ? isToday : true);
+        return isCompleted;
       }).length;
 
       // Calculate upcoming appointments
@@ -151,41 +198,102 @@ export default function EMRDashboard() {
         return isUpcoming;
       }).length;
       // Set real stats from actual data
+      const todayVisitsCount = visitsData.filter(visit => {
+        const isToday = ('visit_date' in visit && visit.visit_date && typeof visit.visit_date === 'string' && visit.visit_date.startsWith(today)) || 
+                       ('created_at' in visit && visit.created_at && typeof visit.created_at === 'string' && visit.created_at.startsWith(today));
+        return isToday;
+      }).length;
+      
+      const inProgressCount = visitsData.filter(visit => visit.status === 'in_progress').length;
+      const completedCount = visitsData.filter(visit => visit.status === 'completed').length;
+      
       const finalStats = {
-        todayPatients: totalPatientsCount, // Total active patients
-        todayRegistrations: todayPatientsCount, // New registrations today
-        activeQueues: activeQueueCount, // Active queues (in_progress visits)
-        completedVisits: completedVisitsCount, // Completed visits today
+        todayPatients: todayVisitsCount, // Total visits today for this doctor
+        todayRegistrations: 0, // New registrations (not applicable for doctor dashboard)
+        activeQueues: activeQueueCount, // Active queues (in_progress visits) for this doctor
+        completedVisits: completedVisitsCount, // Completed visits for this doctor
         pendingLabs: 0, // Lab results API to be implemented
         upcomingAppointments: upcomingAppointmentsCount, // Upcoming appointments
         activeMedications: 0, // Medications API to be implemented
         criticalAlerts: 0 // Alerts system to be implemented
       };
+      
+      console.log('📊 Calculated Stats:', finalStats);
       setStats(finalStats);
 
-      // Generate queue data from real visits
+      // Generate queue data from real visits for this doctor
       const queueData: QueueItem[] = visitsData
         .filter(visit => {
-          // Type guard to check if it's a MedicalVisit
-          if ('visit_date' in visit && 'status' in visit) {
-            const isToday = (visit.visit_date && visit.visit_date.startsWith(today)) || 
-                           (visit.created_at && visit.created_at.startsWith(today));
-            const isActive = visit.status === 'in_progress' || visit.status === 'checked_in';
-            return isActive && isToday;
-          }
-          return false;
+          // Show all visits for this doctor
+          return 'visit_date' in visit && 'status' in visit;
         })
         .map(visit => {
           // Type guard to ensure it's a MedicalVisit
           if ('visit_number' in visit && 'status' in visit) {
+            // Get patient name from visit data directly (since it's already included in the API response)
+            const patientName = visit.patient?.name || 'ไม่ระบุ';
+            const hospitalNumber = visit.patient?.hospital_number || 'ไม่ระบุ';
+            
+            // Get department from visit data
+            const department = visit.department || 'ไม่ระบุ';
+            
+            // Calculate wait time based on visit time
+            const visitTime = visit.visit_time || '00:00:00';
+            const currentTime = new Date();
+            
+            // Create visit datetime properly
+            let visitDateTime;
+            try {
+              // Try to create date from visit_date and visit_time
+              const visitDateStr = visit.visit_date;
+              const visitTimeStr = visitTime;
+              
+              // Handle different date formats
+              if (visitDateStr.includes('T')) {
+                // Already ISO format
+                visitDateTime = new Date(visitDateStr);
+              } else {
+                // Combine date and time
+                visitDateTime = new Date(`${visitDateStr}T${visitTimeStr}`);
+              }
+              
+              // Check if date is valid
+              if (isNaN(visitDateTime.getTime())) {
+                // Fallback to created_at if visit_date is invalid
+                visitDateTime = new Date(visit.created_at || visit.updated_at);
+              }
+            } catch (error) {
+              // Fallback to created_at
+              visitDateTime = new Date(visit.created_at || visit.updated_at);
+            }
+            
+            const waitTimeMinutes = Math.floor((currentTime.getTime() - visitDateTime.getTime()) / (1000 * 60));
+            let waitTime = Math.max(0, waitTimeMinutes);
+            
+            // Handle NaN case
+            if (isNaN(waitTime)) {
+              waitTime = 0;
+            }
+            
+            // Debug logging
+            console.log('🕒 Wait Time Calculation:', {
+              visitNumber: visit.visit_number,
+              visitDate: visit.visit_date,
+              visitTime: visit.visit_time,
+              visitDateTime: visitDateTime,
+              currentTime: currentTime,
+              waitTimeMinutes: waitTimeMinutes,
+              waitTime: waitTime
+            });
+            
             const queueItem = {
               id: visit.id,
               queueNumber: (visit.visit_number as string) || `Q${visit.id.slice(-4)}`,
-              patientName: 'ไม่ระบุ', // Will be populated from patient data
+              patientName: `${patientName} (${hospitalNumber})`,
               status: visit.status === 'completed' ? 'completed' as const : 
                       visit.status === 'in_progress' ? 'in_progress' as const : 'waiting' as const,
-              department: 'ไม่ระบุ', // Will be populated from department data
-              waitTime: 15, // Default 15 minutes
+              department: department,
+              waitTime: waitTime,
               priority: visit.priority || 'normal'
             };
             return queueItem;
@@ -193,53 +301,29 @@ export default function EMRDashboard() {
           return null;
         })
         .filter((item): item is NonNullable<typeof item> => item !== null);
-      // If no active queues, show completed visits as queue items
-      if (queueData.length === 0) {
-        const completedQueues = visitsData
-          .filter(visit => {
-            // Type guard to check if it's a MedicalVisit
-            if ('visit_date' in visit && 'status' in visit) {
-              const isToday = (visit.visit_date && visit.visit_date.startsWith(today)) || 
-                             (visit.created_at && visit.created_at.startsWith(today));
-              return visit.status === 'completed' && isToday;
-            }
-            return false;
-          })
-          .slice(0, 3)
-          .map(visit => {
-            // Type guard to ensure it's a MedicalVisit
-            if ('visitNumber' in visit && 'status' in visit) {
-              return {
-                id: visit.id,
-                queueNumber: visit.visitNumber || `Q${visit.id.slice(-4)}`,
-                patientName: 'ไม่ระบุ', // Will be populated from patient data
-                status: 'completed' as const,
-                department: 'ไม่ระบุ', // Will be populated from department data
-                waitTime: 0,
-                priority: visit.priority || 'normal'
-              };
-            }
-            return null;
-          })
-          .filter((item): item is NonNullable<typeof item> => item !== null);
-        
-        queueData.push(...completedQueues);
-      }
+      
+      console.log('📊 Queue Data:', queueData);
       setQueues(queueData);
 
       // Generate recent activities from real data
       const activities: RecentActivity[] = [];
       
-      // Add visit activities
+      // Add visit activities for this doctor
       visitsData.slice(0, 3).forEach(visit => {
         // Type guard to check if it's a MedicalVisit
         if ('visit_date' in visit && 'status' in visit) {
+          // Get patient name from visit data directly
+          const patientName = visit.patient?.name || 'ไม่ระบุ';
+          const hospitalNumber = visit.patient?.hospital_number || 'ไม่ระบุ';
+          const visitType = visit.visit_type === 'walk_in' ? 'มาโดยไม่นัด' : visit.visit_type === 'appointment' ? 'นัดหมาย' : visit.visit_type || 'ไม่ระบุ';
+          const priority = visit.priority === 'normal' ? 'ปกติ' : visit.priority === 'urgent' ? 'ด่วน' : visit.priority === 'high' ? 'สูง' : visit.priority === 'low' ? 'ต่ำ' : visit.priority === 'emergency' ? 'ฉุกเฉิน' : visit.priority || 'ไม่ระบุ';
+          
           activities.push({
             id: `visit-${visit.id}`,
             type: 'visit' as const,
-            description: `ผู้ป่วย ไม่ระบุ ${visit.status === 'completed' ? 'เสร็จสิ้นการรักษา' : visit.status === 'in_progress' ? 'กำลังรับการรักษา' : 'รอการรักษา'}`,
+            description: `การรักษา: ${patientName} (${hospitalNumber}) - ${visit.visit_number || 'ไม่ระบุ'} | ${visitType} | ${priority} | ${visit.status === 'completed' ? 'เสร็จสิ้น' : visit.status === 'in_progress' ? 'กำลังดำเนินการ' : 'รอการรักษา'}`,
             timestamp: visit.updated_at || visit.created_at || new Date().toISOString(),
-            user: 'แพทย์',
+            user: user?.firstName || 'แพทย์',
             status: visit.status === 'completed' ? 'success' as const : visit.status === 'in_progress' ? 'warning' as const : 'error' as const
           });
         }
@@ -285,12 +369,12 @@ export default function EMRDashboard() {
       
       // Add patient-related alerts based on real data
       if (totalPatientsCount > 0) {
-        // Info about total patients
+        // Info about total patients for this doctor
         alertsData.push({
           id: '1',
           type: 'info',
-          title: 'ข้อมูลผู้ป่วย',
-          message: `พบผู้ป่วยทั้งหมด ${totalPatientsCount} รายในระบบ`,
+          title: 'ข้อมูลผู้ป่วยของคุณ',
+          message: `คุณมีผู้ป่วยทั้งหมด ${totalPatientsCount} ราย`,
           timestamp: new Date().toISOString(),
           isRead: false
         });
@@ -301,7 +385,7 @@ export default function EMRDashboard() {
             id: '2',
             type: 'warning',
             title: 'ผู้ป่วยรอการรักษา',
-            message: `มีผู้ป่วย ${activeQueueCount} รายรอการรักษา`,
+            message: `มีผู้ป่วย ${activeQueueCount} รายรอการรักษาจากคุณ`,
             timestamp: new Date().toISOString(),
             isRead: false
           });
@@ -311,21 +395,21 @@ export default function EMRDashboard() {
         if (completedVisitsCount > 0) {
           alertsData.push({
             id: '3',
-            type: 'info',
+            type: 'success',
             title: 'การรักษาเสร็จสิ้น',
-            message: `เสร็จสิ้นการรักษา ${completedVisitsCount} รายวันนี้`,
+            message: `คุณเสร็จสิ้นการรักษา ${completedVisitsCount} ราย`,
             timestamp: new Date().toISOString(),
             isRead: false
           });
         }
 
-        // Add alerts for new registrations
+        // Add alerts for new visits today
         if (todayPatientsCount > 0) {
           alertsData.push({
             id: '4',
             type: 'info',
-            title: 'ลงทะเบียนใหม่',
-            message: `มีผู้ป่วยลงทะเบียนใหม่ ${todayPatientsCount} รายวันนี้`,
+            title: 'การรักษาวันนี้',
+            message: `คุณมีการรักษา ${todayPatientsCount} รายวันนี้`,
             timestamp: new Date().toISOString(),
             isRead: false
           });
@@ -337,7 +421,7 @@ export default function EMRDashboard() {
             id: '5',
             type: 'critical',
             title: 'คิวรอมาก',
-            message: `มีคิวรอ ${activeQueueCount} คิว ควรเพิ่มแพทย์`,
+            message: `คุณมีคิวรอ ${activeQueueCount} คิว ควรเร่งดำเนินการ`,
             timestamp: new Date().toISOString(),
             isRead: false
           });
@@ -346,9 +430,9 @@ export default function EMRDashboard() {
         if (todayPatientsCount === 0) {
           alertsData.push({
             id: '6',
-            type: 'warning',
-            title: 'ไม่มีผู้ป่วยใหม่',
-            message: 'วันนี้ยังไม่มีผู้ป่วยลงทะเบียนใหม่',
+            type: 'info',
+            title: 'ไม่มีการรักษาวันนี้',
+            message: 'วันนี้คุณยังไม่มีการรักษาผู้ป่วย',
             timestamp: new Date().toISOString(),
             isRead: false
           });
@@ -360,7 +444,7 @@ export default function EMRDashboard() {
             id: '7',
             type: 'info',
             title: 'นัดหมายถัดไป',
-            message: `มีนัดหมาย ${upcomingAppointmentsCount} รายการ`,
+            message: `คุณมีนัดหมาย ${upcomingAppointmentsCount} รายการ`,
             timestamp: new Date().toISOString(),
             isRead: false
           });
@@ -369,9 +453,9 @@ export default function EMRDashboard() {
         // No patients alert
         alertsData.push({
           id: 'no-patients',
-          type: 'warning',
+          type: 'info',
           title: 'ไม่มีข้อมูลผู้ป่วย',
-          message: 'ยังไม่มีผู้ป่วยในระบบ กรุณาลงทะเบียนผู้ป่วยใหม่',
+          message: 'คุณยังไม่มีผู้ป่วยในระบบ',
           timestamp: new Date().toISOString(),
           isRead: false
         });
@@ -383,7 +467,7 @@ export default function EMRDashboard() {
     } catch (err: any) {
       console.error('❌ Error loading dashboard data:', err);
       logger.error('❌ Error loading dashboard data:', err);
-      setError(err.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูลแดชบอร์ด');
+      setError(`เกิดข้อผิดพลาดในการโหลดข้อมูลแดชบอร์ด: ${err.message || 'Unknown error'}`);
       
       // Fallback to basic stats
       setStats({
@@ -402,17 +486,27 @@ export default function EMRDashboard() {
   }, [isAuthenticated, user?.firstName, user?.thaiName]);
 
   useEffect(() => {
+    console.log('🔍 useEffect triggered');
+    console.log('🔍 isAuthenticated:', isAuthenticated);
+    console.log('🔍 user:', user);
+    console.log('🔍 selectedTimeRange:', selectedTimeRange);
+    
     if (isAuthenticated) {
+      console.log('✅ Calling loadDashboardData');
       loadDashboardData();
+    } else {
+      console.log('❌ Not authenticated, not calling loadDashboardData');
     }
   }, [selectedTimeRange, isAuthenticated, loadDashboardData]);
 
   //  logging for stats changes
   useEffect(() => {
+    console.log('📊 Stats changed:', stats);
   }, [stats]);
 
   //  logging for loading state
   useEffect(() => {
+    console.log('⏳ Loading state changed:', isLoading);
   }, [isLoading]);
 
   const getStatusColor = (status: string) => {
@@ -424,6 +518,26 @@ export default function EMRDashboard() {
       case 'urgent': return 'text-orange-600 bg-orange-100';
       case 'normal': return 'text-gray-600 bg-gray-100';
       default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const handleCompleteVisit = async (visitId: string) => {
+    try {
+      logger.info('Completing visit:', visitId);
+      
+      const response = await VisitService.completeVisit(visitId);
+      
+      if (response.statusCode === 200) {
+        logger.info('Visit completed successfully');
+        // Reload dashboard data to reflect the change
+        await loadDashboardData();
+      } else {
+        logger.error('Failed to complete visit:', response.error);
+        alert('เกิดข้อผิดพลาดในการปิดการรักษา');
+      }
+    } catch (error) {
+      logger.error('Error completing visit:', error);
+      alert('เกิดข้อผิดพลาดในการปิดการรักษา');
     }
   };
 
@@ -654,26 +768,82 @@ export default function EMRDashboard() {
               </Link>
             </div>
             <div className="space-y-2 md:space-y-3">
-              {queues.map((queue) => (
-                <div key={queue.id} className="flex items-center justify-between p-2 md:p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-2 md:space-x-3 flex-1 min-w-0">
-                    <div className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(queue.priority)} flex-shrink-0`}>
+              {queues.filter(queue => queue.status === 'in_progress').map((queue) => (
+                <div key={queue.id} className="flex items-center justify-between p-3 md:p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex items-center space-x-3 md:space-x-4 flex-1 min-w-0">
+                    <div className={`px-3 py-2 rounded-lg text-sm font-bold ${getStatusColor(queue.priority)} flex-shrink-0`}>
                       {queue.queueNumber}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900 text-sm md:text-base truncate">{queue.patientName}</p>
-                      <p className="text-xs md:text-sm text-gray-600 truncate">{queue.department}</p>
+                      <p className="font-semibold text-gray-900 text-sm md:text-base truncate">{queue.patientName}</p>
+                      <p className="text-xs md:text-sm text-gray-600 truncate">แผนก: {queue.department}</p>
+                      <p className="text-xs text-gray-500 truncate">ความสำคัญ: {queue.priority === 'normal' ? 'ปกติ' : queue.priority === 'urgent' ? 'ด่วน' : queue.priority === 'high' ? 'สูง' : queue.priority === 'low' ? 'ต่ำ' : queue.priority === 'emergency' ? 'ฉุกเฉิน' : queue.priority}</p>
                     </div>
                   </div>
-                  <div className="text-right flex-shrink-0 ml-2">
-                    <div className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(queue.status)}`}>
-                      {queue.status === 'waiting' ? 'รอตรวจ' : 
-                       queue.status === 'in_progress' ? 'กำลังตรวจ' : 'เสร็จสิ้น'}
+                  <div className="text-right flex-shrink-0 ml-3">
+                    <div className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(queue.status)}`}>
+                      กำลังตรวจ
                     </div>
                     <p className="text-xs text-gray-500 mt-1">รอ {queue.waitTime} นาที</p>
+                    <button
+                      onClick={() => handleCompleteVisit(queue.id)}
+                      className="mt-2 px-3 py-1 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-colors font-medium"
+                    >
+                      เสร็จสิ้น
+                    </button>
                   </div>
                 </div>
               ))}
+              {queues.filter(queue => queue.status === 'in_progress').length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <Activity className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                  <p>ไม่มีคิวที่กำลังดำเนินการ</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Waiting Queue */}
+          <div className="xl:col-span-2 bg-white rounded-lg shadow-sm p-4 md:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 space-y-2 sm:space-y-0">
+              <h2 className="text-base md:text-lg font-semibold text-gray-900">คิวรอตรวจ</h2>
+              <Link href="/emr/checkin" className="text-blue-600 hover:text-blue-800 text-sm flex items-center">
+                ดูทั้งหมด <ArrowRight className="h-4 w-4 ml-1" />
+              </Link>
+            </div>
+            <div className="space-y-2 md:space-y-3">
+              {queues.filter(queue => queue.status === 'waiting').map((queue) => (
+                <div key={queue.id} className="flex items-center justify-between p-3 md:p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <div className="flex items-center space-x-3 md:space-x-4 flex-1 min-w-0">
+                    <div className={`px-3 py-2 rounded-lg text-sm font-bold ${getStatusColor(queue.priority)} flex-shrink-0`}>
+                      {queue.queueNumber}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-gray-900 text-sm md:text-base truncate">{queue.patientName}</p>
+                      <p className="text-xs md:text-sm text-gray-600 truncate">แผนก: {queue.department}</p>
+                      <p className="text-xs text-gray-500 truncate">ความสำคัญ: {queue.priority === 'normal' ? 'ปกติ' : queue.priority === 'urgent' ? 'ด่วน' : queue.priority === 'high' ? 'สูง' : queue.priority === 'low' ? 'ต่ำ' : queue.priority === 'emergency' ? 'ฉุกเฉิน' : queue.priority}</p>
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0 ml-3">
+                    <div className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(queue.status)}`}>
+                      รอตรวจ
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">รอ {queue.waitTime} นาที</p>
+                    <button
+                      onClick={() => handleCompleteVisit(queue.id)}
+                      className="mt-2 px-3 py-1 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-colors font-medium"
+                    >
+                      เสร็จสิ้น
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {queues.filter(queue => queue.status === 'waiting').length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <Clock className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                  <p>ไม่มีคิวรอตรวจ</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -722,7 +892,7 @@ export default function EMRDashboard() {
             </div>
             <div className="space-y-4">
               {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-3">
+                <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                   <div className={`p-2 rounded-lg ${
                     activity.status === 'success' ? 'bg-green-100' :
                     activity.status === 'warning' ? 'bg-yellow-100' : 'bg-red-100'
@@ -730,9 +900,11 @@ export default function EMRDashboard() {
                     {getActivityIcon(activity.type)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900">{activity.description}</p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <p className="text-xs text-gray-500">{activity.user}</p>
+                    <p className="text-sm text-gray-900 font-medium">{activity.description}</p>
+                    <div className="flex items-center space-x-2 mt-2">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {activity.user}
+                      </span>
                       <span className="text-gray-300">•</span>
                       <p className="text-xs text-gray-500">{formatTime(activity.timestamp)}</p>
                     </div>

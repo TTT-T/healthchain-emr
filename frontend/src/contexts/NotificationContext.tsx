@@ -61,12 +61,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         const response = await apiClient.getPatientNotifications(patientId);
         
         if (response.statusCode === 200 && response.data) {
-          // Count unread notifications
-          const notifications = (response.data as any)?.notifications || [];
-          
-          const unreadCount = notifications.filter((notif: any) => 
-            !notif.read_at
-          ).length;
+          // Use unread_count from API response instead of counting manually
+          const responseData = response.data as any;
+          const unreadCount = responseData?.unread_count || 0;
           setNotificationCount(unreadCount);
         } else if (response.statusCode === 404) {
           // Patient record not found - this is expected for users who haven't registered in EMR yet

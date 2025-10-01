@@ -62,6 +62,12 @@ interface CheckInData {
   followUpRequired: boolean;
   followUpDate: string;
   followUpNotes: string;
+  // เพิ่มฟิลด์สำหรับข้อมูลทางการแพทย์
+  diagnosis: string;
+  treatmentPlan: string;
+  physicalExamination: string;
+  doctorNotes: string;
+  recommendations: string;
 }
 
 export default function CheckIn() {
@@ -91,7 +97,13 @@ export default function CheckIn() {
     assignedNurse: "",
     followUpRequired: false,
     followUpDate: "",
-    followUpNotes: ""
+    followUpNotes: "",
+    // เพิ่มฟิลด์สำหรับข้อมูลทางการแพทย์
+    diagnosis: "",
+    treatmentPlan: "",
+    physicalExamination: "",
+    doctorNotes: "",
+    recommendations: ""
   });
 
   const [showCalendarModal, setShowCalendarModal] = useState(false);
@@ -331,8 +343,14 @@ export default function CheckIn() {
         priority: checkInData.priority,
         attendingDoctorId: checkInData.assignedDoctor,
         followUpRequired: checkInData.followUpRequired,
-        followUpDate: checkInData.followUpDate || null,
-        followUpNotes: checkInData.followUpNotes || null,
+        followUpDate: checkInData.followUpDate || undefined,
+        followUpNotes: checkInData.followUpNotes || undefined,
+        // เพิ่มฟิลด์ข้อมูลทางการแพทย์
+        diagnosis: checkInData.diagnosis || undefined,
+        treatmentPlan: checkInData.treatmentPlan || undefined,
+        physicalExamination: checkInData.physicalExamination || undefined,
+        doctorNotes: checkInData.doctorNotes || undefined,
+        recommendations: checkInData.recommendations || undefined,
       };
       
       console.log('📤 Sending visit data:', visitData);
@@ -397,7 +415,13 @@ export default function CheckIn() {
       assignedNurse: "",
       followUpRequired: false,
       followUpDate: "",
-      followUpNotes: ""
+      followUpNotes: "",
+      // เพิ่มฟิลด์สำหรับข้อมูลทางการแพทย์
+      diagnosis: "",
+      treatmentPlan: "",
+      physicalExamination: "",
+      doctorNotes: "",
+      recommendations: ""
     });
     setError(null);
     setSuccess(null);
@@ -1060,6 +1084,78 @@ export default function CheckIn() {
                   rows={2}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+
+              {/* ข้อมูลทางการแพทย์เพิ่มเติม */}
+              <div className="border-t pt-4">
+                <h4 className="text-md font-semibold text-gray-800 mb-3">ข้อมูลทางการแพทย์</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      การวินิจฉัย
+                    </label>
+                    <textarea
+                      value={checkInData.diagnosis}
+                      onChange={(e) => handleInputChange('diagnosis', e.target.value)}
+                      placeholder="ระบุการวินิจฉัยเบื้องต้น"
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      แผนการรักษา
+                    </label>
+                    <textarea
+                      value={checkInData.treatmentPlan}
+                      onChange={(e) => handleInputChange('treatmentPlan', e.target.value)}
+                      placeholder="ระบุแผนการรักษา"
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    การตรวจร่างกาย
+                  </label>
+                  <textarea
+                    value={checkInData.physicalExamination}
+                    onChange={(e) => handleInputChange('physicalExamination', e.target.value)}
+                    placeholder="ระบุผลการตรวจร่างกาย"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    หมายเหตุแพทย์
+                  </label>
+                  <textarea
+                    value={checkInData.doctorNotes}
+                    onChange={(e) => handleInputChange('doctorNotes', e.target.value)}
+                    placeholder="หมายเหตุเพิ่มเติมจากแพทย์"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    คำแนะนำ
+                  </label>
+                  <textarea
+                    value={checkInData.recommendations}
+                    onChange={(e) => handleInputChange('recommendations', e.target.value)}
+                    placeholder="คำแนะนำสำหรับผู้ป่วย"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
 
               <div className="border-t pt-4">

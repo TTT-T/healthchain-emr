@@ -671,12 +671,12 @@ class APIClient {
       } else if (error?.response?.status === 404 && config.url?.includes('/appointments')) {
         // Don't log 404 errors for appointments as they are expected for new patients
         logger.info('🔍 Expected 404 for appointments (patient has no appointments):', config.url);
-        // Return empty response for expected 404
+        // Return empty response with 200 status for expected 404
         return {
           data: [] as T,
           meta: null,
           error: null,
-          statusCode: 404
+          statusCode: 200
         } as APIResponse<T>;
       } else if (error?.response?.status === 200) {
         // Don't log errors for successful responses (status 200)
@@ -701,12 +701,12 @@ class APIClient {
         // Check if it's a 404 error for appointments - don't log these as they are expected
         if ((error?.response?.status === 404 || error?.message?.includes('404')) && config.url?.includes('/appointments')) {
           logger.info('🔍 Expected 404 for appointments (patient has no appointments):', config.url);
-          // Return empty response for expected 404
+          // Return empty response with 200 status for expected 404
           return {
             data: [] as T,
             meta: null,
             error: null,
-            statusCode: 404
+            statusCode: 200
           } as APIResponse<T>;
         }
         
@@ -749,6 +749,13 @@ class APIClient {
    * Generic POST method
    */
   public async post<T>(url: string, data?: unknown): Promise<APIResponse<T>> {
+    logger.info('API Client POST request', {
+      url,
+      baseURL: this.axiosInstance.defaults.baseURL,
+      fullURL: `${this.axiosInstance.defaults.baseURL}${url}`,
+      data: data ? 'present' : 'none'
+    });
+    
     return this.request<T>({
       method: 'POST',
       url,
@@ -1744,7 +1751,7 @@ class APIClient {
    */
   async completeVisit(id: string): Promise<APIResponse<MedicalVisit>> {
     return this.request<MedicalVisit>({
-      method: 'PATCH',
+      method: 'POST',
       url: `/medical/visits/${id}/complete`
     });
   }

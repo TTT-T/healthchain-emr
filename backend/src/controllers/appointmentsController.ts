@@ -383,7 +383,11 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
       can_cancel = true
     } = req.body;
 
-    const userId = (req as any).user.id;
+    // Use description as reason if reason is not provided
+    const reason = description || 'นัดหมาย';
+
+    const user = (req as any).user;
+    const userId = user.id;
 
     // Validate patient exists
     const patientExists = await databaseManager.query(
@@ -416,13 +420,15 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
     }
 
     // Check for conflicting appointments
+    const startTime = new Date(`${appointment_date}T${appointment_time}`);
+    const endTime = new Date(startTime.getTime() + (duration_minutes * 60000));
+    
     const conflictingAppointment = await databaseManager.query(`
       SELECT id FROM appointments 
       WHERE doctor_id = $1 
-      AND appointment_date = $2 
-      AND appointment_time = $3 
+      AND start_time = $2 
       AND status IN ('scheduled', 'confirmed')
-    `, [doctor_id, appointment_date, appointment_time]);
+    `, [doctor_id, startTime]);
 
     if (conflictingAppointment.rows.length > 0) {
       return res.status(409).json({
@@ -433,57 +439,44 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
       });
     }
 
-    // Create appointment
-    const appointmentId = uuidv4();
-
-    // Format location as JSON if it's a string
-    const locationData = typeof location === 'string' 
-      ? JSON.stringify({ name: location, type: 'room' })
-      : location ? JSON.stringify(location) : JSON.stringify({ name: 'ห้องตรวจ', type: 'room' });
-
-    // Format preparations as array if it's a string
-    const preparationsData = typeof preparations === 'string' 
-      ? [preparations]
-      : Array.isArray(preparations) ? preparations : [];
-
-    // Map Thai appointment_type to English values for database constraint
-    const appointmentTypeMap: { [key: string]: string } = {
-      'ตรวจสุขภาพ': 'consultation',
-      'ตรวจติดตาม': 'follow_up',
-      'ตรวจรักษา': 'procedure',
-      'ตรวจเลือด': '',
-      'ฉุกเฉิน': 'emergency',
-      'ปรึกษา': 'consultation',
-      'นัดหมาย': 'consultation'
+    // Map Thai appointment_type to type_id
+    const appointmentTypeMap: { [key: string]: number } = {
+      'ตรวจสุขภาพ': 1,
+      'ตรวจติดตาม': 2,
+      'ตรวจรักษา': 3,
+      'ตรวจเลือด': 1,
+      'ฉุกเฉิน': 4,
+      'ปรึกษา': 1,
+      'นัดหมาย': 1
     };
 
-    const mappedAppointmentType = appointmentTypeMap[appointment_type] || 'consultation';
+    const typeId = appointmentTypeMap[appointment_type] || 1;
 
-    await databaseManager.query(`
+    // Insert appointment and get the generated ID
+    const insertResult = await databaseManager.query(`
       INSERT INTO appointments (
-        id, patient_id, doctor_id, title, description, appointment_type,
-        status, priority, appointment_date, appointment_time, duration_minutes,
-        location, notes, preparations, follow_up_required, follow_up_notes,
-        can_reschedule, can_cancel, created_by
+        patient_id, doctor_id, type_id, start_time, end_time,
+        status, reason, notes
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id
     `, [
-      appointmentId, patientId, doctor_id, title, description, mappedAppointmentType,
-      'scheduled', priority, appointment_date, appointment_time, duration_minutes,
-      locationData, notes, preparationsData, follow_up_required, follow_up_notes,
-      can_reschedule, can_cancel, userId
+      patientId, doctor_id, typeId, startTime, endTime,
+      'scheduled', reason, notes
     ]);
+
+    const appointmentId = insertResult.rows[0].id;
 
     // Get created appointment
     const createdAppointment = await databaseManager.query(`
       SELECT 
-        a.id, a.title, a.description, a.appointment_type, a.status, a.priority,
-        a.appointment_date, a.appointment_time, a.duration_minutes, a.location,
-        a.notes, a.preparations, a.follow_up_required, a.follow_up_notes,
-        a.can_reschedule, a.can_cancel, a.created_at,
-        u.first_name as doctor_first_name, u.last_name as doctor_last_name
+        a.id, a.patient_id, a.doctor_id, a.type_id, a.start_time, a.end_time,
+        a.status, a.reason, a.notes, a.created_at,
+        u.first_name as doctor_first_name, u.last_name as doctor_last_name,
+        at.name as appointment_type_name
       FROM appointments a
       LEFT JOIN users u ON a.doctor_id = u.id
+      LEFT JOIN appointment_types at ON a.type_id = at.id
       WHERE a.id = $1
     `, [appointmentId]);
 
@@ -508,14 +501,14 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
           patientPhone: patient.phone,
           patientEmail: patient.email,
           notificationType: 'appointment_created',
-          title: `นัดหมายใหม่: ${title}`,
-          message: `คุณ ${patient.thai_name || patient.first_name} มีนัดหมายใหม่ "${title}" กับ ${createdAppointment.rows[0].doctor_first_name} ${createdAppointment.rows[0].doctor_last_name} ในวันที่ ${appointment_date} เวลา ${appointment_time}`,
+          title: `นัดหมายใหม่: ${createdAppointment.rows[0].appointment_type_name}`,
+          message: `คุณ ${patient.thai_name || patient.first_name} มีนัดหมายใหม่ "${createdAppointment.rows[0].appointment_type_name}" กับ ${createdAppointment.rows[0].doctor_first_name} ${createdAppointment.rows[0].doctor_last_name} ในวันที่ ${appointment_date} เวลา ${appointment_time}`,
           recordType: 'appointment',
-          recordId: appointmentId,
+          recordId: appointmentId.toString(), // แปลง integer เป็น string
           createdBy: user?.id,
           createdByName: user?.thai_name || `${user?.first_name} ${user?.last_name}`,
           metadata: {
-            appointmentType: appointment_type,
+            appointmentType: createdAppointment.rows[0].appointment_type_name,
             appointmentDate: appointment_date,
             appointmentTime: appointment_time,
             doctorName: `${createdAppointment.rows[0].doctor_first_name} ${createdAppointment.rows[0].doctor_last_name}`,
@@ -529,15 +522,26 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
       // ไม่ throw error เพื่อไม่ให้กระทบการสร้างนัดหมาย
     }
 
+    const appointment = createdAppointment.rows[0];
     res.status(201).json({
       data: {
-        appointment: {
-          ...createdAppointment.rows[0],
-          physician: {
-            name: `${createdAppointment.rows[0].doctor_first_name} ${createdAppointment.rows[0].doctor_last_name}`
-          }
-        },
-        message: 'Appointment created successfully'
+        id: appointment.id,
+        patientId: appointment.patient_id,
+        doctorId: appointment.doctor_id,
+        appointmentType: appointment.appointment_type_name,
+        appointmentDate: appointment_date,
+        appointmentTime: appointment_time,
+        duration: duration_minutes,
+        reason: appointment.reason,
+        notes: appointment.notes,
+        status: appointment.status,
+        priority: priority,
+        location: location,
+        createdBy: user?.thai_name || `${user?.first_name} ${user?.last_name}`,
+        created_at: appointment.created_at,
+        doctor: {
+          thaiName: `${appointment.doctor_first_name} ${appointment.doctor_last_name}`
+        }
       },
       meta: {
         timestamp: new Date().toISOString(),

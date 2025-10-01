@@ -524,8 +524,8 @@ export default function RegisterPatient() {
     const mappedData: PatientData = {
       // ข้อมูลชื่อ-นามสกุล
       title: searchResult.title || (searchResult.gender === 'male' ? 'นาย' : searchResult.gender === 'female' ? 'นางสาว' : ''),
-      thaiFirstName: searchResult.thaiName || searchResult.thai_first_name || "",
-      thaiLastName: searchResult.thai_last_name || "",
+      thaiFirstName: searchResult.thaiName || searchResult.thai_first_name || searchResult.thaiFirstName || "",
+      thaiLastName: searchResult.thai_last_name || searchResult.thaiLastName || "",
       englishFirstName: searchResult.firstName || "",
       englishLastName: searchResult.lastName || "",
       
@@ -777,7 +777,7 @@ export default function RegisterPatient() {
         patientPhone: patient.phone || formData.phone || '',
         patientEmail: patient.email || formData.email || '',
         recordType: 'patient_registration',
-        recordId: patient.id || patient.hn || '',
+        recordId: patient.id || '',
         recordTitle: 'ลงทะเบียนผู้ป่วยใหม่',
         recordDescription: `ยินดีต้อนรับ! คุณได้ลงทะเบียนเป็นผู้ป่วยของโรงพยาบาลเรียบร้อยแล้ว หมายเลข HN: ${patient.hn || patient.hospitalNumber}`,
         recordDetails: {
@@ -1102,7 +1102,7 @@ export default function RegisterPatient() {
                         'text-yellow-700'
                       } space-y-1`}>
                         <p><strong>คำนำหน้าชื่อ:</strong> {user.title || (user.gender === 'male' ? 'นาย' : user.gender === 'female' ? 'นางสาว' : 'ไม่ระบุ')}</p>
-                        <p><strong>ชื่อไทย:</strong> {user.thaiFirstName || 'ไม่ระบุ'} {user.thaiLastName || ''}</p>
+                        <p><strong>ชื่อไทย:</strong> {user.thaiName || user.thaiFirstName || 'ไม่ระบุ'} {user.thaiLastName || ''}</p>
                         <p><strong>ชื่ออังกฤษ:</strong> {user.firstName || 'ไม่ระบุ'} {user.lastName || ''}</p>
                         <p><strong>เพศ:</strong> {user.gender === 'male' ? 'ชาย' : user.gender === 'female' ? 'หญิง' : user.gender || 'ไม่ระบุ'}</p>
                         <p><strong>บทบาท:</strong> {user.role === 'patient' ? 'ผู้ป่วย' : user.role === 'doctor' ? 'แพทย์' : user.role === 'nurse' ? 'พยาบาล' : user.role === 'admin' ? 'ผู้ดูแลระบบ' : user.role || 'ไม่ระบุ'}</p>
@@ -1223,7 +1223,7 @@ export default function RegisterPatient() {
                 </button>
               </div>
               <div className="mt-2 text-sm text-blue-700">
-                <p><strong>ชื่อไทย:</strong> {selectedUserData.thaiFirstName || 'ไม่ระบุ'} {selectedUserData.thaiLastName || ''}</p>
+                <p><strong>ชื่อไทย:</strong> {selectedUserData.thaiName || selectedUserData.thaiFirstName || 'ไม่ระบุ'} {selectedUserData.thaiLastName || ''}</p>
                 <p><strong>ชื่ออังกฤษ:</strong> {selectedUserData.firstName || 'ไม่ระบุ'} {selectedUserData.lastName || ''}</p>
                 <p><strong>อีเมล:</strong> {selectedUserData.email}</p>
                 <p><strong>โทรศัพท์:</strong> {selectedUserData.phone}</p>

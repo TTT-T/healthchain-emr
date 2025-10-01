@@ -4,6 +4,7 @@ import { Search, Stethoscope, CheckCircle, AlertCircle, User, Heart, Activity, F
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientService } from '@/services/patientService';
 import { DoctorVisitService } from '@/services/doctorVisitService';
+import { VisitService } from '@/services/visitService';
 import { NotificationService } from '@/services/notificationService';
 import { PatientDocumentService } from '@/services/patientDocumentService';
 import { AIResearchDataService } from '@/services/aiResearchDataService';
@@ -298,6 +299,41 @@ export default function DoctorVisit() {
       setError("เกิดข้อผิดพลาดในการบันทึกการตรวจ");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleCompleteVisit = async (patientId: string) => {
+    try {
+      logger.info('Completing visit for patient:', patientId);
+      
+      // Find the active visit for this patient
+      const visitsResponse = await VisitService.getVisitsByPatient(patientId);
+      
+      if (visitsResponse.statusCode === 200 && visitsResponse.data && visitsResponse.data.length > 0) {
+        // Find the most recent active visit
+        const activeVisit = visitsResponse.data.find(v => 
+          v.status === 'in_progress' || v.status === 'checked_in'
+        );
+        
+        if (activeVisit) {
+          const response = await VisitService.completeVisit(activeVisit.id);
+          
+          if (response.statusCode === 200) {
+            logger.info('Visit completed successfully');
+            setSuccess("ปิดการรักษาสำเร็จ!\n\n✅ สถานะการรักษาได้ถูกอัปเดตเป็น 'เสร็จสิ้น' แล้ว");
+          } else {
+            logger.error('Failed to complete visit:', response.error);
+            setError('เกิดข้อผิดพลาดในการปิดการรักษา');
+          }
+        } else {
+          setError('ไม่พบการรักษาที่กำลังดำเนินการสำหรับผู้ป่วยนี้');
+        }
+      } else {
+        setError('ไม่พบข้อมูลการรักษาสำหรับผู้ป่วยนี้');
+      }
+    } catch (error) {
+      logger.error('Error completing visit:', error);
+      setError('เกิดข้อผิดพลาดในการปิดการรักษา');
     }
   };
 
@@ -997,8 +1033,8 @@ export default function DoctorVisit() {
                 </div>
               </div>
 
-              {/* Submit Button */}
-              <div className="flex justify-end">
+              {/* Submit Buttons */}
+              <div className="flex justify-end gap-3">
                 <button
                   onClick={handleSubmit}
                   disabled={isSubmitting || !doctorVisitData.chiefComplaint || !doctorVisitData.presentIllness || !doctorVisitData.diagnosis.primaryDiagnosis || !doctorVisitData.advice}
@@ -1007,6 +1043,17 @@ export default function DoctorVisit() {
                   <CheckCircle className="h-5 w-5" />
                   {isSubmitting ? "กำลังบันทึก..." : "บันทึกการตรวจ"}
                 </button>
+                
+                {selectedPatient && (
+                  <button
+                    onClick={() => handleCompleteVisit(selectedPatient.id)}
+                    disabled={isSubmitting}
+                    className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <CheckCircle className="h-5 w-5" />
+                    ปิดการรักษา
+                  </button>
+                )}
               </div>
             </div>
           )}

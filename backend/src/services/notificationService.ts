@@ -7,7 +7,7 @@ export interface PatientNotificationData {
   patientName: string;
   patientPhone?: string;
   patientEmail?: string;
-  notificationType: 'document_created' | 'record_updated' | 'appointment_created' | 'lab_result_ready' | 'prescription_ready' | 'history_taking_recorded' | 'queue_created' | 'vital_signs_recorded' | 'patient_registered';
+  notificationType: 'document_created' | 'record_updated' | 'appointment_created' | 'lab_result_ready' | 'prescription_ready' | 'history_taking_recorded' | 'queue_assigned' | 'vital_signs_recorded' | 'patient_registered';
   title: string;
   message: string;
   recordType?: string;
@@ -23,6 +23,7 @@ export class NotificationService {
    */
   static async sendPatientNotification(data: PatientNotificationData): Promise<void> {
     try {
+      console.log('🔔 NotificationService.sendPatientNotification called with:', data);
       logger.info('Sending patient notification', {
         patientId: data.patientId,
         patientHn: data.patientHn,
@@ -195,6 +196,9 @@ export class NotificationService {
       case 'patient_registered':
         return `🏥 ${hospitalName}\nลงทะเบียนสำเร็จ: ${data.title}\nยินดีต้อนรับคุณ ${data.patientName}\nเวลา: ${timestamp}`;
       
+      case 'queue_assigned':
+        return `🏥 ${hospitalName}\nได้รับหมายเลขคิว: ${data.title}\nสำหรับคุณ ${data.patientName}\nสร้างโดย: ${data.createdByName}\nเวลา: ${timestamp}`;
+      
       default:
         return `🏥 ${hospitalName}\n${data.title}\nสำหรับคุณ ${data.patientName}\nเวลา: ${timestamp}`;
     }
@@ -278,7 +282,8 @@ export class NotificationService {
       'prescription_ready': 'ยาเตรียมพร้อม',
       'history_taking_recorded': 'บันทึกประวัติ',
       'vital_signs_recorded': 'บันทึกสัญญาณชีพ',
-      'patient_registered': 'ลงทะเบียนผู้ป่วย'
+      'patient_registered': 'ลงทะเบียนผู้ป่วย',
+      'queue_assigned': 'ได้รับหมายเลขคิว'
     };
     
     return labels[type] || 'การแจ้งเตือน';

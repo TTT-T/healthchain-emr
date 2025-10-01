@@ -77,10 +77,14 @@ export default function Notifications() {
       
       if (response && response.statusCode === 200 && response.data) {
         // Extract notifications from the response data structure
-        const notificationsData = (response.data as any)?.notifications || [];
+        const responseData = response.data as any;
+        const notificationsData = responseData?.notifications || [];
         
         setNotifications(notificationsData);
-        logger.info('Notifications loaded successfully', { count: notificationsData.length });
+        logger.info('Notifications loaded successfully', { 
+          count: notificationsData.length,
+          unreadCount: responseData?.unread_count || 0
+        });
       } else {
         if (response && response.statusCode === 200) {
           // If status is 200 but no data, set empty notifications

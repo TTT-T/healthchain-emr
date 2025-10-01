@@ -7,6 +7,7 @@ import patientRoutes from './patients';
 import {
   getAllPatients,
   getPatientById,
+  getPatientByHn,
   getPatientByEmail,
   createPatient,
   updatePatient,
@@ -52,6 +53,13 @@ import {
   getPrescriptionById,
   updatePrescriptionStatus
 } from '../controllers/prescriptionsController';
+import {
+  getAllAppointments,
+  getPatientAppointments,
+  createPatientAppointment,
+  updatePatientAppointment,
+  cancelPatientAppointment
+} from '../controllers/appointmentsController';
 import {
   createHistoryTaking,
   getHistoryTakingByPatient,
@@ -213,6 +221,7 @@ router.use(authenticate);
 // Patient Management
 router.get('/patients', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAllPatients));
 router.get('/patients/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getPatientById));
+router.get('/patients/by-hn/:hn', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getPatientByHn));
 router.get('/patients/by-email/:email', authorize(['patient', 'doctor', 'nurse', 'admin']), asyncHandler(getPatientByEmail));
 // DISABLED: Use /api/patient-registration/register instead
 // router.post('/patients', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createPatient));
@@ -320,11 +329,12 @@ router.delete('/patients/:id/ai-research-data/:researchId', authorize(['doctor',
 
 // Appointments routes
 router.get('/appointments', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAllAppointments));
-// router.get('/patients/:patientId/appointments', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAppointmentsByPatient));
-// router.get('/doctors/:doctorId/appointments', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAppointmentsByDoctor));
-// router.get('/appointments/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAppointmentById));
-// router.put('/appointments/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(updateAppointment));
-// router.delete('/appointments/:id', authorize(['doctor', 'admin']), asyncHandler(deleteAppointment));
+
+// Patient Appointments routes (matching frontend API calls)
+router.get('/patients/:id/appointments', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(getPatientAppointments));
+router.post('/patients/:id/appointments', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(createPatientAppointment));
+router.put('/patients/:id/appointments/:appointmentId', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(updatePatientAppointment));
+router.delete('/patients/:id/appointments/:appointmentId', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(cancelPatientAppointment));
 
 // Documents routes
 router.post('/documents', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createDocument));

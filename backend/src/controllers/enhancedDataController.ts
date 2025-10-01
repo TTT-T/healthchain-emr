@@ -98,17 +98,16 @@ export const saveCriticalLabValues = async (req: Request, res: Response) => {
     // Insert critical lab values
     const result = await databaseManager.query(`
       INSERT INTO critical_lab_values (
-        patient_id, hba1c, fasting_insulin, c_peptide,
+        patient_id, test_date, fasting_glucose, hba1c, fasting_insulin, c_peptide,
         total_cholesterol, hdl_cholesterol, ldl_cholesterol, triglycerides,
-        bun, creatinine, egfr, alt, ast, alp, bilirubin,
-        tsh, t3, t4, crp, esr, vitamin_d, b12, folate,
-        iron, ferritin, uric_acid, test_date, created_by
+        bun, creatinine, alt, ast
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-        $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
       ) RETURNING *
     `, [
       patientId,
+      labValues.testDate || new Date(),
+      labValues.fastingGlucose || null,
       labValues.hba1c || null,
       labValues.fastingInsulin || null,
       labValues.cPeptide || null,
@@ -118,24 +117,8 @@ export const saveCriticalLabValues = async (req: Request, res: Response) => {
       labValues.triglycerides || null,
       labValues.bun || null,
       labValues.creatinine || null,
-      labValues.egfr || null,
       labValues.alt || null,
-      labValues.ast || null,
-      labValues.alp || null,
-      labValues.bilirubin || null,
-      labValues.tsh || null,
-      labValues.t3 || null,
-      labValues.t4 || null,
-      labValues.crp || null,
-      labValues.esr || null,
-      labValues.vitaminD || null,
-      labValues.b12 || null,
-      labValues.folate || null,
-      labValues.iron || null,
-      labValues.ferritin || null,
-      labValues.uricAcid || null,
-      labValues.testDate || new Date().toISOString().split('T')[0],
-      userId
+      labValues.ast || null
     ]);
 
     res.status(201).json({
@@ -231,35 +214,25 @@ export const saveDetailedNutrition = async (req: Request, res: Response) => {
     // Insert detailed nutrition
     const result = await databaseManager.query(`
       INSERT INTO detailed_nutrition (
-        patient_id, visit_id, daily_calorie_intake, carbohydrate_intake,
-        protein_intake, fat_intake, fiber_intake, sugar_intake, sodium_intake,
-        water_intake, meal_frequency, snacking_frequency, eating_out_frequency,
-        processed_food_consumption, organic_food_consumption, supplement_use,
-        alcohol_consumption, caffeine_consumption, assessment_date, created_by
+        patient_id, assessment_date, daily_calories, protein_grams,
+        carbohydrate_grams, fat_grams, fiber_grams, sugar_grams, sodium_mg,
+        water_intake_liters, meal_frequency, diet_quality_score
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
       ) RETURNING *
     `, [
       patientId,
-      nutritionData.visitId || null,
-      nutritionData.dailyCalorieIntake || null,
-      nutritionData.carbohydrateIntake || null,
-      nutritionData.proteinIntake || null,
-      nutritionData.fatIntake || null,
-      nutritionData.fiberIntake || null,
-      nutritionData.sugarIntake || null,
-      nutritionData.sodiumIntake || null,
-      nutritionData.waterIntake || null,
+      nutritionData.assessmentDate || new Date(),
+      nutritionData.dailyCalories || null,
+      nutritionData.proteinGrams || null,
+      nutritionData.carbohydrateGrams || null,
+      nutritionData.fatGrams || null,
+      nutritionData.fiberGrams || null,
+      nutritionData.sugarGrams || null,
+      nutritionData.sodiumMg || null,
+      nutritionData.waterIntakeLiters || null,
       nutritionData.mealFrequency || null,
-      nutritionData.snackingFrequency || null,
-      nutritionData.eatingOutFrequency || null,
-      nutritionData.processedFoodConsumption || null,
-      nutritionData.organicFoodConsumption || null,
-      nutritionData.supplementUse || null,
-      nutritionData.alcoholConsumption || null,
-      nutritionData.caffeineConsumption || null,
-      nutritionData.assessmentDate || new Date().toISOString().split('T')[0],
-      userId
+      nutritionData.dietQualityScore || null
     ]);
 
     res.status(201).json({
@@ -364,34 +337,22 @@ export const saveDetailedExercise = async (req: Request, res: Response) => {
     // Insert detailed exercise
     const result = await databaseManager.query(`
       INSERT INTO detailed_exercise (
-        patient_id, visit_id, exercise_type, exercise_duration, exercise_frequency,
-        exercise_intensity, mets, heart_rate_zones, vo2_max, strength_training,
-        flexibility_training, balance_training, sports_participation,
-        physical_activity_at_work, transportation_method, stairs_usage,
-        walking_steps, assessment_date, created_by
+        patient_id, assessment_date, exercise_type, duration_minutes,
+        intensity_level, frequency_per_week, calories_burned,
+        heart_rate_avg, heart_rate_max
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
+        $1, $2, $3, $4, $5, $6, $7, $8, $9
       ) RETURNING *
     `, [
       patientId,
-      exerciseData.visitId || null,
+      exerciseData.assessmentDate || new Date(),
       exerciseData.exerciseType || null,
-      exerciseData.exerciseDuration || null,
-      exerciseData.exerciseFrequency || null,
-      exerciseData.exerciseIntensity || null,
-      exerciseData.mets || null,
-      exerciseData.heartRateZones || null,
-      exerciseData.vo2Max || null,
-      exerciseData.strengthTraining || null,
-      exerciseData.flexibilityTraining || null,
-      exerciseData.balanceTraining || null,
-      exerciseData.sportsParticipation || null,
-      exerciseData.physicalActivityAtWork || null,
-      exerciseData.transportationMethod || null,
-      exerciseData.stairsUsage || null,
-      exerciseData.walkingSteps || null,
-      exerciseData.assessmentDate || new Date().toISOString().split('T')[0],
-      userId
+      exerciseData.durationMinutes || null,
+      exerciseData.intensityLevel || null,
+      exerciseData.frequencyPerWeek || null,
+      exerciseData.caloriesBurned || null,
+      exerciseData.heartRateAvg || null,
+      exerciseData.heartRateMax || null
     ]);
 
     res.status(201).json({

@@ -18,6 +18,7 @@ interface MedicalRecord {
   recommendations: string;
   follow_up_date: string;
   visit_status: string;
+  status: string;
   created_at: string;
   updated_at: string;
   lab_results?: any[];
@@ -33,6 +34,20 @@ export default function Records() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
+
+  // Helper function to format date and time correctly
+  const formatVisitDateTime = (visitDate: string, visitTime: string) => {
+    const date = new Date(visitDate);
+    const formattedDate = date.toLocaleDateString('th-TH', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return {
+      date: formattedDate,
+      time: visitTime
+    };
+  };
 
   const fetchRecords = useCallback(async () => {
     try {
@@ -133,16 +148,20 @@ export default function Records() {
             <div class="header">
               <h1>ประวัติการรักษา</h1>
               <h2>การรักษาครั้งที่ ${record.visitNumber}</h2>
+              <p>หมายเลข Visit: ${record.visit_number}</p>
             </div>
             
             <div class="section">
               <h3>ข้อมูลการรักษา</h3>
               <div class="grid">
                 <div>
-                  <p><span class="label">วันที่:</span> <span class="value">${new Date(record.visit_date).toLocaleString('th-TH')}</span></p>
+                  <p><span class="label">วันที่:</span> <span class="value">${formatVisitDateTime(record.visit_date, record.visit_time).date}</span></p>
                   <p><span class="label">เวลา:</span> <span class="value">${record.visit_time}</span></p>
                   <p><span class="label">ประเภท:</span> <span class="value">${record.visit_type}</span></p>
-                  <p><span class="label">สถานะ:</span> <span class="value">${getStatusText(record.visit_status)}</span></p>
+                  <p><span class="label">สถานะ:</span> <span class="value">${getStatusText(record.status || record.visit_status)}</span></p>
+                  <p><span class="label">แพทย์:</span> <span class="value">${record.doctor_first_name && record.doctor_last_name ? `${record.doctor_first_name} ${record.doctor_last_name}` : 'ไม่ระบุ'}</span></p>
+                  <p><span class="label">ระดับความสำคัญ:</span> <span class="value">${record.priority || 'ไม่ระบุ'}</span></p>
+                  <p><span class="label">แผนก:</span> <span class="value">${record.department_name || 'ไม่ระบุ'}</span></p>
                 </div>
                 <div>
                   <p><span class="label">อาการหลัก:</span> <span class="value">${record.chief_complaint || 'ไม่ระบุ'}</span></p>
@@ -234,7 +253,7 @@ export default function Records() {
               <div>
                 <p className="text-sm text-gray-600 mb-1">ครั้งล่าสุด</p>
                 <p className="text-lg font-semibold text-gray-900">
-                  {records.length > 0 ? new Date(records[0].visit_date).toLocaleString('th-TH') : '-'}
+                  {records.length > 0 ? formatVisitDateTime(records[0].visit_date, records[0].visit_time).date : '-'}
                 </p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center text-xl">🕒</div>
@@ -311,23 +330,29 @@ export default function Records() {
                         <h3 className="text-lg font-semibold text-gray-900">
                           การรักษาครั้งที่ {record.visitNumber}
                         </h3>
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                          {record.visit_number}
+                        </span>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getRecordColor(record.visit_type)}`}>
                           {record.visit_type}
                         </span>
                         <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
-                          {getStatusText(record.visit_status)}
+                          {getStatusText(record.status || record.visit_status)}
                         </span>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-3">
                         <div>
-                          <p><span className="font-medium text-gray-700">วันที่:</span> <span className="text-gray-900">{new Date(record.visit_date).toLocaleString('th-TH')}</span></p>
-                          <p><span className="font-medium text-gray-700">เวลา:</span> <span className="text-gray-900">{record.visit_time}</span></p>
+                          <p><span className="font-medium text-gray-700">วันที่:</span> <span className="text-gray-900">{formatVisitDateTime(record.visit_date, record.visit_time).date}</span></p>
+                          <p><span className="font-medium text-gray-700">เวลา:</span> <span className="text-gray-900">{formatVisitDateTime(record.visit_date, record.visit_time).time}</span></p>
                           <p><span className="font-medium text-gray-700">อาการหลัก:</span> <span className="text-gray-900">{record.chief_complaint}</span></p>
+                          <p><span className="font-medium text-gray-700">แพทย์:</span> <span className="text-gray-900">{record.doctor_first_name && record.doctor_last_name ? `${record.doctor_first_name} ${record.doctor_last_name}` : 'ไม่ระบุ'}</span></p>
                         </div>
                         <div>
-                          <p><span className="font-medium text-gray-700">การวินิจฉัย:</span> <span className="text-gray-900">{record.diagnosis}</span></p>
-                          <p><span className="font-medium text-gray-700">แผนการรักษา:</span> <span className="text-gray-900">{record.treatment_plan}</span></p>
+                          <p><span className="font-medium text-gray-700">การวินิจฉัย:</span> <span className="text-gray-900">{record.diagnosis || 'ไม่ระบุ'}</span></p>
+                          <p><span className="font-medium text-gray-700">แผนการรักษา:</span> <span className="text-gray-900">{record.treatment_plan || 'ไม่ระบุ'}</span></p>
+                          <p><span className="font-medium text-gray-700">ระดับความสำคัญ:</span> <span className="text-gray-900">{record.priority || 'ไม่ระบุ'}</span></p>
+                          <p><span className="font-medium text-gray-700">แผนก:</span> <span className="text-gray-900">{record.department_name || 'ไม่ระบุ'}</span></p>
                         </div>
                       </div>
                       
@@ -378,9 +403,12 @@ export default function Records() {
                     <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-lg">
                       {getRecordIcon(selectedRecord.visit_type)}
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900">
-                      การรักษาครั้งที่ {selectedRecord.visitNumber}
-                    </h2>
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">
+                        การรักษาครั้งที่ {selectedRecord.visitNumber}
+                      </h2>
+                      <p className="text-sm text-gray-600">หมายเลข Visit: {selectedRecord.visit_number}</p>
+                    </div>
                   </div>
                   <button
                     onClick={() => setSelectedRecord(null)}
@@ -400,11 +428,11 @@ export default function Records() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-700">วันที่:</span>
-                      <span className="text-gray-900">{new Date(selectedRecord.visit_date).toLocaleString('th-TH')}</span>
+                      <span className="text-gray-900">{formatVisitDateTime(selectedRecord.visit_date, selectedRecord.visit_time).date}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-700">เวลา:</span>
-                      <span className="text-gray-900">{selectedRecord.visit_time}</span>
+                      <span className="text-gray-900">{formatVisitDateTime(selectedRecord.visit_date, selectedRecord.visit_time).time}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-700">ประเภท:</span>
@@ -415,8 +443,20 @@ export default function Records() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-700">สถานะ:</span>
                       <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
-                        {getStatusText(selectedRecord.visit_status)}
+                        {getStatusText(selectedRecord.status || selectedRecord.visit_status)}
                       </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-700">แพทย์:</span>
+                      <span className="text-gray-900">{selectedRecord.doctor_first_name && selectedRecord.doctor_last_name ? `${selectedRecord.doctor_first_name} ${selectedRecord.doctor_last_name}` : 'ไม่ระบุ'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-700">ระดับความสำคัญ:</span>
+                      <span className="text-gray-900">{selectedRecord.priority || 'ไม่ระบุ'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-700">แผนก:</span>
+                      <span className="text-gray-900">{selectedRecord.department_name || 'ไม่ระบุ'}</span>
                     </div>
                   </div>
                   

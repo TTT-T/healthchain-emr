@@ -260,15 +260,10 @@ export const createVitalSignsWithVisitId = async (req: Request, res: Response) =
       INSERT INTO vital_signs (
         id, patient_id, visit_id, systolic_bp, diastolic_bp, heart_rate,
         temperature, respiratory_rate, oxygen_saturation, weight, height,
-        bmi, pain_scale, notes, measured_by, measurement_time,
-        -- Enhanced AI Analysis fields
-        body_fat_percentage, muscle_mass, bone_density, skin_fold_thickness,
-        hydration_status, sleep_quality, stress_level, depression_score,
-        anxiety_level, quality_of_life_score
+        bmi, pain_scale, notes, measured_by, measurement_time
       )
       VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-        $17, $18, $19, $20, $21, $22, $23, $24, $25, $26
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
       )
       RETURNING *
     `;
@@ -277,18 +272,7 @@ export const createVitalSignsWithVisitId = async (req: Request, res: Response) =
     const vitalSignsResult = await databaseManager.query(createVitalSignsQuery, [
       vitalSignsId, visit.patient_id, visitId, vitalSignsData.systolicBp, vitalSignsData.diastolicBp, vitalSignsData.heartRate,
       vitalSignsData.bodyTemperature, vitalSignsData.respiratoryRate, vitalSignsData.oxygenSaturation, vitalSignsData.weight, vitalSignsData.height,
-      calculatedBMI, vitalSignsData.painLevel, vitalSignsData.notes, validUserId, now,
-      // Enhanced AI Analysis fields
-      vitalSignsData.bodyFatPercentage || null,
-      vitalSignsData.muscleMass || null,
-      vitalSignsData.boneDensity || null,
-      vitalSignsData.skinFoldThickness || null,
-      vitalSignsData.hydrationStatus || null,
-      vitalSignsData.sleepQuality || null,
-      vitalSignsData.stressLevel || null,
-      vitalSignsData.depressionScore || null,
-      vitalSignsData.anxietyLevel || null,
-      vitalSignsData.qualityOfLifeScore || null
+      calculatedBMI, vitalSignsData.painLevel, vitalSignsData.notes, validUserId, now
     ]);
 
     const newVitalSigns = vitalSignsResult.rows[0];

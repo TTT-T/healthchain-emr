@@ -88,8 +88,8 @@ export class PatientService {
             id: user.id,
             hn: user.hospitalNumber || user.national_id, // Use hospital_number if available, fallback to national_id
             national_id: user.national_id,
-            thai_name: user.thaiName,
-            thai_lastName: user.thai_lastName,
+            thai_name: user.thai_name || user.thaiName,
+            thai_lastName: user.thai_last_name || user.thai_lastName,
             firstName: user.firstName,
             lastName: user.lastName,
             birthDate: user.birthDate,

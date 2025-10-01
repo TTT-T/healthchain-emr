@@ -23,60 +23,22 @@ export const getPatientNotifications = async (req: Request, res: Response) => {
     let actualPatientId = patientId;
     let patient: any;
     
-    if (user?.role === 'patient') {
-      // Find patient record by user's email
-      const patientByEmail = await databaseManager.query(
-        'SELECT id, first_name, last_name FROM patients WHERE email = $1',
-        [user.email]
-      );
-      
-      if (patientByEmail.rows.length === 0) {
-        // Patient record not found - this is expected for users who haven't registered in EMR yet
-        // Return empty notifications instead of 404 error
-        return res.status(200).json({
-          data: {
-            patient: {
-              id: user.id,
-              name: `${user.first_name} ${user.last_name}`
-            },
-            notifications: [],
-            unread_count: 0,
-            pagination: {
-              page: Number(page),
-              limit: Number(limit),
-              total: 0,
-              totalPages: 0
-            }
-          },
-          meta: {
-            timestamp: new Date().toISOString(),
-            notificationCount: 0
-          },
-          error: null,
-          statusCode: 200
-        });
-      }
-      
-      actualPatientId = patientByEmail.rows[0].id;
-      patient = patientByEmail.rows[0];
-    } else {
-      // For doctors/nurses/admins, validate patient exists
-      const patientExists = await databaseManager.query(
-        'SELECT id, first_name, last_name FROM patients WHERE id = $1',
-        [patientId]
-      );
+    // Validate that the patient exists (for all roles)
+    const patientExists = await databaseManager.query(
+      'SELECT id, first_name, last_name, thai_name, hospital_number FROM patients WHERE id = $1',
+      [patientId]
+    );
 
-      if (patientExists.rows.length === 0) {
-        return res.status(404).json({
-          data: null,
-          meta: null,
-          error: { message: 'Patient not found' },
-          statusCode: 404
-        });
-      }
-      
-      patient = patientExists.rows[0];
+    if (patientExists.rows.length === 0) {
+      return res.status(404).json({
+        data: null,
+        meta: null,
+        error: { message: 'Patient not found' },
+        statusCode: 404
+      });
     }
+    
+    patient = patientExists.rows[0];
 
     const offset = (Number(page) - 1) * Number(limit);
 

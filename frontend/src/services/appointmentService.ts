@@ -200,7 +200,7 @@ export class AppointmentService {
       preparations: '',
       follow_up_required: appointmentData.followUpRequired || false,
       follow_up_notes: appointmentData.followUpDate || '',
-      physician_id: appointmentData.doctorId || null,
+      doctor_id: appointmentData.doctorId || null, // แก้ไขจาก physician_id เป็น doctor_id
       can_reschedule: true,
       can_cancel: true
     };
