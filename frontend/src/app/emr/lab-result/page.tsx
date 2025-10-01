@@ -296,6 +296,8 @@ export default function LabResult() {
         // Save critical lab values for AI analysis
         try {
           const criticalLabData = {
+            testDate: new Date().toISOString(),
+            fastingGlucose: labResultData.criticalLabValues.fastingGlucose ? parseFloat(labResultData.criticalLabValues.fastingGlucose) : undefined,
             hba1c: labResultData.criticalLabValues.hba1c ? parseFloat(labResultData.criticalLabValues.hba1c) : undefined,
             fastingInsulin: labResultData.criticalLabValues.fastingInsulin ? parseFloat(labResultData.criticalLabValues.fastingInsulin) : undefined,
             cPeptide: labResultData.criticalLabValues.cPeptide ? parseFloat(labResultData.criticalLabValues.cPeptide) : undefined,
@@ -305,23 +307,8 @@ export default function LabResult() {
             triglycerides: labResultData.criticalLabValues.triglycerides ? parseFloat(labResultData.criticalLabValues.triglycerides) : undefined,
             bun: labResultData.criticalLabValues.bun ? parseFloat(labResultData.criticalLabValues.bun) : undefined,
             creatinine: labResultData.criticalLabValues.creatinine ? parseFloat(labResultData.criticalLabValues.creatinine) : undefined,
-            egfr: labResultData.criticalLabValues.egfr ? parseFloat(labResultData.criticalLabValues.egfr) : undefined,
             alt: labResultData.criticalLabValues.alt ? parseFloat(labResultData.criticalLabValues.alt) : undefined,
             ast: labResultData.criticalLabValues.ast ? parseFloat(labResultData.criticalLabValues.ast) : undefined,
-            alp: labResultData.criticalLabValues.alp ? parseFloat(labResultData.criticalLabValues.alp) : undefined,
-            bilirubin: labResultData.criticalLabValues.bilirubin ? parseFloat(labResultData.criticalLabValues.bilirubin) : undefined,
-            tsh: labResultData.criticalLabValues.tsh ? parseFloat(labResultData.criticalLabValues.tsh) : undefined,
-            t3: labResultData.criticalLabValues.t3 ? parseFloat(labResultData.criticalLabValues.t3) : undefined,
-            t4: labResultData.criticalLabValues.t4 ? parseFloat(labResultData.criticalLabValues.t4) : undefined,
-            crp: labResultData.criticalLabValues.crp ? parseFloat(labResultData.criticalLabValues.crp) : undefined,
-            esr: labResultData.criticalLabValues.esr ? parseFloat(labResultData.criticalLabValues.esr) : undefined,
-            vitaminD: labResultData.criticalLabValues.vitaminD ? parseFloat(labResultData.criticalLabValues.vitaminD) : undefined,
-            b12: labResultData.criticalLabValues.b12 ? parseFloat(labResultData.criticalLabValues.b12) : undefined,
-            folate: labResultData.criticalLabValues.folate ? parseFloat(labResultData.criticalLabValues.folate) : undefined,
-            iron: labResultData.criticalLabValues.iron ? parseFloat(labResultData.criticalLabValues.iron) : undefined,
-            ferritin: labResultData.criticalLabValues.ferritin ? parseFloat(labResultData.criticalLabValues.ferritin) : undefined,
-            uricAcid: labResultData.criticalLabValues.uricAcid ? parseFloat(labResultData.criticalLabValues.uricAcid) : undefined,
-            testDate: new Date().toISOString(),
             labResultId: response.data.id
           };
           
@@ -413,17 +400,19 @@ export default function LabResult() {
   const sendPatientNotification = async (patient: MedicalPatient, labResultRecord: any) => {
     try {
       const notificationData = {
-        patientHn: patient.hospitalNumber || patient.hn || '',
-        patientNationalId: patient.national_id || '',
-        patientName: patient.thaiName || `${patient.firstName} ${patient.lastName}`,
+        patientHn: patient.hn || patient.hospitalNumber || '',
+        patientNationalId: patient.nationalId || patient.national_id || '',
+        patientName: patient.thaiName && patient.thaiLastName 
+          ? `${patient.thaiName} ${patient.thaiLastName}`
+          : patient.thaiName || `${patient.firstName} ${patient.lastName}`,
         patientPhone: patient.phone || '',
         patientEmail: patient.email || '',
         recordType: 'lab_result',
         recordId: labResultRecord.id,
         chiefComplaint: `ผลแลบ: ${labResultRecord.Name}`,
-        recordedBy: labResultRecord.edBy,
-        recordedTime: labResultRecord.edTime,
-        message: `มีผลแลบใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${labResultRecord.edBy}`
+        recordedBy: user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่',
+        recordedTime: new Date().toISOString(),
+        message: `มีผลแลบใหม่สำหรับคุณ ${patient.thaiName && patient.thaiLastName ? `${patient.thaiName} ${patient.thaiLastName}` : patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'}`
       };
 
       await NotificationService.notifyPatientRecordUpdate(notificationData);

@@ -603,12 +603,11 @@ export class NotificationService {
 
       const notificationType = notificationTypeMap[data.recordType] || 'record_updated';
       
-      // Get patient ID - we need to fetch it from the backend using HN
-      // For now, we'll use a mapping approach or fetch from API
-      let patientId = data.patientHn; // This should be the actual patient UUID
+      // Get patient ID - use patientId if provided, otherwise try to fetch from HN
+      let patientId = data.patientId;
       
-      // Try to get patient ID from backend if we only have HN
-      if (data.patientHn && !data.patientHn.includes('-')) {
+      // If no patientId provided, try to get patient ID from HN
+      if (!patientId && data.patientHn) {
         try {
           const { apiClient } = await import('@/lib/api');
           const patientResponse = await apiClient.get(`/medical/patients/by-hn/${data.patientHn}`);
@@ -616,8 +615,16 @@ export class NotificationService {
             patientId = patientResponse.data.id;
           }
         } catch (error) {
-          logger.warn('Could not fetch patient ID from HN, using HN as fallback', { hn: data.patientHn });
+          logger.warn('Could not fetch patient ID from HN, skipping backend notification', { hn: data.patientHn });
+          // Skip backend notification if we can't get patient ID
+          return;
         }
+      }
+      
+      // If we still don't have a valid UUID, skip backend notification
+      if (!patientId || !patientId.includes('-')) {
+        logger.warn('No valid patient ID found, skipping backend notification', { patientId, recordId: data.recordId });
+        return;
       }
       
       const notificationPayload = {
@@ -637,7 +644,25 @@ export class NotificationService {
       // Import apiClient dynamically to avoid circular dependencies
       const { apiClient } = await import('@/lib/api');
       
-      await apiClient.post(`/medical/patients/${patientId}/notifications`, notificationPayload);
+      const apiUrl = `/medical/patients/${patientId}/notifications`;
+      logger.info('Sending notification to backend', {
+        apiUrl,
+        patientId,
+        notificationType,
+        payload: notificationPayload
+      });
+      
+      try {
+        await apiClient.post(apiUrl, notificationPayload);
+        logger.info('Notification API call successful');
+      } catch (error) {
+        logger.error('Notification API call failed', {
+          apiUrl,
+          patientId,
+          error: error
+        });
+        throw error;
+      }
       
       logger.info('Notification sent to backend successfully', {
         patientId,
@@ -647,6 +672,7 @@ export class NotificationService {
     } catch (error) {
       logger.error('Failed to send notification to backend:', error);
       // Don't throw error to avoid breaking the main flow
+      // The notification will still be sent via other methods (SMS, Email, In-app)
     }
   }
 

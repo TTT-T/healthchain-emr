@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { databaseManager } from '../database/connection';
 import { asyncHandler } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
+import { NotificationService } from '../services/notificationService';
 
 interface CreateLabResultRequest {
   patientId: string;
@@ -149,6 +150,16 @@ export const createLabResult = asyncHandler(async (req: Request, res: Response) 
       recordId: labResultRecord.id,
       edBy
     });
+
+    // Send notification to patient
+    try {
+      console.log('🔔 Attempting to send patient notification for lab result:', labResultRecord.id);
+      await sendPatientLabResultNotification(labResultRecord, patient, edBy);
+      console.log('✅ Patient notification sent successfully for lab result');
+    } catch (notificationError) {
+      console.error('❌ Failed to send patient notification for lab result:', notificationError);
+      // Don't fail the lab result creation if notification fails
+    }
 
     res.status(201).json({
       statusCode: 201,
@@ -492,3 +503,70 @@ export const deleteLabResult = asyncHandler(async (req: Request, res: Response) 
     });
   }
 });
+
+/**
+ * Send notification to patient when lab result is created
+ */
+async function sendPatientLabResultNotification(labResultRecord: any, patient: any, recordedBy: string) {
+  try {
+    // Get patient contact information
+    const patientQuery = `
+      SELECT 
+        p.id, p.thai_name, p.first_name, p.last_name, p.hospital_number, 
+        p.national_id, p.phone, p.email
+      FROM patients p 
+      WHERE p.id = $1
+    `;
+    const patientResult = await databaseManager.query(patientQuery, [patient.id]);
+    
+    if (patientResult.rows.length === 0) {
+      logger.warn('Patient not found for notification', { patientId: patient.id });
+      return;
+    }
+    
+    const patientData = patientResult.rows[0];
+    
+    // Get user information for recordedBy
+    const userQuery = 'SELECT thai_name, first_name, last_name FROM users WHERE id = $1';
+    const userResult = await databaseManager.query(userQuery, [recordedBy]);
+    const userData = userResult.rows[0] || { thai_name: null, first_name: 'เจ้าหน้าที่', last_name: 'แลบ' };
+    
+    const recordedByName = userData.thai_name || `${userData.first_name} ${userData.last_name}`;
+    const patientName = patientData.thai_name || `${patientData.first_name} ${patientData.last_name}`;
+    
+    // Prepare notification data
+    const notificationData = {
+      patientId: patientData.id,
+      patientHn: patientData.hospital_number,
+      patientName: patientName,
+      patientPhone: patientData.phone,
+      patientEmail: patientData.email,
+      notificationType: 'lab_result_ready' as const,
+      title: 'ผลแลบพร้อม',
+      message: `มีผลแลบใหม่สำหรับคุณ ${patientName} โดย ${recordedByName}`,
+      recordType: 'lab_result',
+      recordId: labResultRecord.id,
+      createdBy: recordedBy,
+      createdByName: recordedByName,
+      metadata: {
+        testType: labResultRecord.test_type,
+        testName: labResultRecord.test_name,
+        overallResult: labResultRecord.overall_result,
+        recordedTime: labResultRecord.recorded_time
+      }
+    };
+    
+    // Send notification
+    await NotificationService.sendPatientNotification(notificationData);
+    
+    logger.info('Lab result notification sent successfully', {
+      patientId: patientData.id,
+      patientHn: patientData.hospital_number,
+      recordId: labResultRecord.id
+    });
+    
+  } catch (error) {
+    logger.error('Failed to send lab result notification:', error);
+    throw error;
+  }
+}

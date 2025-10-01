@@ -52,6 +52,10 @@ export default function Notifications() {
         if (user.id === '037f4403-2aa9-4f74-ac94-7012bdf85ca6' || user.email === 'teerapatsta@gmail.com') {
           currentPatientId = '972f3bf2-9768-437f-8867-b62ad7e13ebc';
           logger.info('Using mapped patient ID', { userId: user.id, patientId: currentPatientId });
+        } else if (user.id === '8d59efd9-f8bb-4c2a-ae83-12e0224a1e20' || user.email === 'test1758657291873@hospital.com') {
+          // Map to HN250001 (เอ) patient ID
+          currentPatientId = '83c0b0f1-335a-4484-b086-f6aaccfa2c22';
+          logger.info('Using mapped patient ID for HN250001', { userId: user.id, patientId: currentPatientId });
         } else {
           // Try to find patient record by email as fallback
           try {
