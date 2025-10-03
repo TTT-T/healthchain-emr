@@ -17,17 +17,17 @@ echo  [2] STOP   - Stop EMR System
 echo  [3] STATUS - Check System Status
 echo  [4] CREATE ADMIN - Create Admin User
 echo  [5] RUN MIGRATIONS - Run Database Migrations
-echo  [6] RESTART BACKEND  - Restart Backend Only
-echo  [7] RESTART FRONTEND - Restart Frontend Only
-echo  [8] RESTART ALL     - Restart All Services
-echo  [9] DOWN BACKEND    - Stop Backend Only
-echo  [10] DOWN FRONTEND   - Stop Frontend Only
-echo  [11] DOWN ALL        - Stop All Services
-echo  [12] RESET ALL DATA - Reset All Data (DANGER!)
-echo  [13] CLEAR DATABASE - Clear All Database Data
-echo  [14] FIX CONTAINERS - Fix Container Conflicts
-echo  [15] FIX API ERRORS - Fix API Request Failed Errors
-echo  [16] RUN ALL MIGRATIONS - Run All Database Migrations
+echo  [6] HEALTH CHECK   - Check Database Health
+echo  [7] RESTART BACKEND  - Restart Backend Only
+echo  [8] RESTART FRONTEND - Restart Frontend Only
+echo  [9] RESTART ALL     - Restart All Services
+echo  [10] DOWN BACKEND    - Stop Backend Only
+echo  [11] DOWN FRONTEND   - Stop Frontend Only
+echo  [12] DOWN ALL        - Stop All Services
+echo  [13] RESET ALL DATA - Reset All Data (DANGER!)
+echo  [14] CLEAR DATABASE - Clear All Database Data
+echo  [15] FIX CONTAINERS - Fix Container Conflicts
+echo  [16] FIX API ERRORS - Fix API Request Failed Errors
 echo  [17] END    - Exit Program
 echo.
 echo  ========================================
@@ -38,17 +38,17 @@ if "%choice%"=="2" goto STOP_SYSTEM
 if "%choice%"=="3" goto CHECK_STATUS
 if "%choice%"=="4" goto CREATE_ADMIN
 if "%choice%"=="5" goto RUN_MIGRATIONS
-if "%choice%"=="6" goto RESTART_BACKEND
-if "%choice%"=="7" goto RESTART_FRONTEND
-if "%choice%"=="8" goto RESTART_ALL
-if "%choice%"=="9" goto DOWN_BACKEND
-if "%choice%"=="10" goto DOWN_FRONTEND
-if "%choice%"=="11" goto DOWN_ALL
-if "%choice%"=="12" goto RESET_ALL_DATA
-if "%choice%"=="13" goto CLEAR_DATABASE
-if "%choice%"=="14" goto FIX_CONTAINERS
-if "%choice%"=="15" goto FIX_API_ERRORS
-if "%choice%"=="16" goto RUN_ALL_MIGRATIONS
+if "%choice%"=="6" goto HEALTH_CHECK
+if "%choice%"=="7" goto RESTART_BACKEND
+if "%choice%"=="8" goto RESTART_FRONTEND
+if "%choice%"=="9" goto RESTART_ALL
+if "%choice%"=="10" goto DOWN_BACKEND
+if "%choice%"=="11" goto DOWN_FRONTEND
+if "%choice%"=="12" goto DOWN_ALL
+if "%choice%"=="13" goto RESET_ALL_DATA
+if "%choice%"=="14" goto CLEAR_DATABASE
+if "%choice%"=="15" goto FIX_CONTAINERS
+if "%choice%"=="16" goto FIX_API_ERRORS
 if "%choice%"=="17" goto END_PROGRAM
 
 echo.
@@ -303,29 +303,29 @@ if %errorlevel% neq 0 (
 echo [INFO] Waiting for services to be ready...
 timeout /t 15 /nobreak >nul
 
-echo [LOG] Running database migrations...
-docker exec emr_backend npx tsx src/scripts/migrationChecker.ts
+echo [LOG] Running automatic database migrations...
+docker exec emr_backend npm run auto-migrate
 if %errorlevel% neq 0 (
-    echo [WARNING] Migrations may have failed, but continuing...
+    echo [WARNING] Auto-migration may have failed, but continuing...
     echo [INFO] You can run migrations manually using option [5] RUN MIGRATIONS
 ) else (
-    echo [SUCCESS] Database migrations completed
+    echo [SUCCESS] Automatic database migrations completed
 )
 
-echo [LOG] Checking for common API issues...
-docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; databaseManager.initialize().then(async () => { const result = await databaseManager.query('SELECT table_name FROM information_schema.tables WHERE table_schema = \\'public\\' AND table_name IN (\\'appointments\\', \\'appointment_types\\')'); if (result.rows.length === 0) { console.log('MISSING_APPOINTMENTS'); process.exit(1); } else { console.log('APPOINTMENTS_OK'); process.exit(0); } }).catch(() => { console.log('DB_ERROR'); process.exit(1); });" 2>nul
+echo [LOG] Running database health check...
+docker exec emr_backend npm run db:health-check
 if %errorlevel% neq 0 (
-    echo [WARNING] Appointments tables are missing - this may cause API errors
-    echo [INFO] Auto-fixing appointments table issue...
-    docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; import fs from 'fs'; databaseManager.initialize().then(async () => { try { const sql = fs.readFileSync('/app/src/database/migrations/003_appointments_tables.sql', 'utf8'); await databaseManager.query(sql); console.log('FIXED'); process.exit(0); } catch (error) { console.log('FAILED'); process.exit(1); } }).catch(() => { console.log('FAILED'); process.exit(1); });" 2>nul
+    echo [WARNING] Database health check failed
+    echo [INFO] Auto-fixing database issues...
+    docker exec emr_backend npm run db:health-check:fix
     if %errorlevel% equ 0 (
-        echo [SUCCESS] Appointments tables created automatically
+        echo [SUCCESS] Database issues fixed automatically
     ) else (
-        echo [WARNING] Could not auto-fix appointments tables
+        echo [WARNING] Could not auto-fix database issues
         echo [INFO] Use option [15] FIX API ERRORS to resolve this issue
     )
 ) else (
-    echo [SUCCESS] Appointments tables are present
+    echo [SUCCESS] Database health check passed
 )
 
 echo [LOG] Checking service health...
@@ -377,6 +377,8 @@ echo     1. Use option [4] CREATE ADMIN to create admin user
 echo     2. Then access the system at http://localhost:3000
 echo.
 echo [INFO] System Features:
+echo     - Automatic database migrations on startup
+echo     - Database health check and auto-fix
 echo     - All notification systems working correctly
 echo     - Appointments system fully functional
 echo     - Admin role management working
@@ -491,11 +493,11 @@ if %errorlevel% neq 0 (
     echo [SUCCESS] Database connection verified
 )
 
-echo [STEP 3/3] Running migrations...
+echo [STEP 3/3] Running automatic migrations...
 echo [INFO] This will check and run all pending migrations...
 echo.
 
-docker exec emr_backend npx tsx src/scripts/migrationChecker.ts
+docker exec emr_backend npm run auto-migrate
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to run migrations!
     echo [SOLUTION] Check database connection and migration files
@@ -514,6 +516,61 @@ echo.
 echo [INFO] Migrations completed at: %date% %time%
 echo [INFO] Database schema is now up to date
 echo [INFO] You can now use the system normally
+echo.
+pause
+goto MAIN_MENU
+
+:HEALTH_CHECK
+cls
+echo.
+echo  ========================================
+echo  DATABASE HEALTH CHECK
+echo  ========================================
+echo.
+echo [INFO] Running Database Health Check at %date% %time%
+echo.
+
+echo [STEP 1/3] Checking if backend is running...
+docker ps | findstr emr_backend >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Backend container is not running!
+    echo [SOLUTION] Please start the system first using option [1] START
+    pause
+    goto MAIN_MENU
+) else (
+    echo [SUCCESS] Backend container is running
+)
+
+echo [STEP 2/3] Checking database connection...
+docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; databaseManager.initialize().then(() => console.log('Connected')).catch(() => process.exit(1))" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Cannot connect to database!
+    echo [SOLUTION] Wait for database to be ready or restart the system
+    pause
+    goto MAIN_MENU
+) else (
+    echo [SUCCESS] Database connection verified
+)
+
+echo [STEP 3/3] Running comprehensive health check...
+echo [INFO] This will check database health and provide detailed report...
+echo.
+
+docker exec emr_backend npm run db:health-check
+if %errorlevel% neq 0 (
+    echo [WARNING] Health check found issues!
+    echo [INFO] You can use option [16] FIX API ERRORS to auto-fix issues
+) else (
+    echo [SUCCESS] Database health check passed!
+)
+
+echo.
+echo  ========================================
+echo     HEALTH CHECK COMPLETED!
+echo  ========================================
+echo.
+echo [INFO] Health check completed at: %date% %time%
+echo [INFO] Check the output above for detailed results
 echo.
 pause
 goto MAIN_MENU
@@ -1247,34 +1304,23 @@ if %errorlevel% neq 0 (
     echo [SUCCESS] Database connection verified
 )
 
-echo [STEP 3/6] Checking appointments table...
-docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; databaseManager.initialize().then(async () => { const result = await databaseManager.query('SELECT table_name FROM information_schema.tables WHERE table_schema = \\'public\\' AND table_name IN (\\'appointments\\', \\'appointment_types\\')'); if (result.rows.length === 0) { console.log('MISSING'); process.exit(1); } else { console.log('EXISTS'); process.exit(0); } }).catch(() => { console.log('ERROR'); process.exit(1); });" 2>nul
+echo [STEP 3/6] Running database health check...
+docker exec emr_backend npm run db:health-check >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [WARNING] Appointments tables are missing
-    echo [INFO] Creating appointments tables...
-    
-    docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; import fs from 'fs'; databaseManager.initialize().then(async () => { try { const sql = fs.readFileSync('/app/src/database/migrations/003_appointments_tables.sql', 'utf8'); await databaseManager.query(sql); console.log('SUCCESS'); process.exit(0); } catch (error) { console.log('ERROR'); process.exit(1); } }).catch(() => { console.log('ERROR'); process.exit(1); });" 2>nul
-    
+    echo [WARNING] Database health check failed
+    echo [INFO] Auto-fixing database issues...
+    docker exec emr_backend npm run db:health-check:fix >nul 2>&1
     if %errorlevel% equ 0 (
-        echo [SUCCESS] Appointments tables created successfully
+        echo [SUCCESS] Database issues fixed automatically
     ) else (
-        echo [ERROR] Failed to create appointments tables
+        echo [ERROR] Failed to fix database issues
         echo [SOLUTION] Try option [5] RUN MIGRATIONS
     )
 ) else (
-    echo [SUCCESS] Appointments tables exist
+    echo [SUCCESS] Database health check passed
 )
 
-echo [STEP 4/6] Running database migrations...
-docker exec emr_backend npx tsx src/scripts/migrationChecker.ts >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [WARNING] Some migrations may have failed
-    echo [INFO] This is normal if all migrations are already applied
-) else (
-    echo [SUCCESS] Database migrations completed
-)
-
-echo [STEP 5/6] Testing API endpoints...
+echo [STEP 4/6] Testing API endpoints...
 curl -s -o nul -w "%%{http_code}" http://localhost:3001/health >nul 2>&1
 if %errorlevel% equ 0 (
     echo [SUCCESS] Backend API is accessible
@@ -1292,7 +1338,7 @@ if %errorlevel% equ 0 (
     )
 )
 
-echo [STEP 6/6] Verifying system health...
+echo [STEP 5/6] Verifying system health...
 docker ps --format "table {{.Names}}\t{{.Status}}" | findstr "emr_"
 if %errorlevel% neq 0 (
     echo [WARNING] Some services may not be running properly
@@ -1347,114 +1393,6 @@ echo.
 pause
 goto MAIN_MENU
 
-:RUN_ALL_MIGRATIONS
-cls
-echo.
-echo  ========================================
-echo  RUN ALL DATABASE MIGRATIONS
-echo  ========================================
-echo.
-echo [INFO] Running All Database Migrations at %date% %time%
-echo.
-echo [WARNING] This will run ALL database migrations including:
-echo   - Create all missing tables
-echo   - Add missing columns
-echo   - Create indexes and constraints
-echo   - Insert default data
-echo   - Update schema to latest version
-echo.
-
-echo [STEP 1/5] Checking if containers are running...
-docker ps | findstr emr_backend >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] Backend container is not running!
-    echo [SOLUTION] Please start the system first using option [1] START
-    pause
-    goto MAIN_MENU
-) else (
-    echo [SUCCESS] Backend container is running
-)
-
-docker ps | findstr emr_postgres >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] Database container is not running!
-    echo [SOLUTION] Please start the system first using option [1] START
-    pause
-    goto MAIN_MENU
-) else (
-    echo [SUCCESS] Database container is running
-)
-
-echo [STEP 2/5] Checking database connection...
-docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; databaseManager.initialize().then(() => console.log('Connected')).catch(() => process.exit(1))" >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] Cannot connect to database!
-    echo [SOLUTION] Wait for database to be ready or restart the system
-    pause
-    goto MAIN_MENU
-) else (
-    echo [SUCCESS] Database connection verified
-)
-
-echo [STEP 3/5] Checking migration status...
-docker exec emr_backend npx tsx -e "import { MigrationManager } from './src/database/migrations'; import { databaseManager } from './src/database/connection'; databaseManager.initialize().then(async () => { const migrationManager = MigrationManager.getInstance(); const status = await migrationManager.getMigrationStatus(); console.log('Total migrations:', status.total); console.log('Executed:', status.executed); console.log('Pending:', status.pending); console.log('Failed:', status.failed); process.exit(0); }).catch(err => { console.error('Error:', err.message); process.exit(1); });" 2>nul
-if %errorlevel% neq 0 (
-    echo [WARNING] Could not check migration status
-    echo [INFO] Proceeding with migration run...
-) else (
-    echo [SUCCESS] Migration status checked
-)
-
-echo [STEP 4/5] Running all migrations...
-echo [INFO] This will check and run all pending migrations...
-echo [INFO] Migrations that have already been executed will be skipped
-echo.
-
-docker exec emr_backend npx tsx src/scripts/migrationChecker.ts
-if %errorlevel% neq 0 (
-    echo [ERROR] Failed to run migrations!
-    echo [SOLUTION] Check database connection and migration files
-    echo [INFO] Check logs with: docker compose logs backend
-    pause
-    goto MAIN_MENU
-) else (
-    echo [SUCCESS] All migrations completed successfully!
-)
-
-echo [STEP 5/5] Verifying migration results...
-docker exec emr_backend npx tsx -e "import { MigrationManager } from './src/database/migrations'; import { databaseManager } from './src/database/connection'; databaseManager.initialize().then(async () => { const migrationManager = MigrationManager.getInstance(); const status = await migrationManager.getMigrationStatus(); console.log('Final Status:'); console.log('Total migrations:', status.total); console.log('Executed:', status.executed); console.log('Pending:', status.pending); console.log('Failed:', status.failed); if (status.pending === 0 && status.failed === 0) { console.log('SUCCESS: All migrations completed'); process.exit(0); } else { console.log('WARNING: Some migrations may have issues'); process.exit(1); } }).catch(err => { console.error('Error:', err.message); process.exit(1); });" 2>nul
-if %errorlevel% neq 0 (
-    echo [WARNING] Some migrations may have issues
-    echo [INFO] Check the output above for details
-) else (
-    echo [SUCCESS] All migrations verified successfully
-)
-
-echo.
-echo  ========================================
-echo     ALL MIGRATIONS COMPLETED!
-echo  ========================================
-echo.
-echo [INFO] Migration process completed at: %date% %time%
-echo [INFO] Database schema is now up to date
-echo.
-echo [INFO] System Status:
-echo     Frontend: http://localhost:3000
-echo     Backend:  http://localhost:3001
-echo     Health Check: http://localhost:3001/health
-echo.
-echo [INFO] Next Steps:
-echo     1. Test the system at http://localhost:3000
-echo     2. Create admin user if needed: option [4] CREATE ADMIN
-echo     3. Check system functionality
-echo.
-echo [INFO] If you encounter any issues:
-echo     - Use option [15] FIX API ERRORS
-echo     - Use option [8] RESTART ALL
-echo     - Check logs with: docker compose logs backend
-echo.
-pause
-goto MAIN_MENU
 
 :END_PROGRAM
 cls
