@@ -138,7 +138,35 @@ npm run db:health-check
 
 ### 🔍 Common Issues:
 
-#### Issue 1: Port Already in Use
+#### Issue 1: pgAdmin Failed to Start
+**Error**: `[WARNING] Failed to start pgAdmin, but continuing...`
+
+**Causes**:
+- Port 8080 ถูกใช้งานอยู่
+- Network `project_emr_network` ยังไม่พร้อม
+- Docker resources ไม่เพียงพอ
+
+**Solutions**:
+```bash
+# วิธีที่ 1: ใช้ start.bat (แนะนำ)
+.\start.bat
+# เลือก option [1] START - ระบบจะแก้ไข pgAdmin issues อัตโนมัติ
+
+# วิธีที่ 2: แก้ไขด้วยตนเอง
+# ตรวจสอบ port 8080
+netstat -an | findstr :8080
+
+# หยุด pgAdmin container เก่า
+docker stop pgadmin
+docker rm pgadmin
+
+# เริ่ม pgAdmin ใหม่
+docker run --name pgadmin -p 8080:80 -e PGADMIN_DEFAULT_EMAIL=admin@admin.com -e PGADMIN_DEFAULT_PASSWORD=admin -d dpage/pgadmin4
+```
+
+**Note**: pgAdmin เป็น optional - ระบบจะทำงานได้ปกติแม้ pgAdmin ไม่ทำงาน
+
+#### Issue 2: Port Already in Use
 **Solution**: เปลี่ยน ports ใน `docker-compose.yml`
 ```yaml
 ports:
@@ -146,14 +174,14 @@ ports:
   - "3003:3000"  # เปลี่ยนจาก 3000 เป็น 3003
 ```
 
-#### Issue 2: Database Connection Failed
+#### Issue 3: Database Connection Failed
 **Solution**: รอให้ PostgreSQL container พร้อมก่อน
 ```bash
 # รอให้ postgres healthy
 docker-compose logs postgres
 ```
 
-#### Issue 3: Node Modules Issues
+#### Issue 4: Node Modules Issues
 **Solution**: ลบ node_modules และ rebuild
 ```bash
 docker-compose down

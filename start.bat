@@ -290,14 +290,38 @@ if %errorlevel% neq 0 (
 )
 
 echo [INFO] Setting up pgAdmin Database Manager...
-docker stop pgadmin >nul 2>&1
-docker rm pgadmin >nul 2>&1
+echo [LOG] Checking if port 8080 is available...
+netstat -an | findstr ":8080" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [WARNING] Port 8080 is already in use
+    echo [INFO] Stopping any existing pgAdmin container...
+    docker stop pgadmin >nul 2>&1
+    docker rm pgadmin >nul 2>&1
+    timeout /t 2 /nobreak >nul
+)
+
+echo [LOG] Waiting for network to be ready...
+timeout /t 5 /nobreak >nul
+
+echo [LOG] Starting pgAdmin container...
 docker run --name pgadmin -p 8080:80 -e PGADMIN_DEFAULT_EMAIL=admin@admin.com -e PGADMIN_DEFAULT_PASSWORD=admin --network project_emr_network -d dpage/pgadmin4 >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [WARNING] Failed to start pgAdmin, but continuing...
-    echo [INFO] You can start pgAdmin manually later if needed
+    echo [WARNING] Failed to start pgAdmin with network, trying without network...
+    docker rm pgadmin >nul 2>&1
+    docker run --name pgadmin -p 8080:80 -e PGADMIN_DEFAULT_EMAIL=admin@admin.com -e PGADMIN_DEFAULT_PASSWORD=admin -d dpage/pgadmin4 >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo [WARNING] Failed to start pgAdmin, but continuing...
+        echo [INFO] You can start pgAdmin manually later if needed
+        echo [INFO] pgAdmin is optional - system will work without it
+    ) else (
+        echo [SUCCESS] pgAdmin started without network (limited functionality)
+        echo [INFO] pgAdmin URL: http://localhost:8080
+        echo [INFO] Email: admin@admin.com, Password: admin
+    )
 ) else (
     echo [SUCCESS] pgAdmin Database Manager started
+    echo [INFO] pgAdmin URL: http://localhost:8080
+    echo [INFO] Email: admin@admin.com, Password: admin
 )
 
 echo [INFO] Waiting for services to be ready...
@@ -847,11 +871,28 @@ if %errorlevel% neq 0 (
 )
 
 echo [STEP 4/4] Starting pgAdmin...
-docker stop pgadmin >nul 2>&1
-docker rm pgadmin >nul 2>&1
+echo [LOG] Checking if port 8080 is available...
+netstat -an | findstr ":8080" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [WARNING] Port 8080 is already in use
+    echo [INFO] Stopping any existing pgAdmin container...
+    docker stop pgadmin >nul 2>&1
+    docker rm pgadmin >nul 2>&1
+    timeout /t 2 /nobreak >nul
+)
+
+echo [LOG] Starting pgAdmin container...
 docker run --name pgadmin -p 8080:80 -e PGADMIN_DEFAULT_EMAIL=admin@admin.com -e PGADMIN_DEFAULT_PASSWORD=admin --network project_emr_network -d dpage/pgadmin4 >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [WARNING] Failed to start pgAdmin, but continuing...
+    echo [WARNING] Failed to start pgAdmin with network, trying without network...
+    docker rm pgadmin >nul 2>&1
+    docker run --name pgadmin -p 8080:80 -e PGADMIN_DEFAULT_EMAIL=admin@admin.com -e PGADMIN_DEFAULT_PASSWORD=admin -d dpage/pgadmin4 >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo [WARNING] Failed to start pgAdmin, but continuing...
+        echo [INFO] pgAdmin is optional - system will work without it
+    ) else (
+        echo [SUCCESS] pgAdmin started without network (limited functionality)
+    )
 ) else (
     echo [SUCCESS] pgAdmin started
 )
