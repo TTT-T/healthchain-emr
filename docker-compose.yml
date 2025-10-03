@@ -14,6 +14,12 @@ services:
     networks:
       - project_emr_network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d emr_development"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # Redis Cache
   redis:
@@ -51,12 +57,14 @@ services:
       - ./backend:/app
       - /app/node_modules
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - project_emr_network
     restart: unless-stopped
-    command: npm run dev
+    command: sh -c "npm run start:with-migrations:dev"
 
   # Frontend Application
   frontend:

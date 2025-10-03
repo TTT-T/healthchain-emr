@@ -1,5 +1,5 @@
 -- Create appointment_types table
-CREATE TABLE appointment_types (
+CREATE TABLE IF NOT EXISTS appointment_types (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description TEXT,
@@ -11,7 +11,7 @@ CREATE TABLE appointment_types (
 );
 
 -- Create appointments table
-CREATE TABLE appointments (
+CREATE TABLE IF NOT EXISTS appointments (
     id SERIAL PRIMARY KEY,
     patient_id UUID NOT NULL REFERENCES patients(id),
     doctor_id UUID NOT NULL REFERENCES users(id),
@@ -43,4 +43,5 @@ INSERT INTO appointment_types (name, description, duration_minutes, color) VALUE
 ('ตรวจทั่วไป', 'การตรวจรักษาทั่วไป', 15, '#4CAF50'),
 ('ตรวจติดตามอาการ', 'การตรวจติดตามผลการรักษา', 30, '#2196F3'),
 ('ตรวจละเอียด', 'การตรวจรักษาแบบละเอียด', 60, '#9C27B0'),
-('ฉุกเฉิน', 'กรณีฉุกเฉิน', 30, '#F44336');
+('ฉุกเฉิน', 'กรณีฉุกเฉิน', 30, '#F44336')
+ON CONFLICT (name) DO NOTHING;

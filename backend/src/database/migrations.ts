@@ -83,13 +83,13 @@ export class MigrationManager {
           await this.runSqlMigration('004_fix_field_names.sql');
         }
       },
-      // {
-      //   name: '004_create_appointment_tables',
-      //   description: 'Create appointment management tables',
-      //   up: async () => {
-      //     await this.createAppointmentTables();
-      //   }
-      // },
+      {
+        name: '004_create_appointment_tables',
+        description: 'Create appointment management tables',
+        up: async () => {
+          await this.runSqlMigration('003_appointments_tables.sql');
+        }
+      },
       {
         name: '005_create_audit_tables',
         description: 'Create audit and logging tables',
@@ -193,6 +193,27 @@ export class MigrationManager {
         description: 'Add current_address field to users table',
         up: async () => {
           await this.runSqlMigration('021_add_current_address_to_users.sql');
+        }
+      },
+      {
+        name: '022_add_thai_first_name_to_users',
+        description: 'Add thai_first_name field to users table',
+        up: async () => {
+          await this.runSqlMigration('022_add_thai_first_name_to_users.sql');
+        }
+      },
+      {
+        name: '023_create_notifications_table',
+        description: 'Create notifications table',
+        up: async () => {
+          await this.runSqlMigration('019_create_notifications_table.sql');
+        }
+      },
+      {
+        name: '024_add_thai_last_name_to_patients',
+        description: 'Add thai_last_name field to patients table',
+        up: async () => {
+          await this.runSqlMigration('026_add_thai_last_name_to_patients.sql');
         }
       }
     ];
