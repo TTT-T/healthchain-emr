@@ -1,7 +1,7 @@
 -- Create appointment_types table
 CREATE TABLE IF NOT EXISTS appointment_types (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
     duration_minutes INTEGER NOT NULL,
     color VARCHAR(7) NOT NULL, -- Hex color code
