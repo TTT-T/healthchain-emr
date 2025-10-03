@@ -90,9 +90,27 @@ services:
     restart: unless-stopped
     command: npm run dev
 
+  # pgAdmin Database Management
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - project_emr_network
+    restart: unless-stopped
+    depends_on:
+      - postgres
+
 volumes:
   postgres_data:
   redis_data:
+  pgadmin_data:
 
 networks:
   project_emr_network:

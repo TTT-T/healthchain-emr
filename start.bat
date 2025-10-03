@@ -238,8 +238,6 @@ if not exist "backend\node_modules" (
 echo [STEP 4/5] Stopping existing containers...
 echo [LOG] Stopping any running EMR containers...
 docker compose down >nul 2>&1
-docker stop pgadmin >nul 2>&1
-docker rm pgadmin >nul 2>&1
 
 echo [LOG] Checking Docker images...
 docker images | findstr "emr" >nul 2>&1
@@ -289,40 +287,10 @@ if %errorlevel% neq 0 (
     echo [SUCCESS] All EMR containers are running
 )
 
-echo [INFO] Setting up pgAdmin Database Manager...
-echo [LOG] Checking if port 8080 is available...
-netstat -an | findstr ":8080" >nul 2>&1
-if %errorlevel% equ 0 (
-    echo [WARNING] Port 8080 is already in use
-    echo [INFO] Stopping any existing pgAdmin container...
-    docker stop pgadmin >nul 2>&1
-    docker rm pgadmin >nul 2>&1
-    timeout /t 2 /nobreak >nul
-)
-
-echo [LOG] Waiting for network to be ready...
-timeout /t 5 /nobreak >nul
-
-echo [LOG] Starting pgAdmin container...
-docker run --name pgadmin -p 8080:80 -e PGADMIN_DEFAULT_EMAIL=admin@admin.com -e PGADMIN_DEFAULT_PASSWORD=admin --network project_emr_network -d dpage/pgadmin4 >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [WARNING] Failed to start pgAdmin with network, trying without network...
-    docker rm pgadmin >nul 2>&1
-    docker run --name pgadmin -p 8080:80 -e PGADMIN_DEFAULT_EMAIL=admin@admin.com -e PGADMIN_DEFAULT_PASSWORD=admin -d dpage/pgadmin4 >nul 2>&1
-    if %errorlevel% neq 0 (
-        echo [WARNING] Failed to start pgAdmin, but continuing...
-        echo [INFO] You can start pgAdmin manually later if needed
-        echo [INFO] pgAdmin is optional - system will work without it
-    ) else (
-        echo [SUCCESS] pgAdmin started without network (limited functionality)
-        echo [INFO] pgAdmin URL: http://localhost:8080
-        echo [INFO] Email: admin@admin.com, Password: admin
-    )
-) else (
-    echo [SUCCESS] pgAdmin Database Manager started
-    echo [INFO] pgAdmin URL: http://localhost:8080
-    echo [INFO] Email: admin@admin.com, Password: admin
-)
+echo [INFO] pgAdmin Database Manager is now included in docker-compose.yml
+echo [SUCCESS] pgAdmin will start automatically with other services
+echo [INFO] pgAdmin URL: http://localhost:8080
+echo [INFO] Email: admin@admin.com, Password: admin
 
 echo [INFO] Waiting for services to be ready...
 timeout /t 15 /nobreak >nul
@@ -651,10 +619,8 @@ for /f "tokens=*" %%i in ('docker ps -aq 2^>nul') do docker network disconnect p
 docker network rm project_emr_network >nul 2>&1
 echo [SUCCESS] Network connections removed
 
-echo [STEP 4/4] Stopping pgAdmin...
-docker stop pgadmin >nul 2>&1
-docker rm pgadmin >nul 2>&1
-echo [SUCCESS] pgAdmin stopped
+echo [STEP 4/4] pgAdmin is now managed by docker-compose...
+echo [SUCCESS] pgAdmin will be stopped with other services
 
 echo.
 echo  ========================================
@@ -870,32 +836,8 @@ if %errorlevel% neq 0 (
     echo [SUCCESS] All containers started
 )
 
-echo [STEP 4/4] Starting pgAdmin...
-echo [LOG] Checking if port 8080 is available...
-netstat -an | findstr ":8080" >nul 2>&1
-if %errorlevel% equ 0 (
-    echo [WARNING] Port 8080 is already in use
-    echo [INFO] Stopping any existing pgAdmin container...
-    docker stop pgadmin >nul 2>&1
-    docker rm pgadmin >nul 2>&1
-    timeout /t 2 /nobreak >nul
-)
-
-echo [LOG] Starting pgAdmin container...
-docker run --name pgadmin -p 8080:80 -e PGADMIN_DEFAULT_EMAIL=admin@admin.com -e PGADMIN_DEFAULT_PASSWORD=admin --network project_emr_network -d dpage/pgadmin4 >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [WARNING] Failed to start pgAdmin with network, trying without network...
-    docker rm pgadmin >nul 2>&1
-    docker run --name pgadmin -p 8080:80 -e PGADMIN_DEFAULT_EMAIL=admin@admin.com -e PGADMIN_DEFAULT_PASSWORD=admin -d dpage/pgadmin4 >nul 2>&1
-    if %errorlevel% neq 0 (
-        echo [WARNING] Failed to start pgAdmin, but continuing...
-        echo [INFO] pgAdmin is optional - system will work without it
-    ) else (
-        echo [SUCCESS] pgAdmin started without network (limited functionality)
-    )
-) else (
-    echo [SUCCESS] pgAdmin started
-)
+echo [STEP 4/4] pgAdmin is now included in docker-compose.yml...
+echo [SUCCESS] pgAdmin will start automatically with other services
 
 echo [LOG] Verifying all services...
 timeout /t 5 /nobreak >nul
@@ -1032,10 +974,8 @@ if %errorlevel% neq 0 (
 for /f "tokens=*" %%i in ('docker ps -aq 2^>nul') do docker rm -f %%i >nul 2>&1
 echo [SUCCESS] All containers removed
 
-echo [STEP 4/4] Stopping pgAdmin...
-docker stop pgadmin >nul 2>&1
-docker rm pgadmin >nul 2>&1
-echo [SUCCESS] pgAdmin stopped
+echo [STEP 4/4] pgAdmin is now managed by docker-compose...
+echo [SUCCESS] pgAdmin will be stopped with other services
 
 echo.
 echo  ========================================
@@ -1107,10 +1047,8 @@ echo [STEP 5/8] Removing all images...
 docker image prune -a -f
 echo [SUCCESS] All images removed
 
-echo [STEP 6/8] Stopping pgAdmin...
-docker stop pgadmin >nul 2>&1
-docker rm pgadmin >nul 2>&1
-echo [SUCCESS] pgAdmin removed
+echo [STEP 6/8] pgAdmin is now managed by docker-compose...
+echo [SUCCESS] pgAdmin will be removed with other services
 
 echo [STEP 7/8] Removing Docker volumes completely...
 for /f "tokens=*" %%i in ('docker volume ls -q 2^>nul') do docker volume rm %%i >nul 2>&1
@@ -1238,7 +1176,6 @@ docker stop emr_redis >nul 2>&1
 docker stop emr_postgres >nul 2>&1
 docker stop emr_backend >nul 2>&1
 docker stop emr_frontend >nul 2>&1
-docker stop pgadmin >nul 2>&1
 echo [SUCCESS] All containers stopped
 
 echo [STEP 3/6] Force removing containers...
@@ -1246,7 +1183,6 @@ docker rm -f emr_redis >nul 2>&1
 docker rm -f emr_postgres >nul 2>&1
 docker rm -f emr_backend >nul 2>&1
 docker rm -f emr_frontend >nul 2>&1
-docker rm -f pgadmin >nul 2>&1
 echo [SUCCESS] All containers removed
 
 echo [STEP 4/6] Cleaning up networks...
