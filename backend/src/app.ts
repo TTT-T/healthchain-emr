@@ -87,12 +87,40 @@ class Application {
     this.app.use('/api/auth/login', authLimiter);
     this.app.use('/api/auth/register', authLimiter);
 
-    // Body parsing
-    this.app.use(express.json({ limit: '10mb' }));
+    // Body parsing with better error handling
+    this.app.use(express.json({ 
+      limit: '10mb',
+      verify: (req, res, buf, encoding) => {
+        try {
+          JSON.parse(buf.toString());
+        } catch (e) {
+          console.error('JSON parsing error:', e.message);
+          console.error('Raw body:', buf.toString());
+        }
+      }
+    }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
     // Request logging
     this.app.use(requestLogger);
+
+    // JSON parsing error handler
+    this.app.use((error: any, req: Request, res: Response, next: NextFunction) => {
+      if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
+        console.error('JSON parsing error:', error.message);
+        console.error('Request body:', req.body);
+        return res.status(400).json({
+          data: null,
+          meta: null,
+          error: {
+            code: 'INVALID_JSON',
+            message: 'Invalid JSON format in request body'
+          },
+          statusCode: 400
+        });
+      }
+      next(error);
+    });
 
     // Setup Swagger documentation
     setupSwagger(this.app as any);
