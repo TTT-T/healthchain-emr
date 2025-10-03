@@ -307,7 +307,25 @@ echo [LOG] Running automatic database migrations...
 docker exec emr_backend npm run auto-migrate
 if %errorlevel% neq 0 (
     echo [WARNING] Auto-migration may have failed, but continuing...
-    echo [INFO] You can run migrations manually using option [5] RUN MIGRATIONS
+    echo [INFO] Attempting to fix migration issues...
+    
+    echo [LOG] Checking for failed migration records...
+    docker exec emr_postgres psql -U postgres -d emr_development -c "SELECT migration_name FROM migrations WHERE success = false;" >nul 2>&1
+    if %errorlevel% equ 0 (
+        echo [INFO] Found failed migrations, attempting to fix...
+        docker exec emr_postgres psql -U postgres -d emr_development -c "DELETE FROM migrations WHERE migration_name = '004_create_appointment_tables' AND success = false;" >nul 2>&1
+        echo [INFO] Retrying migration...
+        docker exec emr_backend npm run auto-migrate
+        if %errorlevel% equ 0 (
+            echo [SUCCESS] Migration issues fixed automatically
+        ) else (
+            echo [WARNING] Migration still failed, but continuing...
+            echo [INFO] You can run migrations manually using option [5] RUN MIGRATIONS
+        )
+    ) else (
+        echo [WARNING] Could not check migration status, but continuing...
+        echo [INFO] You can run migrations manually using option [5] RUN MIGRATIONS
+    )
 ) else (
     echo [SUCCESS] Automatic database migrations completed
 )
@@ -1215,6 +1233,14 @@ if %errorlevel% equ 0 (
     echo [INFO] You may need to manually remove these containers
 ) else (
     echo [SUCCESS] All EMR containers removed
+)
+
+echo [STEP 7/7] Cleaning up Docker system...
+docker system prune -f >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARNING] Failed to clean up Docker system, but continuing...
+) else (
+    echo [SUCCESS] Docker system cleaned up
 )
 
 echo [LOG] Checking for any remaining Docker resources...

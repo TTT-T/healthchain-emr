@@ -22,10 +22,9 @@ docker-compose logs backend --tail=100
 
 **วิธีแก้ไขด่วน:**
 ```bash
-# ใช้ script แก้ไข
-.\fix-migration-issue.bat
-# หรือ
-.\fix-migration-issue.ps1
+# ใช้ start.bat (มี auto-fix ในตัว)
+.\start.bat
+# เลือก option [1] START - ระบบจะแก้ไข migration issues อัตโนมัติ
 ```
 
 **วิธีแก้ไขด้วยตนเอง:**
@@ -45,25 +44,27 @@ docker-compose up -d
 docker exec emr_backend npm run auto-migrate
 ```
 
-#### 2. หยุดและลบ Containers ทั้งหมด
+#### 2. ใช้ start.bat (แนะนำ)
 ```bash
+# ใช้ start.bat ที่มี auto-fix ในตัว
+.\start.bat
+# เลือก option [15] FIX CONTAINERS - แก้ไขปัญหา container conflicts อัตโนมัติ
+```
+
+#### 3. แก้ไขด้วยตนเอง
+```bash
+# หยุดและลบ containers ทั้งหมด
 docker-compose down
 docker system prune -f
-```
 
-#### 3. ลบ Volumes (ถ้าจำเป็น)
-```bash
+# ลบ volumes (ถ้าจำเป็น)
 docker-compose down -v
 docker volume prune -f
-```
 
-#### 4. เริ่มต้นใหม่
-```bash
+# เริ่มต้นใหม่
 docker-compose up --build -d
-```
 
-#### 5. ตรวจสอบสถานะ
-```bash
+# ตรวจสอบสถานะ
 docker-compose ps
 ```
 
@@ -117,28 +118,15 @@ npm run auto-migrate
 npm run db:health-check
 ```
 
-### 🎯 Quick Fix Script:
+### 🎯 Quick Fix:
 
-สร้างไฟล์ `fix-containers.bat`:
+ใช้ `start.bat` ที่มี auto-fix ในตัว:
 ```batch
-@echo off
-echo Stopping all containers...
-docker-compose down
+# รัน start.bat
+.\start.bat
 
-echo Cleaning up...
-docker system prune -f
-
-echo Starting containers...
-docker-compose up --build -d
-
-echo Waiting for services...
-timeout /t 30
-
-echo Checking status...
-docker-compose ps
-
-echo Done!
-pause
+# เลือก option [15] FIX CONTAINERS สำหรับแก้ไข container conflicts
+# หรือ option [1] START สำหรับเริ่มระบบใหม่พร้อม auto-fix
 ```
 
 ### 📞 หากยังแก้ไม่ได้:
