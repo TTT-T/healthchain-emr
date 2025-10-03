@@ -292,7 +292,7 @@ if %errorlevel% neq 0 (
 echo [INFO] Setting up pgAdmin Database Manager...
 docker stop pgadmin >nul 2>&1
 docker rm pgadmin >nul 2>&1
-docker run --name pgadmin -p 8080:80 -e PGADMIN_DEFAULT_EMAIL=admin@admin.com -e PGADMIN_DEFAULT_PASSWORD=admin --network project_project_emr_network -d dpage/pgadmin4 >nul 2>&1
+docker run --name pgadmin -p 8080:80 -e PGADMIN_DEFAULT_EMAIL=admin@admin.com -e PGADMIN_DEFAULT_PASSWORD=admin --network project_emr_network -d dpage/pgadmin4 >nul 2>&1
 if %errorlevel% neq 0 (
     echo [WARNING] Failed to start pgAdmin, but continuing...
     echo [INFO] You can start pgAdmin manually later if needed
@@ -322,7 +322,7 @@ if %errorlevel% neq 0 (
         echo [SUCCESS] Database issues fixed automatically
     ) else (
         echo [WARNING] Could not auto-fix database issues
-        echo [INFO] Use option [15] FIX API ERRORS to resolve this issue
+        echo [INFO] Use option [16] FIX API ERRORS to resolve this issue
     )
 ) else (
     echo [SUCCESS] Database health check passed
@@ -831,7 +831,7 @@ if %errorlevel% neq 0 (
 echo [STEP 4/4] Starting pgAdmin...
 docker stop pgadmin >nul 2>&1
 docker rm pgadmin >nul 2>&1
-docker run --name pgadmin -p 8080:80 -e PGADMIN_DEFAULT_EMAIL=admin@admin.com -e PGADMIN_DEFAULT_PASSWORD=admin --network project_project_emr_network -d dpage/pgadmin4 >nul 2>&1
+docker run --name pgadmin -p 8080:80 -e PGADMIN_DEFAULT_EMAIL=admin@admin.com -e PGADMIN_DEFAULT_PASSWORD=admin --network project_emr_network -d dpage/pgadmin4 >nul 2>&1
 if %errorlevel% neq 0 (
     echo [WARNING] Failed to start pgAdmin, but continuing...
 ) else (
@@ -1296,7 +1296,7 @@ if %errorlevel% neq 0 (
     docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; databaseManager.initialize().then(() => console.log('Connected')).catch(() => process.exit(1))" >nul 2>&1
     if %errorlevel% neq 0 (
         echo [ERROR] Database connection still failed!
-        echo [SOLUTION] Try option [8] RESTART ALL or [12] RESET ALL DATA
+        echo [SOLUTION] Try option [9] RESTART ALL or [13] RESET ALL DATA
         pause
         goto MAIN_MENU
     )
@@ -1381,8 +1381,8 @@ echo.
 echo [INFO] If you still see API errors:
 echo     1. Try refreshing the browser page
 echo     2. Clear browser cache and cookies
-echo     3. Use option [8] RESTART ALL for complete restart
-echo     4. Use option [12] RESET ALL DATA for fresh start (WARNING: Deletes all data)
+echo     3. Use option [9] RESTART ALL for complete restart
+echo     4. Use option [13] RESET ALL DATA for fresh start (WARNING: Deletes all data)
 echo.
 echo [INFO] Testing frontend accessibility...
 timeout /t 2 /nobreak >nul
