@@ -724,6 +724,21 @@ class APIClient {
           }
         };
         
+        // For 500 errors, return a more graceful response instead of throwing
+        if (error?.response?.status === 500) {
+          logger.warn('🔄 Server error (500) - returning empty data instead of throwing:', config.url);
+          return {
+            data: [] as T,
+            meta: null,
+            error: {
+              message: 'Server temporarily unavailable',
+              code: 'SERVER_ERROR',
+              statusCode: 500
+            },
+            statusCode: 500
+          } as APIResponse<T>;
+        }
+        
         // Don't log 404 errors for appointments and notifications as they are expected
         if (!(error?.response?.status === 404 && 
               (config.url?.includes('/appointments') || config.url?.includes('/notifications')))) {

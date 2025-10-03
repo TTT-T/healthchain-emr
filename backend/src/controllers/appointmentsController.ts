@@ -107,34 +107,55 @@ export const getAllAppointments = async (req: Request, res: Response) => {
     const countResult = await databaseManager.query(countQuery, queryParams.slice(0, -2));
     const total = parseInt(countResult.rows[0].total);
 
-    // Format appointments data
-    const formattedAppointments = appointments.map(appointment => ({
-      id: appointment.id,
-      title: appointment.appointment_type_name || 'นัดหมาย',
-      description: appointment.notes || appointment.reason,
-      appointmentType: appointment.appointment_type_name,
-      status: appointment.status,
-      priority: 'normal',
-      appointmentDate: appointment.start_time ? appointment.start_time.split('T')[0] : null,
-      appointmentTime: appointment.start_time ? appointment.start_time.split('T')[1]?.split('.')[0] : null,
-      durationMinutes: appointment.duration_minutes || 30,
-      location: 'ห้องตรวจ',
-      notes: appointment.notes,
-      preparations: [],
-      followUpRequired: false,
-      followUpNotes: null,
-      reminderSent: false,
-      reminderSentAt: null,
-      canReschedule: true,
-      canCancel: true,
-      createdAt: appointment.created_at,
-      updatedAt: appointment.updated_at,
-      doctor: appointment.doctor_first_name ? {
-        name: `${appointment.doctor_first_name} ${appointment.doctor_last_name}`,
-        phone: appointment.doctor_phone,
-        email: appointment.doctor_email
-      } : null
-    }));
+    // Format appointments data with safe date handling
+    const formattedAppointments = appointments.map(appointment => {
+      let appointmentDate = null;
+      let appointmentTime = null;
+      
+      try {
+        if (appointment.start_time) {
+          const dateObj = typeof appointment.start_time === 'string' 
+            ? new Date(appointment.start_time) 
+            : appointment.start_time;
+          
+          if (!isNaN(dateObj.getTime())) {
+            const isoString = dateObj.toISOString();
+            appointmentDate = isoString.split('T')[0];
+            appointmentTime = isoString.split('T')[1]?.split('.')[0];
+          }
+        }
+      } catch (error) {
+        console.warn('Error parsing appointment date:', error);
+      }
+      
+      return {
+        id: appointment.id,
+        title: appointment.appointment_type_name || 'นัดหมาย',
+        description: appointment.notes || appointment.reason,
+        appointmentType: appointment.appointment_type_name,
+        status: appointment.status,
+        priority: 'normal',
+        appointmentDate,
+        appointmentTime,
+        durationMinutes: appointment.duration_minutes || 30,
+        location: 'ห้องตรวจ',
+        notes: appointment.notes,
+        preparations: [],
+        followUpRequired: false,
+        followUpNotes: null,
+        reminderSent: false,
+        reminderSentAt: null,
+        canReschedule: true,
+        canCancel: true,
+        createdAt: appointment.created_at,
+        updatedAt: appointment.updated_at,
+        doctor: appointment.doctor_first_name ? {
+          name: `${appointment.doctor_first_name} ${appointment.doctor_last_name}`,
+          phone: appointment.doctor_phone,
+          email: appointment.doctor_email
+        } : null
+      };
+    });
 
     return res.status(200).json({
       data: formattedAppointments,

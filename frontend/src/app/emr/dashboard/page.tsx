@@ -96,10 +96,10 @@ export default function EMRDashboard() {
       console.log('🔍 Dashboard: User role:', user?.role);
       console.log('🔍 Dashboard: User ID:', user?.id);
 
-      // Fetch real data from API - filter by current doctor
+      // Fetch real data from API - errors are now handled gracefully in API client
       const promises = [
         apiClient.getPatients({ page: 1, limit: 100 }),
-        apiClient.getVisits({ page: 1, limit: 100, doctor_id: user?.id }), // Filter by current doctor
+        apiClient.getVisits({ page: 1, limit: 100, doctor_id: user?.id }),
         apiClient.getAppointments({ page: 1, limit: 10 }),
       ];
 
@@ -132,18 +132,27 @@ export default function EMRDashboard() {
         ? (Array.isArray(appointmentsResult.value.data) ? appointmentsResult.value.data : [])
         : [];
       
-      // Log any failed requests for debugging
-      if (patientsResult.status === 'rejected') {
-        logger.warn('Failed to load patients data:', patientsResult.reason?.message || 'Unknown error');
-        console.error('❌ Patients API failed:', patientsResult.reason);
+      // Check for server errors in the responses
+      let hasServerError = false;
+      
+      if (patientsResult.status === 'fulfilled' && patientsResult.value?.statusCode === 500) {
+        logger.warn('Patients API returned 500 error - using fallback data');
+        hasServerError = true;
       }
-      if (visitsResult.status === 'rejected') {
-        logger.warn('Failed to load visits data:', visitsResult.reason?.message || 'Unknown error');
-        console.error('❌ Visits API failed:', visitsResult.reason);
+      
+      if (visitsResult.status === 'fulfilled' && visitsResult.value?.statusCode === 500) {
+        logger.warn('Visits API returned 500 error - using fallback data');
+        hasServerError = true;
       }
-      if (appointmentsResult.status === 'rejected') {
-        logger.warn('Failed to load appointments data:', appointmentsResult.reason?.message || 'Unknown error');
-        console.error('❌ Appointments API failed:', appointmentsResult.reason);
+      
+      if (appointmentsResult.status === 'fulfilled' && appointmentsResult.value?.statusCode === 500) {
+        logger.warn('Appointments API returned 500 error - using fallback data');
+        hasServerError = true;
+      }
+      
+      // Show user-friendly message if there are server errors
+      if (hasServerError) {
+        setError('ระบบกำลังปรับปรุงข้อมูลบางส่วน กรุณาลองใหม่อีกครั้งในภายหลัง');
       }
 
       // Debug logging
