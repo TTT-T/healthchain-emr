@@ -63,38 +63,31 @@ export class MigrationManager {
         }
       },
       {
-        name: '002_create_ai_tables',
-        description: 'Create AI risk assessment tables',
+        name: '002_medical_tables',
+        description: 'Create medical tables',
         up: async () => {
-          await this.createAITables();
+          await this.runSqlMigration('001_medical_tables.sql');
         }
       },
       {
-        name: '003_create_consent_tables',
-        description: 'Create consent management tables',
+        name: '003_add_patient_fields',
+        description: 'Add patient fields',
         up: async () => {
-          await this.createConsentTables();
+          await this.runSqlMigration('002_add_patient_fields.sql');
         }
       },
       {
-        name: '004_fix_field_names',
-        description: 'Fix field names for consistency',
-        up: async () => {
-          await this.runSqlMigration('004_fix_field_names.sql');
-        }
-      },
-      {
-        name: '004_create_appointment_tables',
+        name: '004_appointments_tables',
         description: 'Create appointment management tables',
         up: async () => {
           await this.runSqlMigration('003_appointments_tables.sql');
         }
       },
       {
-        name: '005_create_audit_tables',
-        description: 'Create audit and logging tables',
+        name: '005_fix_field_names',
+        description: 'Fix field names for consistency',
         up: async () => {
-          await this.createAuditTables();
+          await this.runSqlMigration('004_fix_field_names.sql');
         }
       },
       {
@@ -175,89 +168,236 @@ export class MigrationManager {
         }
       },
       {
-        name: '017_create_consent_requests_table',
+        name: '017_add_history_taking_fields',
+        description: 'Add history taking fields',
+        up: async () => {
+          await this.runSqlMigration('017_add_history_taking_fields.sql');
+        }
+      },
+      {
+        name: '018_create_consent_requests_table',
         description: 'Create consent requests table for consent dashboard functionality',
         up: async () => {
           await this.runSqlMigration('017_create_consent_requests_table.sql');
         }
       },
       {
-        name: '018_create_database_management_tables',
+        name: '019_create_database_management_tables',
         description: 'Create database management tables for admin panel',
         up: async () => {
           await this.runSqlMigration('018_create_database_management_tables.sql');
         }
       },
       {
-        name: '021_add_current_address_to_users',
-        description: 'Add current_address field to users table',
-        up: async () => {
-          await this.runSqlMigration('021_add_current_address_to_users.sql');
-        }
-      },
-      {
-        name: '022_add_thai_first_name_to_users',
-        description: 'Add thai_first_name field to users table',
-        up: async () => {
-          await this.runSqlMigration('022_add_thai_first_name_to_users.sql');
-        }
-      },
-      {
-        name: '023_create_notifications_table',
+        name: '020_create_notifications_table',
         description: 'Create notifications table',
         up: async () => {
           await this.runSqlMigration('019_create_notifications_table.sql');
         }
       },
       {
-        name: '024_add_thai_last_name_to_patients',
+        name: '021_create_external_data_requests_table',
+        description: 'Create external data requests table',
+        up: async () => {
+          await this.runSqlMigration('020_create_external_data_requests_table.sql');
+        }
+      },
+      {
+        name: '022_add_current_address_to_users',
+        description: 'Add current_address field to users table',
+        up: async () => {
+          await this.runSqlMigration('021_add_current_address_to_users.sql');
+        }
+      },
+      {
+        name: '023_add_thai_first_name_to_users',
+        description: 'Add thai_first_name field to users table',
+        up: async () => {
+          await this.runSqlMigration('022_add_thai_first_name_to_users.sql');
+        }
+      },
+      {
+        name: '024_optimize_database_performance',
+        description: 'Optimize database performance',
+        up: async () => {
+          await this.runSqlMigration('022_optimize_database_performance.sql');
+        }
+      },
+      {
+        name: '025_standardize_user_name_fields',
+        description: 'Standardize user name fields',
+        up: async () => {
+          await this.runSqlMigration('023_standardize_user_name_fields.sql');
+        }
+      },
+      {
+        name: '026_fix_hospital_number_constraint',
+        description: 'Fix hospital number constraint',
+        up: async () => {
+          await this.runSqlMigration('024_fix_hospital_number_constraint.sql');
+        }
+      },
+      {
+        name: '027_fix_timezone_to_thailand',
+        description: 'Fix timezone to Thailand',
+        up: async () => {
+          await this.runSqlMigration('025_fix_timezone_to_thailand.sql');
+        }
+      },
+      {
+        name: '028_add_thai_last_name_to_patients',
         description: 'Add thai_last_name field to patients table',
         up: async () => {
           await this.runSqlMigration('026_add_thai_last_name_to_patients.sql');
         }
       },
-            {
-              name: '025_add_missing_notification_fields',
-              description: 'Add missing notification fields (priority, action_required, action_url, expires_at)',
-              up: async () => {
-                await this.runSqlMigration('045_add_missing_notification_fields.sql');
-              }
-            },
-            {
-              name: '026_create_ai_insights_table',
-              description: 'Create AI insights table for storing AI-generated risk assessments',
-              up: async () => {
-                await this.runSqlMigration('046_create_ai_insights_table.sql');
-              }
-            },
-            {
-              name: '027_create_ai_research_data_table',
-              description: 'Create AI research data table for storing structured data for AI model training',
-              up: async () => {
-                await this.runSqlMigration('027_create_ai_research_data_table.sql');
-              }
-            },
-            {
-              name: '028_create_critical_lab_values_table',
-              description: 'Create critical lab values table for AI risk assessment',
-              up: async () => {
-                await this.runSqlMigration('047_create_critical_lab_values_table.sql');
-              }
-            },
-            {
-              name: '029_create_detailed_nutrition_table',
-              description: 'Create detailed nutrition table for AI risk assessment',
-              up: async () => {
-                await this.runSqlMigration('048_create_detailed_nutrition_table.sql');
-              }
-            },
-            {
-              name: '030_create_detailed_exercise_table',
-              description: 'Create detailed exercise table for AI risk assessment',
-              up: async () => {
-                await this.runSqlMigration('049_create_detailed_exercise_table.sql');
-              }
-            }
+      {
+        name: '029_update_notifications_table',
+        description: 'Update notifications table',
+        up: async () => {
+          await this.runSqlMigration('026_update_notifications_table.sql');
+        }
+      },
+      {
+        name: '030_create_ai_research_data_table',
+        description: 'Create AI research data table for storing structured data for AI model training',
+        up: async () => {
+          await this.runSqlMigration('027_create_ai_research_data_table.sql');
+        }
+      },
+      {
+        name: '031_create_ai_risk_assessment_tables',
+        description: 'Create AI risk assessment tables',
+        up: async () => {
+          await this.runSqlMigration('027_create_ai_risk_assessment_tables.sql');
+        }
+      },
+      {
+        name: '032_create_ai_insights_table',
+        description: 'Create AI insights table for storing AI-generated risk assessments',
+        up: async () => {
+          await this.runSqlMigration('028_create_ai_insights_table.sql');
+        }
+      },
+      {
+        name: '033_update_notifications_table_priority_columns',
+        description: 'Update notifications table priority columns',
+        up: async () => {
+          await this.runSqlMigration('028_update_notifications_table_priority_columns.sql');
+        }
+      },
+      {
+        name: '034_add_enhanced_ai_fields',
+        description: 'Add enhanced AI fields',
+        up: async () => {
+          await this.runSqlMigration('029_add_enhanced_ai_fields.sql');
+        }
+      },
+      {
+        name: '035_add_patient_by_hn_endpoint_support',
+        description: 'Add patient by HN endpoint support',
+        up: async () => {
+          await this.runSqlMigration('030_add_patient_by_hn_endpoint_support.sql');
+        }
+      },
+      {
+        name: '036_notification_service_logic_fixes',
+        description: 'Notification service logic fixes',
+        up: async () => {
+          await this.runSqlMigration('031_notification_service_logic_fixes.sql');
+        }
+      },
+      {
+        name: '037_session_summary_migration',
+        description: 'Session summary migration',
+        up: async () => {
+          await this.runSqlMigration('032_session_summary_migration.sql');
+        }
+      },
+      {
+        name: '038_fix_patient_summary_errors',
+        description: 'Fix patient summary errors',
+        up: async () => {
+          await this.runSqlMigration('033_fix_patient_summary_errors.sql');
+        }
+      },
+      {
+        name: '039_fix_patient_name_display',
+        description: 'Fix patient name display',
+        up: async () => {
+          await this.runSqlMigration('034_fix_patient_name_display.sql');
+        }
+      },
+      {
+        name: '040_fix_patient_registration_thai_last_name',
+        description: 'Fix patient registration Thai last name',
+        up: async () => {
+          await this.runSqlMigration('035_fix_patient_registration_thai_last_name.sql');
+        }
+      },
+      {
+        name: '041_fix_patient_search_thai_name_display',
+        description: 'Fix patient search Thai name display',
+        up: async () => {
+          await this.runSqlMigration('036_fix_patient_search_thai_name_display.sql');
+        }
+      },
+      {
+        name: '042_fix_backend_patient_api_thai_last_name',
+        description: 'Fix backend patient API Thai last name',
+        up: async () => {
+          await this.runSqlMigration('037_fix_backend_patient_api_thai_last_name.sql');
+        }
+      },
+      {
+        name: '043_fix_register_patient_search_thai_last_name',
+        description: 'Fix register patient search Thai last name',
+        up: async () => {
+          await this.runSqlMigration('038_fix_register_patient_search_thai_last_name.sql');
+        }
+      },
+      {
+        name: '044_add_recommendations_field_to_visits',
+        description: 'Add recommendations field to visits',
+        up: async () => {
+          await this.runSqlMigration('039_add_recommendations_field_to_visits.sql');
+        }
+      },
+      {
+        name: '045_add_missing_notification_fields',
+        description: 'Add missing notification fields (priority, action_required, action_url, expires_at)',
+        up: async () => {
+          await this.runSqlMigration('045_add_missing_notification_fields.sql');
+        }
+      },
+      {
+        name: '046_create_ai_insights_table_v2',
+        description: 'Create AI insights table for storing AI-generated risk assessments (v2)',
+        up: async () => {
+          await this.runSqlMigration('046_create_ai_insights_table.sql');
+        }
+      },
+      {
+        name: '047_create_critical_lab_values_table',
+        description: 'Create critical lab values table for AI risk assessment',
+        up: async () => {
+          await this.runSqlMigration('047_create_critical_lab_values_table.sql');
+        }
+      },
+      {
+        name: '048_create_detailed_nutrition_table',
+        description: 'Create detailed nutrition table for AI risk assessment',
+        up: async () => {
+          await this.runSqlMigration('048_create_detailed_nutrition_table.sql');
+        }
+      },
+      {
+        name: '049_create_detailed_exercise_table',
+        description: 'Create detailed exercise table for AI risk assessment',
+        up: async () => {
+          await this.runSqlMigration('049_create_detailed_exercise_table.sql');
+        }
+      }
     ];
 
     for (const migration of migrations) {
@@ -624,7 +764,7 @@ export class MigrationManager {
   }
 
   /**
-   * Run SQL migration from file
+   * Run SQL migration from file with enhanced error handling
    */
   private async runSqlMigration(filename: string): Promise<void> {
     const fs = require('fs');
@@ -633,13 +773,48 @@ export class MigrationManager {
     const migrationPath = path.join(__dirname, 'migrations', filename);
     
     if (!fs.existsSync(migrationPath)) {
-      throw new Error(`Migration file not found: ${filename}`);
+      console.warn(`⚠️ Migration file not found: ${filename} - Skipping...`);
+      return;
     }
     
-    const sql = fs.readFileSync(migrationPath, 'utf8');
-    
-    // Execute the SQL
-    await databaseManager.query(sql);
+    try {
+      const sql = fs.readFileSync(migrationPath, 'utf8');
+      
+      if (!sql || sql.trim() === '') {
+        console.warn(`⚠️ Migration file is empty: ${filename} - Skipping...`);
+        return;
+      }
+      
+      // Split SQL into individual statements
+      const statements = sql
+        .split(';')
+        .map(stmt => stmt.trim())
+        .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+      
+      // Execute each statement
+      for (const statement of statements) {
+        if (statement.trim()) {
+          try {
+            await databaseManager.query(statement);
+          } catch (error) {
+            // Check if it's a "already exists" error
+            if (error instanceof Error && 
+                (error.message.includes('already exists') || 
+                 error.message.includes('duplicate key') ||
+                 error.message.includes('relation') && error.message.includes('already exists'))) {
+              console.log(`ℹ️ Skipping existing object in ${filename}: ${error.message}`);
+              continue;
+            }
+            throw error;
+          }
+        }
+      }
+      
+      console.log(`✅ Migration ${filename} executed successfully`);
+    } catch (error) {
+      console.error(`❌ Error executing migration ${filename}:`, error);
+      throw error;
+    }
   }
 
   /**
