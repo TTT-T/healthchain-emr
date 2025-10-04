@@ -7,6 +7,8 @@ services:
       POSTGRES_DB: emr_development
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 12345
+      TZ: Asia/Bangkok
+      TIMEZONE: Asia/Bangkok
     ports:
       - "5432:5432"
     volumes:
@@ -51,6 +53,19 @@ services:
       REDIS_PORT: 6379
       JWT_SECRET: your-super-secret-jwt-key-change-this-in-production-2025
       JWT_REFRESH_SECRET: your-super-secret-refresh-key-change-this-in-production-2025
+      # Migration settings
+      MIGRATION_RETRY_COUNT: 5
+      MIGRATION_RETRY_DELAY: 3000
+      DB_CONNECTION_TIMEOUT: 30000
+      # AI and notification settings
+      AI_RISK_ASSESSMENT_ENABLED: true
+      NOTIFICATION_SYSTEM_ENABLED: true
+      # Health check settings
+      HEALTH_CHECK_INTERVAL: 30000
+      HEALTH_CHECK_TIMEOUT: 10000
+      # Timezone settings
+      TZ: Asia/Bangkok
+      TIMEZONE: Asia/Bangkok
     ports:
       - "3001:3001"
     volumes:
@@ -65,6 +80,12 @@ services:
       - project_emr_network
     restart: unless-stopped
     command: sh -c "npm run start:with-migrations:dev"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
 
   # Frontend Application
   frontend:
@@ -77,6 +98,8 @@ services:
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       NEXT_PUBLIC_BACKEND_URL: http://localhost:3001
       BACKEND_URL: http://backend:3001
+      TZ: Asia/Bangkok
+      TIMEZONE: Asia/Bangkok
     ports:
       - "3000:3000"
     volumes:

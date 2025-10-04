@@ -215,7 +215,49 @@ export class MigrationManager {
         up: async () => {
           await this.runSqlMigration('026_add_thai_last_name_to_patients.sql');
         }
-      }
+      },
+            {
+              name: '025_add_missing_notification_fields',
+              description: 'Add missing notification fields (priority, action_required, action_url, expires_at)',
+              up: async () => {
+                await this.runSqlMigration('045_add_missing_notification_fields.sql');
+              }
+            },
+            {
+              name: '026_create_ai_insights_table',
+              description: 'Create AI insights table for storing AI-generated risk assessments',
+              up: async () => {
+                await this.runSqlMigration('046_create_ai_insights_table.sql');
+              }
+            },
+            {
+              name: '027_create_ai_research_data_table',
+              description: 'Create AI research data table for storing structured data for AI model training',
+              up: async () => {
+                await this.runSqlMigration('027_create_ai_research_data_table.sql');
+              }
+            },
+            {
+              name: '028_create_critical_lab_values_table',
+              description: 'Create critical lab values table for AI risk assessment',
+              up: async () => {
+                await this.runSqlMigration('047_create_critical_lab_values_table.sql');
+              }
+            },
+            {
+              name: '029_create_detailed_nutrition_table',
+              description: 'Create detailed nutrition table for AI risk assessment',
+              up: async () => {
+                await this.runSqlMigration('048_create_detailed_nutrition_table.sql');
+              }
+            },
+            {
+              name: '030_create_detailed_exercise_table',
+              description: 'Create detailed exercise table for AI risk assessment',
+              up: async () => {
+                await this.runSqlMigration('049_create_detailed_exercise_table.sql');
+              }
+            }
     ];
 
     for (const migration of migrations) {

@@ -23,6 +23,32 @@ class AutoMigrator {
   }
 
   /**
+   * Initialize database with retry logic
+   */
+  private async initializeDatabaseWithRetry(): Promise<void> {
+    const maxRetries = parseInt(process.env.MIGRATION_RETRY_COUNT || '3');
+    const retryDelay = parseInt(process.env.MIGRATION_RETRY_DELAY || '5000');
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 Attempt ${attempt}/${maxRetries}: Connecting to database...`);
+        await databaseInitializer.initialize();
+        console.log('✅ Database connection successful');
+        return;
+      } catch (error) {
+        console.log(`❌ Database connection failed (attempt ${attempt}/${maxRetries}):`, error.message);
+        
+        if (attempt === maxRetries) {
+          throw new Error(`Failed to connect to database after ${maxRetries} attempts`);
+        }
+        
+        console.log(`⏳ Waiting ${retryDelay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
+    }
+  }
+
+  /**
    * Run auto migration
    */
   public async run(): Promise<void> {
@@ -31,9 +57,9 @@ class AutoMigrator {
     console.log(`🗄️ Database: ${config.database.host}:${config.database.port}/${config.database.database}`);
 
     try {
-      // Step 1: Initialize database
+      // Step 1: Initialize database with retry logic
       console.log('\n📋 Step 1: Initializing Database Connection...');
-      await databaseInitializer.initialize();
+      await this.initializeDatabaseWithRetry();
       console.log('✅ Database connection established');
 
       // Step 2: Check migration status

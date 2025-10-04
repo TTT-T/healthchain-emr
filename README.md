@@ -10,6 +10,12 @@ EMR System เป็นระบบบริหารจัดการเวช
 - **Medical Records** - เวชระเบียนอิเล็กทรอนิกส์
 - **Multi-Role System** - ระบบบทบาทหลายระดับ
 - **Database Management** - ระบบจัดการฐานข้อมูล
+- **AI Risk Assessment** - ระบบประเมินความเสี่ยงด้วย AI
+- **Notification System** - ระบบแจ้งเตือนแบบเรียลไทม์
+- **AI Research Data Collection** - ระบบเก็บข้อมูลสำหรับ AI
+- **Critical Lab Values Tracking** - ระบบติดตามค่าผลแลบสำคัญ
+- **Enhanced Data Management** - ระบบจัดการข้อมูลโภชนาการและการออกกำลังกาย
+- **Timezone Support** - รองรับเวลาไทย (Asia/Bangkok)
 - **Docker Support** - รองรับการใช้งานด้วย Docker
 
 ## 🚀 การติดตั้งและเริ่มใช้งาน
@@ -160,6 +166,12 @@ docker compose ps
 - **Frontend UI** - Interface ครบถ้วน
 - **Authentication** - ระบบล็อกอิน/ลงทะเบียน
 - **Database Schema** - โครงสร้างฐานข้อมูลครบถ้วน
+- **AI Risk Assessment** - ระบบประเมินความเสี่ยงเบาหวานด้วย AI
+- **Notification System** - ระบบแจ้งเตือนแบบเรียลไทม์
+- **AI Research Data Collection** - ระบบเก็บข้อมูลสำหรับ AI
+- **Critical Lab Values** - ระบบติดตามค่าผลแลบสำคัญ
+- **Enhanced Data Management** - ระบบจัดการข้อมูลโภชนาการและการออกกำลังกาย
+- **Timezone Support** - รองรับเวลาไทย (Asia/Bangkok)
 - **Docker Support** - รองรับการใช้งานด้วย Docker
 - **start.bat** - ไฟล์จัดการระบบสำหรับ Windows
 
@@ -225,6 +237,27 @@ MIT License
 
 ---
 
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Status:** Production Ready  
-**Last Updated:** January 2025
+**Last Updated:** October 2025
+
+## 🆕 Latest Updates (v1.1.0)
+
+### New Features
+- **AI Research Data Collection** - ระบบเก็บข้อมูลสำหรับ AI model training
+- **Critical Lab Values Tracking** - ระบบติดตามค่าผลแลบสำคัญ
+- **Enhanced Data Management** - ระบบจัดการข้อมูลโภชนาการและการออกกำลังกาย
+- **Mark All Notifications as Read** - ฟีเจอร์อ่านการแจ้งเตือนทั้งหมด
+- **Timezone Support** - รองรับเวลาไทย (Asia/Bangkok)
+
+### Bug Fixes
+- **Fixed Notification Count Sync** - แก้ไขปัญหาการแสดงจำนวนการแจ้งเตือนไม่สอดคล้องกัน
+- **Fixed Timezone Display** - แก้ไขปัญหาการแสดงเวลาที่ไม่ถูกต้อง
+- **Fixed API Endpoints** - แก้ไขปัญหา API endpoints สำหรับ enhanced data
+- **Fixed Database Migrations** - ปรับปรุงระบบ migration ให้เสถียรขึ้น
+
+### Improvements
+- **Enhanced Error Handling** - ปรับปรุงการจัดการข้อผิดพลาด
+- **Better Database Health Checks** - ระบบตรวจสอบสุขภาพฐานข้อมูลที่ดีขึ้น
+- **Improved Notification System** - ระบบแจ้งเตือนที่เสถียรและแม่นยำขึ้น
+- **Updated Documentation** - อัปเดตเอกสารให้ครบถ้วน

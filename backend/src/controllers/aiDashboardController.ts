@@ -457,7 +457,7 @@ async function getPatientRiskHistory(patientId: string) {
 
     return historyResult.rows;
   } catch (error) {
-    logger.error('Error getting patient risk history:', error);
+    logger.warn('AI insights table not found or accessible, returning empty history:', error);
     return [];
   }
 }
@@ -467,11 +467,11 @@ async function saveRiskAssessmentToDatabase(patientId: string, riskResult: Diabe
     await databaseManager.query(`
       INSERT INTO ai_insights (
         id, patient_id, insight_type, title, description,
-        confidence_score, risk_level, recommendations,
+        confidence_score, risk_level, risk_score, recommendations,
         generated_by, generated_at, is_active
       ) VALUES (
         gen_random_uuid(), $1, 'diabetes_risk', $2, $3,
-        $4, $5, $6, $7, NOW() AT TIME ZONE 'Asia/Bangkok', true
+        $4, $5, $6, $7, $8, NOW() AT TIME ZONE 'Asia/Bangkok', true
       )
     `, [
       patientId,
@@ -479,12 +479,13 @@ async function saveRiskAssessmentToDatabase(patientId: string, riskResult: Diabe
       `คะแนนความเสี่ยง: ${riskResult.riskScore}/100 (${riskResult.riskPercentage}% โอกาสเป็นโรคใน 10 ปี)`,
       riskResult.riskScore / 100, // Convert to 0-1 scale
       riskResult.riskLevel,
+      riskResult.riskScore,
       JSON.stringify(riskResult.recommendations),
       userId
     ]);
   } catch (error) {
-    logger.error('Error saving risk assessment to database:', error);
-    throw error;
+    logger.warn('AI insights table not found or accessible, skipping save:', error);
+    // Don't throw error, just log warning
   }
 }
 
@@ -499,7 +500,7 @@ async function calculateOverallAverageRiskScore(startDate: Date): Promise<number
 
     return result.rows[0]?.avg_score || 0;
   } catch (error) {
-    logger.error('Error calculating overall average risk score:', error);
+    logger.warn('AI insights table not found or accessible, returning 0 for average risk score:', error);
     return 0;
   }
 }
@@ -518,7 +519,7 @@ async function calculateHighRiskPercentage(startDate: Date): Promise<number> {
     const { total, high_risk } = result.rows[0];
     return total > 0 ? (high_risk / total) * 100 : 0;
   } catch (error) {
-    logger.error('Error calculating high risk percentage:', error);
+    logger.warn('AI insights table not found or accessible, returning 0 for high risk percentage:', error);
     return 0;
   }
 }

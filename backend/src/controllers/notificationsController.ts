@@ -373,24 +373,40 @@ export const createPatientNotification = async (req: Request, res: Response) => 
     // Create notification
     const notificationId = uuidv4();
 
-    await databaseManager.query(`
-      INSERT INTO notifications (
-        id, patient_id, title, message, notification_type, priority,
-        action_required, action_url, expires_at, created_by, record_type, record_id, metadata
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-    `, [
-      notificationId, patientId, title, message, notification_type, priority,
-      action_required, action_url, expires_at, userId, record_type || null, record_id || null, 
-      metadata ? JSON.stringify(metadata) : null
-    ]);
+    // Check if priority column exists, if not use a simpler insert
+    try {
+      await databaseManager.query(`
+        INSERT INTO notifications (
+          id, patient_id, title, message, notification_type, priority,
+          action_required, action_url, expires_at, created_by, record_type, record_id, metadata,
+          created_at, updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW() AT TIME ZONE 'Asia/Bangkok', NOW() AT TIME ZONE 'Asia/Bangkok')
+      `, [
+        notificationId, patientId, title, message, notification_type, priority,
+        action_required, action_url, expires_at, userId, record_type || null, record_id || null, 
+        metadata ? JSON.stringify(metadata) : null
+      ]);
+    } catch (error) {
+      // If priority column doesn't exist, use simpler insert without priority fields
+      console.log('Priority column not found, using simplified insert');
+      await databaseManager.query(`
+        INSERT INTO notifications (
+          id, patient_id, title, message, notification_type, created_by, record_type, record_id, metadata,
+          created_at, updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW() AT TIME ZONE 'Asia/Bangkok', NOW() AT TIME ZONE 'Asia/Bangkok')
+      `, [
+        notificationId, patientId, title, message, notification_type, userId, 
+        record_type || null, record_id || null, metadata ? JSON.stringify(metadata) : null
+      ]);
+    }
 
     // Get created notification
     const createdNotification = await databaseManager.query(`
       SELECT 
-        n.id, n.title, n.message, n.notification_type, n.priority,
-        n.read_at, n.action_required, n.action_url, n.expires_at,
-        n.created_at, n.updated_at,
+        n.id, n.title, n.message, n.notification_type,
+        n.read_at, n.created_at, n.updated_at,
         u.first_name as created_by_first_name, u.last_name as created_by_last_name
       FROM notifications n
       LEFT JOIN users u ON n.created_by = u.id
@@ -423,6 +439,78 @@ export const createPatientNotification = async (req: Request, res: Response) => 
       body: req.body,
       params: req.params
     });
+    res.status(500).json({
+      data: null,
+      meta: null,
+      error: { message: 'Internal server error' },
+      statusCode: 500
+    });
+  }
+};
+
+/**
+ * Mark all notifications as read for a patient
+ * PUT /api/medical/patients/{id}/notifications/mark-all-read
+ */
+export const markAllNotificationsAsRead = async (req: Request, res: Response) => {
+  try {
+    const { id: patientId } = req.params;
+    const user = (req as any).user;
+
+    // For patient role, find patient record by user's email
+    // For other roles, use the patientId from URL
+    let actualPatientId = patientId;
+    
+    if (user.role === 'patient') {
+      // Find patient record by user's email
+      const patientByEmail = await databaseManager.query(
+        'SELECT id, first_name, last_name FROM patients WHERE email = $1',
+        [user.email]
+      );
+      
+      if (patientByEmail.rows.length === 0) {
+        return res.status(404).json({
+          data: null,
+          meta: null,
+          error: { message: 'Patient record not found' },
+          statusCode: 404
+        });
+      }
+      
+      actualPatientId = patientByEmail.rows[0].id;
+    }
+
+    // Mark all notifications as read
+    const result = await databaseManager.query(`
+      UPDATE notifications 
+      SET read_at = NOW() AT TIME ZONE 'Asia/Bangkok', updated_at = NOW() AT TIME ZONE 'Asia/Bangkok'
+      WHERE patient_id = $1 AND read_at IS NULL
+    `, [actualPatientId]);
+
+    // Get updated count
+    const countResult = await databaseManager.query(`
+      SELECT COUNT(*) as unread_count
+      FROM notifications n
+      WHERE n.patient_id = $1 AND n.read_at IS NULL
+    `, [actualPatientId]);
+    const unreadCount = parseInt(countResult.rows[0].unread_count);
+
+    res.status(200).json({
+      data: {
+        message: 'All notifications marked as read',
+        unread_count: unreadCount,
+        updated_count: result.rowCount
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        patient_id: actualPatientId
+      },
+      error: null,
+      statusCode: 200
+    });
+
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
     res.status(500).json({
       data: null,
       meta: null,

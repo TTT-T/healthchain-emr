@@ -79,17 +79,24 @@ class StartupManager {
   /**
    * Wait for database to be ready
    */
-  private async waitForDatabase(maxRetries: number = 30, retryDelay: number = 2000): Promise<void> {
-    for (let i = 0; i < maxRetries; i++) {
+  private async waitForDatabase(): Promise<void> {
+    const maxRetries = parseInt(process.env.MIGRATION_RETRY_COUNT || '30');
+    const retryDelay = parseInt(process.env.MIGRATION_RETRY_DELAY || '2000');
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
+        console.log(`🔄 Attempt ${attempt}/${maxRetries}: Connecting to database...`);
         await databaseInitializer.initialize();
+        console.log('✅ Database connection successful');
         return;
       } catch (error) {
-        if (i === maxRetries - 1) {
-          throw new Error(`Database not ready after ${maxRetries} attempts: ${error instanceof Error ? error.message : String(error)}`);
+        console.log(`❌ Database connection failed (attempt ${attempt}/${maxRetries}):`, error.message);
+        
+        if (attempt === maxRetries) {
+          throw new Error(`Failed to connect to database after ${maxRetries} attempts`);
         }
         
-        console.log(`⏳ Waiting for database... (${i + 1}/${maxRetries})`);
+        console.log(`⏳ Waiting ${retryDelay}ms before retry...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay));
       }
     }

@@ -173,7 +173,8 @@ import {
   getPatientNotifications,
   markNotificationAsRead,
   deletePatientNotification,
-  createPatientNotification
+  createPatientNotification,
+  markAllNotificationsAsRead
 } from '../controllers/notificationsController';
 import { NotificationService } from '../services/notificationService';
 import {
@@ -219,9 +220,9 @@ router.use(authenticate);
 // =============================================================================
 
 // Patient Management
-router.get('/patients', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getAllPatients));
-router.get('/patients/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getPatientById));
-router.get('/patients/by-hn/:hn', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getPatientByHn));
+router.get('/patients', authorize(['doctor', 'nurse', 'admin', 'medical_staff']), asyncHandler(getAllPatients));
+router.get('/patients/:id', authorize(['doctor', 'nurse', 'admin', 'medical_staff']), asyncHandler(getPatientById));
+router.get('/patients/by-hn/:hn', authorize(['doctor', 'nurse', 'admin', 'medical_staff']), asyncHandler(getPatientByHn));
 router.get('/patients/by-email/:email', authorize(['patient', 'doctor', 'nurse', 'admin']), asyncHandler(getPatientByEmail));
 // DISABLED: Use /api/patient-registration/register instead
 // router.post('/patients', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createPatient));
@@ -294,8 +295,8 @@ router.put('/prescription-items/:id', authorize(['pharmacist', 'admin']), asyncH
 router.get('/visits/:visitId/prescriptions', authorize(['doctor', 'nurse', 'admin', 'pharmacist']), asyncHandler(getPrescriptionsByVisit));
 
 // History Taking routes
-router.post('/history-taking', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createHistoryTaking));
-router.get('/patients/:patientId/history-taking', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getHistoryTakingByPatient));
+router.post('/history-taking', authorize(['doctor', 'nurse', 'admin', 'medical_staff']), asyncHandler(createHistoryTaking));
+router.get('/patients/:patientId/history-taking', authorize(['doctor', 'nurse', 'admin', 'medical_staff']), asyncHandler(getHistoryTakingByPatient));
 router.get('/history-taking/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getHistoryTakingById));
 router.put('/history-taking/:id', authorize(['doctor', 'nurse', 'admin']), asyncHandler(updateHistoryTaking));
 router.delete('/history-taking/:id', authorize(['doctor', 'admin']), asyncHandler(deleteHistoryTaking));
@@ -425,6 +426,7 @@ router.put('/patients/:id/medications/:medId', authorize(['doctor', 'nurse', 'ph
 router.get('/patients/:id/notifications', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(getPatientNotifications));
 router.post('/patients/:id/notifications', authorize(['doctor', 'nurse', 'admin']), asyncHandler(createPatientNotification));
 router.put('/patients/:id/notifications/:notifId/read', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(markNotificationAsRead));
+router.put('/patients/:id/notifications/mark-all-read', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(markAllNotificationsAsRead));
 router.delete('/patients/:id/notifications/:notifId', authorize(['doctor', 'nurse', 'admin', 'patient']), asyncHandler(deletePatientNotification));
 
 // Get patient notifications (new endpoint using NotificationService)
@@ -459,10 +461,10 @@ router.post('/ai/dashboard/bulk-assess', authorize(['doctor', 'nurse', 'admin'])
 router.post('/patients/:id/enhanced-vital-signs', authorize(['doctor', 'nurse', 'admin']), asyncHandler(saveEnhancedVitalSigns));
 router.post('/patients/:id/critical-lab-values', authorize(['doctor', 'nurse', 'admin', 'lab_tech']), asyncHandler(saveCriticalLabValues));
 router.get('/patients/:id/critical-lab-values', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getCriticalLabValues));
-router.post('/patients/:id/detailed-nutrition', authorize(['doctor', 'nurse', 'admin']), asyncHandler(saveDetailedNutrition));
-router.get('/patients/:id/detailed-nutrition', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getDetailedNutrition));
-router.post('/patients/:id/detailed-exercise', authorize(['doctor', 'nurse', 'admin']), asyncHandler(saveDetailedExercise));
-router.get('/patients/:id/detailed-exercise', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getDetailedExercise));
+router.post('/patients/:id/detailed-nutrition', authorize(['doctor', 'nurse', 'admin', 'medical_staff']), asyncHandler(saveDetailedNutrition));
+router.get('/patients/:id/detailed-nutrition', authorize(['doctor', 'nurse', 'admin', 'medical_staff']), asyncHandler(getDetailedNutrition));
+router.post('/patients/:id/detailed-exercise', authorize(['doctor', 'nurse', 'admin', 'medical_staff']), asyncHandler(saveDetailedExercise));
+router.get('/patients/:id/detailed-exercise', authorize(['doctor', 'nurse', 'admin', 'medical_staff']), asyncHandler(getDetailedExercise));
 router.get('/patients/:id/comprehensive-data', authorize(['doctor', 'nurse', 'admin']), asyncHandler(getComprehensivePatientData));
 
 // Consent Requests

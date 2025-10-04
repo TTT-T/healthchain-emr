@@ -57,13 +57,21 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           // Now fetch notifications using the patient ID
           const response = await apiClient.getPatientNotifications(patientId);
           
+          console.log('🔔 NotificationContext API Response:', { 
+            statusCode: response?.statusCode,
+            hasData: !!response?.data,
+            responseData: response?.data
+          });
+          
           if (response.statusCode === 200 && response.data) {
             // Use unread_count from API response
             const responseData = response.data as any;
             const unreadCount = responseData?.unread_count || 0;
+            console.log('🔔 NotificationContext - Setting notification count:', unreadCount, 'from response:', responseData);
             setNotificationCount(unreadCount);
           } else {
             // No notifications found
+            console.log('🔔 NotificationContext - No notifications found, setting count to 0');
             setNotificationCount(0);
           }
         } else {
@@ -96,11 +104,28 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     if (!user?.id) return;
 
     try {
-      // For now, just reset the count
-
+      // For patient role, mark all notifications as read
+      if (user.role === 'patient' && user.email) {
+        // First, try to find the patient record by email
+        const patientResponse = await apiClient.get(`/medical/patients/by-email/${encodeURIComponent(user.email)}`);
+        
+        if (patientResponse.statusCode === 200 && patientResponse.data) {
+          const patientData = patientResponse.data as any;
+          const patientId = patientData.id;
+          
+          // Mark all notifications as read
+          await apiClient.put(`/medical/patients/${patientId}/notifications/mark-all-read`);
+          
+          console.log('🔔 NotificationContext - All notifications marked as read');
+        }
+      }
+      
+      // Reset the count
       setNotificationCount(0);
     } catch (error) {
       console.error('Error marking notifications as read:', error);
+      // Still reset the count even if API call fails
+      setNotificationCount(0);
     }
   };
 

@@ -70,7 +70,7 @@ export default function PatientDocuments() {
     if (user?.id) {
       loadDocuments();
     }
-  }, [user, filters]);
+  }, [user, filters, searchQuery]);
 
   const loadDocuments = async () => {
     try {
@@ -82,26 +82,96 @@ export default function PatientDocuments() {
         return;
       }
 
-      // ใช้ apiClient method ที่มีอยู่แล้ว
-      const response = await apiClient.getPatientDocuments(user.id);
+      // Get patient ID first - try by user ID, then by email
+      let patientId = user.id;
+      let patientData = null;
+
+      try {
+        // First try to get patient by user ID
+        const patientResponse = await apiClient.get(`/medical/patients/by-email/${encodeURIComponent(user.email || '')}`);
+        if (patientResponse.statusCode === 200 && patientResponse.data) {
+          patientData = patientResponse.data;
+          patientId = patientData.id;
+        }
+      } catch (error) {
+        // If not found by email, use user ID as patient ID
+        patientId = user.id;
+      }
+
+      // Fetch all EMR documents for the patient
+      const response = await apiClient.getPatientDocuments(patientId);
 
       if (response.statusCode === 200 && response.data) {
-        // response.data เป็น array ของ documents
-        const documents = Array.isArray(response.data) ? Array.isArray(response.data) ? Array.isArray(response.data) ? response.data : []: [] : [];
-        // Map backend data to frontend format
+        // response.data is array of documents
+        const documents = Array.isArray(response.data) ? response.data : [];
+        
+        // Map backend data to frontend format with enhanced EMR document information
         const mappedDocuments = documents.map((doc: any) => ({
           ...doc,
           fileName: doc.documentTitle || `${doc.documentType}_${doc.id}`,
           fileSize: doc.content ? doc.content.length : 0,
           downloadCount: 0,
-          doctorName: doc.issuedBy,
-          department: 'ไม่ระบุ',
-          tags: []
+          doctorName: doc.issuedBy || 'ไม่ระบุ',
+          department: doc.department || 'ไม่ระบุ',
+          tags: doc.tags || [],
+          // Enhanced EMR-specific fields
+          visitId: doc.visitId,
+          recordType: doc.recordType,
+          template: doc.template,
+          variables: doc.variables,
+          attachments: doc.attachments || [],
+          validUntil: doc.validUntil,
+          recipientInfo: doc.recipientInfo
         }));
-        setDocuments(mappedDocuments);
-        setTotalDocuments(mappedDocuments.length);
+
+        // Apply search and filters
+        let filteredDocuments = mappedDocuments;
+
+        // Apply search query
+        if (searchQuery.trim()) {
+          const query = searchQuery.toLowerCase();
+          filteredDocuments = filteredDocuments.filter(doc => 
+            doc.documentTitle?.toLowerCase().includes(query) ||
+            doc.documentType?.toLowerCase().includes(query) ||
+            doc.issuedBy?.toLowerCase().includes(query) ||
+            doc.department?.toLowerCase().includes(query)
+          );
+        }
+
+        // Apply document type filter
+        if (filters.documentType) {
+          filteredDocuments = filteredDocuments.filter(doc => 
+            doc.documentType === filters.documentType
+          );
+        }
+
+        // Apply date filters
+        if (filters.dateFrom) {
+          filteredDocuments = filteredDocuments.filter(doc => {
+            const docDate = new Date(doc.issuedDate || doc.created_at);
+            const fromDate = new Date(filters.dateFrom);
+            return docDate >= fromDate;
+          });
+        }
+
+        if (filters.dateTo) {
+          filteredDocuments = filteredDocuments.filter(doc => {
+            const docDate = new Date(doc.issuedDate || doc.created_at);
+            const toDate = new Date(filters.dateTo);
+            toDate.setHours(23, 59, 59, 999); // End of day
+            return docDate <= toDate;
+          });
+        }
+
+        // Apply pagination
+        const startIndex = ((filters.page || 1) - 1) * (filters.limit || 20);
+        const endIndex = startIndex + (filters.limit || 20);
+        const paginatedDocuments = filteredDocuments.slice(startIndex, endIndex);
+
+        setDocuments(paginatedDocuments);
+        setTotalDocuments(filteredDocuments.length);
       } else if (response.statusCode === 404) {
-        // ไม่พบข้อมูล patient - ยังไม่ได้ลงทะเบียนในระบบ EMR
+        // Patient not found in EMR system
         setDocuments([]);
         setTotalDocuments(0);
       } else {
@@ -111,9 +181,9 @@ export default function PatientDocuments() {
     } catch (error: any) {
       logger.error('Error loading patient documents:', error);
       
-      // ตรวจสอบว่าเป็น error 404 หรือไม่
+      // Check if it's a 404 error (patient not found)
       if (error?.response?.status === 404 || error?.statusCode === 404) {
-        // ไม่พบข้อมูล patient - ยังไม่ได้ลงทะเบียนในระบบ EMR
+        // Patient not found in EMR system - this is expected for new users
         setDocuments([]);
         setTotalDocuments(0);
       } else {
@@ -127,7 +197,7 @@ export default function PatientDocuments() {
 
   const handleSearch = () => {
     setFilters(prev => ({ ...prev, page: 1 }));
-    loadDocuments();
+    // loadDocuments will be called automatically by useEffect when filters change
   };
 
   const handleFilterChange = (key: keyof DocumentSearchQuery, value: string) => {
@@ -176,7 +246,18 @@ export default function PatientDocuments() {
       'medical_certificate': '📜',
       'referral': '📤',
       'xray': '📷',
-      'blood_': '🩸'
+      'blood_': '🩸',
+      'nurse_visit': '👩‍⚕️',
+      'medication': '💉',
+      'procedure': '🔬',
+      'discharge_summary': '📋',
+      'admission_note': '🏥',
+      'progress_note': '📈',
+      'consultation': '👥',
+      'emergency_note': '🚨',
+      'surgery_note': '⚕️',
+      'radiology_report': '📊',
+      'pathology_report': '🔬'
     };
     return icons[type] || '📄';
   };
@@ -192,7 +273,18 @@ export default function PatientDocuments() {
       'medical_certificate': 'ใบรับรองแพทย์',
       'referral': 'ใบส่งตัว',
       'xray': 'ผล X-ray',
-      'blood_': 'ผลตรวจเลือด'
+      'blood_': 'ผลตรวจเลือด',
+      'nurse_visit': 'รายงานการเยี่ยมโดยพยาบาล',
+      'medication': 'บันทึกการให้ยา',
+      'procedure': 'บันทึกการทำหัตถการ',
+      'discharge_summary': 'สรุปการจำหน่าย',
+      'admission_note': 'บันทึกการรับไว้รักษา',
+      'progress_note': 'บันทึกความคืบหน้า',
+      'consultation': 'บันทึกการปรึกษา',
+      'emergency_note': 'บันทึกฉุกเฉิน',
+      'surgery_note': 'บันทึกการผ่าตัด',
+      'radiology_report': 'รายงานรังสีวิทยา',
+      'pathology_report': 'รายงานพยาธิวิทยา'
     };
     return labels[type] || 'เอกสารทางการแพทย์';
   };
@@ -217,11 +309,9 @@ export default function PatientDocuments() {
 
   return (
     <AppLayout title="เอกสารทางการแพทย์" userType="patient">
-      <div className="min-h-screen bg-gray-50">
-        <div className="p-4 md:p-6">
-          <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+      <div className="p-4 md:p-6 space-y-6">
+        {/* Header */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -248,7 +338,7 @@ export default function PatientDocuments() {
           </div>
 
         {/* Search and Filters */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">ค้นหา</label>
@@ -279,6 +369,17 @@ export default function PatientDocuments() {
                 <option value="appointment">ใบนัดหมาย</option>
                 <option value="medical_certificate">ใบรับรองแพทย์</option>
                 <option value="referral">ใบส่งตัว</option>
+                <option value="nurse_visit">รายงานการเยี่ยมโดยพยาบาล</option>
+                <option value="medication">บันทึกการให้ยา</option>
+                <option value="procedure">บันทึกการทำหัตถการ</option>
+                <option value="discharge_summary">สรุปการจำหน่าย</option>
+                <option value="admission_note">บันทึกการรับไว้รักษา</option>
+                <option value="progress_note">บันทึกความคืบหน้า</option>
+                <option value="consultation">บันทึกการปรึกษา</option>
+                <option value="emergency_note">บันทึกฉุกเฉิน</option>
+                <option value="surgery_note">บันทึกการผ่าตัด</option>
+                <option value="radiology_report">รายงานรังสีวิทยา</option>
+                <option value="pathology_report">รายงานพยาธิวิทยา</option>
               </select>
             </div>
             <div>
@@ -314,24 +415,28 @@ export default function PatientDocuments() {
 
         {/* Documents Grid */}
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="bg-white rounded-xl border border-slate-200 p-12 shadow-sm">
+            <div className="flex justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
           </div>
         ) : documents.length === 0 ? (
-          <div className="text-center py-12">
-            <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">ไม่มีเอกสาร</h3>
-            <p className="text-gray-500 mb-4">ยังไม่มีเอกสารทางการแพทย์ในระบบ</p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
-              <p className="text-sm text-blue-800">
-                เอกสารจะปรากฏที่นี่เมื่อแพทย์หรือเจ้าหน้าที่สร้างเอกสารทางการแพทย์ให้คุณ
-              </p>
+          <div className="bg-white rounded-xl border border-slate-200 p-12 shadow-sm">
+            <div className="text-center">
+              <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">ไม่มีเอกสาร</h3>
+              <p className="text-gray-500 mb-4">ยังไม่มีเอกสารทางการแพทย์ในระบบ</p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+                <p className="text-sm text-blue-800">
+                  เอกสารจะปรากฏที่นี่เมื่อแพทย์หรือเจ้าหน้าที่สร้างเอกสารทางการแพทย์ให้คุณ
+                </p>
+              </div>
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {documents.map((document) => (
-              <div key={document.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+              <div key={document.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -381,6 +486,13 @@ export default function PatientDocuments() {
                       <span>{document.department || 'ไม่ระบุ'}</span>
                     </div>
 
+                    {document.visitId && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Clock className="h-4 w-4" />
+                        <span>การเยี่ยม: {document.visitId.substring(0, 8)}...</span>
+                      </div>
+                    )}
+
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <File className="h-4 w-4" />
                       <span>{formatFileSize(document.fileSize || 0)}</span>
@@ -390,6 +502,13 @@ export default function PatientDocuments() {
                       <Tag className="h-4 w-4" />
                       <span>สถานะ: {document.status}</span>
                     </div>
+
+                    {document.recordType && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <FileText className="h-4 w-4" />
+                        <span>ประเภทบันทึก: {document.recordType}</span>
+                      </div>
+                    )}
                   </div>
 
                   {document.tags && document.tags.length > 0 && (
@@ -430,25 +549,27 @@ export default function PatientDocuments() {
 
         {/* Pagination */}
         {totalDocuments > (filters.limit || 20) && (
-          <div className="mt-6 flex justify-center">
-            <div className="flex gap-2">
-              <button
-                onClick={() => setFilters(prev => ({ ...prev, page: (prev.page || 1) - 1 }))}
-                disabled={!filters.page || filters.page <= 1}
-                className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                ก่อนหน้า
-              </button>
-              <span className="px-3 py-2 text-sm text-gray-600">
-                หน้า {filters.page || 1} จาก {Math.ceil(totalDocuments / (filters.limit || 20))}
-              </span>
-              <button
-                onClick={() => setFilters(prev => ({ ...prev, page: (prev.page || 1) + 1 }))}
-                disabled={!filters.page || filters.page >= Math.ceil(totalDocuments / (filters.limit || 20))}
-                className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                ถัดไป
-              </button>
+          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+            <div className="flex justify-center">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setFilters(prev => ({ ...prev, page: (prev.page || 1) - 1 }))}
+                  disabled={!filters.page || filters.page <= 1}
+                  className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  ก่อนหน้า
+                </button>
+                <span className="px-3 py-2 text-sm text-gray-600">
+                  หน้า {filters.page || 1} จาก {Math.ceil(totalDocuments / (filters.limit || 20))}
+                </span>
+                <button
+                  onClick={() => setFilters(prev => ({ ...prev, page: (prev.page || 1) + 1 }))}
+                  disabled={!filters.page || filters.page >= Math.ceil(totalDocuments / (filters.limit || 20))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  ถัดไป
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -548,8 +669,6 @@ export default function PatientDocuments() {
             </div>
           </div>
         )}
-          </div>
-        </div>
       </div>
     </AppLayout>
   );

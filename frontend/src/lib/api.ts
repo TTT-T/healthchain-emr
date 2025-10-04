@@ -89,6 +89,45 @@ class APIClient {
       (response) => response,
       async (error: AxiosError) => {
         const originalRequest = (error as any).config as AxiosRequestConfig & { _retry?: boolean };
+        
+        // Handle expected 404 errors for notifications and appointments
+        if (error.response?.status === 404) {
+          const url = originalRequest.url || '';
+          const isNotification404 = url.includes('/notifications') || 
+            (url.includes('/patients/') && url.includes('/notifications'));
+          const isAppointment404 = url.includes('/appointments');
+          
+          if (isNotification404 || isAppointment404) {
+            // Return a mock successful response for expected 404s
+            const mockResponse = {
+              data: isNotification404 ? {
+                data: {
+                  notifications: [],
+                  unread_count: 0,
+                  pagination: {
+                    page: 1,
+                    limit: 10,
+                    total: 0,
+                    totalPages: 0
+                  }
+                },
+                meta: null,
+                error: null,
+                statusCode: 200
+              } : {
+                data: [],
+                meta: null,
+                error: null,
+                statusCode: 200
+              },
+              status: 200,
+              statusText: 'OK',
+              headers: {},
+              config: originalRequest
+            };
+            return mockResponse;
+          }
+        }
 
         // If error is 401 and we haven't already tried to refresh
         if ((error as any).response?.status === 401 && !originalRequest._retry) {
@@ -659,14 +698,27 @@ class APIClient {
       return transformedResponse;
     } catch (error: any) {
       // Don't log 404 errors for notifications as they are expected for users not yet registered in EMR
-      if (error?.response?.status === 404 && config.url?.includes('/notifications')) {
-        logger.info('🔍 Expected 404 for notifications (user not registered in EMR):', config.url);
+      const isNotification404 = error?.response?.status === 404 && 
+        (config.url?.includes('/notifications') || 
+         (config.url?.includes('/patients/') && config.url?.includes('/notifications')));
+         
+      if (isNotification404) {
+        logger.info('🔍 Expected 404 for notifications (user not registered in EMR or no notifications yet):', config.url);
         // Return empty response for expected 404
         return {
-          data: null,
+          data: {
+            notifications: [],
+            unread_count: 0,
+            pagination: {
+              page: 1,
+              limit: 10,
+              total: 0,
+              totalPages: 0
+            }
+          },
           meta: null,
           error: null,
-          statusCode: 404
+          statusCode: 200
         };
       } else if (error?.response?.status === 404 && config.url?.includes('/appointments')) {
         // Don't log 404 errors for appointments as they are expected for new patients
@@ -689,17 +741,33 @@ class APIClient {
           statusCode: 200
         };
       } else {
-        // Debug: Log error structure to understand what we're dealing with
-        logger.info('🔍 Debug - Error structure:', {
-          hasResponse: 'response' in error,
-          responseStatus: error?.response?.status,
-          url: config.url,
-          includesAppointments: config.url?.includes('/appointments'),
-          errorMessage: error?.message
-        });
+        // Check if it's a 404 error for notifications or appointments - don't log these as they are expected
+        const isNotification404 = (error?.response?.status === 404 || error?.message?.includes('404')) && 
+          (config.url?.includes('/notifications') || 
+           (config.url?.includes('/patients/') && config.url?.includes('/notifications')));
+           
+        const isAppointment404 = (error?.response?.status === 404 || error?.message?.includes('404')) && 
+          config.url?.includes('/appointments');
         
-        // Check if it's a 404 error for appointments - don't log these as they are expected
-        if ((error?.response?.status === 404 || error?.message?.includes('404')) && config.url?.includes('/appointments')) {
+        if (isNotification404) {
+          logger.info('🔍 Expected 404 for notifications (patient has no notifications):', config.url);
+          // Return empty response with 200 status for expected 404
+          return {
+            data: {
+              notifications: [],
+              unread_count: 0,
+              pagination: {
+                page: 1,
+                limit: 10,
+                total: 0,
+                totalPages: 0
+              }
+            },
+            meta: null,
+            error: null,
+            statusCode: 200
+          } as APIResponse<T>;
+        } else if (isAppointment404) {
           logger.info('🔍 Expected 404 for appointments (patient has no appointments):', config.url);
           // Return empty response with 200 status for expected 404
           return {
@@ -709,20 +777,6 @@ class APIClient {
             statusCode: 200
           } as APIResponse<T>;
         }
-        
-        // Better error logging with proper serialization
-        const errorInfo = {
-          message: error?.message || 'Unknown error',
-          status: error?.response?.status,
-          statusText: error?.response?.statusText,
-          url: config.url,
-          method: config.method,
-          data: error?.response?.data,
-          config: {
-            baseURL: config.baseURL,
-            timeout: config.timeout
-          }
-        };
         
         // For 500 errors, return a more graceful response instead of throwing
         if (error?.response?.status === 500) {
@@ -739,21 +793,15 @@ class APIClient {
           } as APIResponse<T>;
         }
         
-        // Don't log 404 errors for appointments and notifications as they are expected
-        if (!(error?.response?.status === 404 && 
-              (config.url?.includes('/appointments') || config.url?.includes('/notifications')))) {
-          // Use the safer API error logging method
-          logger.apiError('💥 API request failed:', {
-            message: error?.message || 'Unknown error',
-            status: error?.response?.status || 'No status',
-            statusText: error?.response?.statusText || 'No status text',
-            url: config.url || 'No URL',
-            method: config.method || 'No method',
-            code: error?.code || 'No code'
-          });
-        } else {
-          logger.info('🔍 Expected 404 for appointments/notifications (normal for new patients):', config.url);
-        }
+        // Log unexpected errors only
+        logger.apiError('💥 API request failed:', {
+          message: error?.message || 'Unknown error',
+          status: error?.response?.status || 'No status',
+          statusText: error?.response?.statusText || 'No status text',
+          url: config.url || 'No URL',
+          method: config.method || 'No method',
+          code: error?.code || 'No code'
+        });
         
         throw error; // Will be handled by interceptor
       }

@@ -98,17 +98,15 @@ export const saveCriticalLabValues = async (req: Request, res: Response) => {
     // Insert critical lab values
     const result = await databaseManager.query(`
       INSERT INTO critical_lab_values (
-        patient_id, test_date, fasting_glucose, hba1c, fasting_insulin, c_peptide,
+        patient_id, test_date, fasting_insulin, c_peptide,
         total_cholesterol, hdl_cholesterol, ldl_cholesterol, triglycerides,
-        bun, creatinine, alt, ast
+        bun, creatinine, alt, ast, ordered_by
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
       ) RETURNING *
     `, [
       patientId,
       labValues.testDate || new Date(),
-      labValues.fastingGlucose || null,
-      labValues.hba1c || null,
       labValues.fastingInsulin || null,
       labValues.cPeptide || null,
       labValues.totalCholesterol || null,
@@ -118,7 +116,8 @@ export const saveCriticalLabValues = async (req: Request, res: Response) => {
       labValues.bun || null,
       labValues.creatinine || null,
       labValues.alt || null,
-      labValues.ast || null
+      labValues.ast || null,
+      userId
     ]);
 
     res.status(201).json({
@@ -214,9 +213,9 @@ export const saveDetailedNutrition = async (req: Request, res: Response) => {
     // Insert detailed nutrition
     const result = await databaseManager.query(`
       INSERT INTO detailed_nutrition (
-        patient_id, assessment_date, daily_calories, protein_grams,
-        carbohydrate_grams, fat_grams, fiber_grams, sugar_grams, sodium_mg,
-        water_intake_liters, meal_frequency, diet_quality_score
+        patient_id, assessment_date, daily_calorie_intake, protein_intake,
+        carbohydrate_intake, fat_intake, fiber_intake, sugar_intake, sodium_intake,
+        water_intake, meal_frequency, assessed_by
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
       ) RETURNING *
@@ -232,7 +231,7 @@ export const saveDetailedNutrition = async (req: Request, res: Response) => {
       nutritionData.sodiumMg || null,
       nutritionData.waterIntakeLiters || null,
       nutritionData.mealFrequency || null,
-      nutritionData.dietQualityScore || null
+      userId
     ]);
 
     res.status(201).json({
@@ -337,11 +336,10 @@ export const saveDetailedExercise = async (req: Request, res: Response) => {
     // Insert detailed exercise
     const result = await databaseManager.query(`
       INSERT INTO detailed_exercise (
-        patient_id, assessment_date, exercise_type, duration_minutes,
-        intensity_level, frequency_per_week, calories_burned,
-        heart_rate_avg, heart_rate_max
+        patient_id, assessment_date, exercise_type, exercise_duration,
+        exercise_intensity, exercise_frequency, assessed_by
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9
+        $1, $2, $3, $4, $5, $6, $7
       ) RETURNING *
     `, [
       patientId,
@@ -350,9 +348,7 @@ export const saveDetailedExercise = async (req: Request, res: Response) => {
       exerciseData.durationMinutes || null,
       exerciseData.intensityLevel || null,
       exerciseData.frequencyPerWeek || null,
-      exerciseData.caloriesBurned || null,
-      exerciseData.heartRateAvg || null,
-      exerciseData.heartRateMax || null
+      userId
     ]);
 
     res.status(201).json({

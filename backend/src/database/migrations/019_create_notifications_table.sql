@@ -14,6 +14,13 @@ CREATE TABLE IF NOT EXISTS notifications (
     title VARCHAR(200) NOT NULL,
     message TEXT NOT NULL,
     
+    -- Priority and Action
+    priority VARCHAR(20) DEFAULT 'normal' 
+        CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
+    action_required BOOLEAN DEFAULT FALSE,
+    action_url VARCHAR(500),
+    expires_at TIMESTAMP,
+    
     -- Related Record Information
     record_type VARCHAR(50),
     record_id UUID,

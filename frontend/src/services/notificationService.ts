@@ -355,7 +355,8 @@ export class NotificationService {
       });
     } catch (error) {
       logger.error('Failed to send patient record update notification:', error);
-      throw error;
+      // Don't throw error to prevent breaking the main flow
+      console.warn('Notification system failed but main process continues');
     }
   }
 
@@ -661,7 +662,10 @@ export class NotificationService {
           patientId,
           error: error
         });
-        throw error;
+        // Don't throw error to prevent breaking the main flow
+        // Just log the error and continue
+        console.warn('Notification failed but continuing with main process');
+        return;
       }
       
       logger.info('Notification sent to backend successfully', {

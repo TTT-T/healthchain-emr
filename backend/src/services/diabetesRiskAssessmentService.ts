@@ -213,35 +213,47 @@ export class DiabetesRiskAssessmentService {
       
       const history = historyResult.rows[0] || {};
       
-      // ดึงข้อมูล Critical Lab Values ล่าสุด
-      const criticalLabResult = await databaseManager.query(`
-        SELECT * FROM critical_lab_values
-        WHERE patient_id = $1
-        ORDER BY test_date DESC
-        LIMIT 1
-      `, [patientId]);
+      // ดึงข้อมูล Critical Lab Values ล่าสุด (ถ้ามี)
+      let criticalLabs = {};
+      try {
+        const criticalLabResult = await databaseManager.query(`
+          SELECT * FROM critical_lab_values
+          WHERE patient_id = $1
+          ORDER BY test_date DESC
+          LIMIT 1
+        `, [patientId]);
+        criticalLabs = criticalLabResult.rows[0] || {};
+      } catch (error) {
+        logger.warn('Critical lab values table not found or accessible:', error);
+      }
       
-      const criticalLabs = criticalLabResult.rows[0] || {};
+      // ดึงข้อมูล Detailed Nutrition ล่าสุด (ถ้ามี)
+      let nutrition = {};
+      try {
+        const nutritionResult = await databaseManager.query(`
+          SELECT * FROM detailed_nutrition
+          WHERE patient_id = $1
+          ORDER BY assessment_date DESC
+          LIMIT 1
+        `, [patientId]);
+        nutrition = nutritionResult.rows[0] || {};
+      } catch (error) {
+        logger.warn('Detailed nutrition table not found or accessible:', error);
+      }
       
-      // ดึงข้อมูล Detailed Nutrition ล่าสุด
-      const nutritionResult = await databaseManager.query(`
-        SELECT * FROM detailed_nutrition
-        WHERE patient_id = $1
-        ORDER BY assessment_date DESC
-        LIMIT 1
-      `, [patientId]);
-      
-      const nutrition = nutritionResult.rows[0] || {};
-      
-      // ดึงข้อมูล Detailed Exercise ล่าสุด
-      const exerciseResult = await databaseManager.query(`
-        SELECT * FROM detailed_exercise
-        WHERE patient_id = $1
-        ORDER BY assessment_date DESC
-        LIMIT 1
-      `, [patientId]);
-      
-      const exercise = exerciseResult.rows[0] || {};
+      // ดึงข้อมูล Detailed Exercise ล่าสุด (ถ้ามี)
+      let exercise = {};
+      try {
+        const exerciseResult = await databaseManager.query(`
+          SELECT * FROM detailed_exercise
+          WHERE patient_id = $1
+          ORDER BY assessment_date DESC
+          LIMIT 1
+        `, [patientId]);
+        exercise = exerciseResult.rows[0] || {};
+      } catch (error) {
+        logger.warn('Detailed exercise table not found or accessible:', error);
+      }
       
       // ประมวลผลข้อมูล
       const riskFactors: DiabetesRiskFactors = {

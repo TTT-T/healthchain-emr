@@ -25,8 +25,9 @@ interface Notification {
 
 export default function Notifications() {
   const { user, isAuthenticated } = useAuth();
-  const { refreshNotificationCount } = useNotifications();
+  const { refreshNotificationCount, markAllAsRead } = useNotifications();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
@@ -46,27 +47,22 @@ export default function Notifications() {
       // since the API expects patient ID, not user ID
       let currentPatientId = user.id;
       
-      // If user is a patient, use the known patient ID mapping
+      // If user is a patient, find patient record by email (same logic as NotificationContext)
       if (user.role === 'patient') {
-        // Map user ID to patient ID
-        if (user.id === '037f4403-2aa9-4f74-ac94-7012bdf85ca6' || user.email === 'teerapatsta@gmail.com') {
-          currentPatientId = '972f3bf2-9768-437f-8867-b62ad7e13ebc';
-          logger.info('Using mapped patient ID', { userId: user.id, patientId: currentPatientId });
-        } else if (user.id === '8d59efd9-f8bb-4c2a-ae83-12e0224a1e20' || user.email === 'test1758657291873@hospital.com') {
-          // Map to HN250001 (เอ) patient ID
-          currentPatientId = '83c0b0f1-335a-4484-b086-f6aaccfa2c22';
-          logger.info('Using mapped patient ID for HN250001', { userId: user.id, patientId: currentPatientId });
-        } else {
-          // Try to find patient record by email as fallback
-          try {
-            const patientResponse = await apiClient.get(`/medical/patients/by-email/${encodeURIComponent(user.email)}`);
-            if (patientResponse.data && typeof patientResponse.data === 'object' && patientResponse.data !== null && 'id' in patientResponse.data && (patientResponse.data as any).id) {
-              currentPatientId = (patientResponse.data as any).id;
-              logger.info('Found patient ID for user', { userId: user.id, patientId: currentPatientId });
-            }
-          } catch (error) {
-            logger.warn('Could not find patient record for user', { userId: user.id, error: (error as Error).message });
+        try {
+          // First, try to find the patient record by email
+          // This will work for both actual patient records and virtual patient records (users with patient role)
+          const patientResponse = await apiClient.get(`/medical/patients/by-email/${encodeURIComponent(user.email)}`);
+          
+          if (patientResponse.statusCode === 200 && patientResponse.data) {
+            const patientData = patientResponse.data as any;
+            currentPatientId = patientData.id;
+            logger.info('Found patient ID for user', { userId: user.id, patientId: currentPatientId, email: user.email });
+          } else {
+            logger.warn('Patient record not found for user', { userId: user.id, email: user.email });
           }
+        } catch (error) {
+          logger.warn('Could not find patient record for user', { userId: user.id, email: user.email, error: (error as Error).message });
         }
       }
       
@@ -75,37 +71,49 @@ export default function Notifications() {
       
       const response = await apiClient.getPatientNotifications(currentPatientId);
       
+      logger.info('🔔 API Response:', { 
+        statusCode: response?.statusCode,
+        hasData: !!response?.data,
+        responseData: response?.data
+      });
+      
       if (response && response.statusCode === 200 && response.data) {
         // Extract notifications from the response data structure
         const responseData = response.data as any;
         const notificationsData = responseData?.notifications || [];
+        const apiUnreadCount = responseData?.unread_count || 0;
         
         setNotifications(notificationsData);
+        setUnreadCount(apiUnreadCount);
         logger.info('Notifications loaded successfully', { 
           count: notificationsData.length,
-          unreadCount: responseData?.unread_count || 0
+          unreadCount: apiUnreadCount,
+          notifications: notificationsData
         });
       } else {
         if (response && response.statusCode === 200) {
           // If status is 200 but no data, set empty notifications
           setNotifications([]);
+          setUnreadCount(0);
           setError(null);
+          logger.info('No notifications found (empty response)');
         } else {
           setError('ไม่สามารถโหลดการแจ้งเตือนได้');
+          logger.error('Failed to load notifications:', response);
         }
       }
     } catch (error: any) {
-      console.error('❌ Error loading notifications:', error);
-      
       // Check if it's a 404 error (patient not found) - this is expected for users who haven't registered in EMR yet
       if (error?.response?.status === 404 || error?.statusCode === 404) {
         setNotifications([]);
+        setUnreadCount(0);
         setError(null); // Don't show error for expected 404
+        logger.info('Expected 404 for notifications - user not registered in EMR or no notifications yet');
       } else if (error?.response?.status === 200) {
         // Don't show error for successful responses (status 200)
         setError(null);
       } else {
-        console.error('❌ Error loading notifications:', error);
+        // Only log unexpected errors
         logger.error('Failed to load notifications:', error);
         setError('เกิดข้อผิดพลาดในการโหลดการแจ้งเตือน');
       }
@@ -136,8 +144,13 @@ export default function Notifications() {
         )
       );
 
+      // Update unread count
+      setUnreadCount(prev => Math.max(0, prev - 1));
+
       // Refresh notification count in header
-      refreshNotificationCount();
+      console.log('🔔 Notifications page - Calling refreshNotificationCount after mark as read');
+      await refreshNotificationCount();
+      console.log('🔔 Notifications page - refreshNotificationCount completed');
 
       logger.info('Notification marked as read', { notificationId });
     } catch (error: any) {
@@ -249,9 +262,9 @@ export default function Notifications() {
               <div>
                 <div className="flex items-center space-x-2">
                   <h1 className="text-2xl font-bold text-gray-900">การแจ้งเตือน</h1>
-                  {notifications.filter(n => !n.read_at).length > 0 && (
+                  {unreadCount > 0 && (
                     <span className="bg-blue-600 text-white text-sm px-2 py-1 rounded-full font-medium">
-                      {notifications.filter(n => !n.read_at).length} ใหม่
+                      {unreadCount} ใหม่
                     </span>
                   )}
                 </div>
@@ -267,6 +280,56 @@ export default function Notifications() {
             </button>
           </div>
         </div>
+
+        {/* Summary Card */}
+        {!isLoading && !error && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Bell className="w-6 h-6 text-blue-600" />
+                <span className="text-blue-800 font-medium">
+                  การแจ้งเตือน {unreadCount} ใหม่
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        // Mark all notifications as read locally
+                        setNotifications(prev => 
+                          prev.map(notif => ({ ...notif, read_at: new Date().toISOString() }))
+                        );
+                        setUnreadCount(0);
+                        
+                        // Call markAllAsRead from context
+                        await markAllAsRead();
+                        
+                        // Refresh notification count in header
+                        await refreshNotificationCount();
+                        
+                        console.log('🔔 All notifications marked as read');
+                      } catch (error) {
+                        console.error('❌ Failed to mark all notifications as read:', error);
+                      }
+                    }}
+                    className="flex items-center gap-2 px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    อ่านทั้งหมด
+                  </button>
+                )}
+                <button
+                  onClick={loadNotifications}
+                  className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  รีเฟรช
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Loading State */}
         {isLoading && (

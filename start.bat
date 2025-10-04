@@ -296,16 +296,32 @@ echo [INFO] Waiting for services to be ready...
 timeout /t 15 /nobreak >nul
 
 echo [LOG] Running automatic database migrations...
+echo [INFO] Waiting for database to be fully ready...
+timeout /t 10 /nobreak >nul
+
+echo [LOG] Checking database connection before migration...
+docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; databaseManager.initialize().then(() => console.log('Connected')).catch(() => process.exit(1))" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARNING] Database not ready, waiting longer...
+    timeout /t 15 /nobreak >nul
+    docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; databaseManager.initialize().then(() => console.log('Connected')).catch(() => process.exit(1))" >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo [ERROR] Database connection failed, skipping migration
+        echo [INFO] You can run migrations manually using option [5] RUN MIGRATIONS
+        goto SKIP_MIGRATION
+    )
+)
+
+echo [LOG] Running database migrations...
 docker exec emr_backend npm run auto-migrate
 if %errorlevel% neq 0 (
-    echo [WARNING] Auto-migration may have failed, but continuing...
-    echo [INFO] Attempting to fix migration issues...
+    echo [WARNING] Auto-migration failed, attempting to fix...
+    echo [INFO] Checking for failed migration records...
     
-    echo [LOG] Checking for failed migration records...
     docker exec emr_postgres psql -U postgres -d emr_development -c "SELECT migration_name FROM migrations WHERE success = false;" >nul 2>&1
     if %errorlevel% equ 0 (
         echo [INFO] Found failed migrations, attempting to fix...
-        docker exec emr_postgres psql -U postgres -d emr_development -c "DELETE FROM migrations WHERE migration_name = '004_create_appointment_tables' AND success = false;" >nul 2>&1
+        docker exec emr_postgres psql -U postgres -d emr_development -c "DELETE FROM migrations WHERE success = false;" >nul 2>&1
         echo [INFO] Retrying migration...
         docker exec emr_backend npm run auto-migrate
         if %errorlevel% equ 0 (
@@ -321,6 +337,8 @@ if %errorlevel% neq 0 (
 ) else (
     echo [SUCCESS] Automatic database migrations completed
 )
+
+:SKIP_MIGRATION
 
 echo [LOG] Running database health check...
 docker exec emr_backend npm run db:health-check
@@ -393,6 +411,14 @@ echo     - All notification systems working correctly
 echo     - Appointments system fully functional
 echo     - Admin role management working
 echo     - Patient appointments page accessible
+echo     - AI risk assessment system ready
+echo     - Patient summary with diabetes risk analysis
+echo     - Enhanced notification count synchronization
+echo     - Fixed timezone display (Bangkok time)
+echo     - AI research data collection system
+echo     - Critical lab values tracking
+echo     - Enhanced data management (nutrition/exercise)
+echo     - Mark all notifications as read functionality
 echo.
 echo [INFO] Testing service accessibility...
 curl -s -o nul -w "%%{http_code}" http://localhost:3001/health >nul 2>&1
@@ -507,13 +533,46 @@ echo [STEP 3/3] Running automatic migrations...
 echo [INFO] This will check and run all pending migrations...
 echo.
 
-docker exec emr_backend npm run auto-migrate
+echo [LOG] Checking database connection before migration...
+docker exec emr_backend npx tsx -e "import { databaseManager } from './src/database/connection'; databaseManager.initialize().then(() => console.log('Connected')).catch(() => process.exit(1))" >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Failed to run migrations!
-    echo [SOLUTION] Check database connection and migration files
-    echo [INFO] Check logs with: docker compose logs backend
+    echo [ERROR] Cannot connect to database!
+    echo [SOLUTION] Check if database is running properly
+    echo [INFO] Try restarting the system first
     pause
     goto MAIN_MENU
+) else (
+    echo [SUCCESS] Database connection verified
+)
+
+echo [LOG] Running migrations...
+docker exec emr_backend npm run auto-migrate
+if %errorlevel% neq 0 (
+    echo [WARNING] Migration failed, attempting to fix...
+    echo [INFO] Checking for failed migration records...
+    
+    docker exec emr_postgres psql -U postgres -d emr_development -c "SELECT migration_name FROM migrations WHERE success = false;" >nul 2>&1
+    if %errorlevel% equ 0 (
+        echo [INFO] Found failed migrations, attempting to fix...
+        docker exec emr_postgres psql -U postgres -d emr_development -c "DELETE FROM migrations WHERE success = false;" >nul 2>&1
+        echo [INFO] Retrying migration...
+        docker exec emr_backend npm run auto-migrate
+        if %errorlevel% equ 0 (
+            echo [SUCCESS] Migration issues fixed automatically
+        ) else (
+            echo [ERROR] Migration still failed!
+            echo [SOLUTION] Check database connection and migration files
+            echo [INFO] Check logs with: docker compose logs backend
+            pause
+            goto MAIN_MENU
+        )
+    ) else (
+        echo [ERROR] Failed to run migrations!
+        echo [SOLUTION] Check database connection and migration files
+        echo [INFO] Check logs with: docker compose logs backend
+        pause
+        goto MAIN_MENU
+    )
 ) else (
     echo [SUCCESS] Migrations completed successfully!
 )

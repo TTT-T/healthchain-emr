@@ -1,9 +1,10 @@
 {
   "name": "app-system",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:debug": "NEXT_PUBLIC_DEBUG_MODE=true next dev --turbopack",
     "build": "next build",
     "build:prod": "NODE_ENV=production next build",
     "build:production": "npm run clean-console && npm run type-check:prod && npm run lint:prod && next build",
