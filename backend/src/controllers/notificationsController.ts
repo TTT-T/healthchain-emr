@@ -24,21 +24,39 @@ export const getPatientNotifications = async (req: Request, res: Response) => {
     let patient: any;
     
     // Validate that the patient exists (for all roles)
+    // First try to find in patients table
     const patientExists = await databaseManager.query(
       'SELECT id, first_name, last_name, thai_name, hospital_number FROM patients WHERE id = $1',
       [patientId]
     );
 
     if (patientExists.rows.length === 0) {
-      return res.status(404).json({
-        data: null,
-        meta: null,
-        error: { message: 'Patient not found' },
-        statusCode: 404
-      });
+      // If not found in patients table, check if it's a user ID in users table
+      const userExists = await databaseManager.query(
+        'SELECT id, first_name, last_name, thai_name FROM users WHERE id = $1 AND role = $2',
+        [patientId, 'patient']
+      );
+
+      if (userExists.rows.length === 0) {
+        return res.status(404).json({
+          data: null,
+          meta: null,
+          error: { message: 'Patient not found' },
+          statusCode: 404
+        });
+      }
+      
+      // Use user data as patient data (virtual patient record)
+      patient = {
+        id: userExists.rows[0].id,
+        first_name: userExists.rows[0].first_name,
+        last_name: userExists.rows[0].last_name,
+        thai_name: userExists.rows[0].thai_name,
+        hospital_number: null
+      };
+    } else {
+      patient = patientExists.rows[0];
     }
-    
-    patient = patientExists.rows[0];
 
     const offset = (Number(page) - 1) * Number(limit);
 

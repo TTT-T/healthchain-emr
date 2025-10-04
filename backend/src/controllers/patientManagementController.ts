@@ -739,6 +739,17 @@ export const getPatientByEmail = async (req: Request, res: Response) => {
 
     // Decode URL-encoded email
     const decodedEmail = decodeURIComponent(email);
+    
+    // Validate email parameter
+    if (!decodedEmail || decodedEmail.trim() === '' || decodedEmail === 'undefined' || decodedEmail === 'null') {
+      return res.status(400).json({
+        data: null,
+        meta: null,
+        error: { message: 'Invalid email parameter' },
+        statusCode: 400
+      });
+    }
+    
 
     // First try to get patient details from patients table
     const patientQuery = `
@@ -771,6 +782,7 @@ export const getPatientByEmail = async (req: Request, res: Response) => {
     `;
 
     const patientResult = await databaseManager.query(patientQuery, [decodedEmail]);
+    
     
     let patient;
     

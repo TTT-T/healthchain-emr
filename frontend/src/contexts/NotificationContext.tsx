@@ -39,37 +39,35 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     // Only fetch patient notifications for patient role
     if (user.role === 'patient') {
       try {
-        // For patient role, we need to use the correct patient ID
-        let patientId = user.id;
-        
-        // Map user ID to patient ID
-        if (user.id === '037f4403-2aa9-4f74-ac94-7012bdf85ca6' || user.email === 'teerapatsta@gmail.com') {
-          patientId = '972f3bf2-9768-437f-8867-b62ad7e13ebc';
-        } else {
-          // Try to find patient record by email as fallback
-          try {
-            const patientResponse = await apiClient.get(`/medical/patients/by-email/${encodeURIComponent(user.email)}`);
-            if (patientResponse.data && typeof patientResponse.data === 'object' && patientResponse.data !== null && 'id' in patientResponse.data && (patientResponse.data as any).id) {
-              patientId = (patientResponse.data as any).id;
-            }
-          } catch (error) {
-            // Keep using user ID as fallback
-          }
-        }
-        
-        // Try to fetch from API first
-        const response = await apiClient.getPatientNotifications(patientId);
-        
-        if (response.statusCode === 200 && response.data) {
-          // Use unread_count from API response instead of counting manually
-          const responseData = response.data as any;
-          const unreadCount = responseData?.unread_count || 0;
-          setNotificationCount(unreadCount);
-        } else if (response.statusCode === 404) {
-          // Patient record not found - this is expected for users who haven't registered in EMR yet
+        // Check if user has a valid email
+        if (!user.email || user.email.trim() === '') {
+          // No email available, set notification count to 0
           setNotificationCount(0);
+          return;
+        }
+
+        // First, try to find the patient record by email
+        // This will work for both actual patient records and virtual patient records (users with patient role)
+        const patientResponse = await apiClient.get(`/medical/patients/by-email/${encodeURIComponent(user.email)}`);
+        
+        if (patientResponse.statusCode === 200 && patientResponse.data) {
+          const patientData = patientResponse.data as any;
+          const patientId = patientData.id;
+          
+          // Now fetch notifications using the patient ID
+          const response = await apiClient.getPatientNotifications(patientId);
+          
+          if (response.statusCode === 200 && response.data) {
+            // Use unread_count from API response
+            const responseData = response.data as any;
+            const unreadCount = responseData?.unread_count || 0;
+            setNotificationCount(unreadCount);
+          } else {
+            // No notifications found
+            setNotificationCount(0);
+          }
         } else {
-          // No notifications found
+          // Patient record not found - this is expected for users who haven't registered in EMR yet
           setNotificationCount(0);
         }
       } catch (error: any) {
