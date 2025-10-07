@@ -16,8 +16,8 @@ export const recordVitalSigns = async (req: Request, res: Response) => {
   try {
     const { id: visitId } = req.params;
     const {
-      systolic_bp,
-      diastolic_bp,
+      blood_pressure_systolic,
+      blood_pressure_diastolic,
       heart_rate,
       temperature,
       respiratory_rate,
@@ -32,7 +32,7 @@ export const recordVitalSigns = async (req: Request, res: Response) => {
     const userId = (req as any).user.id;
 
     // Validate required fields
-    if (!systolic_bp && !diastolic_bp && !heart_rate && !temperature && !weight && !height) {
+    if (!blood_pressure_systolic && !blood_pressure_diastolic && !heart_rate && !temperature && !weight && !height) {
       return res.status(400).json({
         data: null,
         meta: null,
@@ -85,9 +85,9 @@ export const recordVitalSigns = async (req: Request, res: Response) => {
     const vitalSignsId = uuidv4();
     const createVitalSignsQuery = `
       INSERT INTO vital_signs (
-        id, patient_id, visit_id, systolic_bp, diastolic_bp, heart_rate,
+        id, patient_id, visit_id, blood_pressure_systolic, blood_pressure_diastolic, heart_rate,
         temperature, respiratory_rate, oxygen_saturation, weight, height,
-        bmi, pain_scale, notes, measured_by, measurement_time
+        bmi, pain_scale, notes, recorded_by, recorded_at
       )
       VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
@@ -97,7 +97,7 @@ export const recordVitalSigns = async (req: Request, res: Response) => {
 
     const now = new Date();
     const vitalSignsResult = await databaseManager.query(createVitalSignsQuery, [
-      vitalSignsId, visit.patient_id, visitId, systolic_bp, diastolic_bp, heart_rate,
+      vitalSignsId, visit.patient_id, visitId, blood_pressure_systolic, blood_pressure_diastolic, heart_rate,
       temperature, respiratory_rate, oxygen_saturation, weight, height,
       calculatedBMI, pain_scale, notes, validUserId, now
     ]);
@@ -110,8 +110,8 @@ export const recordVitalSigns = async (req: Request, res: Response) => {
           id: newVitalSigns.id,
           patient_id: newVitalSigns.patient_id,
           visit_id: newVitalSigns.visit_id,
-          systolic_bp: newVitalSigns.systolic_bp,
-          diastolic_bp: newVitalSigns.diastolic_bp,
+          blood_pressure_systolic: newVitalSigns.blood_pressure_systolic,
+          blood_pressure_diastolic: newVitalSigns.blood_pressure_diastolic,
           heart_rate: newVitalSigns.heart_rate,
           temperature: newVitalSigns.temperature,
           respiratory_rate: newVitalSigns.respiratory_rate,
@@ -121,7 +121,7 @@ export const recordVitalSigns = async (req: Request, res: Response) => {
           bmi: newVitalSigns.bmi,
           pain_scale: newVitalSigns.pain_scale,
           notes: newVitalSigns.notes,
-          measurement_time: newVitalSigns.measurement_time,
+          recorded_at: newVitalSigns.recorded_at,
           created_at: newVitalSigns.created_at
         }
       },
@@ -156,7 +156,7 @@ export const createVitalSigns = async (req: Request, res: Response) => {
     const vitalSignsId = uuidv4();
     const result = await databaseManager.query(`
       INSERT INTO vital_signs (
-        id, patient_id, systolic_bp, diastolic_bp, heart_rate,
+        id, patient_id, blood_pressure_systolic, blood_pressure_diastolic, heart_rate,
         temperature, respiratory_rate, oxygen_saturation, weight, height,
         bmi, pain_scale, notes, recorded_by, recorded_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
@@ -164,8 +164,8 @@ export const createVitalSigns = async (req: Request, res: Response) => {
     `, [
       vitalSignsId,
       patientId,
-      vitalSignsData.systolic_bp,
-      vitalSignsData.diastolic_bp,
+      vitalSignsData.blood_pressure_systolic,
+      vitalSignsData.blood_pressure_diastolic,
       vitalSignsData.heart_rate,
       vitalSignsData.temperature,
       vitalSignsData.respiratory_rate,
@@ -258,9 +258,9 @@ export const createVitalSignsWithVisitId = async (req: Request, res: Response) =
     const vitalSignsId = uuidv4();
     const createVitalSignsQuery = `
       INSERT INTO vital_signs (
-        id, patient_id, visit_id, systolic_bp, diastolic_bp, heart_rate,
+        id, patient_id, visit_id, blood_pressure_systolic, blood_pressure_diastolic, heart_rate,
         temperature, respiratory_rate, oxygen_saturation, weight, height,
-        bmi, pain_scale, notes, measured_by, measurement_time
+        bmi, pain_scale, notes, recorded_by, recorded_at
       )
       VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
@@ -283,7 +283,7 @@ export const createVitalSignsWithVisitId = async (req: Request, res: Response) =
       
       // ดึงข้อมูลผู้ป่วย
       const patientResult = await databaseManager.query(`
-        SELECT p.id, p.hospital_number, p.first_name, p.last_name, p.thai_name, p.phone, p.email
+        SELECT p.id, p.hn, p.first_name, p.last_name, p.thai_first_name, p.phone, p.email
         FROM patients p
         WHERE p.id = $1
       `, [visit.patient_id]);
@@ -293,26 +293,26 @@ export const createVitalSignsWithVisitId = async (req: Request, res: Response) =
         
         await NotificationService.sendPatientNotification({
           patientId: patient.id,
-          patientHn: patient.hospital_number || '',
-          patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+          patientHn: patient.hn || '',
+          patientName: patient.thai_first_name || `${patient.first_name} ${patient.last_name}`,
           patientPhone: patient.phone,
           patientEmail: patient.email,
           notificationType: 'vital_signs_recorded',
-          title: `บันทึกสัญญาณชีพ: ${patient.hospital_number || 'HN'}`,
-          message: `มีการบันทึกสัญญาณชีพใหม่สำหรับคุณ ${patient.thai_name || patient.first_name} โดย ${user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'เจ้าหน้าที่'}`,
+          title: `บันทึกสัญญาณชีพ: ${patient.hn || 'HN'}`,
+          message: `มีการบันทึกสัญญาณชีพใหม่สำหรับคุณ ${patient.thai_first_name || patient.first_name} โดย ${user?.thai_first_name || `${user?.first_name} ${user?.last_name}` || 'เจ้าหน้าที่'}`,
           recordType: 'vital_signs',
           recordId: newVitalSigns.id,
           createdBy: user?.id || validUserId,
-          createdByName: user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'เจ้าหน้าที่',
+          createdByName: user?.thai_first_name || `${user?.first_name} ${user?.last_name}` || 'เจ้าหน้าที่',
           metadata: {
             weight: newVitalSigns.weight,
             height: newVitalSigns.height,
             bmi: newVitalSigns.bmi,
-            bloodPressure: `${newVitalSigns.systolic_bp || 'N/A'}/${newVitalSigns.diastolic_bp || 'N/A'}`,
+            bloodPressure: `${newVitalSigns.blood_pressure_systolic || 'N/A'}/${newVitalSigns.blood_pressure_diastolic || 'N/A'}`,
             heartRate: newVitalSigns.heart_rate,
             temperature: newVitalSigns.temperature,
             oxygenSaturation: newVitalSigns.oxygen_saturation,
-            measurementTime: newVitalSigns.measurement_time
+            measurementTime: newVitalSigns.recorded_at
           }
         });
       }
@@ -326,8 +326,8 @@ export const createVitalSignsWithVisitId = async (req: Request, res: Response) =
         id: newVitalSigns.id,
         patient_id: newVitalSigns.patient_id,
         visit_id: newVitalSigns.visit_id,
-        systolic_bp: newVitalSigns.systolic_bp,
-        diastolic_bp: newVitalSigns.diastolic_bp,
+        blood_pressure_systolic: newVitalSigns.blood_pressure_systolic,
+        blood_pressure_diastolic: newVitalSigns.blood_pressure_diastolic,
         heart_rate: newVitalSigns.heart_rate,
         temperature: newVitalSigns.temperature,
         respiratory_rate: newVitalSigns.respiratory_rate,
@@ -337,7 +337,7 @@ export const createVitalSignsWithVisitId = async (req: Request, res: Response) =
         bmi: newVitalSigns.bmi,
         pain_scale: newVitalSigns.pain_scale,
         notes: newVitalSigns.notes,
-        measurement_time: newVitalSigns.measurement_time,
+        recorded_at: newVitalSigns.recorded_at,
         created_at: newVitalSigns.created_at
       },
       meta: {
@@ -449,8 +449,8 @@ export const getVitalSigns = async (req: Request, res: Response) => {
         vs.id,
         vs.patient_id,
         vs.visit_id,
-        vs.systolic_bp,
-        vs.diastolic_bp,
+        vs.blood_pressure_systolic,
+        vs.blood_pressure_diastolic,
         vs.heart_rate,
         vs.temperature,
         vs.respiratory_rate,
@@ -460,15 +460,15 @@ export const getVitalSigns = async (req: Request, res: Response) => {
         vs.bmi,
         vs.pain_scale,
         vs.notes,
-        vs.measurement_time,
+        vs.recorded_at,
         vs.created_at,
         vs.updated_at,
-        u.first_name as measured_by_first_name,
-        u.last_name as measured_by_last_name
+        u.first_name as recorded_by_first_name,
+        u.last_name as recorded_by_last_name
       FROM vital_signs vs
-      LEFT JOIN users u ON vs.measured_by = u.id
+      LEFT JOIN users u ON vs.recorded_by = u.id
       WHERE vs.visit_id = $1
-      ORDER BY vs.measurement_time DESC
+      ORDER BY vs.recorded_at DESC
       LIMIT $2 OFFSET $3
     `;
 
@@ -491,9 +491,9 @@ export const getVitalSigns = async (req: Request, res: Response) => {
       visit_id: vs.visit_id,
       measurements: {
         blood_pressure: {
-          systolic: vs.systolic_bp,
-          diastolic: vs.diastolic_bp,
-          reading: vs.systolic_bp && vs.diastolic_bp ? `${vs.systolic_bp}/${vs.diastolic_bp}` : null
+          systolic: vs.blood_pressure_systolic,
+          diastolic: vs.blood_pressure_diastolic,
+          reading: vs.blood_pressure_systolic && vs.blood_pressure_diastolic ? `${vs.blood_pressure_systolic}/${vs.blood_pressure_diastolic}` : null
         },
         heart_rate: vs.heart_rate,
         temperature: vs.temperature,
@@ -505,10 +505,10 @@ export const getVitalSigns = async (req: Request, res: Response) => {
         pain_scale: vs.pain_scale
       },
       notes: vs.notes,
-      measured_by: vs.measured_by_first_name ? {
-        name: `${vs.measured_by_first_name} ${vs.measured_by_last_name}`
+      recorded_by: vs.recorded_by_first_name ? {
+        name: `${vs.recorded_by_first_name} ${vs.recorded_by_last_name}`
       } : null,
-      measurement_time: vs.measurement_time,
+      recorded_at: vs.recorded_at,
       created_at: vs.created_at,
       updated_at: vs.updated_at
     }));
@@ -574,7 +574,7 @@ export const updateVitalSigns = async (req: Request, res: Response) => {
     let paramCount = 0;
 
     const allowedFields = [
-      'systolic_bp', 'diastolic_bp', 'heart_rate', 'temperature',
+      'blood_pressure_systolic', 'blood_pressure_diastolic', 'heart_rate', 'temperature',
       'respiratory_rate', 'oxygen_saturation', 'weight', 'height',
       'bmi', 'pain_scale', 'notes'
     ];
@@ -634,8 +634,8 @@ export const updateVitalSigns = async (req: Request, res: Response) => {
           id: updatedVitalSigns.id,
           patient_id: updatedVitalSigns.patient_id,
           visit_id: updatedVitalSigns.visit_id,
-          systolic_bp: updatedVitalSigns.systolic_bp,
-          diastolic_bp: updatedVitalSigns.diastolic_bp,
+          blood_pressure_systolic: updatedVitalSigns.blood_pressure_systolic,
+          blood_pressure_diastolic: updatedVitalSigns.blood_pressure_diastolic,
           heart_rate: updatedVitalSigns.heart_rate,
           temperature: updatedVitalSigns.temperature,
           respiratory_rate: updatedVitalSigns.respiratory_rate,

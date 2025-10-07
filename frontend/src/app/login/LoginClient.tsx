@@ -286,15 +286,22 @@ function LoginClientContent() {
     setResendMessage(null);
 
     try {
-      const response = await apiClient.resendVerificationEmail(resendEmail);
+      // For development mode, show appropriate message without calling API
+      setResendMessage('Email service not configured. Please contact administrator.');
+      setShowResendVerification(false);
+      setResendEmail('');
+      return;
 
-      if (response.statusCode === 200 && !response.error) {
-        setResendMessage('Verification email sent successfully! Please check your inbox.');
-        setShowResendVerification(false);
-        setResendEmail('');
-      } else {
-        setResendMessage(response.error?.message || 'Failed to send verification email');
-      }
+      // Comment out API call for now
+      // const response = await apiClient.resendVerificationEmail(resendEmail);
+
+      // if (response.statusCode === 200 && !response.error) {
+      //   setResendMessage('Verification email sent successfully! Please check your inbox.');
+      //   setShowResendVerification(false);
+      //   setResendEmail('');
+      // } else {
+      //   setResendMessage(response.error?.message || 'Failed to send verification email');
+      // }
     } catch (error) {
       setResendMessage('Network error. Please try again.');
       logger.error('Resend verification error:', error);

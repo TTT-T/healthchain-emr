@@ -36,23 +36,84 @@ const db = {
     return result.rows[0] || null;
   },
   createUser: async (userData: any) => {
+    // Parse birth date to extract day, month, year
+    let birthDay = null, birthMonth = null, birthYear = null;
+    if (userData.birthDate) {
+      const birthDate = new Date(userData.birthDate);
+      birthDay = birthDate.getDate();
+      birthMonth = birthDate.getMonth() + 1; // JavaScript months are 0-based
+      birthYear = birthDate.getFullYear() + 543; // Convert to Buddhist Era
+    }
+
     const query = `
       INSERT INTO users (
         username, email, password_hash, first_name, last_name, 
-        thai_name, thai_last_name, title, phone, role, is_active, email_verified, profile_completed,
-        national_id, birth_date, gender, address, id_card_address, blood_type
+        thai_first_name, thai_last_name, title, phone, role, is_active, email_verified, profile_completed,
+        address, id_card_address, national_id, birth_date, birth_day, birth_month, birth_year, gender, blood_type,
+        nationality, emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
+        allergies, drug_allergies, food_allergies, environment_allergies, medical_history, current_medications, chronic_diseases,
+        occupation, education, marital_status, religion, race, insurance_type
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, false, $13, $14, $15, $16, $17, $18)
-      RETURNING id, username, email, first_name, last_name, thai_name, thai_last_name, title, phone, role, is_active, email_verified, profile_completed, national_id, birth_date, gender, address, id_card_address, blood_type
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39)
+      RETURNING id, username, email, first_name, last_name, thai_first_name, thai_last_name, title, phone, role, is_active, email_verified, profile_completed, address, id_card_address, national_id, birth_date, birth_day, birth_month, birth_year, gender, blood_type, nationality, emergency_contact_name, emergency_contact_phone, emergency_contact_relation, allergies, drug_allergies, food_allergies, environment_allergies, medical_history, current_medications, chronic_diseases, occupation, education, marital_status, religion, race, insurance_type
     `;
     const result = await db.query(query, [
       userData.username, userData.email, userData.password,
-      userData.firstName, userData.lastName, userData.thaiFirstName, userData.thaiLastName, userData.title, // Thai names and title
-      userData.phoneNumber, userData.role, userData.isActive, userData.isEmailVerified,
-      userData.nationalId, userData.birthDate, userData.gender, 
-      userData.address, userData.idCardAddress, userData.bloodType
+      userData.firstName, userData.lastName, userData.thaiFirstName, userData.thaiLastName,
+      userData.title, userData.phoneNumber, userData.role, userData.isActive, userData.isEmailVerified,
+      false, userData.address, userData.idCardAddress, userData.nationalId, userData.birthDate, 
+      birthDay, birthMonth, birthYear, userData.gender, userData.bloodType,
+      userData.nationality || 'Thai', userData.emergencyContactName, userData.emergencyContactPhone, userData.emergencyContactRelation,
+      userData.allergies, userData.drugAllergies, userData.foodAllergies, userData.environmentAllergies, 
+      userData.medicalHistory, userData.currentMedications, userData.chronicDiseases,
+      userData.occupation, userData.education, userData.maritalStatus, userData.religion, userData.race, userData.insuranceType
     ]);
-    return result.rows[0];
+    
+    const user = result.rows[0];
+    
+    // Create doctor record if role is doctor
+    if (userData.role === 'doctor') {
+      const doctorQuery = `
+        INSERT INTO doctors (
+          user_id, medical_license_number, specialization, department, position, 
+          hospital_affiliation, years_of_experience
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id
+      `;
+      await db.query(doctorQuery, [
+        user.id,
+        userData.medicalLicenseNumber,
+        userData.specialization,
+        userData.department,
+        userData.position,
+        userData.hospitalAffiliation,
+        userData.yearsOfExperience
+      ]);
+    }
+    
+    // Create nurse record if role is nurse
+    if (userData.role === 'nurse') {
+      const nurseQuery = `
+        INSERT INTO nurses (
+          user_id, nursing_license_number, specialization, department, position, 
+          hospital_affiliation, years_of_experience
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id
+      `;
+      await db.query(nurseQuery, [
+        user.id,
+        userData.nursingLicenseNumber,
+        userData.nursingSpecialization,
+        userData.nursingDepartment,
+        userData.nursingPosition,
+        userData.nursingHospitalAffiliation,
+        userData.nursingYearsOfExperience
+      ]);
+    }
+    
+    return user;
   },
   createSession: async (sessionData: any) => {
     const query = `
@@ -69,20 +130,20 @@ const db = {
   createAuditLog: async (logData: any) => {
     const query = `
       INSERT INTO audit_logs (
-        user_id, action, resource, resource_id, details, ip_address, user_agent
+        user_id, action, table_name, record_id, old_values, ip_address, user_agent
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7)
     `;
     await db.query(query, [
-      logData.userId, logData.action, logData.resource,
-      logData.resourceId, JSON.stringify(logData.details || {}),
+      logData.userId, logData.action, logData.table_name || logData.resource,
+      logData.record_id || logData.resourceId, JSON.stringify(logData.details || {}),
       logData.ipAddress, logData.userAgent
     ]);
   },
   getUserById: async (userId: string) => {
     const query = `
       SELECT id, username, email, first_name, last_name,
-             thai_name, thai_last_name, department_id,
+             thai_first_name, thai_last_name,
              role, is_active, profile_completed, email_verified,
              created_at, updated_at
       FROM users WHERE id = $1
@@ -233,19 +294,36 @@ export const register = async (req: Request, res: Response) => {
         password: hashedPassword,
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
-        thaiFirstName: validatedData.thaiFirstName,
-        thaiLastName: validatedData.thaiLastName,
-        title: validatedData.title,
-        phoneNumber: validatedData.phoneNumber,
+        thaiFirstName: validatedData.thaiFirstName || null,
+        thaiLastName: validatedData.thaiLastName || null,
+        title: validatedData.title || null,
+        phoneNumber: validatedData.phoneNumber || null,
         role: validatedData.role || 'patient',
-        isActive: validatedData.role === 'patient' ? true : false, // Only patients are active by default
+        isActive: validatedData.role === 'patient' ? true : false,
         isEmailVerified: false,
-        nationalId: validatedData.nationalId,
-        birthDate: validatedData.birthDate,
-        gender: validatedData.gender,
-        address: validatedData.address,
-        idCardAddress: validatedData.idCardAddress,
-        bloodType: validatedData.bloodType
+        address: validatedData.address || null,
+        idCardAddress: validatedData.idCardAddress || null,
+        nationalId: validatedData.nationalId || null,
+        birthDate: validatedData.birthDate || null,
+        gender: validatedData.gender || null,
+        bloodType: validatedData.bloodType || null,
+        nationality: validatedData.nationality || 'Thai',
+        emergencyContactName: validatedData.emergencyContactName || null,
+        emergencyContactPhone: validatedData.emergencyContactPhone || null,
+        emergencyContactRelation: validatedData.emergencyContactRelation || null,
+        allergies: validatedData.allergies || null,
+        drugAllergies: validatedData.drugAllergies || null,
+        foodAllergies: validatedData.foodAllergies || null,
+        environmentAllergies: validatedData.environmentAllergies || null,
+        medicalHistory: validatedData.medicalHistory || null,
+        currentMedications: validatedData.currentMedications || null,
+        chronicDiseases: validatedData.chronicDiseases || null,
+        occupation: validatedData.occupation || null,
+        education: validatedData.education || null,
+        maritalStatus: validatedData.maritalStatus || null,
+        religion: validatedData.religion || null,
+        race: validatedData.race || null,
+        insuranceType: validatedData.insuranceType || null
       });
     } catch (error: any) {
       // Handle database constraint errors
@@ -323,7 +401,7 @@ export const register = async (req: Request, res: Response) => {
         const verificationToken = crypto.randomBytes(32).toString('hex');
         
         // Store token in database
-        await DatabaseSchema.createEmailVerificationToken(newUser.id, verificationToken);
+        await DatabaseSchema.createEmailVerificationToken(newUser.id, verificationToken, validatedData.email);
         
         // Send verification email
         const emailSent = await emailService.sendEmailVerification(
@@ -362,7 +440,7 @@ export const register = async (req: Request, res: Response) => {
     
     // Remove password from response
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _, ...userWithoutPassword } = newUser;
+    const { password: _, password_hash: __, ...userWithoutPassword } = newUser;
     
     const authResponse: AuthResponse = {
       user: userWithoutPassword,
@@ -429,7 +507,7 @@ export const resendVerification = async (req: Request, res: Response) => {
     }
 
     // Find user by email
-    const user = await db.getUserByUsernameOrEmail('', email);
+    const user = await db.getUserByEmail(email);
     
     if (!user) {
       return res.status(404).json(
@@ -447,7 +525,7 @@ export const resendVerification = async (req: Request, res: Response) => {
     const verificationToken = crypto.randomBytes(32).toString('hex');
     
     // Store token in database
-    await DatabaseSchema.createEmailVerificationToken(user.id, verificationToken);
+    await DatabaseSchema.createEmailVerificationToken(user.id, verificationToken, user.email);
     
     // Send verification email
     const emailSent = await emailService.sendEmailVerification(
@@ -462,9 +540,16 @@ export const resendVerification = async (req: Request, res: Response) => {
       );
     } else {
       console.error('❌ Failed to resend verification email:', user.email);
-      res.status(500).json(
-        errorResponse('Failed to send verification email', 500)
-      );
+      // In development mode, provide helpful message
+      if (process.env.NODE_ENV === 'development') {
+        res.status(500).json(
+          errorResponse('Email service not configured. Please configure SMTP settings to send emails.', 500)
+        );
+      } else {
+        res.status(500).json(
+          errorResponse('Failed to send verification email', 500)
+        );
+      }
     }
   } catch (error) {
     console.error('❌ Resend verification error:', error);
@@ -479,17 +564,31 @@ export const login = async (req: Request, res: Response) => {
     // Validate input
     const validatedData = loginSchema.parse(req.body);
     
-    // Use username only
+    // Use email or username
+    const email = validatedData.email;
     const username = validatedData.username;
     
-    if (!username) {
+    if (!email && !username) {
       return res.status(400).json(
-        errorResponse('Username is required', 400)
+        errorResponse('Email or username is required', 400)
       );
     }
     
-    // Find user by username only
-    const user = await db.getUserByUsername(username);
+    // Find user by email or username
+    let user;
+    if (email) {
+      console.log('Looking for user by email:', email);
+      user = await db.getUserByEmail(email);
+    } else {
+      console.log('Looking for user by username:', username);
+      user = await db.getUserByUsername(username);
+    }
+    
+    console.log('Found user:', user ? 'Yes' : 'No');
+    if (user) {
+      console.log('User details:', { id: user.id, username: user.username, email: user.email, is_active: user.is_active });
+    }
+    
     if (!user) {
       return res.status(401).json(
         errorResponse('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 401)
@@ -525,7 +624,9 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Validate password
+    console.log('Validating password:', validatedData.password, 'with hash:', user.password_hash);
     const isPasswordValid = await validatePassword(validatedData.password, user.password_hash);
+    console.log('Password validation result:', isPasswordValid);
     if (!isPasswordValid) {
       // Log failed login attempt
       await db.createAuditLog({
@@ -766,13 +867,13 @@ export const getProfile = async (req: Request, res: Response) => {
       ...userWithoutPassword,
       firstName: userWithoutPassword.first_name,
       lastName: userWithoutPassword.last_name,
-      thaiFirstName: userWithoutPassword.thai_name, // Use thai_name (combined) as first name
+      thaiFirstName: userWithoutPassword.thai_first_name, // Use thai_first_name (combined) as first name
       thaiLastName: userWithoutPassword.thai_last_name,
       departmentId: userWithoutPassword.department_id,
       // Remove snake_case fields
       first_name: undefined,
       last_name: undefined,
-      thai_name: undefined,
+      thai_first_name: undefined,
       thai_last_name: undefined,
       department_id: undefined
     };
@@ -934,8 +1035,8 @@ export const verifyEmail = async (req: Request, res: Response) => {
     await db.createAuditLog({
       userId: result.userId!,
       action: 'EMAIL_VERIFIED',
-      resource: 'USER',
-      resourceId: result.userId!,
+      table_name: 'users',
+      record_id: result.userId!,
       details: { token: token.substring(0, 20) + '...' },
       ipAddress: req.ip || 'unknown',
       userAgent: req.get('User-Agent') || 'unknown'
@@ -971,7 +1072,7 @@ export const resendVerificationEmail = async (req: Request, res: Response) => {
     }
 
     // Find user
-    const user = await db.getUserByUsernameOrEmail(email, email);
+    const user = await db.getUserByEmail(email);
     
     if (!user) {
       return res.status(404).json(
@@ -998,7 +1099,7 @@ export const resendVerificationEmail = async (req: Request, res: Response) => {
       const verificationToken = crypto.randomBytes(32).toString('hex');
       
       // Store token in database
-      await DatabaseSchema.createEmailVerificationToken(user.id, verificationToken);
+      await DatabaseSchema.createEmailVerificationToken(user.id, verificationToken, user.email);
       
       // Send verification email
       const emailSent = await emailService.sendEmailVerification(
@@ -1208,6 +1309,75 @@ export const resetPassword = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Reset password error:', error);
     
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
+  }
+};
+
+/**
+ * Resend email verification - New endpoint
+ */
+export const resendEmailVerification = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json(
+        errorResponse('Email is required', 400)
+      );
+    }
+
+    // Find user by email
+    const user = await db.getUserByEmail(email);
+    
+    if (!user) {
+      return res.status(404).json(
+        errorResponse('User not found with this email', 404)
+      );
+    }
+
+    if (user.email_verified) {
+      return res.status(400).json(
+        errorResponse('Email is already verified', 400)
+      );
+    }
+
+    // Generate new verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    
+    // Store token in database
+    await DatabaseSchema.createEmailVerificationToken(user.id, verificationToken, user.email);
+    
+    // Send verification email
+    const emailSent = await emailService.sendEmailVerification(
+      user.email,
+      user.first_name,
+      verificationToken
+    );
+    
+    if (emailSent) {
+      res.status(200).json(
+        successResponse('Verification email sent successfully', { 
+          message: 'Verification email sent successfully',
+          email: user.email
+        })
+      );
+    } else {
+      console.error('❌ Failed to resend verification email:', user.email);
+      // In development mode, provide helpful message
+      if (process.env.NODE_ENV === 'development') {
+        res.status(500).json(
+          errorResponse('Email service not configured. Please configure SMTP settings to send emails.', 500)
+        );
+      } else {
+        res.status(500).json(
+          errorResponse('Failed to send verification email', 500)
+        );
+      }
+    }
+  } catch (error) {
+    console.error('❌ Resend verification error:', error);
     res.status(500).json(
       errorResponse('Internal server error', 500)
     );

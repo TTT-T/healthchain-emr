@@ -14,6 +14,54 @@ import {
 import { successResponse, errorResponse } from '../utils';
 
 /**
+ * Get basic user profile
+ * GET /api/auth/profile
+ */
+export const getProfile = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    
+    if (!user) {
+      return res.status(401).json(
+        errorResponse('User not authenticated', 401)
+      );
+    }
+
+    // Get basic user data from database
+    const userQuery = `
+      SELECT 
+        u.id, u.username, u.email, u.first_name, u.last_name, u.phone, u.role,
+        u.thai_first_name, u.thai_last_name, u.title, u.national_id, u.birth_date, u.gender, u.blood_type,
+        u.address, u.is_active, u.email_verified, u.profile_completed,
+        u.created_at, u.updated_at
+      FROM users u
+      WHERE u.id = $1
+    `;
+    
+    const result = await databaseManager.query(userQuery, [user.id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json(
+        errorResponse('User not found', 404)
+      );
+    }
+
+    // Transform database data to frontend format
+    const userData = ProfileTransformers.fromDatabase(result.rows[0]);
+
+    res.json(
+      successResponse('Profile retrieved successfully', userData)
+    );
+
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
+  }
+};
+
+/**
  * Get complete user profile
  * GET /api/auth/profile/complete
  */
@@ -31,7 +79,7 @@ export const getCompleteProfile = async (req: Request, res: Response) => {
     const userQuery = `
       SELECT 
         u.id, u.username, u.email, u.first_name, u.last_name, u.phone, u.role,
-        u.thai_name, u.thai_last_name, u.title, u.national_id, u.birth_date, u.birth_day, u.birth_month, u.birth_year, u.gender, u.blood_type,
+        u.thai_first_name, u.thai_last_name, u.title, u.national_id, u.birth_date, u.birth_day, u.birth_month, u.birth_year, u.gender, u.blood_type,
         u.address, u.id_card_address,
         u.emergency_contact_name, u.emergency_contact_phone, u.emergency_contact_relation,
         u.allergies, u.drug_allergies, u.food_allergies, u.environment_allergies,
@@ -40,7 +88,7 @@ export const getCompleteProfile = async (req: Request, res: Response) => {
         u.insurance_type, u.insurance_number, u.insurance_expiry_date, u.insurance_expiry_day, u.insurance_expiry_month, u.insurance_expiry_year,
         u.profile_image, u.is_active, u.email_verified, u.profile_completed,
         u.created_at, u.updated_at, u.last_login, u.last_activity,
-        p.hospital_number
+        p.hn as hospital_number, p.patient_number
       FROM users u
       LEFT JOIN patients p ON u.id = p.user_id
       WHERE u.id = $1
@@ -98,8 +146,12 @@ export const updateCompleteProfile = async (req: Request, res: Response) => {
         errorResponse('User not authenticated', 401)
       );
     }
+    // Debug logging
+    console.log('Update profile request body:', JSON.stringify(req.body, null, 2));
+    
     // Validate input
     const validatedData = UpdateProfileSchema.parse(req.body);
+    console.log('Validated data:', JSON.stringify(validatedData, null, 2));
     
     // Check if email is being changed and already exists
     if (validatedData.email && validatedData.email !== user.email) {
@@ -135,7 +187,7 @@ export const updateCompleteProfile = async (req: Request, res: Response) => {
       WHERE id = $1
       RETURNING 
         id, username, email, first_name, last_name, phone, role,
-        thai_name, thai_last_name, title, national_id, birth_date, birth_day, birth_month, birth_year, gender, blood_type,
+        thai_first_name, thai_last_name, title, national_id, birth_date, birth_day, birth_month, birth_year, gender, blood_type,
         address, id_card_address,
         emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
         allergies, drug_allergies, food_allergies, environment_allergies,
@@ -202,7 +254,7 @@ export const deleteProfileField = async (req: Request, res: Response) => {
 
     // List of deletable fields
     const deletableFields = [
-      'thai_name', 'national_id', 'address', 'id_card_address', 'current_address',
+      'thai_first_name', 'national_id', 'address', 'id_card_address', 'current_address',
       'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation',
       'allergies', 'drug_allergies', 'food_allergies', 'environment_allergies',
       'medical_history', 'current_medications', 'chronic_diseases',
@@ -332,7 +384,7 @@ export const getProfileCompletion = async (req: Request, res: Response) => {
     const userQuery = `
       SELECT 
         first_name, last_name, email, phone, birth_date, gender,
-        thai_name, national_id, address, emergency_contact_name,
+        thai_first_name, national_id, address, emergency_contact_name,
         emergency_contact_phone, profile_image, profile_completed
       FROM users 
       WHERE id = $1
@@ -346,7 +398,7 @@ export const getProfileCompletion = async (req: Request, res: Response) => {
       'first_name', 'last_name', 'email', 'phone', 'birth_date', 'gender'
     ];
     const optionalFields = [
-      'thai_name', 'national_id', 'address', 'emergency_contact_name', 
+      'thai_first_name', 'national_id', 'address', 'emergency_contact_name', 
       'emergency_contact_phone', 'profile_image'
     ];
 

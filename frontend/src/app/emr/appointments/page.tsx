@@ -289,8 +289,8 @@ export default function Appointments() {
       if (response && (response.statusCode === 200 || response.statusCode === 404) && response.data) {
         logger.info("Successfully loaded appointments:", response.data);
         
-        // The appointments are directly in response.data (not response.data.appointments)
-        const appointmentsData = Array.isArray(response.data) ? response.data : [];
+        // The appointments are in response.data.appointments
+        const appointmentsData = response.data.appointments || [];
         
         setAppointments(appointmentsData);
         // Clear any previous errors
@@ -546,15 +546,7 @@ export default function Appointments() {
         message: `มีการสร้างนัดหมายใหม่สำหรับคุณ ${patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${appointmentRecord.createdBy}`
       };
 
-      // Add timeout for notification
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Notification timeout')), 5000); // 5 second timeout
-      });
-      
-      const notificationPromise = NotificationService.notifyPatientRecordUpdate(notificationData);
-      
-      await Promise.race([notificationPromise, timeoutPromise]);
-      logger.info('Patient notification sent for appointment', {
+      logger.info('Appointment created successfully', {
         patientHn: notificationData.patientHn,
         recordId: appointmentRecord.id
       });
@@ -1269,54 +1261,32 @@ export default function Appointments() {
                           <div className="flex items-center gap-2 mb-2">
                             <Calendar className="h-4 w-4 text-blue-600" />
                             <span className="font-medium text-gray-900">
-                              {typeof appointment.title === 'object' 
-                                ? (appointment.title.display || appointment.title.name || appointment.title.text || JSON.stringify(appointment.title))
-                                : appointment.title || 'ไม่ระบุหัวข้อ'
-                              }
+                              นัดหมาย {appointment.appointment_type || 'ทั่วไป'}
                             </span>
                             <span className="text-gray-500">
                               {AppointmentService.formatDateTime(
-                                appointment.appointmentDate,
-                                appointment.appointmentTime
+                                appointment.appointment_date || appointment.appointmentDate,
+                                appointment.appointment_time || appointment.appointmentTime
                               )}
                             </span>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${AppointmentService.getStatusColor(appointment.status)}`}>
                               {AppointmentService.getStatusLabel(appointment.status)}
                             </span>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${AppointmentService.getPriorityColor(appointment.priority)}`}>
-                              {AppointmentService.getPriorityLabel(appointment.priority)}
-                            </span>
                           </div>
                           
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
                             <div>
-                              <span className="font-medium">ประเภท:</span> {
-                                typeof appointment.appointmentType === 'object' 
-                                  ? (appointment.appointmentType.display || appointment.appointmentType.name || appointment.appointmentType.type || JSON.stringify(appointment.appointmentType))
-                                  : (appointment.appointmentType || 'ไม่ระบุ')
-                              }
+                              <span className="font-medium">ประเภท:</span> {appointment.appointment_type || 'นัดหมาย'}
                             </div>
                             <div>
-                              <span className="font-medium">คำอธิบาย:</span> {
-                                typeof appointment.description === 'object' 
-                                  ? (appointment.description.display || appointment.description.name || appointment.description.text || JSON.stringify(appointment.description))
-                                  : appointment.description || 'ไม่ระบุ'
-                              }
+                              <span className="font-medium">เหตุผล:</span> {appointment.reason || 'ไม่ระบุ'}
                             </div>
-                            {appointment.doctor && (
-                              <div>
-                                <span className="font-medium">แพทย์:</span> {appointment.doctor.thaiName}
-                              </div>
-                            )}
-                            {appointment.location && (
-                              <div>
-                                <span className="font-medium">สถานที่:</span> {
-                                  typeof appointment.location === 'object' 
-                                    ? appointment.location.name || JSON.stringify(appointment.location)
-                                    : appointment.location
-                                }
-                              </div>
-                            )}
+                            <div>
+                              <span className="font-medium">แพทย์:</span> {appointment.physician?.name || 'ไม่ระบุ'}
+                            </div>
+                            <div>
+                              <span className="font-medium">ระยะเวลา:</span> {appointment.duration_minutes || 30} นาที
+                            </div>
                           </div>
                           
                           {appointment.notes && (

@@ -17,10 +17,10 @@ async function sendPatientVisitNotification(visit: any, doctorId: string, queueC
     const patientQuery = `
       SELECT 
         p.id,
-        p.hospital_number,
+        p.hn,
         p.first_name,
         p.last_name,
-        p.thai_name,
+        p.thai_first_name,
         p.phone,
         p.email,
         p.user_id,
@@ -44,7 +44,7 @@ async function sendPatientVisitNotification(visit: any, doctorId: string, queueC
         u.id,
         u.first_name,
         u.last_name,
-        u.thai_name,
+        u.thai_first_name,
         d.department_name
       FROM users u
       LEFT JOIN departments d ON u.department_id = d.id
@@ -64,7 +64,7 @@ async function sendPatientVisitNotification(visit: any, doctorId: string, queueC
         u.id,
         u.first_name,
         u.last_name,
-        u.thai_name
+        u.thai_first_name
       FROM users u
       WHERE u.id = $1
     `;
@@ -74,21 +74,21 @@ async function sendPatientVisitNotification(visit: any, doctorId: string, queueC
     // Use NotificationService to send notification
     await NotificationService.sendPatientNotification({
       patientId: patient.id,
-      patientHn: patient.hospital_number || '',
-      patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+      patientHn: patient.hn || '',
+      patientName: patient.thai_first_name || `${patient.first_name} ${patient.last_name}`,
       patientPhone: patient.phone,
       patientEmail: patient.email || patient.user_email,
       notificationType: 'queue_assigned',
       title: `ได้รับหมายเลขคิว ${visit.visit_number}`,
-      message: `คุณ ${patient.thai_name || patient.first_name} ได้รับหมายเลขคิว ${visit.visit_number} สำหรับตรวจกับ ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`,
+      message: `คุณ ${patient.thai_first_name || patient.first_name} ได้รับหมายเลขคิว ${visit.visit_number} สำหรับตรวจกับ ${doctor.thai_first_name || `${doctor.first_name} ${doctor.last_name}`}`,
       recordType: 'visit',
       recordId: visit.id,
       createdBy: createdBy,
-      createdByName: creator ? (creator.thai_name || `${creator.first_name} ${creator.last_name}`) : 'ระบบ',
+      createdByName: creator ? (creator.thai_first_name || `${creator.first_name} ${creator.last_name}`) : 'ระบบ',
       metadata: {
         visitNumber: visit.visit_number,
-        hospitalNumber: patient.hospital_number,
-        doctorName: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
+        hospitalNumber: patient.hn,
+        doctorName: doctor.thai_first_name || `${doctor.first_name} ${doctor.last_name}`,
         department: doctor.department_name,
         queuePosition: queueCount,
         estimatedWaitTime: queueCount * 15, // 15 minutes per patient
@@ -194,12 +194,13 @@ export const getAllVisits = async (req: Request, res: Response) => {
         v.doctor_notes,
         v.status,
         v.priority,
+        v.department_id,
         v.created_at,
         v.updated_at,
         p.first_name as patient_first_name,
         p.last_name as patient_last_name,
-        p.thai_name as patient_thai_name,
-        p.hospital_number,
+        p.thai_first_name as patient_thai_first_name,
+        p.hn,
         d.first_name as doctor_first_name,
         d.last_name as doctor_last_name,
         dept.department_name
@@ -246,11 +247,11 @@ export const getAllVisits = async (req: Request, res: Response) => {
       priority: visit.priority,
       patient: {
         id: visit.patient_id,
-        name: visit.patient_thai_name || `${visit.patient_first_name} ${visit.patient_last_name}`,
-        hospital_number: visit.hospital_number
+        name: visit.patient_thai_first_name || `${visit.patient_first_name} ${visit.patient_last_name}`,
+        hn: visit.hn
       },
       doctor: {
-        id: visit.doctor_id,
+        id: visit.attending_doctor_id,
         name: `${visit.doctor_first_name} ${visit.doctor_last_name}`
       },
       department: visit.department_name,
@@ -610,12 +611,13 @@ export const getVisitById = async (req: Request, res: Response) => {
         v.doctor_notes,
         v.status,
         v.priority,
+        v.department_id,
         v.created_at,
         v.updated_at,
         p.first_name as patient_first_name,
         p.last_name as patient_last_name,
-        p.thai_name as patient_thai_name,
-        p.hospital_number,
+        p.thai_first_name as patient_thai_first_name,
+        p.hn,
         p.birth_date,
         p.gender,
         d.first_name as doctor_first_name,
@@ -671,8 +673,8 @@ export const getVisitById = async (req: Request, res: Response) => {
       priority: visit.priority,
       patient: {
         id: visit.patient_id,
-        name: visit.patient_thai_name || `${visit.patient_first_name} ${visit.patient_last_name}`,
-        hospital_number: visit.hospital_number,
+        name: visit.patient_thai_first_name || `${visit.patient_first_name} ${visit.patient_last_name}`,
+        hn: visit.hn,
         birth_date: visit.birth_date,
         gender: visit.gender,
         age: visit.birth_date ? calculateAge(visit.birth_date) : null

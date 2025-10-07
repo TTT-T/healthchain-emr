@@ -184,7 +184,7 @@ export default function Documents() {
     notes: '',
     issuedDate: new Date().toISOString().split('T')[0],
     validUntil: '',
-    doctorName: user?.thaiName || `${user?.firstName} ${user?.lastName}` || '',
+    doctorName: user?.thai_first_name || user?.thaiName || `${user?.first_name || user?.firstName || ''} ${user?.last_name || user?.lastName || ''}`.trim() || 'แพทย์',
     recipientInfo: {
       name: '',
       organization: '',
@@ -193,6 +193,19 @@ export default function Documents() {
       email: ''
     }
   });
+
+  // Update doctorName when user changes
+  useEffect(() => {
+    if (user) {
+      const doctorName = user.thai_first_name || user.thaiName || 
+        `${user.first_name || user.firstName || ''} ${user.last_name || user.lastName || ''}`.trim() || 'แพทย์';
+      
+      setDocumentData(prev => ({
+        ...prev,
+        doctorName
+      }));
+    }
+  }, [user]);
 
   const documentTemplates = {
     medical_certificate: `ใบรับรองแพทย์

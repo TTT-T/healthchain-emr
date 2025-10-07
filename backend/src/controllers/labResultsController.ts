@@ -91,7 +91,7 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
     const queryParams: any[] = [actualPatientId];
 
     if (Category) {
-      whereClause += ` AND mr.test_type ILIKE $${queryParams.length + 1}`;
+      whereClause += ` AND mr.record_type ILIKE $${queryParams.length + 1}`;
       queryParams.push(`%${Category}%`);
     }
 
@@ -116,13 +116,12 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
     const labResultsQuery = `
       SELECT 
         mr.id as lab_result_id,
-        mr.test_type,
-        mr.test_name,
-        mr.test_results,
-        mr.overall_result,
-        mr.interpretation,
-        mr.recommendations,
-        mr.attachments,
+        mr.record_type,
+        mr.title as test_name,
+        mr.content as test_results,
+        mr.diagnosis as overall_result,
+        mr.advice as interpretation,
+        mr.follow_up as recommendations,
         mr.notes,
         mr.recorded_time as result_date,
         mr.recorded_by,
@@ -191,7 +190,7 @@ export const getPatientLabResults = async (req: Request, res: Response) => {
 
       return {
         id: result.lab_result_id,
-        test_type: result.test_type,
+        test_type: result.record_type,
         test_name: result.test_name,
         test_results: Results,
         overall_result: result.overall_result,
@@ -273,7 +272,7 @@ export const getPatientLabResult = async (req: Request, res: Response) => {
       SELECT 
         lr.id as result_id,
         lr.result_value,
-        lr.result_numeric,
+        lr.result_value,
         lr.result_unit,
         lr.reference_range,
         lr.reference_min,
@@ -293,7 +292,7 @@ export const getPatientLabResult = async (req: Request, res: Response) => {
         lo.id as lab_order_id,
         lo.order_number,
         lo.order_date,
-        lo._name,
+        lo.test_name,
         lo._category,
         lo.clinical_indication,
         u1.first_name as ordered_by_first_name,
@@ -329,7 +328,7 @@ export const getPatientLabResult = async (req: Request, res: Response) => {
         lab_result: {
           id: labResult.result_id,
           result_value: labResult.result_value,
-          result_numeric: labResult.result_numeric,
+          result_value: labResult.result_value,
           result_unit: labResult.result_unit,
           reference_range: labResult.reference_range,
           reference_min: labResult.reference_min,
@@ -403,7 +402,7 @@ export const createPatientLabResult = async (req: Request, res: Response) => {
 
     // Validate patient exists
     const patientExists = await databaseManager.query(
-      'SELECT id, first_name, last_name, thai_name, hospital_number FROM patients WHERE id = $1',
+      'SELECT id, first_name, last_name, thai_first_name, hn FROM patients WHERE id = $1',
       [patientId]
     );
 
@@ -442,7 +441,7 @@ export const createPatientLabResult = async (req: Request, res: Response) => {
         mr._results, mr.overall_result, mr.interpretation, mr.recommendations,
         mr.attachments, mr.notes, mr.recorded_by, mr.recorded_time,
         mr.created_at, mr.updated_at,
-        p.thai_name, p.hospital_number, p.national_id
+        p.thai_first_name, p.hn, p.national_id
       FROM medical_records mr
       INNER JOIN patients p ON mr.patient_id = p.id
       WHERE mr.id = $1
@@ -456,17 +455,17 @@ export const createPatientLabResult = async (req: Request, res: Response) => {
       
       await NotificationService.sendPatientNotification({
         patientId: patient.id,
-        patientHn: patient.hospital_number || '',
-        patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+        patientHn: patient.hn || '',
+        patientName: patient.thai_first_name || `${patient.first_name} ${patient.last_name}`,
         patientPhone: patient.phone,
         patientEmail: patient.email,
         notificationType: 'lab_result_ready',
         title: `ผลแลบพร้อม: ${Name}`,
-        message: `ผลการตรวจ "${Name}" ของคุณ ${patient.thai_name || patient.first_name} พร้อมแล้ว`,
+        message: `ผลการตรวจ "${Name}" ของคุณ ${patient.thai_first_name || patient.first_name} พร้อมแล้ว`,
         recordType: 'lab_result',
         recordId: resultId,
         createdBy: user?.id,
-        createdByName: user?.thai_name || `${user?.first_name} ${user?.last_name}`,
+        createdByName: user?.thai_first_name || `${user?.first_name} ${user?.last_name}`,
         metadata: {
           Type,
           Name,
@@ -501,8 +500,8 @@ export const createPatientLabResult = async (req: Request, res: Response) => {
         createdAt: record.created_at,
         updatedAt: record.updated_at,
         patient: {
-          thaiName: record.thai_name,
-          hospitalNumber: record.hospital_number,
+          thaiName: record.thai_first_name,
+          hospitalNumber: record.hn,
           nationalId: record.national_id
         }
       },
@@ -534,7 +533,6 @@ export const updatePatientLabResult = async (req: Request, res: Response) => {
     const { id: actualPatientId, resultId } = req.params;
     const {
       result_value,
-      result_numeric,
       result_unit,
       reference_range,
       reference_min,
@@ -575,9 +573,9 @@ export const updatePatientLabResult = async (req: Request, res: Response) => {
       updateFields.push(`result_value = $${paramCount++}`);
       updateValues.push(result_value);
     }
-    if (result_numeric !== undefined) {
-      updateFields.push(`result_numeric = $${paramCount++}`);
-      updateValues.push(result_numeric);
+    if (result_value !== undefined) {
+      updateFields.push(`result_value = $${paramCount++}`);
+      updateValues.push(result_value);
     }
     if (result_unit !== undefined) {
       updateFields.push(`result_unit = $${paramCount++}`);
@@ -646,7 +644,7 @@ export const updatePatientLabResult = async (req: Request, res: Response) => {
         lr.id, lr.result_value, lr.result_unit, lr.reference_range,
         lr.abnormal_flag, lr.interpretation, lr.validated, lr.validated_at,
         lr.result_date, lr.result_time, lr.updated_at,
-        lo.order_number, lo._name, lo._category
+        lo.order_number, lo.test_name, lo._category
       FROM lab_results lr
       INNER JOIN lab_orders lo ON lr.lab_order_id = lo.id
       WHERE lr.id = $1

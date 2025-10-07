@@ -296,6 +296,10 @@ export default function CheckIn() {
       newErrors.treatmentType = "กรุณาเลือกประเภทการรักษา";
     }
 
+    if (!checkInData.departmentId) {
+      newErrors.departmentId = "กรุณาเลือกแผนก";
+    }
+
     if (!checkInData.assignedDoctor) {
       newErrors.assignedDoctor = "กรุณาเลือกแพทย์";
     }
@@ -342,6 +346,7 @@ export default function CheckIn() {
         presentIllness: checkInData.notes,
         priority: checkInData.priority,
         attendingDoctorId: checkInData.assignedDoctor,
+        departmentId: checkInData.departmentId || null,
         followUpRequired: checkInData.followUpRequired,
         followUpDate: checkInData.followUpDate || undefined,
         followUpNotes: checkInData.followUpNotes || undefined,
@@ -380,6 +385,35 @@ export default function CheckIn() {
         }[checkInData.priority] || checkInData.priority;
 
         setSuccess(`เช็คอินสำเร็จ!\n\nผู้ป่วย: ${selectedPatient?.thaiName || `${selectedPatient?.firstName} ${selectedPatient?.lastName}`}\nHN: ${selectedPatient?.hn || selectedPatient?.hospitalNumber}\nหมายเลขคิว: ${queueNumber}\nแพทย์: ${selectedDoc?.name}\nประเภทการมา: ${visitTypeLabel}\nระดับความสำคัญ: ${priorityLabel}\nเวลา: ${currentTime}\n${checkInData.followUpRequired ? `นัดติดตาม: ${checkInData.followUpDate}` : ''}\n\n✅ ระบบได้ส่งการแจ้งเตือนให้ผู้ป่วยแล้ว`);
+        
+        // ส่งแจ้งเตือนให้ผู้ป่วย
+        try {
+          const { apiClient } = await import('@/lib/api');
+          await apiClient.post(`/medical/patients/${selectedPatient!.id}/notifications`, {
+            title: 'เช็คอินสำเร็จ',
+            message: `คุณได้เช็คอินสำเร็จแล้ว หมายเลขคิว: ${queueNumber} แพทย์: ${selectedDoc?.name}`,
+            type: 'success',
+            notification_type: 'checkin_success',
+            priority: 'normal',
+            action_required: false,
+            related_table: 'visits',
+            related_id: response.data?.id,
+            metadata: {
+              queueNumber: queueNumber,
+              doctorName: selectedDoc?.name,
+              visitType: checkInData.visitType,
+              priority: checkInData.priority
+            }
+          });
+          console.log('✅ Notification sent to patient');
+        } catch (notificationError) {
+          console.error('❌ Failed to send notification:', notificationError);
+        }
+        
+        // ล้างฟอร์มหลังจากสำเร็จ (แต่ยังแสดงข้อความสำเร็จ)
+        setTimeout(() => {
+          handleResetFormOnly();
+        }, 3000); // ล้างฟอร์มหลังจาก 3 วินาที
         
         console.log('✅ Check-in successful!');
         await loadDoctors();
@@ -425,6 +459,35 @@ export default function CheckIn() {
     });
     setError(null);
     setSuccess(null);
+  };
+
+  const handleResetFormOnly = () => {
+    setSelectedPatient(null);
+    setSearchQuery("");
+    setCheckInData({
+      patientHn: "",
+      patientNationalId: "",
+      treatmentType: "",
+      assignedDoctor: "",
+      visitTime: getThaiTime(), // เวลาประเทศไทย
+      symptoms: "",
+      notes: "",
+      visitType: "walk_in",
+      priority: "normal",
+      departmentId: "",
+      assignedNurse: "",
+      followUpRequired: false,
+      followUpDate: "",
+      followUpNotes: "",
+      // เพิ่มฟิลด์สำหรับข้อมูลทางการแพทย์
+      diagnosis: "",
+      treatmentPlan: "",
+      physicalExamination: "",
+      doctorNotes: "",
+      recommendations: ""
+    });
+    setError(null);
+    // ไม่ล้าง setSuccess(null) เพื่อให้ข้อความสำเร็จยังคงแสดงอยู่
   };
 
   const getTreatmentTypeLabel = (type: string): string => {
@@ -555,9 +618,17 @@ export default function CheckIn() {
         {/* Success Message */}
         {success && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <p className="text-green-700 whitespace-pre-line">{success}</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="h-5 w-5 text-green-500" />
+                <p className="text-green-700 whitespace-pre-line">{success}</p>
+              </div>
+              <button
+                onClick={() => setSuccess(null)}
+                className="text-green-600 hover:text-green-800 text-sm font-medium"
+              >
+                ✕ ปิด
+              </button>
             </div>
           </div>
         )}
@@ -989,6 +1060,32 @@ export default function CheckIn() {
                 </select>
                 {errors.treatmentType && (
                   <p className="text-red-500 text-sm mt-1">{errors.treatmentType}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  แผนก
+                </label>
+                <select
+                  value={checkInData.departmentId}
+                  onChange={(e) => handleInputChange('departmentId', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">เลือกแผนก</option>
+                  <option value="MED">อายุรกรรม</option>
+                  <option value="SUR">ศัลยกรรม</option>
+                  <option value="PED">กุมารเวชกรรม</option>
+                  <option value="OBG">สูติ-นรีเวชกรรม</option>
+                  <option value="EYE">จักษุวิทยา</option>
+                  <option value="ENT">หู คอ จมูก</option>
+                  <option value="ORT">กระดูกและข้อ</option>
+                  <option value="PSY">จิตเวช</option>
+                  <option value="DER">ผิวหนัง</option>
+                  <option value="REH">เวชศาสตร์ฟื้นฟู</option>
+                </select>
+                {errors.departmentId && (
+                  <p className="text-red-500 text-sm mt-1">{errors.departmentId}</p>
                 )}
               </div>
 

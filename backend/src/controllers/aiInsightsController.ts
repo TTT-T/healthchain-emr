@@ -352,7 +352,7 @@ async function calculateHealthRiskInsight(actualPatientId: string, userId: strin
   try {
     // Get patient's recent lab results and vital signs
     const labResults = await databaseManager.query(`
-      SELECT lr.result_value, lr.abnormal_flag, lo._name, lr.result_date
+      SELECT lr.result_value, lr.abnormal_flag, lo.test_name, lr.result_date
       FROM lab_results lr
       INNER JOIN lab_orders lo ON lr.lab_order_id = lo.id
       WHERE lo.patient_id = $1
@@ -362,7 +362,7 @@ async function calculateHealthRiskInsight(actualPatientId: string, userId: strin
     `, [actualPatientId]);
 
     const vitalSigns = await databaseManager.query(`
-      SELECT systolic_bp, diastolic_bp, heart_rate, temperature, weight, height, bmi
+      SELECT blood_pressure_systolic, blood_pressure_diastolic, heart_rate, temperature, weight, height, bmi
       FROM vital_signs
       WHERE patient_id = $1
       ORDER BY measurement_time DESC
@@ -573,11 +573,11 @@ async function calculateLabTrendsInsight(actualPatientId: string, userId: string
   try {
     // Get patient's lab results over time
     const labResults = await databaseManager.query(`
-      SELECT lr.result_numeric, lr.result_date, lo._name
+      SELECT lr.result_value, lr.result_date, lo.test_name
       FROM lab_results lr
       INNER JOIN lab_orders lo ON lr.lab_order_id = lo.id
       WHERE lo.patient_id = $1
-      AND lr.result_numeric IS NOT NULL
+      AND lr.result_value IS NOT NULL
       AND lr.result_date > NOW() - INTERVAL '180 days'
       ORDER BY lr.result_date DESC
     `, [actualPatientId]);
@@ -594,8 +594,8 @@ async function calculateLabTrendsInsight(actualPatientId: string, userId: string
       const olderResults = labResults.rows.slice(3, 6);
       
       if (recentResults.length > 0 && olderResults.length > 0) {
-        const recentAvg = recentResults.reduce((sum, r) => sum + parseFloat(r.result_numeric), 0) / recentResults.length;
-        const olderAvg = olderResults.reduce((sum, r) => sum + parseFloat(r.result_numeric), 0) / olderResults.length;
+        const recentAvg = recentResults.reduce((sum, r) => sum + parseFloat(r.result_value), 0) / recentResults.length;
+        const olderAvg = olderResults.reduce((sum, r) => sum + parseFloat(r.result_value), 0) / olderResults.length;
         
         const changePercent = ((recentAvg - olderAvg) / olderAvg) * 100;
         

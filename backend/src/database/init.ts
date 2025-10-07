@@ -72,12 +72,23 @@ export class DatabaseInitializer {
       `);
 
       const tableNames = tablesResult.rows.map(row => row.table_name);
-      //  2: Check if users table has data
-      const usersCount = await databaseManager.query('SELECT COUNT(*) as count FROM users');
-      //  3: Check if patients table exists
-      const patientsCount = await databaseManager.query('SELECT COUNT(*) as count FROM patients');
-      //  4: Check if departments table has data
-      const departmentsCount = await databaseManager.query('SELECT COUNT(*) as count FROM departments');
+      console.log(`📋 Found ${tableNames.length} tables:`, tableNames);
+      
+      // Only check table counts if tables exist
+      if (tableNames.includes('users')) {
+        const usersCount = await databaseManager.query('SELECT COUNT(*) as count FROM users');
+        console.log(`👥 Users count: ${usersCount.rows[0].count}`);
+      }
+      
+      if (tableNames.includes('patients')) {
+        const patientsCount = await databaseManager.query('SELECT COUNT(*) as count FROM patients');
+        console.log(`🏥 Patients count: ${patientsCount.rows[0].count}`);
+      }
+      
+      if (tableNames.includes('departments')) {
+        const departmentsCount = await databaseManager.query('SELECT COUNT(*) as count FROM departments');
+        console.log(`🏢 Departments count: ${departmentsCount.rows[0].count}`);
+      }
     } catch (error) {
       console.error('❌ Basic query  failed:', error);
       throw error;
@@ -133,11 +144,22 @@ export class DatabaseInitializer {
       
       const tableNames = tablesResult.rows.map(row => row.table_name);
       
-      const [usersCount, patientsCount, departmentsCount] = await Promise.all([
-        databaseManager.query('SELECT COUNT(*) as count FROM users'),
-        databaseManager.query('SELECT COUNT(*) as count FROM patients'),
-        databaseManager.query('SELECT COUNT(*) as count FROM departments')
-      ]);
+      // Check table counts safely
+      let usersCount = { rows: [{ count: '0' }] };
+      let patientsCount = { rows: [{ count: '0' }] };
+      let departmentsCount = { rows: [{ count: '0' }] };
+      
+      if (tableNames.includes('users')) {
+        usersCount = await databaseManager.query('SELECT COUNT(*) as count FROM users');
+      }
+      
+      if (tableNames.includes('patients')) {
+        patientsCount = await databaseManager.query('SELECT COUNT(*) as count FROM patients');
+      }
+      
+      if (tableNames.includes('departments')) {
+        departmentsCount = await databaseManager.query('SELECT COUNT(*) as count FROM departments');
+      }
 
       return {
         database: {

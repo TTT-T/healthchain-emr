@@ -33,7 +33,17 @@ import {
 } from '@/types/api';
 
 // Constants
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const getApiBaseUrl = () => {
+  // Always use environment variable if available
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  
+  // Use localhost for browser requests (from host machine)
+  return 'http://localhost:3001/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 const TOKEN_KEY = 'access_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
 
@@ -928,9 +938,10 @@ class APIClient {
    * Resend verification email
    */
   async resendVerificationEmail(email: string): Promise<APIResponse<{ message: string }>> {
+    // Call the actual endpoint now that SMTP is configured
     return this.request<{ message: string }>({
       method: 'POST',
-      url: '/auth/resend-verification',
+      url: '/auth/resend-email-verification',
       data: { email }
     });
   }

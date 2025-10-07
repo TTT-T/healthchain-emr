@@ -568,7 +568,7 @@ export default function PatientSummary() {
                     <div><span className="font-medium text-gray-700">อาการแพ้สิ่งแวดล้อม:</span> <span className="text-gray-900">{selectedPatient.environmentAllergies || 'ไม่มี'}</span></div>
                     <div><span className="font-medium text-gray-700">โรคประจำตัว:</span> <span className="text-gray-900">{selectedPatient.chronicDiseases || 'ไม่มี'}</span></div>
                     <div><span className="font-medium text-gray-700">ประวัติการเจ็บป่วย:</span> <span className="text-gray-900">{selectedPatient.medicalHistory || 'ไม่มี'}</span></div>
-                    <div><span className="font-medium text-gray-700">ยาที่ใช้อยู่:</span> <span className="text-gray-900">{selectedPatient.currentMedications || 'ไม่มี'}</span></div>
+                    <div><span className="font-medium text-gray-700">ยาที่ใช้อยู่:</span> <span className="text-gray-900">{patientSummary?.patient?.currentMedications || selectedPatient.currentMedications || 'ไม่มี'}</span></div>
                   </div>
                 </div>
 

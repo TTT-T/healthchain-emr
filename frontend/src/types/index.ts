@@ -6,7 +6,7 @@ export interface APIResponse<T> {
 }
 
 export interface AppointmentType {
-    id: number;
+    id: string; // Changed from number to string (UUID)
     name: string;
     description: string;
     durationMinutes: number;
@@ -14,7 +14,7 @@ export interface AppointmentType {
 }
 
 export interface Doctor {
-    id: number;
+    id: string; // Changed from number to string (UUID)
     firstName: string;
     lastName: string;
     speciality: string;
@@ -35,10 +35,10 @@ export interface CreateAppointmentRequest {
 }
 
 export interface Appointment {
-    id: number;
-    patientId: number;
-    doctorId: number;
-    typeId: number;
+    id: string; // Changed from number to string (UUID)
+    patientId: string; // Changed from number to string (UUID)
+    doctorId: string; // Changed from number to string (UUID)
+    typeId: string; // Changed from number to string (UUID)
     startTime: string;
     endTime: string;
     status: 'scheduled' | 'completed' | 'cancelled' | 'no-show';
@@ -49,6 +49,6 @@ export interface Appointment {
     created_at: string;
     updated_at: string;
     cancelledAt?: string;
-    cancelledBy?: number;
+    cancelledBy?: string; // Changed from number to string (UUID)
     cancellationReason?: string;
 }

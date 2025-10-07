@@ -14,8 +14,8 @@ export const getPatientSummary = asyncHandler(async (req: Request, res: Response
     
     // Get patient basic information from patients table with user data
     const patientQuery = `
-      SELECT p.id, p.thai_name, p.thai_last_name, p.first_name, p.last_name, p.national_id, p.hospital_number, 
-             p.gender, p.phone, p.email, p.address, p.emergency_contact_name, p.emergency_contact_phone, p.emergency_contact_relationship,
+      SELECT p.id, p.thai_first_name, p.thai_last_name, p.first_name, p.last_name, p.national_id, p.hn, 
+             p.gender, p.phone, p.email, p.address, p.emergency_contact_name, p.emergency_contact_phone, p.emergency_contact_relation,
              p.nationality, p.race, p.occupation, p.education, p.marital_status, p.weight, p.height,
              p.drug_allergies, p.food_allergies, p.environment_allergies, p.chronic_diseases, p.medical_history, p.current_medications,
              p.created_at, p.updated_at,
@@ -59,11 +59,11 @@ export const getPatientSummary = asyncHandler(async (req: Request, res: Response
     // Get all medical records for the patient
     const recordsQuery = `
       SELECT mr.*, 
-             u.thai_name as recorded_by_name,
-             d.thai_name as doctor_name
+             u.thai_first_name as recorded_by_name,
+             d.thai_first_name as doctor_name
       FROM medical_records mr
       LEFT JOIN users u ON mr.recorded_by = u.id
-      LEFT JOIN users d ON mr.doctor_id = d.id
+      LEFT JOIN users d ON mr.created_by = d.id
       WHERE mr.patient_id = $1
       ORDER BY mr.recorded_time DESC
     `;
@@ -226,12 +226,12 @@ export const getPatientSummary = asyncHandler(async (req: Request, res: Response
       data: {
         patient: {
           id: patient.id,
-          thaiName: patient.thai_name,
+          thaiName: patient.thai_first_name,
           thaiLastName: patient.thai_last_name,
           firstName: patient.first_name,
           lastName: patient.last_name,
           nationalId: patient.national_id,
-          hospitalNumber: patient.hospital_number,
+          hospitalNumber: patient.hn,
           age: age,
           gender: patient.gender,
           phone: patient.phone,
@@ -240,7 +240,7 @@ export const getPatientSummary = asyncHandler(async (req: Request, res: Response
           nationality: patient.nationality,
           emergencyContactName: patient.emergency_contact_name,
           emergencyContactPhone: patient.emergency_contact_phone,
-          emergencyContactRelationship: patient.emergency_contact_relationship,
+          emergencyContactRelationship: patient.emergency_contact_relation,
           birthDay: patient.birth_day,
           birthMonth: patient.birth_month,
           birthYear: patient.birth_year,
@@ -292,11 +292,11 @@ export const getPatientTimeline = asyncHandler(async (req: Request, res: Respons
     
     const query = `
       SELECT mr.*, 
-             u.thai_name as recorded_by_name,
-             d.thai_name as doctor_name
+             u.thai_first_name as recorded_by_name,
+             d.thai_first_name as doctor_name
       FROM medical_records mr
       LEFT JOIN users u ON mr.recorded_by = u.id
-      LEFT JOIN users d ON mr.doctor_id = d.id
+      LEFT JOIN users d ON mr.created_by = d.id
       WHERE mr.patient_id = $1
       ORDER BY mr.recorded_time DESC
       LIMIT $2 OFFSET $3

@@ -37,8 +37,9 @@ function VerifyEmailContent() {
       });
 
       const data = await response.json();
+      console.log('🔧 Frontend response:', JSON.stringify(data, null, 2));
 
-      if (response.ok) {
+      if (response.ok && data.success) {
         setStatus('success');
         setMessage('ยืนยันอีเมลเรียบร้อยแล้ว');
         logger.info('Email verification successful', { email });

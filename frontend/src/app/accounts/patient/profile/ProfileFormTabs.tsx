@@ -127,14 +127,10 @@ export const ProfileFormTabs: React.FC<ProfileFormTabsProps> = ({
   isEditing
 }) => {
   const bloodTypeOptions = [
-    { value: 'A+', label: 'A+' },
-    { value: 'A-', label: 'A-' },
-    { value: 'B+', label: 'B+' },
-    { value: 'B-', label: 'B-' },
-    { value: 'AB+', label: 'AB+' },
-    { value: 'AB-', label: 'AB-' },
-    { value: 'O+', label: 'O+' },
-    { value: 'O-', label: 'O-' }
+    { value: 'A', label: 'A' },
+    { value: 'B', label: 'B' },
+    { value: 'AB', label: 'AB' },
+    { value: 'O', label: 'O' }
   ];
 
   const genderOptions = [
@@ -173,17 +169,32 @@ export const ProfileFormTabs: React.FC<ProfileFormTabsProps> = ({
             {/* Thai Names */}
             <div className="space-y-3">
               <h5 className="text-sm font-medium text-gray-700">ชื่อภาษาไทย</h5>
-              <FormField
-                label="คำนำหน้าชื่อ"
-                value={data.title}
-                onChange={(value) => onChange('title', value)}
-                disabled={!isEditing}
-                placeholder="คำนำหน้าชื่อ"
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  คำนำหน้าชื่อ
+                </label>
+                <select
+                  value={data.title || ''}
+                  onChange={(e) => onChange('title', e.target.value)}
+                  disabled={!isEditing}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <option value="">เลือกคำนำหน้า</option>
+                  <option value="นาย">นาย</option>
+                  <option value="นาง">นาง</option>
+                  <option value="นางสาว">นางสาว</option>
+                  <option value="เด็กชาย">เด็กชาย</option>
+                  <option value="เด็กหญิง">เด็กหญิง</option>
+                  <option value="Mr.">Mr.</option>
+                  <option value="Mrs.">Mrs.</option>
+                  <option value="Miss">Miss</option>
+                  <option value="Ms.">Ms.</option>
+                </select>
+              </div>
               <FormField
                 label="ชื่อ (ไทย)"
-                value={data.thaiName}
-                onChange={(value) => onChange('thaiName', value)}
+                value={data.thaiFirstName}
+                onChange={(value) => onChange('thaiFirstName', value)}
                 disabled={!isEditing}
                 placeholder="ชื่อ"
               />

@@ -70,7 +70,7 @@ export const createPharmacyDispensing = asyncHandler(async (req: Request, res: R
     const client = await databaseManager.getClient();
     
     // Check if patient exists
-    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM patients WHERE id = $1';
+    const patientQuery = 'SELECT id, thai_first_name, national_id, hn FROM patients WHERE id = $1';
     const patientResult = await client.query(patientQuery, [patientId]);
     
     if (patientResult.rows.length === 0) {
@@ -135,17 +135,17 @@ export const createPharmacyDispensing = asyncHandler(async (req: Request, res: R
       
       await NotificationService.sendPatientNotification({
         patientId: patient.id,
-        patientHn: patient.hospital_number || '',
-        patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+        patientHn: patient.hn || '',
+        patientName: patient.thai_first_name || `${patient.first_name} ${patient.last_name}`,
         patientPhone: patient.phone,
         patientEmail: patient.email,
         notificationType: 'prescription_ready',
         title: `ยาเตรียมพร้อม: ${medications[0]?.medicationName || 'ยาตามใบสั่ง'}`,
-        message: `ยาเตรียมพร้อมสำหรับคุณ ${patient.thai_name || patient.first_name} แล้ว กรุณามารับยาได้ที่แผนกเภสัชกรรม`,
+        message: `ยาเตรียมพร้อมสำหรับคุณ ${patient.thai_first_name || patient.first_name} แล้ว กรุณามารับยาได้ที่แผนกเภสัชกรรม`,
         recordType: 'pharmacy_dispensing',
         recordId: dispensingRecord.id,
         createdBy: user?.id,
-        createdByName: user?.thai_name || `${user?.first_name} ${user?.last_name}`,
+        createdByName: user?.thai_first_name || `${user?.first_name} ${user?.last_name}`,
         metadata: {
           medications: medications.map((med: any) => med.medication_name),
           totalAmount,
@@ -180,9 +180,9 @@ export const createPharmacyDispensing = asyncHandler(async (req: Request, res: R
       meta: {
         patient: {
           id: patient.id,
-          thaiName: patient.thai_name,
+          thaiName: patient.thai_first_name,
           nationalId: patient.national_id,
-          hospitalNumber: patient.hospital_number
+          hospitalNumber: patient.hn
         }
       }
     });
@@ -211,7 +211,7 @@ export const getPharmacyDispensingsByPatient = asyncHandler(async (req: Request,
     const client = await databaseManager.getClient();
     
     const query = `
-      SELECT mr.*, p.thai_name, p.national_id, p.hospital_number
+      SELECT mr.*, p.thai_first_name, p.national_id, p.hn
       FROM medical_records mr
       JOIN patients p ON mr.patient_id = p.id
       WHERE mr.patient_id = $1 AND mr.record_type = 'pharmacy_dispensing'
@@ -236,9 +236,9 @@ export const getPharmacyDispensingsByPatient = asyncHandler(async (req: Request,
       createdAt: record.created_at,
       updatedAt: record.updated_at,
       patient: {
-        thaiName: record.thai_name,
+        thaiName: record.thai_first_name,
         nationalId: record.national_id,
-        hospitalNumber: record.hospital_number
+        hospitalNumber: record.hn
       }
     }));
 
@@ -275,7 +275,7 @@ export const getPharmacyDispensingById = asyncHandler(async (req: Request, res: 
     const client = await databaseManager.getClient();
     
     const query = `
-      SELECT mr.*, p.thai_name, p.national_id, p.hospital_number
+      SELECT mr.*, p.thai_first_name, p.national_id, p.hn
       FROM medical_records mr
       JOIN patients p ON mr.patient_id = p.id
       WHERE mr.id = $1 AND mr.record_type = 'pharmacy_dispensing'
@@ -316,9 +316,9 @@ export const getPharmacyDispensingById = asyncHandler(async (req: Request, res: 
         createdAt: record.created_at,
         updatedAt: record.updated_at,
         patient: {
-          thaiName: record.thai_name,
+          thaiName: record.thai_first_name,
           nationalId: record.national_id,
-          hospitalNumber: record.hospital_number
+          hospitalNumber: record.hn
         }
       }
     });

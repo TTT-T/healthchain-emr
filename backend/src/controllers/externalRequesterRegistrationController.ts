@@ -89,7 +89,7 @@ export const registerExternalRequester = async (req: Request, res: Response) => 
 
     const createUserQuery = `
       INSERT INTO users (
-        id, username, email, password_hash, first_name, last_name, thai_name, title,
+        id, username, email, password_hash, first_name, last_name, thai_first_name, title,
         role, is_active, email_verified, profile_completed,
         phone, address, national_id, birth_date, gender, nationality,
         current_address, id_card_address,
@@ -107,7 +107,7 @@ export const registerExternalRequester = async (req: Request, res: Response) => 
       hashedPassword,
       primary_contact_first_name_thai, // first_name
       primary_contact_last_name_thai,  // last_name
-      (firstNameThai || '') + ' ' + (lastNameThai || ''), // thai_name
+      (firstNameThai || '') + ' ' + (lastNameThai || ''), // thai_first_name
       title || null,
       'external_requester',
       false, // inactive until approved

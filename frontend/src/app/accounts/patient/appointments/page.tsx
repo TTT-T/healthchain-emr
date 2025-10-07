@@ -96,7 +96,9 @@ const PatientAppointments = () => {
         return;
       }
 
-      // Fetch real appointments from API
+      // For patient role, backend will handle the user ID to patient ID mapping
+      // So we can use user.id directly
+      logger.info('Fetching appointments for user:', { userId: user.id, userRole: user.role });
       const response = await apiClient.getPatientAppointments(user.id);
       
       logger.info('API Response:', { statusCode: response.statusCode, data: response.data, error: response.error });

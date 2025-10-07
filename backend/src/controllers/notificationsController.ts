@@ -26,14 +26,14 @@ export const getPatientNotifications = async (req: Request, res: Response) => {
     // Validate that the patient exists (for all roles)
     // First try to find in patients table
     const patientExists = await databaseManager.query(
-      'SELECT id, first_name, last_name, thai_name, hospital_number FROM patients WHERE id = $1',
+      'SELECT id, first_name, last_name, thai_first_name, thai_last_name, hn FROM patients WHERE id = $1',
       [patientId]
     );
 
     if (patientExists.rows.length === 0) {
       // If not found in patients table, check if it's a user ID in users table
       const userExists = await databaseManager.query(
-        'SELECT id, first_name, last_name, thai_name FROM users WHERE id = $1 AND role = $2',
+        'SELECT id, first_name, last_name, thai_first_name, thai_last_name FROM users WHERE id = $1 AND role = $2',
         [patientId, 'patient']
       );
 
@@ -51,8 +51,9 @@ export const getPatientNotifications = async (req: Request, res: Response) => {
         id: userExists.rows[0].id,
         first_name: userExists.rows[0].first_name,
         last_name: userExists.rows[0].last_name,
-        thai_name: userExists.rows[0].thai_name,
-        hospital_number: null
+        thai_first_name: userExists.rows[0].thai_first_name,
+        thai_last_name: userExists.rows[0].thai_last_name,
+        hn: null
       };
     } else {
       patient = patientExists.rows[0];
@@ -99,7 +100,6 @@ export const getPatientNotifications = async (req: Request, res: Response) => {
         n.notification_type,
         n.read_at,
         CASE WHEN n.read_at IS NOT NULL THEN true ELSE false END as is_read,
-        n.metadata,
         n.created_at,
         n.updated_at,
         n.created_by
@@ -348,8 +348,8 @@ export const createPatientNotification = async (req: Request, res: Response) => 
       action_required = false,
       action_url,
       expires_at,
-      record_type,
-      record_id,
+      related_table,
+      related_id,
       metadata
     } = req.body;
 
@@ -378,13 +378,13 @@ export const createPatientNotification = async (req: Request, res: Response) => 
       await databaseManager.query(`
         INSERT INTO notifications (
           id, patient_id, title, message, notification_type, priority,
-          action_required, action_url, expires_at, created_by, record_type, record_id, metadata,
+          action_required, action_url, expires_at, created_by, related_table, related_id, metadata,
           created_at, updated_at
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW() AT TIME ZONE 'Asia/Bangkok', NOW() AT TIME ZONE 'Asia/Bangkok')
       `, [
         notificationId, patientId, title, message, notification_type, priority,
-        action_required, action_url, expires_at, userId, record_type || null, record_id || null, 
+        action_required, action_url, expires_at, userId, related_table || null, related_id || null, 
         metadata ? JSON.stringify(metadata) : null
       ]);
     } catch (error) {
@@ -392,13 +392,13 @@ export const createPatientNotification = async (req: Request, res: Response) => 
       console.log('Priority column not found, using simplified insert');
       await databaseManager.query(`
         INSERT INTO notifications (
-          id, patient_id, title, message, notification_type, created_by, record_type, record_id, metadata,
+          id, patient_id, title, message, notification_type, created_by, related_table, related_id, metadata,
           created_at, updated_at
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW() AT TIME ZONE 'Asia/Bangkok', NOW() AT TIME ZONE 'Asia/Bangkok')
       `, [
         notificationId, patientId, title, message, notification_type, userId, 
-        record_type || null, record_id || null, metadata ? JSON.stringify(metadata) : null
+        related_table || null, related_id || null, metadata ? JSON.stringify(metadata) : null
       ]);
     }
 

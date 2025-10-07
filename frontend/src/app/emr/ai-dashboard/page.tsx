@@ -91,7 +91,7 @@ export default function AIDashboard() {
     const matchesSearch = !searchQuery || 
       patient.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       patient.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      patient.thai_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (patient.thai_first_name + ' ' + patient.thai_last_name)?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       patient.hospital_number.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesRisk = !selectedRiskLevel || 
@@ -437,12 +437,12 @@ function PatientRiskRow({ patient }: { patient: PatientWithRisk }) {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center">
               <span className="text-sm font-bold text-blue-600">
-                {patient.thai_name ? patient.thai_name.charAt(0) : patient.first_name.charAt(0)}
+                {patient.thai_first_name ? patient.thai_first_name.charAt(0) : patient.first_name.charAt(0)}
               </span>
             </div>
             <div>
               <div className="text-sm font-semibold text-gray-900">
-                {patient.thai_name || `${patient.first_name} ${patient.last_name}`}
+                {patient.thai_first_name && patient.thai_last_name ? `${patient.thai_first_name} ${patient.thai_last_name}` : `${patient.first_name} ${patient.last_name}`}
               </div>
               <div className="text-sm text-gray-500">HN: {patient.hospital_number}</div>
             </div>

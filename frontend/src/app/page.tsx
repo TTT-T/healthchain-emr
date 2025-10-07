@@ -25,7 +25,7 @@ export default function Home() {
       } else if (user.role === 'external_user' || user.role === 'external_admin') {
         redirectPath = '/external-requesters/dashboard';
       }
-      window.location.href = redirectPath;
+      router.push(redirectPath);
     }
   }, [isAuthenticated, isLoading, user, router]);
 

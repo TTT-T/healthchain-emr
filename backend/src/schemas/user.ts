@@ -18,7 +18,13 @@ export const UserRoles = [
   'external_user', 'external_admin', 'patient'
 ] as const;
 
-export const BloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const;
+export const BloodTypes = ['A', 'B', 'AB', 'O'] as const;
+
+// Title options for Thai and English
+export const TitleOptions = [
+  'นาย', 'นาง', 'นางสาว', 'เด็กชาย', 'เด็กหญิง',
+  'Mr.', 'Mrs.', 'Miss', 'Ms.'
+] as const;
 export const Genders = ['male', 'female', 'other'] as const;
 
 // Reusable field validators
@@ -33,7 +39,21 @@ export const FieldValidators = {
   emergencyContactRelation: z.string().min(1).max(50).optional(),
   bloodType: z.enum(BloodTypes).optional(),
   gender: z.enum(Genders).optional(),
-  role: z.enum(UserRoles)
+  role: z.enum(UserRoles),
+  
+  // Thai language validators
+  thaiText: z.string().max(500).optional(), // For Thai text fields
+  thaiName: z.string().max(200).optional(), // For Thai names
+  thaiTitle: z.string().max(50).optional(), // For Thai titles
+  thaiAddress: z.string().max(1000).optional(), // For Thai addresses
+  thaiOccupation: z.string().max(100).optional(), // For Thai occupations
+  thaiEducation: z.string().max(100).optional(), // For Thai education
+  thaiReligion: z.string().max(50).optional(), // For Thai religion
+  thaiRace: z.string().max(50).optional(), // For Thai race
+  thaiInsurance: z.string().max(50).optional(), // For Thai insurance types
+  thaiMedical: z.string().max(2000).optional(), // For Thai medical information
+  thaiMaritalStatus: z.string().max(20).optional(), // For Thai marital status
+  thaiNationality: z.string().max(50).optional() // For Thai nationality
 };
 
 // User schemas
@@ -43,9 +63,9 @@ export const CreateUserSchema = z.object({
   password: z.string().min(8).max(128),
   firstName: FieldValidators.firstName,
   lastName: FieldValidators.lastName,
-  thaiFirstName: z.string().max(200).optional(),
-  thaiLastName: z.string().max(200).optional(),
-  title: z.string().max(50).optional(),
+  thaiFirstName: FieldValidators.thaiName,
+  thaiLastName: FieldValidators.thaiName,
+  title: z.enum(TitleOptions).optional(),
   phoneNumber: FieldValidators.phone,
   role: FieldValidators.role.optional(),
   
@@ -53,14 +73,30 @@ export const CreateUserSchema = z.object({
   nationalId: FieldValidators.nationalId,
   birthDate: z.string().date().optional(),
   gender: FieldValidators.gender,
-  address: z.string().max(500).optional(),
-  idCardAddress: z.string().max(500).optional(),
+  address: FieldValidators.thaiAddress,
+  idCardAddress: FieldValidators.thaiAddress,
   bloodType: FieldValidators.bloodType,
   
   // Emergency contact
-  emergencyContactName: FieldValidators.emergencyContactName,
+  emergencyContactName: FieldValidators.thaiName,
   emergencyContactPhone: FieldValidators.emergencyContactPhone,
-  emergencyContactRelation: FieldValidators.emergencyContactRelation
+  emergencyContactRelation: FieldValidators.thaiText,
+  
+  // Additional Thai fields
+  nationality: FieldValidators.thaiNationality,
+  occupation: FieldValidators.thaiOccupation,
+  education: FieldValidators.thaiEducation,
+  maritalStatus: FieldValidators.thaiMaritalStatus,
+  religion: FieldValidators.thaiReligion,
+  race: FieldValidators.thaiRace,
+  insuranceType: FieldValidators.thaiInsurance,
+  allergies: FieldValidators.thaiMedical,
+  drugAllergies: FieldValidators.thaiMedical,
+  foodAllergies: FieldValidators.thaiMedical,
+  environmentAllergies: FieldValidators.thaiMedical,
+  medicalHistory: FieldValidators.thaiMedical,
+  currentMedications: FieldValidators.thaiMedical,
+  chronicDiseases: FieldValidators.thaiMedical
 });
 
 export const UpdateUserProfileSchema = z.object({
@@ -79,8 +115,11 @@ export const UpdateUserProfileSchema = z.object({
 });
 
 export const LoginSchema = z.object({
-  username: z.string().min(1),
+  email: z.string().email().optional(),
+  username: z.string().min(1).optional(),
   password: z.string().min(1)
+}).refine((data) => data.email || data.username, {
+  message: "Either email or username is required"
 });
 
 // Transform functions for camelCase <-> snake_case

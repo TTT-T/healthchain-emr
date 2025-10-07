@@ -7,7 +7,7 @@ export interface PatientNotificationData {
   patientName: string;
   patientPhone?: string;
   patientEmail?: string;
-  notificationType: 'document_created' | 'record_updated' | 'appointment_created' | 'lab_result_ready' | 'prescription_ready' | 'history_taking_recorded' | 'queue_assigned' | 'vital_signs_recorded' | 'patient_registered';
+  notificationType: 'document_created' | 'record_updated' | 'appointment_created' | 'lab_result_ready' | 'prescription_ready' | 'history_taking_recorded' | 'queue_assigned' | 'vital_signs_recorded' | 'patient_registered' | 'consent_request' | 'consent_approved' | 'consent_rejected';
   title: string;
   message: string;
   recordType?: string;
@@ -66,7 +66,7 @@ export class NotificationService {
       await databaseManager.query(
         `INSERT INTO notifications (
           id, patient_id, notification_type, title, message, 
-          record_type, record_id, created_by, metadata, 
+          related_table, related_id, created_by, metadata, 
           created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW() AT TIME ZONE 'Asia/Bangkok', NOW() AT TIME ZONE 'Asia/Bangkok')`,
         [
@@ -199,6 +199,15 @@ export class NotificationService {
       case 'queue_assigned':
         return `🏥 ${hospitalName}\nได้รับหมายเลขคิว: ${data.title}\nสำหรับคุณ ${data.patientName}\nสร้างโดย: ${data.createdByName}\nเวลา: ${timestamp}`;
       
+      case 'consent_request':
+        return `🏥 ${hospitalName}\nคำขอเข้าถึงข้อมูล: ${data.title}\nสำหรับคุณ ${data.patientName}\nจาก: ${data.createdByName}\nกรุณาตรวจสอบและตอบสนอง\nเวลา: ${timestamp}`;
+      
+      case 'consent_approved':
+        return `🏥 ${hospitalName}\nอนุมัติคำขอเข้าถึงข้อมูล: ${data.title}\nสำหรับคุณ ${data.patientName}\nโดย: ${data.createdByName}\nเวลา: ${timestamp}`;
+      
+      case 'consent_rejected':
+        return `🏥 ${hospitalName}\nปฏิเสธคำขอเข้าถึงข้อมูล: ${data.title}\nสำหรับคุณ ${data.patientName}\nโดย: ${data.createdByName}\nเวลา: ${timestamp}`;
+      
       default:
         return `🏥 ${hospitalName}\n${data.title}\nสำหรับคุณ ${data.patientName}\nเวลา: ${timestamp}`;
     }
@@ -283,7 +292,10 @@ export class NotificationService {
       'history_taking_recorded': 'บันทึกประวัติ',
       'vital_signs_recorded': 'บันทึกสัญญาณชีพ',
       'patient_registered': 'ลงทะเบียนผู้ป่วย',
-      'queue_assigned': 'ได้รับหมายเลขคิว'
+      'queue_assigned': 'ได้รับหมายเลขคิว',
+      'consent_request': 'คำขอเข้าถึงข้อมูล',
+      'consent_approved': 'อนุมัติคำขอเข้าถึงข้อมูล',
+      'consent_rejected': 'ปฏิเสธคำขอเข้าถึงข้อมูล'
     };
     
     return labels[type] || 'การแจ้งเตือน';
@@ -324,6 +336,111 @@ export class NotificationService {
       logger.info('Notification marked as read', { notificationId });
     } catch (error) {
       logger.error('Failed to mark notification as read:', error);
+    }
+  }
+
+  /**
+   * ส่งการแจ้งเตือนคำขอ Consent ใหม่
+   */
+  static async sendConsentRequestNotification(data: {
+    patientId: string;
+    patientHn: string;
+    patientName: string;
+    patientPhone?: string;
+    patientEmail?: string;
+    requesterName: string;
+    requesterOrganization: string;
+    requestType: string;
+    purpose: string;
+    consentRequestId: string;
+    expiresAt: Date;
+    createdBy: string;
+  }): Promise<void> {
+    try {
+      const notificationData: PatientNotificationData = {
+        patientId: data.patientId,
+        patientHn: data.patientHn,
+        patientName: data.patientName,
+        patientPhone: data.patientPhone,
+        patientEmail: data.patientEmail,
+        notificationType: 'consent_request',
+        title: 'คำขอเข้าถึงข้อมูลใหม่',
+        message: `มีคำขอเข้าถึงข้อมูลของคุณจาก ${data.requesterOrganization} เพื่อวัตถุประสงค์: ${data.purpose}`,
+        recordType: 'consent_request',
+        recordId: data.consentRequestId,
+        createdBy: data.createdBy,
+        createdByName: data.requesterName,
+        metadata: {
+          requesterOrganization: data.requesterOrganization,
+          requestType: data.requestType,
+          purpose: data.purpose,
+          expiresAt: data.expiresAt.toISOString(),
+          actionUrl: `/accounts/patient/consent-requests/${data.consentRequestId}`
+        }
+      };
+
+      await this.sendPatientNotification(notificationData);
+      
+      logger.info('Consent request notification sent successfully', {
+        patientId: data.patientId,
+        consentRequestId: data.consentRequestId,
+        requesterOrganization: data.requesterOrganization
+      });
+    } catch (error) {
+      logger.error('Failed to send consent request notification:', error);
+    }
+  }
+
+  /**
+   * ส่งการแจ้งเตือนการตอบสนองคำขอ Consent
+   */
+  static async sendConsentResponseNotification(data: {
+    patientId: string;
+    patientHn: string;
+    patientName: string;
+    patientPhone?: string;
+    patientEmail?: string;
+    requesterName: string;
+    requesterOrganization: string;
+    consentRequestId: string;
+    response: 'approved' | 'rejected';
+    responseReason?: string;
+    createdBy: string;
+  }): Promise<void> {
+    try {
+      const notificationData: PatientNotificationData = {
+        patientId: data.patientId,
+        patientHn: data.patientHn,
+        patientName: data.patientName,
+        patientPhone: data.patientPhone,
+        patientEmail: data.patientEmail,
+        notificationType: data.response === 'approved' ? 'consent_approved' : 'consent_rejected',
+        title: data.response === 'approved' ? 'อนุมัติคำขอเข้าถึงข้อมูล' : 'ปฏิเสธคำขอเข้าถึงข้อมูล',
+        message: data.response === 'approved' 
+          ? `คำขอเข้าถึงข้อมูลของคุณได้รับการอนุมัติจาก ${data.requesterOrganization}`
+          : `คำขอเข้าถึงข้อมูลของคุณถูกปฏิเสธจาก ${data.requesterOrganization}${data.responseReason ? ` เหตุผล: ${data.responseReason}` : ''}`,
+        recordType: 'consent_request',
+        recordId: data.consentRequestId,
+        createdBy: data.createdBy,
+        createdByName: data.requesterName,
+        metadata: {
+          requesterOrganization: data.requesterOrganization,
+          response: data.response,
+          responseReason: data.responseReason,
+          actionUrl: `/external-requesters/consent-requests/${data.consentRequestId}`
+        }
+      };
+
+      await this.sendPatientNotification(notificationData);
+      
+      logger.info('Consent response notification sent successfully', {
+        patientId: data.patientId,
+        consentRequestId: data.consentRequestId,
+        response: data.response,
+        requesterOrganization: data.requesterOrganization
+      });
+    } catch (error) {
+      logger.error('Failed to send consent response notification:', error);
     }
   }
 }

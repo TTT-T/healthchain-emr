@@ -2,7 +2,19 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 // Load environment variables from the correct path
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Try to load .env.local first (for local development), then fallback to .env
+const envLocalPath = path.resolve(__dirname, '../../.env.local');
+const envPath = path.resolve(__dirname, '../../.env');
+
+try {
+  // Try to load .env.local first
+  dotenv.config({ path: envLocalPath });
+  console.log('📁 Loaded environment from .env.local');
+} catch (error) {
+  // Fallback to .env
+  dotenv.config({ path: envPath });
+  console.log('📁 Loaded environment from .env');
+}
 
 export interface Config {
   // Server
@@ -62,7 +74,7 @@ const config: Config = {
   
   // Database
   database: {
-    host: process.env.DB_HOST || 'localhost',
+    host: process.env.DB_HOST || (process.env.NODE_ENV === 'development' ? 'localhost' : 'postgres'),
     port: parseInt(process.env.DB_PORT || '5432', 10),
     database: process.env.DB_NAME || 'emr_development',
     username: process.env.DB_USER || 'postgres',

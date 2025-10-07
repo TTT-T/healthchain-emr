@@ -37,7 +37,7 @@ interface PatientData {
   email: string;
   firstName: string;
   lastName: string;
-  thaiName?: string;
+  thaiFirstName?: string;
   thaiLastName?: string;
   phone?: string;
   nationalId?: string;
@@ -83,7 +83,7 @@ const PatientDashboard = () => {
     if (!patient) return 0;
     
     const fields = [
-      'thaiName', 'thaiLastName', 'firstName', 'lastName', 'nationalId', 
+      'thaiFirstName', 'thaiLastName', 'firstName', 'lastName', 'nationalId', 
       'birthDay', 'birthMonth', 'birthYear', 'gender', 'bloodType', 'phone', 'address',
       'emergencyContactName', 'emergencyContactPhone',
       'drugAllergies', 'foodAllergies', 'environmentAllergies', 'chronicDiseases',
@@ -240,7 +240,7 @@ const PatientDashboard = () => {
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                ยินดีต้อนรับ, {patient?.thaiName || user?.firstName || 'ผู้ป่วย'}
+                ยินดีต้อนรับ, {patient?.thaiFirstName || user?.firstName || 'ผู้ป่วย'}
               </h1>
               <p className="text-gray-800 mt-1">
                 ภาพรวมข้อมูลสุขภาพและการรักษาของคุณ
@@ -270,10 +270,15 @@ const PatientDashboard = () => {
                 <div>
                   <p className="text-sm text-gray-600">ชื่อ-นามสกุล (ไทย)</p>
                   <p className="font-medium text-gray-900">
-                    {patient.thaiName && patient.thaiLastName 
-                      ? `${patient.thaiName} ${patient.thaiLastName}`
-                      : 'ไม่ระบุ'
-                    }
+                    {(() => {
+                      // Fallback to user data if patient data is not available
+                      const thaiFirstName = patient?.thaiFirstName || user?.thaiFirstName;
+                      const thaiLastName = patient?.thaiLastName || user?.thaiLastName;
+                      
+                      return thaiFirstName && thaiLastName 
+                        ? `${thaiFirstName} ${thaiLastName}`
+                        : 'ไม่ระบุ';
+                    })()}
                   </p>
                 </div>
               </div>

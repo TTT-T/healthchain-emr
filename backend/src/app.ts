@@ -3,10 +3,13 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import config from './config/config';
 import { databaseInitializer } from './database/init';
 import { setupSwagger } from './config/swagger';
+
+// Set UTF-8 encoding for proper Thai character support
+process.env.NODE_ENCODING = 'utf8';
 
 // Routes
 import authRoutes from './routes/auth';
@@ -63,6 +66,12 @@ class Application {
     // CORS configuration
     this.app.use(cors(corsOptions));
 
+    // UTF-8 encoding middleware for Thai characters
+    this.app.use((req: Request, res: Response, next: NextFunction) => {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      next();
+    });
+
     // Compression
     this.app.use(compression());
 
@@ -106,7 +115,7 @@ class Application {
 
     // JSON parsing error handler
     this.app.use((error: any, req: Request, res: Response, next: NextFunction) => {
-      if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
+      if (error instanceof SyntaxError && (error as any).status === 400 && 'body' in error) {
         console.error('JSON parsing error:', error.message);
         console.error('Request body:', req.body);
         return res.status(400).json({

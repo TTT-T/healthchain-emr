@@ -303,7 +303,7 @@ export default function RegisterPatient() {
             username: item.username,
             firstName: item.first_name || item.firstName || "",
             lastName: item.last_name || item.lastName || "",
-            thaiFirstName: item.thai_name || item.thaiName || "",
+            thaiFirstName: item.thai_first_name || item.thaiFirstName || "",
             thaiLastName: item.thai_last_name || item.thaiLastName || "",
             nationalId: item.national_id,
             email: item.email,
@@ -1102,7 +1102,7 @@ export default function RegisterPatient() {
                         'text-yellow-700'
                       } space-y-1`}>
                         <p><strong>คำนำหน้าชื่อ:</strong> {user.title || (user.gender === 'male' ? 'นาย' : user.gender === 'female' ? 'นางสาว' : 'ไม่ระบุ')}</p>
-                        <p><strong>ชื่อไทย:</strong> {user.thaiName || user.thaiFirstName || 'ไม่ระบุ'} {user.thaiLastName || ''}</p>
+                        <p><strong>ชื่อไทย:</strong> {user.thaiFirstName || 'ไม่ระบุ'} {user.thaiLastName || ''}</p>
                         <p><strong>ชื่ออังกฤษ:</strong> {user.firstName || 'ไม่ระบุ'} {user.lastName || ''}</p>
                         <p><strong>เพศ:</strong> {user.gender === 'male' ? 'ชาย' : user.gender === 'female' ? 'หญิง' : user.gender || 'ไม่ระบุ'}</p>
                         <p><strong>บทบาท:</strong> {user.role === 'patient' ? 'ผู้ป่วย' : user.role === 'doctor' ? 'แพทย์' : user.role === 'nurse' ? 'พยาบาล' : user.role === 'admin' ? 'ผู้ดูแลระบบ' : user.role || 'ไม่ระบุ'}</p>
@@ -1223,7 +1223,7 @@ export default function RegisterPatient() {
                 </button>
               </div>
               <div className="mt-2 text-sm text-blue-700">
-                <p><strong>ชื่อไทย:</strong> {selectedUserData.thaiName || selectedUserData.thaiFirstName || 'ไม่ระบุ'} {selectedUserData.thaiLastName || ''}</p>
+                <p><strong>ชื่อไทย:</strong> {selectedUserData.thaiFirstName || 'ไม่ระบุ'} {selectedUserData.thaiLastName || ''}</p>
                 <p><strong>ชื่ออังกฤษ:</strong> {selectedUserData.firstName || 'ไม่ระบุ'} {selectedUserData.lastName || ''}</p>
                 <p><strong>อีเมล:</strong> {selectedUserData.email}</p>
                 <p><strong>โทรศัพท์:</strong> {selectedUserData.phone}</p>
@@ -1278,7 +1278,7 @@ export default function RegisterPatient() {
                       onChange={(e) => handleInputChange("title", e.target.value)}
                       className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 border-gray-300"
                     >
-                      <option value="">เลือกคำนำหน้าชื่อ</option>
+                      <option value="">เลือกคำนำหน้า</option>
                       <option value="นาย">นาย</option>
                       <option value="นาง">นาง</option>
                       <option value="นางสาว">นางสาว</option>
@@ -1567,14 +1567,10 @@ export default function RegisterPatient() {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900"
                     >
                       <option value="">เลือกหมู่เลือด</option>
-                      <option value="A+">A+</option>
-                      <option value="A-">A-</option>
-                      <option value="B+">B+</option>
-                      <option value="B-">B-</option>
-                      <option value="AB+">AB+</option>
-                      <option value="AB-">AB-</option>
-                      <option value="O+">O+</option>
-                      <option value="O-">O-</option>
+                      <option value="A">A</option>
+                      <option value="B">B</option>
+                      <option value="AB">AB</option>
+                      <option value="O">O</option>
                     </select>
                     </div>
 

@@ -187,7 +187,7 @@ export const getLabOrders = async (req: Request, res: Response) => {
         lo.patient_id,
         lo.visit_id,
         lo.order_number,
-        lo._name,
+        lo.test_name,
         lo._code,
         lo._category,
         lo.clinical_indication,
@@ -230,7 +230,7 @@ export const getLabOrders = async (req: Request, res: Response) => {
           SELECT 
             lr.id,
             lr.result_value,
-            lr.result_numeric,
+            lr.result_value,
             lr.result_unit,
             lr.reference_range,
             lr.reference_min,

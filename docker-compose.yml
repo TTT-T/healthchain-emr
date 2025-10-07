@@ -1,3 +1,24 @@
+# EMR System - Electronic Medical Records
+# Complete Docker Compose Configuration
+# Includes: PostgreSQL, Redis, Backend API, Frontend, pgAdmin
+# 
+# Usage:
+#   start.bat start     - Start all services
+#   start.bat stop      - Stop all services  
+#   start.bat restart   - Restart all services
+#   start.bat clean     - Clean all Docker resources
+#   start.bat admin     - Create admin user
+#
+# URLs:
+#   Frontend: http://localhost:3000
+#   Backend:  http://localhost:3001
+#   pgAdmin:  http://localhost:8080
+#
+# Default Admin Account:
+#   Username: admin
+#   Password: admin123
+#   Email: admin@admin.com
+
 services:
   # PostgreSQL Database
   postgres:
@@ -39,7 +60,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: emr_backend
     environment:
       NODE_ENV: development
@@ -60,12 +81,29 @@ services:
       # AI and notification settings
       AI_RISK_ASSESSMENT_ENABLED: true
       NOTIFICATION_SYSTEM_ENABLED: true
+      # External Requester System settings
+      EXTERNAL_REQUESTER_SYSTEM_ENABLED: true
+      CONSENT_MANAGEMENT_ENABLED: true
+      # Email and SMS notification settings
+      EMAIL_NOTIFICATIONS_ENABLED: true
+      SMS_NOTIFICATIONS_ENABLED: true
+      IN_APP_NOTIFICATIONS_ENABLED: true
+      # SMTP Configuration (ตั้งค่าจริงสำหรับส่งอีเมล)
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: 587
+      SMTP_USER: tt.teerapattan@gmail.com
+      SMTP_PASSWORD: xnqt crbm onze hcdx
+      EMAIL_FROM: tt.teerapattan@gmail.com
       # Health check settings
       HEALTH_CHECK_INTERVAL: 30000
       HEALTH_CHECK_TIMEOUT: 10000
       # Timezone settings
       TZ: Asia/Bangkok
       TIMEZONE: Asia/Bangkok
+      # Character encoding settings
+      LANG: th_TH.UTF-8
+      LC_ALL: th_TH.UTF-8
+      NODE_ENCODING: utf8
     ports:
       - "3001:3001"
     volumes:
@@ -91,7 +129,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: emr_frontend
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:3001/api

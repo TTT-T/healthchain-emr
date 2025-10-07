@@ -33,6 +33,8 @@ export default function ActivityLogsPage() {
     warnings: 0,
     errors: 0
   });
+  const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // Load activity logs data
   const loadActivityLogs = async () => {
@@ -151,6 +153,28 @@ export default function ActivityLogsPage() {
   const handleRefresh = () => {
     logger.info('Refreshing logs...');
     loadActivityLogs();
+  };
+
+  const handleViewDetails = async (logId: string) => {
+    try {
+      logger.info('Loading activity log details for ID:', logId);
+      const response = await ActivityLogsService.getActivityLogDetails(logId);
+      
+      if (response?.data?.log) {
+        setSelectedLog(response.data.log);
+        setShowDetailsModal(true);
+      } else {
+        setError('Failed to load activity log details');
+      }
+    } catch (err) {
+      logger.error('Error loading activity log details:', err);
+      setError('Failed to load activity log details');
+    }
+  };
+
+  const closeDetailsModal = () => {
+    setShowDetailsModal(false);
+    setSelectedLog(null);
   };
 
   if (loading) {
@@ -389,7 +413,15 @@ export default function ActivityLogsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <button className="text-blue-600 hover:text-blue-900 transition-colors">
+                    <button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleViewDetails(log.id);
+                      }}
+                      className="text-blue-600 hover:text-blue-900 transition-colors"
+                      title="View Details"
+                    >
                       <Eye size={16} />
                     </button>
                   </td>
@@ -450,6 +482,108 @@ export default function ActivityLogsPage() {
             >
               Next
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Activity Log Details Modal */}
+      {showDetailsModal && selectedLog && (
+        <div className="fixed inset-0 flex items-center justify-center z-[9999] p-4" style={{zIndex: 9999}}>
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Activity Log Details</h2>
+                <button
+                  onClick={closeDetailsModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Basic Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">ID</label>
+                    <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{selectedLog.id}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Timestamp</label>
+                    <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{selectedLog.timestamp}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">User</label>
+                    <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{selectedLog.user}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">User Role</label>
+                    <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{selectedLog.user_role}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Action</label>
+                    <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{selectedLog.action}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Module</label>
+                    <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{selectedLog.module}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedLog.status)}`}>
+                      {getStatusIcon(selectedLog.status)} {selectedLog.status}
+                    </span>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">IP Address</label>
+                    <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{selectedLog.ip_address || 'N/A'}</p>
+                  </div>
+                </div>
+
+                {/* Details */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Details</label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{selectedLog.details}</p>
+                </div>
+
+                {/* Additional Information */}
+                {(selectedLog as any).oldValues && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Old Values</label>
+                    <pre className="text-xs text-gray-900 bg-gray-50 p-2 rounded overflow-x-auto">
+                      {JSON.stringify((selectedLog as any).oldValues, null, 2)}
+                    </pre>
+                  </div>
+                )}
+
+                {(selectedLog as any).newValues && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">New Values</label>
+                    <pre className="text-xs text-gray-900 bg-gray-50 p-2 rounded overflow-x-auto">
+                      {JSON.stringify((selectedLog as any).newValues, null, 2)}
+                    </pre>
+                  </div>
+                )}
+
+                {(selectedLog as any).userAgent && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">User Agent</label>
+                    <p className="text-xs text-gray-900 bg-gray-50 p-2 rounded break-all">{(selectedLog as any).userAgent}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={closeDetailsModal}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -45,12 +45,16 @@ class EmailService {
     try {
       // Check if transporter is available
       if (!this.transporter) {
-        return true; // Return true in development mode
+        console.log('⚠️ Email Service: No SMTP transporter available - email not sent');
+        return false; // Return false when no SMTP configured
       }
 
-      // In development mode, still send email if SMTP is configured
+      // In development mode, check if SMTP is properly configured
       if (process.env.NODE_ENV === 'development' && (!config.smtp.user || !config.smtp.password)) {
-        return true;
+        console.log('⚠️ Email Service: SMTP not configured in development mode - email not sent');
+        console.log('📧 Email would be sent to:', emailData.to);
+        console.log('📧 Subject:', emailData.subject);
+        return false;
       }
 
       const info = await this.transporter.sendMail({
@@ -1574,6 +1578,40 @@ class EmailService {
   }
 
   /**
+   * Send consent request notification
+   */
+  async sendConsentRequestNotification(
+    email: string,
+    patientName: string,
+    requesterOrganization: string,
+    requestType: string,
+    purpose: string,
+    expiresAt: Date,
+    requestId: string
+  ): Promise<boolean> {
+    try {
+      const subject = `📋 คำขอเข้าถึงข้อมูลใหม่ - HealthChain EMR`;
+      const htmlContent = this.generateConsentRequestTemplate(
+        patientName,
+        requesterOrganization,
+        requestType,
+        purpose,
+        expiresAt,
+        requestId
+      );
+      
+      return await this.sendEmail({
+        to: email,
+        subject: subject,
+        html: htmlContent
+      });
+    } catch (error) {
+      console.error('Error sending consent request notification:', error);
+      return false;
+    }
+  }
+
+  /**
    * Generate user approval HTML template
    */
   generateUserApprovalTemplate(
@@ -2014,6 +2052,369 @@ class EmailService {
             <p style="margin-top: 20px; font-size: 12px; color: #9ca3af;">
               อีเมลนี้ถูกส่งโดยอัตโนมัติ กรุณาอย่าตอบกลับ
             </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  /**
+   * Generate consent request HTML template
+   */
+  generateConsentRequestTemplate(
+    patientName: string,
+    requesterOrganization: string,
+    requestType: string,
+    purpose: string,
+    expiresAt: Date,
+    requestId: string
+  ): string {
+    const requestTypeLabels = {
+      patient_data: 'ข้อมูลผู้ป่วย',
+      medical_records: 'ประวัติการรักษา',
+      lab_results: 'ผลการตรวจ',
+      prescriptions: 'ใบสั่งยา',
+      appointments: 'ข้อมูลนัดหมาย',
+      research_data: 'ข้อมูลเพื่อการวิจัย'
+    };
+
+    const consentUrl = `${config.app.frontendUrl}/consent-requests/${requestId}`;
+    const formattedExpiresAt = expiresAt.toLocaleDateString('th-TH', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Bangkok'
+    });
+
+    return `
+      <!DOCTYPE html>
+      <html lang="th">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>คำขอเข้าถึงข้อมูล - HealthChain EMR</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #2d3748;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+          }
+          .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+          }
+          .logo {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+          }
+          .logo-icon {
+            font-size: 40px;
+            margin-right: 10px;
+          }
+          .header-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+            position: relative;
+            z-index: 1;
+          }
+          .content {
+            padding: 40px 30px;
+          }
+          .greeting {
+            font-size: 18px;
+            color: #1a202c;
+            margin-bottom: 20px;
+          }
+          .message {
+            font-size: 16px;
+            color: #4a5568;
+            margin-bottom: 30px;
+            line-height: 1.7;
+          }
+          .request-card {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border: 2px solid #0ea5e9;
+            border-radius: 16px;
+            padding: 30px;
+            margin: 30px 0;
+          }
+          .request-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #0c4a6e;
+            margin-bottom: 20px;
+            text-align: center;
+          }
+          .request-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+          }
+          .detail-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #0ea5e9;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          }
+          .detail-label {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+          }
+          .detail-value {
+            font-size: 16px;
+            color: #0c4a6e;
+            font-weight: 600;
+          }
+          .purpose-section {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+          }
+          .purpose-title {
+            font-weight: 600;
+            color: #92400e;
+            margin-bottom: 10px;
+            font-size: 16px;
+          }
+          .purpose-content {
+            color: #92400e;
+            font-size: 15px;
+            line-height: 1.6;
+          }
+          .action-section {
+            background: #f0fdf4;
+            border: 2px solid #bbf7d0;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            margin: 30px 0;
+          }
+          .action-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 16px 32px;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+          }
+          .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+          }
+          .warning-box {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 1px solid #f59e0b;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 25px 0;
+            color: #92400e;
+          }
+          .warning-title {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+          }
+          .warning-icon {
+            margin-right: 8px;
+            font-size: 18px;
+          }
+          .warning-list {
+            margin: 0;
+            padding-left: 20px;
+          }
+          .warning-list li {
+            margin-bottom: 8px;
+            font-size: 14px;
+          }
+          .footer {
+            background: #f8fafc;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+          }
+          .footer-text {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
+          }
+          .contact-info {
+            font-size: 14px;
+            color: #3b82f6;
+            font-weight: 500;
+            margin: 10px 0;
+          }
+          .copyright {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 15px;
+          }
+          .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+            margin: 20px 0;
+          }
+          @media (max-width: 600px) {
+            .email-container {
+              margin: 10px;
+              border-radius: 12px;
+            }
+            .header, .content, .footer {
+              padding: 25px 20px;
+            }
+            .request-card, .action-section {
+              padding: 20px;
+            }
+            .request-details {
+              grid-template-columns: 1fr;
+            }
+            .logo {
+              font-size: 28px;
+            }
+            .header-title {
+              font-size: 20px;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <div class="logo">
+              <span class="logo-icon">📋</span>HealthChain EMR
+            </div>
+            <h1 class="header-title">คำขอเข้าถึงข้อมูลใหม่</h1>
+          </div>
+          
+          <div class="content">
+            <div class="greeting">
+              สวัสดี คุณ<strong>${patientName}</strong> 👋
+            </div>
+            
+            <div class="message">
+              มีคำขอเข้าถึงข้อมูลของคุณจากองค์กรภายนอกผ่าน <strong>HealthChain EMR System</strong>
+            </div>
+            
+            <div class="request-card">
+              <div class="request-title">📋 รายละเอียดคำขอ</div>
+              <div class="request-details">
+                <div class="detail-item">
+                  <div class="detail-label">🏢 องค์กรผู้ขอ</div>
+                  <div class="detail-value">${requesterOrganization}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">📊 ประเภทข้อมูล</div>
+                  <div class="detail-value">${requestTypeLabels[requestType as keyof typeof requestTypeLabels] || requestType}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">⏰ หมดอายุ</div>
+                  <div class="detail-value">${formattedExpiresAt}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">🆔 รหัสคำขอ</div>
+                  <div class="detail-value">${requestId}</div>
+                </div>
+              </div>
+              
+              <div class="purpose-section">
+                <div class="purpose-title">🎯 วัตถุประสงค์การใช้งาน</div>
+                <div class="purpose-content">${purpose}</div>
+              </div>
+            </div>
+            
+            <div class="action-section">
+              <h3 style="color: #065f46; margin-bottom: 20px;">🔐 กรุณาตัดสินใจเกี่ยวกับคำขอนี้</h3>
+              <a href="${consentUrl}" class="action-button">
+                📝 ตรวจสอบและตอบสนองคำขอ
+              </a>
+              <p style="color: #047857; font-size: 14px; margin-top: 15px;">
+                คลิกปุ่มด้านบนเพื่อดูรายละเอียดและตัดสินใจอนุมัติหรือปฏิเสธคำขอ
+              </p>
+            </div>
+            
+            <div class="warning-box">
+              <div class="warning-title">
+                <span class="warning-icon">⚠️</span>
+                ข้อสำคัญที่ควรทราบ
+              </div>
+              <ul class="warning-list">
+                <li>คำขอนี้จะหมดอายุในวันที่ <strong>${formattedExpiresAt}</strong></li>
+                <li>คุณมีสิทธิ์ในการอนุมัติหรือปฏิเสธคำขอเข้าถึงข้อมูลของคุณ</li>
+                <li>ข้อมูลจะถูกใช้ตามวัตถุประสงค์ที่ระบุเท่านั้น</li>
+                <li>หากไม่ตอบสนองภายในกำหนด ระบบจะถือว่าปฏิเสธคำขอ</li>
+                <li>คุณสามารถติดต่อทีมสนับสนุนหากมีคำถาม</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div class="divider"></div>
+          
+          <div class="footer">
+            <div class="footer-text">
+              อีเมลนี้ส่งมาจาก <strong>HealthChain EMR System</strong>
+            </div>
+            <div class="contact-info">
+              📧 หากมีคำถาม กรุณาติดต่อ: support@healthchain.co.th
+            </div>
+            <div class="contact-info">
+              📞 โทรศัพท์: 02-xxx-xxxx (จันทร์-ศุกร์ 8:00-17:00)
+            </div>
+            <div class="copyright">
+              © 2025 HealthChain EMR System. All rights reserved.
+            </div>
           </div>
         </div>
       </body>

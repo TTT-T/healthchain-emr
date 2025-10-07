@@ -40,10 +40,10 @@ async function sendPatientVisitNotification(visit: any, doctorId: string, create
     const patientQuery = `
       SELECT 
         p.id,
-        p.hospital_number,
+        p.hn,
         p.first_name,
         p.last_name,
-        p.thai_name,
+        p.thai_first_name,
         p.phone,
         p.email,
         p.user_id,
@@ -67,7 +67,7 @@ async function sendPatientVisitNotification(visit: any, doctorId: string, create
         u.id,
         u.first_name,
         u.last_name,
-        u.thai_name,
+        u.thai_first_name,
         d.department_name
       FROM users u
       LEFT JOIN departments d ON u.department_id = d.id
@@ -87,7 +87,7 @@ async function sendPatientVisitNotification(visit: any, doctorId: string, create
         u.id,
         u.first_name,
         u.last_name,
-        u.thai_name
+        u.thai_first_name
       FROM users u
       WHERE u.id = $1
     `;
@@ -97,21 +97,21 @@ async function sendPatientVisitNotification(visit: any, doctorId: string, create
     // Use NotificationService to send notification
     await NotificationService.sendPatientNotification({
       patientId: patient.id,
-      patientHn: patient.hospital_number || '',
-      patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+      patientHn: patient.hn || '',
+      patientName: patient.thai_first_name || `${patient.first_name} ${patient.last_name}`,
       patientPhone: patient.phone,
       patientEmail: patient.email || patient.user_email,
       notificationType: 'queue_assigned',
       title: `ได้รับหมายเลขคิว ${visit.visit_number}`,
-      message: `คุณ ${patient.thai_name || patient.first_name} ได้รับหมายเลขคิว ${visit.visit_number} สำหรับตรวจกับ ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`,
+      message: `คุณ ${patient.thai_first_name || patient.first_name} ได้รับหมายเลขคิว ${visit.visit_number} สำหรับตรวจกับ ${doctor.thai_first_name || `${doctor.first_name} ${doctor.last_name}`}`,
       recordType: 'visit',
       recordId: visit.id,
       createdBy: createdBy,
-      createdByName: creator ? (creator.thai_name || `${creator.first_name} ${creator.last_name}`) : 'ระบบ',
+      createdByName: creator ? (creator.thai_first_name || `${creator.first_name} ${creator.last_name}`) : 'ระบบ',
       metadata: {
         visitNumber: visit.visit_number,
-        hospitalNumber: patient.hospital_number,
-        doctorName: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
+        hospitalNumber: patient.hn,
+        doctorName: doctor.thai_first_name || `${doctor.first_name} ${doctor.last_name}`,
         department: doctor.department_name,
         visitDate: visit.visit_date,
         visitTime: visit.visit_time,
@@ -134,10 +134,10 @@ async function sendVisitStartedNotification(visit: any) {
     const patientQuery = `
       SELECT 
         p.id,
-        p.hospital_number,
+        p.hn,
         p.first_name,
         p.last_name,
-        p.thai_name,
+        p.thai_first_name,
         p.phone,
         p.email,
         p.user_id,
@@ -161,7 +161,7 @@ async function sendVisitStartedNotification(visit: any) {
         u.id,
         u.first_name,
         u.last_name,
-        u.thai_name,
+        u.thai_first_name,
         d.department_name
       FROM users u
       LEFT JOIN departments d ON u.department_id = d.id
@@ -182,12 +182,12 @@ async function sendVisitStartedNotification(visit: any) {
       user_id: patient.user_id,
       type: 'visit_started',
       title: `เริ่มการตรวจ - หมายเลขคิว ${visit.visit_number}`,
-      message: `คุณ ${patient.thai_name || `${patient.first_name} ${patient.last_name}`} หมายเลขคิว ${visit.visit_number} กำลังได้รับการตรวจจาก ${doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`}`,
+      message: `คุณ ${patient.thai_first_name || `${patient.first_name} ${patient.last_name}`} หมายเลขคิว ${visit.visit_number} กำลังได้รับการตรวจจาก ${doctor.thai_first_name || `${doctor.first_name} ${doctor.last_name}`}`,
       data: {
         visit_id: visit.id,
         visit_number: visit.visit_number,
-        hospital_number: patient.hospital_number,
-        doctor_name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
+        hn: patient.hn,
+        doctor_name: doctor.thai_first_name || `${doctor.first_name} ${doctor.last_name}`,
         department: doctor.department_name,
         visit_date: visit.visit_date,
         visit_time: visit.visit_time,
@@ -248,7 +248,7 @@ const createVisitSchema = z.object({
   }).default('normal'),
   attendingDoctorId: z.string().uuid("Doctor ID ต้องเป็น UUID").optional(),
   assignedNurseId: z.string().uuid("Nurse ID ต้องเป็น UUID").optional(),
-  departmentId: z.string().uuid("Department ID ต้องเป็น UUID").optional(),
+  departmentId: z.string().min(1, "กรุณาเลือกแผนก").optional(),
   followUpRequired: z.boolean().optional(),
   followUpDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD)").optional().nullable(),
   followUpNotes: z.string().optional().nullable()
@@ -295,7 +295,7 @@ export const createVisit = async (req: Request, res: Response) => {
     const validatedData = createVisitSchema.parse(req.body);
     // Verify patient exists
     const patientResult = await db.query(
-      'SELECT id FROM patients WHERE id = $1 AND is_active = true',
+      'SELECT id FROM patients WHERE id = $1',
       [validatedData.patientId]
     );
     
@@ -322,7 +322,7 @@ export const createVisit = async (req: Request, res: Response) => {
       }
       
       const doctorResult = await db.query(
-        'SELECT id FROM users WHERE id = $1 AND role = $2 AND is_active = true',
+        'SELECT id FROM users WHERE id = $1 AND role = $2',
         [finalDoctorId, 'doctor']
       );
       
@@ -333,9 +333,28 @@ export const createVisit = async (req: Request, res: Response) => {
       }
     }
 
-    // Generate visit number using database function
-    const visitNumberResult = await db.query('SELECT generate_visit_number() as visit_number');
-    const visitNumber = visitNumberResult.rows[0].visit_number;
+    // Resolve department ID from department code
+    let finalDepartmentId = null;
+    if (validatedData.departmentId) {
+      const departmentResult = await db.query(
+        'SELECT id FROM departments WHERE department_code = $1',
+        [validatedData.departmentId]
+      );
+      if (departmentResult.rows.length > 0) {
+        finalDepartmentId = departmentResult.rows[0].id;
+      } else {
+        // If not found by code, assume it's already a UUID
+        finalDepartmentId = validatedData.departmentId;
+      }
+    }
+
+    // Generate visit number manually
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const time = String(now.getTime()).slice(-6); // Last 6 digits of timestamp
+    const visitNumber = `V${year}${month}${day}${time}`;
 
     // Create visit in transaction
     const result = await db.transaction(async (client) => {
@@ -361,7 +380,7 @@ export const createVisit = async (req: Request, res: Response) => {
         validatedData.priority,
         finalDoctorId || null,
         validatedData.assignedNurseId || null,
-        validatedData.departmentId || null,
+        finalDepartmentId || null,
         'in_progress', // Set status to in_progress for new visits
         getCurrentThailandDaring(),
         getCurrentThailandTimeOnlyString(),
@@ -484,7 +503,7 @@ export const getVisitsByPatient = async (req: Request, res: Response) => {
         v.updated_at,
         u.first_name as doctor_first_name,
         u.last_name as doctor_last_name,
-        u.thai_name as doctor_thai_name,
+        u.thai_first_name as doctor_thai_first_name,
         v.department_id as department_name
       FROM visits v
       LEFT JOIN users u ON v.attending_doctor_id = u.id
@@ -515,7 +534,7 @@ export const getVisitsByPatient = async (req: Request, res: Response) => {
       followUpNotes: visit.follow_up_notes,
       createdAt: visit.created_at,
       updatedAt: visit.updated_at,
-      doctorName: visit.doctor_thai_name || `${visit.doctor_first_name || ''} ${visit.doctor_last_name || ''}`.trim(),
+      doctorName: visit.doctor_thai_first_name || `${visit.doctor_first_name || ''} ${visit.doctor_last_name || ''}`.trim(),
       departmentName: visit.department_name
     }));
     res.status(200).json(
@@ -549,7 +568,7 @@ export const getVisit = async (req: Request, res: Response) => {
     const result = await db.query(`
       SELECT 
         v.*,
-        p.hospital_number, p.first_name, p.last_name, p.thai_name,
+        p.hn, p.first_name, p.last_name, p.thai_first_name,
         d_doctor.first_name as doctor_first_name, d_doctor.last_name as doctor_last_name,
         d_nurse.first_name as nurse_first_name, d_nurse.last_name as nurse_last_name,
         dept.department_name
@@ -592,10 +611,10 @@ export const getVisit = async (req: Request, res: Response) => {
       updatedAt: visit.updated_at,
       // Related data
       patient: {
-        hospitalNumber: visit.hospital_number,
+        hospitalNumber: visit.hn,
         firstName: visit.first_name,
         lastName: visit.last_name,
-        thaiName: visit.thai_name
+        thaiName: visit.thai_first_name
       },
       attendingDoctor: visit.doctor_first_name ? {
         firstName: visit.doctor_first_name,
@@ -879,7 +898,7 @@ export const searchVisits = async (req: Request, res: Response) => {
     let query = `
       SELECT 
         v.*,
-        p.hospital_number, p.first_name, p.last_name, p.thai_name,
+        p.hn, p.first_name, p.last_name, p.thai_first_name,
         d_doctor.first_name as doctor_first_name, d_doctor.last_name as doctor_last_name,
         dept.department_name
       FROM visits v
@@ -950,10 +969,10 @@ export const searchVisits = async (req: Request, res: Response) => {
       status: visit.status,
       priority: visit.priority,
       patient: {
-        hospitalNumber: visit.hospital_number,
+        hospitalNumber: visit.hn,
         firstName: visit.first_name,
         lastName: visit.last_name,
-        thaiName: visit.thai_name
+        thaiName: visit.thai_first_name
       },
       attendingDoctor: visit.doctor_first_name ? {
         firstName: visit.doctor_first_name,

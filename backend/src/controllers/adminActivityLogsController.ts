@@ -31,8 +31,8 @@ export class AdminActivityLogsController {
       // Search condition
       if (search) {
         conditions.push(`(
-          sal.action ILIKE $${paramIndex} OR 
-          sal.resource_type ILIKE $${paramIndex} OR 
+          al.action ILIKE $${paramIndex} OR 
+          al.table_name ILIKE $${paramIndex} OR 
           u.username ILIKE $${paramIndex} OR 
           u.first_name ILIKE $${paramIndex} OR 
           u.last_name ILIKE $${paramIndex}
@@ -41,21 +41,19 @@ export class AdminActivityLogsController {
         paramIndex++;
       }
 
-      // Module filter (resource_type)
+      // Module filter (table_name)
       if (module) {
-        conditions.push(`sal.resource_type = $${paramIndex}`);
+        conditions.push(`al.table_name = $${paramIndex}`);
         params.push(module);
         paramIndex++;
       }
 
-      // Status filter
+      // Status filter - simplified since audit_logs doesn't have success/error columns
       if (status) {
-        if (status === 'success') {
-          conditions.push(`sal.success = true`);
-        } else if (status === 'error') {
-          conditions.push(`sal.success = false`);
-        } else if (status === 'warning') {
-          conditions.push(`sal.success = true AND sal.error_message IS NOT NULL`);
+        if (status === 'error') {
+          conditions.push(`al.action ILIKE '%error%' OR al.action ILIKE '%fail%'`);
+        } else if (status === 'success') {
+          conditions.push(`al.action NOT ILIKE '%error%' AND al.action NOT ILIKE '%fail%'`);
         }
       }
 
@@ -71,13 +69,13 @@ export class AdminActivityLogsController {
         let dateCondition = '';
         switch (dateRange) {
           case 'today':
-            dateCondition = `sal.created_at >= CURRENT_DATE`;
+            dateCondition = `al.created_at >= CURRENT_DATE`;
             break;
           case 'week':
-            dateCondition = `sal.created_at >= CURRENT_DATE - INTERVAL '7 days'`;
+            dateCondition = `al.created_at >= CURRENT_DATE - INTERVAL '7 days'`;
             break;
           case 'month':
-            dateCondition = `sal.created_at >= CURRENT_DATE - INTERVAL '30 days'`;
+            dateCondition = `al.created_at >= CURRENT_DATE - INTERVAL '30 days'`;
             break;
         }
         if (dateCondition) {
@@ -90,8 +88,8 @@ export class AdminActivityLogsController {
       // Get total count
       const countQuery = `
         SELECT COUNT(*) as total
-        FROM system_audit_logs sal
-        LEFT JOIN users u ON sal.user_id = u.id
+        FROM audit_logs al
+        LEFT JOIN users u ON al.user_id = u.id
         ${whereClause}
       `;
       
@@ -101,34 +99,33 @@ export class AdminActivityLogsController {
       // Get activity logs with user information
       const logsQuery = `
         SELECT 
-          sal.id,
-          sal.created_at as timestamp,
+          al.id,
+          al.created_at as timestamp,
           COALESCE(u.username, 'System') as user,
           COALESCE(u.role, 'System') as user_role,
-          sal.action,
-          sal.resource_type as module,
+          al.action,
+          al.table_name as module,
           CASE 
-            WHEN sal.old_values IS NOT NULL AND sal.new_values IS NOT NULL THEN
-              'Updated ' || sal.resource_type || ' record'
-            WHEN sal.new_values IS NOT NULL THEN
-              'Created ' || sal.resource_type || ' record'
-            WHEN sal.old_values IS NOT NULL THEN
-              'Deleted ' || sal.resource_type || ' record'
-            ELSE sal.action
+            WHEN al.old_values IS NOT NULL AND al.new_values IS NOT NULL THEN
+              'Updated ' || al.table_name || ' record'
+            WHEN al.new_values IS NOT NULL THEN
+              'Created ' || al.table_name || ' record'
+            WHEN al.old_values IS NOT NULL THEN
+              'Deleted ' || al.table_name || ' record'
+            ELSE al.action
           END as details,
-          sal.ip_address,
+          al.ip_address,
           CASE 
-            WHEN sal.success = false THEN 'error'
-            WHEN sal.success = true AND sal.error_message IS NOT NULL THEN 'warning'
+            WHEN al.action ILIKE '%error%' OR al.action ILIKE '%fail%' THEN 'error'
             ELSE 'success'
           END as status,
-          sal.error_message,
-          sal.execution_time_ms,
-          sal.request_id
-        FROM system_audit_logs sal
-        LEFT JOIN users u ON sal.user_id = u.id
+          NULL as error_message,
+          NULL as execution_time_ms,
+          NULL as request_id
+        FROM audit_logs al
+        LEFT JOIN users u ON al.user_id = u.id
         ${whereClause}
-        ORDER BY sal.${sortBy} ${String(sortOrder).toUpperCase()}
+        ORDER BY al.${sortBy} ${String(sortOrder).toUpperCase()}
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `;
 
@@ -137,17 +134,17 @@ export class AdminActivityLogsController {
 
       // Get unique modules and users for filters
       const modulesQuery = `
-        SELECT DISTINCT resource_type as module
-        FROM system_audit_logs
-        WHERE resource_type IS NOT NULL
-        ORDER BY resource_type
+        SELECT DISTINCT table_name as module
+        FROM audit_logs
+        WHERE table_name IS NOT NULL
+        ORDER BY table_name
       `;
       const modulesResult = await databaseManager.query(modulesQuery);
 
       const usersQuery = `
         SELECT DISTINCT u.username
-        FROM system_audit_logs sal
-        JOIN users u ON sal.user_id = u.id
+        FROM audit_logs al
+        JOIN users u ON al.user_id = u.id
         WHERE u.username IS NOT NULL
         ORDER BY u.username
       `;
@@ -157,11 +154,11 @@ export class AdminActivityLogsController {
       const statsQuery = `
         SELECT 
           COUNT(*) as total_activities,
-          COUNT(CASE WHEN success = true THEN 1 END) as success_count,
-          COUNT(CASE WHEN success = false THEN 1 END) as error_count,
-          COUNT(CASE WHEN success = true AND error_message IS NOT NULL THEN 1 END) as warning_count
-        FROM system_audit_logs sal
-        LEFT JOIN users u ON sal.user_id = u.id
+          COUNT(CASE WHEN action NOT ILIKE '%error%' AND action NOT ILIKE '%fail%' THEN 1 END) as success_count,
+          COUNT(CASE WHEN action ILIKE '%error%' OR action ILIKE '%fail%' THEN 1 END) as error_count,
+          0 as warning_count
+        FROM audit_logs al
+        LEFT JOIN users u ON al.user_id = u.id
         ${whereClause}
       `;
       const statsResult = await databaseManager.query(statsQuery, params.slice(0, -2)); // Remove limit and offset params
@@ -222,15 +219,15 @@ export class AdminActivityLogsController {
 
       const query = `
         SELECT 
-          sal.*,
+          al.*,
           u.username,
           u.first_name,
           u.last_name,
           u.role,
           u.email
-        FROM system_audit_logs sal
-        LEFT JOIN users u ON sal.user_id = u.id
-        WHERE sal.id = $1
+        FROM audit_logs al
+        LEFT JOIN users u ON al.user_id = u.id
+        WHERE al.id = $1
       `;
 
       const result = await databaseManager.query(query, [id]);
@@ -256,21 +253,21 @@ export class AdminActivityLogsController {
             id: log.id,
             timestamp: log.created_at,
             user: log.username || 'System',
-            userRole: log.role || 'System',
+            user_role: log.role || 'System',
             action: log.action,
-            module: log.resource_type,
+            module: log.table_name,
             details: log.old_values && log.new_values 
-              ? `Updated ${log.resource_type} record`
+              ? `Updated ${log.table_name} record`
               : log.new_values 
-                ? `Created ${log.resource_type} record`
+                ? `Created ${log.table_name} record`
                 : log.old_values 
-                  ? `Deleted ${log.resource_type} record`
+                  ? `Deleted ${log.table_name} record`
                   : log.action,
-            ipAddress: log.ip_address,
-            status: log.success ? 'success' : 'error',
-            errorMessage: log.error_message,
-            executionTime: log.execution_time_ms,
-            requestId: log.request_id,
+            ip_address: log.ip_address,
+            status: log.action && (log.action.includes('error') || log.action.includes('fail')) ? 'error' : 'success',
+            errorMessage: null,
+            executionTime: null,
+            requestId: null,
             oldValues: log.old_values,
             newValues: log.new_values,
             userAgent: log.user_agent
@@ -318,8 +315,8 @@ export class AdminActivityLogsController {
 
       if (search) {
         conditions.push(`(
-          sal.action ILIKE $${paramIndex} OR 
-          sal.resource_type ILIKE $${paramIndex} OR 
+          al.action ILIKE $${paramIndex} OR 
+          al.table_name ILIKE $${paramIndex} OR 
           u.username ILIKE $${paramIndex} OR 
           u.first_name ILIKE $${paramIndex} OR 
           u.last_name ILIKE $${paramIndex}
@@ -329,18 +326,16 @@ export class AdminActivityLogsController {
       }
 
       if (module) {
-        conditions.push(`sal.resource_type = $${paramIndex}`);
+        conditions.push(`al.table_name = $${paramIndex}`);
         params.push(module);
         paramIndex++;
       }
 
       if (status) {
-        if (status === 'success') {
-          conditions.push(`sal.success = true`);
-        } else if (status === 'error') {
-          conditions.push(`sal.success = false`);
-        } else if (status === 'warning') {
-          conditions.push(`sal.success = true AND sal.error_message IS NOT NULL`);
+        if (status === 'error') {
+          conditions.push(`al.action ILIKE '%error%' OR al.action ILIKE '%fail%'`);
+        } else if (status === 'success') {
+          conditions.push(`al.action NOT ILIKE '%error%' AND al.action NOT ILIKE '%fail%'`);
         }
       }
 
@@ -354,13 +349,13 @@ export class AdminActivityLogsController {
         let dateCondition = '';
         switch (dateRange) {
           case 'today':
-            dateCondition = `sal.created_at >= CURRENT_DATE`;
+            dateCondition = `al.created_at >= CURRENT_DATE`;
             break;
           case 'week':
-            dateCondition = `sal.created_at >= CURRENT_DATE - INTERVAL '7 days'`;
+            dateCondition = `al.created_at >= CURRENT_DATE - INTERVAL '7 days'`;
             break;
           case 'month':
-            dateCondition = `sal.created_at >= CURRENT_DATE - INTERVAL '30 days'`;
+            dateCondition = `al.created_at >= CURRENT_DATE - INTERVAL '30 days'`;
             break;
         }
         if (dateCondition) {
@@ -372,32 +367,31 @@ export class AdminActivityLogsController {
 
       const query = `
         SELECT 
-          sal.created_at as timestamp,
+          al.created_at as timestamp,
           COALESCE(u.username, 'System') as user,
           COALESCE(u.role, 'System') as user_role,
-          sal.action,
-          sal.resource_type as module,
+          al.action,
+          al.table_name as module,
           CASE 
-            WHEN sal.old_values IS NOT NULL AND sal.new_values IS NOT NULL THEN
-              'Updated ' || sal.resource_type || ' record'
-            WHEN sal.new_values IS NOT NULL THEN
-              'Created ' || sal.resource_type || ' record'
-            WHEN sal.old_values IS NOT NULL THEN
-              'Deleted ' || sal.resource_type || ' record'
-            ELSE sal.action
+            WHEN al.old_values IS NOT NULL AND al.new_values IS NOT NULL THEN
+              'Updated ' || al.table_name || ' record'
+            WHEN al.new_values IS NOT NULL THEN
+              'Created ' || al.table_name || ' record'
+            WHEN al.old_values IS NOT NULL THEN
+              'Deleted ' || al.table_name || ' record'
+            ELSE al.action
           END as details,
-          sal.ip_address,
+          al.ip_address,
           CASE 
-            WHEN sal.success = false THEN 'error'
-            WHEN sal.success = true AND sal.error_message IS NOT NULL THEN 'warning'
+            WHEN al.action ILIKE '%error%' OR al.action ILIKE '%fail%' THEN 'error'
             ELSE 'success'
           END as status,
-          sal.error_message,
-          sal.execution_time_ms
-        FROM system_audit_logs sal
-        LEFT JOIN users u ON sal.user_id = u.id
+          NULL as error_message,
+          NULL as execution_time_ms
+        FROM audit_logs al
+        LEFT JOIN users u ON al.user_id = u.id
         ${whereClause}
-        ORDER BY sal.created_at DESC
+        ORDER BY al.created_at DESC
       `;
 
       const result = await databaseManager.query(query, params);

@@ -6,6 +6,7 @@ import {
 } from '../utils/index';
 import { databaseManager } from '../database/connection';
 import { NotificationService } from '../services/notificationService';
+import { BloodTypes } from '../schemas/profile';
 
 // Create a database helper
 const db = {
@@ -30,7 +31,7 @@ const emrPatientRegistrationSchema = z.object({
   phone: z.string().max(20).optional(),
   email: z.string().email('Invalid email format').optional(),
   address: z.string().max(500).optional(),
-  bloodType: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional(),
+  bloodType: z.enum([...BloodTypes, 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional(),
   allergies: z.string().max(1000).optional(),
   medicalHistory: z.string().max(2000).optional(),
   currentMedications: z.string().max(1000).optional(),
@@ -63,9 +64,9 @@ const generateHospitalNumber = async (): Promise<string> => {
   
   // Get the next sequence number for this year
   const result = await db.query(`
-    SELECT COALESCE(MAX(CAST(SUBSTRING(hospital_number FROM 3 FOR 6) AS INTEGER)), 0) + 1 as next_number
+    SELECT COALESCE(MAX(CAST(SUBSTRING(hn FROM 3 FOR 6) AS INTEGER)), 0) + 1 as next_number
     FROM patients 
-    WHERE hospital_number LIKE $1
+    WHERE hn LIKE $1
   `, [`HN${yearSuffix}%`]);
   
   const nextNumber = result.rows[0]?.next_number || 1;
@@ -107,7 +108,7 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
     
     // Check if patient already exists for this user
     const existingPatient = await db.query(`
-      SELECT id, hospital_number 
+      SELECT id, hn 
       FROM patients 
       WHERE user_id = $1
     `, [validatedData.userId]);
@@ -115,7 +116,7 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
     if (existingPatient.rows.length > 0) {
       return res.status(409).json(
         errorResponse('Patient already registered in EMR system', 409, {
-          hospitalNumber: existingPatient.rows[0].hospital_number
+          hospitalNumber: existingPatient.rows[0].hn
         })
       );
     }
@@ -123,7 +124,7 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
     // Check if national ID is already used by another patient
     if (validatedData.nationalId) {
       const nationalIdCheck = await db.query(`
-        SELECT p.id, p.hospital_number, p.first_name, p.last_name
+        SELECT p.id, p.hn, p.first_name, p.last_name
         FROM patients p
         WHERE p.national_id = $1
       `, [validatedData.nationalId]);
@@ -133,7 +134,7 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
         return res.status(409).json(
           errorResponse('เลขบัตรประชาชนนี้ลงทะเบียนในระบบ EMR ไปแล้ว', 409, {
             existingPatient: {
-              hospitalNumber: existingPatient.hospital_number,
+              hospitalNumber: existingPatient.hn,
               name: `${existingPatient.first_name} ${existingPatient.last_name}`
             }
           })
@@ -147,25 +148,26 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
     // Create patient record in EMR system
     const patientResult = await db.query(`
       INSERT INTO patients (
-        user_id, hospital_number, first_name, last_name, thai_name, thai_last_name,
+        user_id, patient_number, hn, first_name, last_name, thai_first_name, thai_last_name,
         date_of_birth, gender, national_id, phone, email, address, blood_type,
         allergies, medical_history, current_medications, chronic_diseases,
-        emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
+        emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
         drug_allergies, food_allergies, environment_allergies,
         weight, height, race, occupation, education, marital_status,
         current_address, title, created_by
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33
       )
-      RETURNING id, hospital_number, first_name, last_name, thai_name, thai_last_name,
+      RETURNING id, patient_number, hn, first_name, last_name, thai_first_name, thai_last_name,
                 date_of_birth, gender, national_id, phone, email, address, blood_type,
                 allergies, medical_history, current_medications, chronic_diseases,
-                emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
+                emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
                 drug_allergies, food_allergies, environment_allergies,
                 weight, height, race, occupation, education, marital_status,
                 current_address, title, created_at, updated_at
     `, [
       validatedData.userId,
+      `P${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`, // patient_number
       hospitalNumber,
       validatedData.firstName,
       validatedData.lastName,
@@ -212,19 +214,19 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
     try {
       await NotificationService.sendPatientNotification({
         patientId: newPatient.id,
-        patientHn: newPatient.hospital_number || '',
-        patientName: newPatient.thai_name || `${newPatient.first_name} ${newPatient.last_name}`,
+        patientHn: newPatient.hn || '',
+        patientName: newPatient.thai_first_name || `${newPatient.first_name} ${newPatient.last_name}`,
         patientPhone: newPatient.phone,
         patientEmail: newPatient.email,
         notificationType: 'patient_registered',
-        title: `ลงทะเบียนสำเร็จ: ${newPatient.hospital_number}`,
-        message: `ยินดีต้อนรับคุณ ${newPatient.thai_name || newPatient.first_name} เข้าสู่ระบบ EMR ของโรงพยาบาล`,
+        title: `ลงทะเบียนสำเร็จ: ${newPatient.hn}`,
+        message: `ยินดีต้อนรับคุณ ${newPatient.thai_first_name || newPatient.first_name} เข้าสู่ระบบ EMR ของโรงพยาบาล`,
         recordType: 'patient_registration',
         recordId: newPatient.id,
         createdBy: validatedData.userId,
         createdByName: user.first_name || user.username,
         metadata: {
-          hospitalNumber: newPatient.hospital_number,
+          hospitalNumber: newPatient.hn,
           registrationDate: newPatient.created_at,
           userRole: 'patient'
         }
@@ -245,7 +247,7 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
       'PATIENT',
       newPatient.id,
       JSON.stringify({ 
-        hospitalNumber: newPatient.hospital_number,
+        hospitalNumber: newPatient.hn,
         patientName: `${newPatient.first_name} ${newPatient.last_name}`
       }),
       req.ip || 'unknown',
@@ -255,10 +257,10 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
       successResponse('Patient successfully registered in EMR system', {
         patient: {
           id: newPatient.id,
-          hospitalNumber: newPatient.hospital_number,
+          hospitalNumber: newPatient.hn,
           firstName: newPatient.first_name,
           lastName: newPatient.last_name,
-          thaiFirstName: newPatient.thai_name,
+          thaiFirstName: newPatient.thai_first_name,
           thaiLastName: newPatient.thai_last_name,
           dateOfBirth: newPatient.date_of_birth,
           gender: newPatient.gender,
@@ -273,7 +275,7 @@ export const registerPatientInEMR = async (req: Request, res: Response) => {
           chronicDiseases: newPatient.chronic_diseases,
           emergencyContactName: newPatient.emergency_contact_name,
           emergencyContactPhone: newPatient.emergency_contact_phone,
-          emergencyContactRelation: newPatient.emergency_contact_relationship,
+          emergencyContactRelation: newPatient.emergency_contact_relation,
           insuranceType: newPatient.insurance_type,
           insuranceNumber: newPatient.insurance_number,
           insuranceExpiryDate: newPatient.insurance_expiry_date,
@@ -315,7 +317,7 @@ export const getPatientByUserId = async (req: Request, res: Response) => {
     // Get patient information
     const patientResult = await db.query(`
       SELECT 
-        p.id, p.hospital_number, p.first_name, p.last_name, p.thai_name,
+        p.id, p.hn, p.first_name, p.last_name, p.thai_first_name,
         p.date_of_birth, p.gender, p.national_id, p.phone, p.email, p.address, p.blood_type,
         p.allergies, p.medical_history, p.current_medications, p.chronic_conditions,
         p.emergency_contact_name, p.emergency_contact_phone, p.emergency_contact_relation,
@@ -339,10 +341,10 @@ export const getPatientByUserId = async (req: Request, res: Response) => {
       successResponse('Patient information retrieved successfully', {
         patient: {
           id: patient.id,
-          hospitalNumber: patient.hospital_number,
+          hospitalNumber: patient.hn,
           firstName: patient.first_name,
           lastName: patient.last_name,
-          thaiFirstName: patient.thai_name,
+          thaiFirstName: patient.thai_first_name,
           thaiLastName: null,
           dateOfBirth: patient.date_of_birth,
           gender: patient.gender,
@@ -396,7 +398,7 @@ export const checkPatientRegistration = async (req: Request, res: Response) => {
     
     // Check if patient exists
     const patientResult = await db.query(`
-      SELECT id, hospital_number, first_name, last_name, created_at
+      SELECT id, hn, first_name, last_name, created_at
       FROM patients 
       WHERE user_id = $1
     `, [userId]);
@@ -408,7 +410,7 @@ export const checkPatientRegistration = async (req: Request, res: Response) => {
         isRegistered,
         patient: isRegistered ? {
           id: patientResult.rows[0].id,
-          hospitalNumber: patientResult.rows[0].hospital_number,
+          hospitalNumber: patientResult.rows[0].hn,
           firstName: patientResult.rows[0].first_name,
           lastName: patientResult.rows[0].last_name,
           registeredAt: patientResult.rows[0].created_at

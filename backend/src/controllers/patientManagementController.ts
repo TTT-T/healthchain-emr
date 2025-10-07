@@ -28,10 +28,9 @@ export const searchUsersByNationalId = async (req: Request, res: Response) => {
     const patientCheckQuery = `
       SELECT 
         p.id,
-        p.hospital_number,
         p.first_name,
         p.last_name,
-        p.thai_name,
+        p.thai_first_name,
         p.thai_last_name,
         p.title,
         p.national_id,
@@ -58,7 +57,7 @@ export const searchUsersByNationalId = async (req: Request, res: Response) => {
         p.chronic_diseases,
         p.emergency_contact_name,
         p.emergency_contact_phone,
-        p.emergency_contact_relationship,
+        p.emergency_contact_relation,
         p.created_at,
         p.updated_at,
         u.birth_day,
@@ -98,7 +97,7 @@ export const searchUsersByNationalId = async (req: Request, res: Response) => {
         u.email,
         u.first_name,
         u.last_name,
-        u.thai_name,
+        u.thai_first_name,
         u.thai_last_name,
         u.title,
         u.national_id,
@@ -118,9 +117,6 @@ export const searchUsersByNationalId = async (req: Request, res: Response) => {
         u.insurance_expiry_date,
         u.chronic_diseases,
         u.nationality,
-        u.province,
-        u.district,
-        u.postal_code,
         u.drug_allergies,
         u.food_allergies,
         u.environment_allergies,
@@ -201,7 +197,7 @@ export const getAllPatients = async (req: Request, res: Response) => {
     // Handle HN search (exact match)
     if (hn) {
       paramCount++;
-      whereClause += ` AND p.hospital_number = $${paramCount}`;
+      whereClause += ` AND p.hn = $${paramCount}`;
       queryParams.push(hn);
     }
 
@@ -222,8 +218,8 @@ export const getAllPatients = async (req: Request, res: Response) => {
       whereClause += ` AND (
         p.first_name ILIKE $${paramCount} OR 
         p.last_name ILIKE $${paramCount} OR 
-        p.thai_name ILIKE $${paramCount} OR 
-        p.hospital_number ILIKE $${paramCount} OR
+        p.thai_first_name ILIKE $${paramCount} OR 
+        p.hn ILIKE $${paramCount} OR
         p.national_id ILIKE $${paramCount}
       )`;
       queryParams.push(`%${search}%`);
@@ -235,14 +231,15 @@ export const getAllPatients = async (req: Request, res: Response) => {
       queryParams.push(department);
     }
 
-    if (is_active !== undefined) {
-      paramCount++;
-      whereClause += ` AND p.is_active = $${paramCount}`;
-      queryParams.push(is_active);
-    }
+    // is_active is not a column in patients table, removed
+    // if (is_active !== undefined) {
+    //   paramCount++;
+    //   whereClause += ` AND p.is_active = $${paramCount}`;
+    //   queryParams.push(is_active);
+    // }
 
     // Validate sortBy
-    const allowedSortFields = ['created_at', 'first_name', 'last_name', 'hospital_number', 'birth_date'];
+    const allowedSortFields = ['created_at', 'first_name', 'last_name', 'hn', 'birth_date'];
     const validSortBy = allowedSortFields.includes(sortBy as string) ? sortBy : 'created_at';
     const validSortOrder = sortOrder === 'asc' ? 'ASC' : 'DESC';
 
@@ -250,12 +247,13 @@ export const getAllPatients = async (req: Request, res: Response) => {
     const patientsQuery = `
       SELECT 
         p.id,
+        p.hn,
+        p.patient_number,
         p.first_name,
         p.last_name,
-        p.thai_name,
+        p.thai_first_name,
         p.thai_last_name,
         p.title,
-        p.hospital_number,
         p.national_id,
         p.date_of_birth,
         p.gender,
@@ -263,13 +261,13 @@ export const getAllPatients = async (req: Request, res: Response) => {
         p.email,
         p.address,
         p.current_address,
-        p.blood_group,
         p.blood_type,
         p.nationality,
         p.emergency_contact_name,
         p.emergency_contact_phone,
-        p.emergency_contact_relationship,
+        p.emergency_contact_relation,
         p.medical_history,
+        p.current_medications,
         p.allergies,
         p.drug_allergies,
         p.food_allergies,
@@ -283,12 +281,11 @@ export const getAllPatients = async (req: Request, res: Response) => {
         u.religion,
         p.race,
         p.nationality,
-        p.is_active,
         p.created_at,
         p.updated_at,
         u.first_name as user_first_name,
         u.last_name as user_last_name,
-        u.thai_name as user_thai_name,
+        u.thai_first_name as user_thai_first_name,
         u.thai_last_name as user_thai_last_name,
         u.email as user_email,
         u.birth_day,
@@ -299,10 +296,10 @@ export const getAllPatients = async (req: Request, res: Response) => {
         v.visit_date,
         v.visit_time,
         v.status as visit_status,
-        doc_user.thai_name as doctor_name,
+        doc_user.thai_first_name as doctor_name,
         doc_user.first_name as doctor_first_name,
         doc_user.last_name as doctor_last_name,
-        doc_user.thai_name as doctor_thai_name
+        doc_user.thai_first_name as doctor_thai_first_name
       FROM patients p
       LEFT JOIN users u ON p.user_id = u.id
       LEFT JOIN visits v ON p.id = v.patient_id AND v.status = 'in_progress'
@@ -333,10 +330,12 @@ export const getAllPatients = async (req: Request, res: Response) => {
       personal_info: {
         first_name: patient.first_name,
         last_name: patient.last_name,
-        thai_name: patient.thai_name,
+        thai_first_name: patient.thai_first_name,
         thai_last_name: patient.thai_last_name,
         title: patient.title,
-        hospital_number: patient.hospital_number,
+        hn: patient.hn,
+        hospital_number: patient.hn,  // เพิ่ม hospital_number สำหรับ frontend
+        patient_number: patient.patient_number,
         national_id: patient.national_id,
         birth_date: patient.date_of_birth,
         birth_day: patient.birth_day,
@@ -360,9 +359,9 @@ export const getAllPatients = async (req: Request, res: Response) => {
         current_address: patient.current_address
       },
       medical_info: {
-        blood_group: patient.blood_group,
         blood_type: patient.blood_type,
         medical_history: patient.medical_history,
+        current_medications: patient.current_medications,
         allergies: patient.allergies,
         drug_allergies: patient.drug_allergies,
         food_allergies: patient.food_allergies,
@@ -374,7 +373,7 @@ export const getAllPatients = async (req: Request, res: Response) => {
       emergency_contact: {
         name: patient.emergency_contact_name,
         phone: patient.emergency_contact_phone,
-        relation: patient.emergency_contact_relationship
+        relation: patient.emergency_contact_relation
       },
       status: patient.is_active ? 'active' : 'inactive',
       department: patient.department_name,
@@ -392,7 +391,7 @@ export const getAllPatients = async (req: Request, res: Response) => {
         visit_time: patient.visit_time,
         visit_status: patient.visit_status,
         doctor_name: patient.doctor_name || 
-                     patient.doctor_thai_name ||
+                     patient.doctor_thai_first_name ||
                      `${patient.doctor_first_name || ''} ${patient.doctor_last_name || ''}`.trim() || 
                      'นพ.สมชาย ใจดี'
       },
@@ -450,8 +449,7 @@ export const getPatientById = async (req: Request, res: Response) => {
         p.id,
         p.first_name,
         p.last_name,
-        p.thai_name,
-        p.hospital_number,
+        p.thai_first_name,
         p.national_id,
         p.date_of_birth,
         p.gender,
@@ -459,17 +457,15 @@ export const getPatientById = async (req: Request, res: Response) => {
         p.email,
         p.address,
         p.current_address,
-        p.blood_group,
         p.blood_type,
         p.nationality,
         p.emergency_contact_name,
         p.emergency_contact_phone,
-        p.emergency_contact_relationship,
+        p.emergency_contact_relation,
         p.medical_history,
         p.allergies,
         p.drug_allergies,
         p.chronic_diseases,
-        p.is_active,
         p.created_at,
         p.updated_at,
         u.first_name as user_first_name,
@@ -516,9 +512,9 @@ export const getPatientById = async (req: Request, res: Response) => {
       personal_info: {
         first_name: patient.first_name,
         last_name: patient.last_name,
-        thai_name: patient.thai_name,
+        thai_first_name: patient.thai_first_name,
         thai_last_name: patient.thai_last_name,
-        hospital_number: patient.hospital_number,
+        hn: patient.hn,
         national_id: patient.national_id,
         birth_date: patient.date_of_birth,
         gender: patient.gender,
@@ -531,7 +527,6 @@ export const getPatientById = async (req: Request, res: Response) => {
         current_address: patient.current_address
       },
       medical_info: {
-        blood_group: patient.blood_group,
         blood_type: patient.blood_type,
         medical_history: patient.medical_history,
         allergies: patient.allergies,
@@ -541,7 +536,7 @@ export const getPatientById = async (req: Request, res: Response) => {
       emergency_contact: {
         name: patient.emergency_contact_name,
         phone: patient.emergency_contact_phone,
-        relation: patient.emergency_contact_relationship
+        relation: patient.emergency_contact_relation
       },
       status: patient.is_active ? 'active' : 'inactive',
       department: patient.department_name,
@@ -627,9 +622,9 @@ export const updatePatient = async (req: Request, res: Response) => {
     let paramCount = 0;
 
     const allowedFields = [
-      'first_name', 'last_name', 'thai_name', 'phone', 'email', 'address', 'current_address',
-      'blood_group', 'blood_type', 'emergency_contact', 'emergency_contact_phone',
-      'emergency_contact_relationship', 'medical_history', 'allergies', 'drug_allergies',
+      'first_name', 'last_name', 'thai_first_name', 'phone', 'email', 'address', 'current_address',
+      'blood_type', 'emergency_contact', 'emergency_contact_phone',
+      'emergency_contact_relation', 'medical_history', 'current_medications', 'allergies', 'drug_allergies',
       'chronic_diseases', 'department_id', 'is_active'
     ];
 
@@ -669,8 +664,8 @@ export const updatePatient = async (req: Request, res: Response) => {
           id: updatedPatient.id,
           first_name: updatedPatient.first_name,
           last_name: updatedPatient.last_name,
-          thai_name: updatedPatient.thai_name,
-          hospital_number: updatedPatient.hospital_number,
+          thai_first_name: updatedPatient.thai_first_name,
+          hn: updatedPatient.hn,
           status: updatedPatient.is_active ? 'active' : 'inactive',
           updated_at: updatedPatient.updated_at
         }
@@ -749,6 +744,17 @@ export const getPatientByEmail = async (req: Request, res: Response) => {
         statusCode: 400
       });
     }
+
+    // Check if database is connected
+    if (!databaseManager.isDatabaseConnected()) {
+      console.error('Database not connected');
+      return res.status(503).json({
+        data: null,
+        meta: null,
+        error: { message: 'Database not available' },
+        statusCode: 503
+      });
+    }
     
 
     // First try to get patient details from patients table
@@ -757,8 +763,7 @@ export const getPatientByEmail = async (req: Request, res: Response) => {
         p.id,
         p.first_name,
         p.last_name,
-        p.thai_name,
-        p.hospital_number,
+        p.thai_first_name,
         p.national_id,
         p.date_of_birth,
         p.gender,
@@ -770,11 +775,10 @@ export const getPatientByEmail = async (req: Request, res: Response) => {
         p.nationality,
         p.emergency_contact_name,
         p.emergency_contact_phone,
-        p.emergency_contact_relationship,
+        p.emergency_contact_relation,
         p.medical_history,
         p.allergies,
         p.current_medications,
-        p.is_active,
         p.created_at,
         p.updated_at
       FROM patients p
@@ -793,7 +797,8 @@ export const getPatientByEmail = async (req: Request, res: Response) => {
           u.id,
           u.first_name,
           u.last_name,
-          u.thai_name,
+          u.thai_first_name,
+          u.thai_last_name,
           u.email,
           u.phone,
           u.address,
@@ -827,8 +832,8 @@ export const getPatientByEmail = async (req: Request, res: Response) => {
         id: userData.id,
         first_name: userData.first_name,
         last_name: userData.last_name,
-        thai_name: userData.thai_name,
-        hospital_number: null, // No hospital number for virtual patients
+        thai_first_name: userData.thai_first_name,
+        hn: null, // No hospital number for virtual patients
         national_id: null,
         date_of_birth: null,
         gender: null,
@@ -839,7 +844,7 @@ export const getPatientByEmail = async (req: Request, res: Response) => {
         blood_type: userData.blood_type,
         emergency_contact_name: userData.emergency_contact_name,
         emergency_contact_phone: userData.emergency_contact_phone,
-        emergency_contact_relationship: userData.emergency_contact_relationship,
+        emergency_contact_relation: userData.emergency_contact_relation,
         medical_history: userData.medical_history,
         allergies: userData.allergies,
         current_medications: userData.current_medications,
@@ -862,10 +867,19 @@ export const getPatientByEmail = async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Error getting patient by email:', error);
+    console.error('Error details:', {
+      message: error?.message,
+      stack: error?.stack,
+      email: req.params.email,
+      decodedEmail: req.params.email ? decodeURIComponent(req.params.email) : 'undefined'
+    });
     res.status(500).json({
       data: null,
       meta: null,
-      error: { message: 'Internal server error' },
+      error: { 
+        message: 'Internal server error',
+        details: error?.message || 'Unknown error'
+      },
       statusCode: 500
     });
   }
@@ -887,7 +901,7 @@ export const getPatient = async (req: Request, res: Response) => {
     if (isUUID) {
       whereClause = 'p.id = $1';
     } else {
-      whereClause = 'p.hospital_number = $1';
+      whereClause = 'p.hn = $1';
     }
 
     // Get patient details
@@ -896,8 +910,7 @@ export const getPatient = async (req: Request, res: Response) => {
         p.id,
         p.first_name,
         p.last_name,
-        p.thai_name,
-        p.hospital_number,
+        p.thai_first_name,
         p.national_id,
         p.date_of_birth,
         p.gender,
@@ -905,17 +918,15 @@ export const getPatient = async (req: Request, res: Response) => {
         p.email,
         p.address,
         p.current_address,
-        p.blood_group,
         p.blood_type,
         p.nationality,
         p.emergency_contact_name,
         p.emergency_contact_phone,
-        p.emergency_contact_relationship,
+        p.emergency_contact_relation,
         p.medical_history,
         p.allergies,
         p.drug_allergies,
         p.chronic_diseases,
-        p.is_active,
         p.created_at,
         p.updated_at,
         u.first_name as user_first_name,
@@ -945,9 +956,9 @@ export const getPatient = async (req: Request, res: Response) => {
       personal_info: {
         first_name: patient.first_name,
         last_name: patient.last_name,
-        thai_name: patient.thai_name,
+        thai_first_name: patient.thai_first_name,
         thai_last_name: patient.thai_last_name,
-        hospital_number: patient.hospital_number,
+        hn: patient.hn,
         national_id: patient.national_id,
         birth_date: patient.date_of_birth,
         gender: patient.gender,
@@ -960,7 +971,6 @@ export const getPatient = async (req: Request, res: Response) => {
         current_address: patient.current_address
       },
       medical_info: {
-        blood_group: patient.blood_group,
         blood_type: patient.blood_type,
         medical_history: patient.medical_history,
         allergies: patient.allergies,
@@ -970,7 +980,7 @@ export const getPatient = async (req: Request, res: Response) => {
       emergency_contact: {
         name: patient.emergency_contact_name,
         phone: patient.emergency_contact_phone,
-        relation: patient.emergency_contact_relationship
+        relation: patient.emergency_contact_relation
       },
       status: patient.is_active ? 'active' : 'inactive',
       department: patient.department_name,
@@ -1031,7 +1041,7 @@ export const getPatientProfile = async (req: Request, res: Response) => {
         u.last_name,
         u.phone,
         u.role,
-        u.thai_name,
+        u.thai_first_name,
         u.thai_last_name,
         u.national_id,
         u.birth_date,
@@ -1103,7 +1113,7 @@ export const getPatientProfile = async (req: Request, res: Response) => {
         email: userData.email,
         first_name: userData.first_name,
         last_name: userData.last_name,
-        thai_name: userData.thai_name,
+        thai_first_name: userData.thai_first_name,
         thai_last_name: userData.thai_last_name,
         national_id: userData.national_id,
         birth_date: userData.birth_date,
@@ -1211,27 +1221,25 @@ export const searchPatients = async (req: Request, res: Response) => {
         p.id,
         p.first_name,
         p.last_name,
-        p.thai_name,
+        p.thai_first_name,
         p.thai_last_name,
         p.nationality,
         p.emergency_contact_name,
         p.emergency_contact_phone,
-        p.emergency_contact_relationship,
-        p.hospital_number,
+        p.emergency_contact_relation,
         p.national_id,
         p.date_of_birth,
         p.gender,
         p.phone,
         p.email,
-        p.is_active,
         p.created_at,
         d.department_name
       FROM patients p
       WHERE (
         p.first_name ILIKE $1 OR 
         p.last_name ILIKE $1 OR 
-        p.thai_name ILIKE $1 OR 
-        p.hospital_number ILIKE $1 OR
+        p.thai_first_name ILIKE $1 OR 
+        p.hn ILIKE $1 OR
         p.national_id ILIKE $1 OR
         p.phone ILIKE $1 OR
         p.email ILIKE $1
@@ -1250,8 +1258,8 @@ export const searchPatients = async (req: Request, res: Response) => {
       WHERE (
         p.first_name ILIKE $1 OR 
         p.last_name ILIKE $1 OR 
-        p.thai_name ILIKE $1 OR 
-        p.hospital_number ILIKE $1 OR
+        p.thai_first_name ILIKE $1 OR 
+        p.hn ILIKE $1 OR
         p.national_id ILIKE $1 OR
         p.phone ILIKE $1 OR
         p.email ILIKE $1
@@ -1266,10 +1274,10 @@ export const searchPatients = async (req: Request, res: Response) => {
       personal_info: {
         first_name: patient.first_name,
         last_name: patient.last_name,
-        thai_name: patient.thai_name,
+        thai_first_name: patient.thai_first_name,
         thai_last_name: patient.thai_last_name,
         nationality: patient.nationality,
-        hospital_number: patient.hospital_number,
+        hn: patient.hn,
         national_id: patient.national_id,
         birth_date: patient.date_of_birth,
         gender: patient.gender,
@@ -1282,7 +1290,7 @@ export const searchPatients = async (req: Request, res: Response) => {
       emergency_contact: {
         name: patient.emergency_contact_name,
         phone: patient.emergency_contact_phone,
-        relation: patient.emergency_contact_relationship
+        relation: patient.emergency_contact_relation
       },
       status: patient.is_active ? 'active' : 'inactive',
       department: patient.department_name,
@@ -1346,21 +1354,22 @@ export const listPatients = async (req: Request, res: Response) => {
       whereClause += ` AND (
         p.first_name ILIKE $${paramCount} OR 
         p.last_name ILIKE $${paramCount} OR 
-        p.thai_name ILIKE $${paramCount} OR 
-        p.hospital_number ILIKE $${paramCount} OR
+        p.thai_first_name ILIKE $${paramCount} OR 
+        p.hn ILIKE $${paramCount} OR
         p.national_id ILIKE $${paramCount}
       )`;
       queryParams.push(`%${search}%`);
     }
 
-    if (is_active !== undefined) {
-      paramCount++;
-      whereClause += ` AND p.is_active = $${paramCount}`;
-      queryParams.push(is_active);
-    }
+    // is_active is not a column in patients table, removed
+    // if (is_active !== undefined) {
+    //   paramCount++;
+    //   whereClause += ` AND p.is_active = $${paramCount}`;
+    //   queryParams.push(is_active);
+    // }
 
     // Validate sortBy
-    const allowedSortFields = ['created_at', 'first_name', 'last_name', 'hospital_number', 'birth_date'];
+    const allowedSortFields = ['created_at', 'first_name', 'last_name', 'hn', 'birth_date'];
     const validSortBy = allowedSortFields.includes(sortBy as string) ? sortBy : 'created_at';
     const validSortOrder = sortOrder === 'asc' ? 'ASC' : 'DESC';
 
@@ -1370,15 +1379,13 @@ export const listPatients = async (req: Request, res: Response) => {
         p.id,
         p.first_name,
         p.last_name,
-        p.thai_name,
+        p.thai_first_name,
         p.thai_last_name,
-        p.hospital_number,
         p.national_id,
         p.date_of_birth,
         p.gender,
         p.phone,
         p.email,
-        p.is_active,
         p.created_at,
         p.updated_at,
         d.department_name
@@ -1408,9 +1415,9 @@ export const listPatients = async (req: Request, res: Response) => {
       personal_info: {
         first_name: patient.first_name,
         last_name: patient.last_name,
-        thai_name: patient.thai_name,
+        thai_first_name: patient.thai_first_name,
         thai_last_name: patient.thai_last_name,
-        hospital_number: patient.hospital_number,
+        hn: patient.hn,
         national_id: patient.national_id,
         birth_date: patient.date_of_birth,
         gender: patient.gender,
@@ -1479,7 +1486,7 @@ export const deletePatient = async (req: Request, res: Response) => {
 
     // Check if patient exists
     const patientExists = await databaseManager.query(
-      'SELECT id, first_name, last_name, hospital_number FROM patients WHERE id = $1',
+      'SELECT id, first_name, last_name, hn FROM patients WHERE id = $1',
       [id]
     );
 
@@ -1499,7 +1506,7 @@ export const deletePatient = async (req: Request, res: Response) => {
       UPDATE patients 
       SET is_active = false, updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
-      RETURNING id, first_name, last_name, hospital_number, is_active, updated_at
+      RETURNING id, first_name, last_name, hn, is_active, updated_at
     `;
 
     const deleteResult = await databaseManager.query(deleteQuery, [id]);
@@ -1517,7 +1524,7 @@ export const deletePatient = async (req: Request, res: Response) => {
       id,
       JSON.stringify({ 
         patientName: `${patient.first_name} ${patient.last_name}`,
-        hospitalNumber: patient.hospital_number 
+        hospitalNumber: patient.hn 
       }),
       req.ip || 'unknown',
       req.get('User-Agent') || 'unknown'
@@ -1529,7 +1536,7 @@ export const deletePatient = async (req: Request, res: Response) => {
           id: deletedPatient.id,
           first_name: deletedPatient.first_name,
           last_name: deletedPatient.last_name,
-          hospital_number: deletedPatient.hospital_number,
+          hn: deletedPatient.hn,
           status: deletedPatient.is_active ? 'active' : 'inactive',
           deleted_at: deletedPatient.updated_at
         }
@@ -1561,7 +1568,7 @@ async function generateHospitalNumber(): Promise<string> {
   const result = await databaseManager.query(`
     SELECT COUNT(*) as count 
     FROM patients 
-    WHERE hospital_number LIKE $1
+    WHERE hn LIKE $1
   `, [`HN${year}%`]);
   
   const count = parseInt(result.rows[0].count) + 1;
@@ -1589,10 +1596,9 @@ export const getPatientByHn = async (req: Request, res: Response) => {
     const patientQuery = `
       SELECT 
         p.id,
-        p.hospital_number,
         p.first_name,
         p.last_name,
-        p.thai_name,
+        p.thai_first_name,
         p.title,
         p.national_id,
         p.date_of_birth,
@@ -1609,12 +1615,11 @@ export const getPatientByHn = async (req: Request, res: Response) => {
         p.food_allergies,
         p.emergency_contact_name,
         p.emergency_contact_phone,
-        p.emergency_contact_relationship,
-        p.is_active,
+        p.emergency_contact_relation,
         p.created_at,
         p.updated_at
       FROM patients p
-      WHERE p.hospital_number = $1 AND p.is_active = true
+      WHERE p.hn = $1
     `;
 
     const result = await databaseManager.query(patientQuery, [hn]);
@@ -1633,10 +1638,10 @@ export const getPatientByHn = async (req: Request, res: Response) => {
     res.json({
       data: {
         id: patient.id,
-        hospital_number: patient.hospital_number,
+        hn: patient.hn,
         first_name: patient.first_name,
         last_name: patient.last_name,
-        thai_name: patient.thai_name,
+        thai_first_name: patient.thai_first_name,
         title: patient.title,
         national_id: patient.national_id,
         date_of_birth: patient.date_of_birth,
@@ -1653,7 +1658,7 @@ export const getPatientByHn = async (req: Request, res: Response) => {
         food_allergies: patient.food_allergies,
         emergency_contact_name: patient.emergency_contact_name,
         emergency_contact_phone: patient.emergency_contact_phone,
-        emergency_contact_relationship: patient.emergency_contact_relationship,
+        emergency_contact_relation: patient.emergency_contact_relation,
         is_active: patient.is_active,
         created_at: patient.created_at,
         updated_at: patient.updated_at

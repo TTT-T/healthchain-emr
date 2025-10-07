@@ -8,6 +8,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
 
 interface FormData {
+  // Basic Info
+  role: string;
   titlePrefix: string;
   firstName: string;
   lastName: string;
@@ -29,6 +31,22 @@ interface FormData {
   confirmPassword: string;
   acceptTerms: boolean;
   acceptPrivacy: boolean;
+  
+  // Doctor specific fields
+  medicalLicenseNumber: string;
+  specialization: string;
+  department: string;
+  position: string;
+  hospitalAffiliation: string;
+  yearsOfExperience: string;
+  
+  // Nurse specific fields
+  nursingLicenseNumber: string;
+  nursingSpecialization: string;
+  nursingDepartment: string;
+  nursingPosition: string;
+  nursingHospitalAffiliation: string;
+  nursingYearsOfExperience: string;
 }
 
 export default function Register() {
@@ -36,6 +54,8 @@ export default function Register() {
   const { register: registerUser, isLoading, error, clearError, isAuthenticated } = useAuth();
   
   const [formData, setFormData] = useState<FormData>({
+    // Basic Info
+    role: 'patient',
     titlePrefix: '',
     firstName: '',
     lastName: '',
@@ -56,7 +76,23 @@ export default function Register() {
     password: '',
     confirmPassword: '',
     acceptTerms: false,
-    acceptPrivacy: false
+    acceptPrivacy: false,
+    
+    // Doctor specific fields
+    medicalLicenseNumber: '',
+    specialization: '',
+    department: '',
+    position: '',
+    hospitalAffiliation: '',
+    yearsOfExperience: '',
+    
+    // Nurse specific fields
+    nursingLicenseNumber: '',
+    nursingSpecialization: '',
+    nursingDepartment: '',
+    nursingPosition: '',
+    nursingHospitalAffiliation: '',
+    nursingYearsOfExperience: ''
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -134,6 +170,7 @@ export default function Register() {
     const newErrors: Record<string, string> = {};
 
     // Required fields validation
+    if (!formData.role) newErrors.role = 'กรุณาเลือกประเภทผู้ใช้';
     if (!formData.titlePrefix) newErrors.titlePrefix = 'กรุณาเลือกหรือกรอกคำนำหน้า';
     if (!formData.firstName) newErrors.firstName = 'กรุณากรอกชื่อ';
     if (!formData.lastName) newErrors.lastName = 'กรุณากรอกนามสกุล';
@@ -152,6 +189,26 @@ export default function Register() {
     if (!formData.bloodType) newErrors.bloodType = 'กรุณาเลือกหมู่เลือด';
     if (!formData.password) newErrors.password = 'กรุณากรอกรหัสผ่าน';
     if (!formData.confirmPassword) newErrors.confirmPassword = 'กรุณายืนยันรหัสผ่าน';
+
+    // Doctor specific validation
+    if (formData.role === 'doctor') {
+      if (!formData.medicalLicenseNumber) newErrors.medicalLicenseNumber = 'กรุณากรอกหมายเลขใบอนุญาตประกอบวิชาชีพเวชกรรม';
+      if (!formData.specialization) newErrors.specialization = 'กรุณาเลือกสาขาเฉพาะ';
+      if (!formData.department) newErrors.department = 'กรุณากรอกแผนก';
+      if (!formData.position) newErrors.position = 'กรุณาเลือกตำแหน่ง';
+      if (!formData.hospitalAffiliation) newErrors.hospitalAffiliation = 'กรุณากรอกสถานพยาบาลที่สังกัด';
+      if (!formData.yearsOfExperience) newErrors.yearsOfExperience = 'กรุณากรอกประสบการณ์การทำงาน';
+    }
+
+    // Nurse specific validation
+    if (formData.role === 'nurse') {
+      if (!formData.nursingLicenseNumber) newErrors.nursingLicenseNumber = 'กรุณากรอกหมายเลขใบอนุญาตประกอบวิชาชีพการพยาบาล';
+      if (!formData.nursingSpecialization) newErrors.nursingSpecialization = 'กรุณาเลือกสาขาเฉพาะ';
+      if (!formData.nursingDepartment) newErrors.nursingDepartment = 'กรุณากรอกแผนก';
+      if (!formData.nursingPosition) newErrors.nursingPosition = 'กรุณาเลือกตำแหน่ง';
+      if (!formData.nursingHospitalAffiliation) newErrors.nursingHospitalAffiliation = 'กรุณากรอกสถานพยาบาลที่สังกัด';
+      if (!formData.nursingYearsOfExperience) newErrors.nursingYearsOfExperience = 'กรุณากรอกประสบการณ์การทำงาน';
+    }
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -246,6 +303,7 @@ export default function Register() {
         username: formData.username,
         email: formData.email,
         password: formData.password,
+        role: formData.role,
         firstName: formData.firstNameEn, // ใช้ชื่ออังกฤษเป็น firstName
         lastName: formData.lastNameEn,   // ใช้นามสกุลอังกฤษเป็น lastName
         thaiFirstName: formData.firstName, // เพิ่มชื่อไทย
@@ -258,6 +316,22 @@ export default function Register() {
         address: formData.address,
         idCardAddress: formData.idCardAddress,
         bloodType: formData.bloodType,
+        
+        // Doctor specific fields
+        medicalLicenseNumber: formData.medicalLicenseNumber,
+        specialization: formData.specialization,
+        department: formData.department,
+        position: formData.position,
+        hospitalAffiliation: formData.hospitalAffiliation,
+        yearsOfExperience: formData.yearsOfExperience ? parseInt(formData.yearsOfExperience) : undefined,
+        
+        // Nurse specific fields
+        nursingLicenseNumber: formData.nursingLicenseNumber,
+        nursingSpecialization: formData.nursingSpecialization,
+        nursingDepartment: formData.nursingDepartment,
+        nursingPosition: formData.nursingPosition,
+        nursingHospitalAffiliation: formData.nursingHospitalAffiliation,
+        nursingYearsOfExperience: formData.nursingYearsOfExperience ? parseInt(formData.nursingYearsOfExperience) : undefined,
       }) as { requiresEmailVerification?: boolean; requiresAdminApproval?: boolean; emailSent?: boolean; email?: string } | void;
       
       // Redirect to success page with appropriate parameters
@@ -388,6 +462,28 @@ export default function Register() {
                 ข้อมูลส่วนตัว
               </h3>
 
+              {/* Role Selection */}
+              <div className="space-y-2">
+                <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                  ประเภทผู้ใช้ <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="role"
+                  name="role"
+                  value={formData.role}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-gray-900 ${
+                    errors.role ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
+                  required
+                >
+                  <option value="patient">ผู้ป่วย</option>
+                  <option value="doctor">แพทย์</option>
+                  <option value="nurse">พยาบาล</option>
+                </select>
+                {errors.role && <p className="text-red-500 text-sm mt-1">{errors.role}</p>}
+              </div>
+
               {/* Name Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
@@ -435,7 +531,10 @@ export default function Register() {
                       <option value="นางสาว">นางสาว</option>
                       <option value="เด็กชาย">เด็กชาย</option>
                       <option value="เด็กหญิง">เด็กหญิง</option>
-                      <option value="other">อื่น ๆ (กรอกเอง)</option>
+                      <option value="Mr.">Mr.</option>
+                      <option value="Mrs.">Mrs.</option>
+                      <option value="Miss">Miss</option>
+                      <option value="Ms.">Ms.</option>
                     </select>
                   )}
                   {errors.titlePrefix && <p className="text-red-500 text-sm mt-1">{errors.titlePrefix}</p>}
@@ -597,14 +696,10 @@ export default function Register() {
                   }`}
                 >
                   <option value="">เลือกหมู่เลือด</option>
-                  <option value="A+">A+</option>
-                  <option value="A-">A-</option>
-                  <option value="B+">B+</option>
-                  <option value="B-">B-</option>
-                  <option value="AB+">AB+</option>
-                  <option value="AB-">AB-</option>
-                  <option value="O+">O+</option>
-                  <option value="O-">O-</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="AB">AB</option>
+                  <option value="O">O</option>
                 </select>
                 {errors.bloodType && <p className="text-red-500 text-sm mt-1">{errors.bloodType}</p>}
               </div>
@@ -865,6 +960,296 @@ export default function Register() {
                 </div>
               </div>
             </div>
+
+            {/* Doctor Specific Fields */}
+            {formData.role === 'doctor' && (
+              <div className="space-y-6 border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <User className="text-green-600" size={20} />
+                  ข้อมูลเฉพาะแพทย์
+                </h3>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="medicalLicenseNumber" className="block text-sm font-medium text-gray-700 mb-2">
+                      หมายเลขใบอนุญาตประกอบวิชาชีพเวชกรรม *
+                    </label>
+                    <input
+                      id="medicalLicenseNumber"
+                      name="medicalLicenseNumber"
+                      type="text"
+                      value={formData.medicalLicenseNumber}
+                      onChange={handleInputChange}
+                      placeholder="กรอกหมายเลขใบอนุญาต"
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                        errors.medicalLicenseNumber ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                      required
+                    />
+                    {errors.medicalLicenseNumber && <p className="text-red-500 text-sm mt-1">{errors.medicalLicenseNumber}</p>}
+                  </div>
+
+                  <div>
+                    <label htmlFor="specialization" className="block text-sm font-medium text-gray-700 mb-2">
+                      สาขาเฉพาะ *
+                    </label>
+                    <select
+                      id="specialization"
+                      name="specialization"
+                      value={formData.specialization}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors text-gray-900 ${
+                        errors.specialization ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                      required
+                    >
+                      <option value="">เลือกสาขาเฉพาะ</option>
+                      <option value="อายุรศาสตร์">อายุรศาสตร์</option>
+                      <option value="ศัลยศาสตร์">ศัลยศาสตร์</option>
+                      <option value="กุมารเวชศาสตร์">กุมารเวชศาสตร์</option>
+                      <option value="สูติศาสตร์-นรีเวชศาสตร์">สูติศาสตร์-นรีเวชศาสตร์</option>
+                      <option value="จิตเวชศาสตร์">จิตเวชศาสตร์</option>
+                      <option value="รังสีวิทยา">รังสีวิทยา</option>
+                      <option value="วิสัญญีวิทยา">วิสัญญีวิทยา</option>
+                      <option value="จักษุวิทยา">จักษุวิทยา</option>
+                      <option value="หูคอจมูก">หูคอจมูก</option>
+                      <option value="ผิวหนัง">ผิวหนัง</option>
+                      <option value="ออร์โธปิดิกส์">ออร์โธปิดิกส์</option>
+                      <option value="อื่นๆ">อื่นๆ</option>
+                    </select>
+                    {errors.specialization && <p className="text-red-500 text-sm mt-1">{errors.specialization}</p>}
+                  </div>
+
+                  <div>
+                    <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-2">
+                      แผนก *
+                    </label>
+                    <input
+                      id="department"
+                      name="department"
+                      type="text"
+                      value={formData.department}
+                      onChange={handleInputChange}
+                      placeholder="กรอกแผนก"
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                        errors.department ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                      required
+                    />
+                    {errors.department && <p className="text-red-500 text-sm mt-1">{errors.department}</p>}
+                  </div>
+
+                  <div>
+                    <label htmlFor="position" className="block text-sm font-medium text-gray-700 mb-2">
+                      ตำแหน่ง *
+                    </label>
+                    <select
+                      id="position"
+                      name="position"
+                      value={formData.position}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors text-gray-900 ${
+                        errors.position ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                      required
+                    >
+                      <option value="">เลือกตำแหน่ง</option>
+                      <option value="แพทย์ประจำบ้าน">แพทย์ประจำบ้าน</option>
+                      <option value="แพทย์ประจำบ้านต่อยอด">แพทย์ประจำบ้านต่อยอด</option>
+                      <option value="แพทย์ผู้เชี่ยวชาญ">แพทย์ผู้เชี่ยวชาญ</option>
+                      <option value="แพทย์ผู้เชี่ยวชาญเฉพาะทาง">แพทย์ผู้เชี่ยวชาญเฉพาะทาง</option>
+                      <option value="หัวหน้าแผนก">หัวหน้าแผนก</option>
+                      <option value="ผู้อำนวยการ">ผู้อำนวยการ</option>
+                      <option value="อื่นๆ">อื่นๆ</option>
+                    </select>
+                    {errors.position && <p className="text-red-500 text-sm mt-1">{errors.position}</p>}
+                  </div>
+
+                  <div>
+                    <label htmlFor="hospitalAffiliation" className="block text-sm font-medium text-gray-700 mb-2">
+                      สถานพยาบาลที่สังกัด *
+                    </label>
+                    <input
+                      id="hospitalAffiliation"
+                      name="hospitalAffiliation"
+                      type="text"
+                      value={formData.hospitalAffiliation}
+                      onChange={handleInputChange}
+                      placeholder="กรอกสถานพยาบาล"
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                        errors.hospitalAffiliation ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                      required
+                    />
+                    {errors.hospitalAffiliation && <p className="text-red-500 text-sm mt-1">{errors.hospitalAffiliation}</p>}
+                  </div>
+
+                  <div>
+                    <label htmlFor="yearsOfExperience" className="block text-sm font-medium text-gray-700 mb-2">
+                      ประสบการณ์การทำงาน (ปี) *
+                    </label>
+                    <input
+                      id="yearsOfExperience"
+                      name="yearsOfExperience"
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={formData.yearsOfExperience}
+                      onChange={handleInputChange}
+                      placeholder="กรอกจำนวนปี"
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                        errors.yearsOfExperience ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                      required
+                    />
+                    {errors.yearsOfExperience && <p className="text-red-500 text-sm mt-1">{errors.yearsOfExperience}</p>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Nurse Specific Fields */}
+            {formData.role === 'nurse' && (
+              <div className="space-y-6 border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <User className="text-purple-600" size={20} />
+                  ข้อมูลเฉพาะพยาบาล
+                </h3>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="nursingLicenseNumber" className="block text-sm font-medium text-gray-700 mb-2">
+                      หมายเลขใบอนุญาตประกอบวิชาชีพการพยาบาล *
+                    </label>
+                    <input
+                      id="nursingLicenseNumber"
+                      name="nursingLicenseNumber"
+                      type="text"
+                      value={formData.nursingLicenseNumber}
+                      onChange={handleInputChange}
+                      placeholder="กรอกหมายเลขใบอนุญาต"
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                        errors.nursingLicenseNumber ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                      required
+                    />
+                    {errors.nursingLicenseNumber && <p className="text-red-500 text-sm mt-1">{errors.nursingLicenseNumber}</p>}
+                  </div>
+
+                  <div>
+                    <label htmlFor="nursingSpecialization" className="block text-sm font-medium text-gray-700 mb-2">
+                      สาขาเฉพาะ *
+                    </label>
+                    <select
+                      id="nursingSpecialization"
+                      name="nursingSpecialization"
+                      value={formData.nursingSpecialization}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors text-gray-900 ${
+                        errors.nursingSpecialization ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                      required
+                    >
+                      <option value="">เลือกสาขาเฉพาะ</option>
+                      <option value="การพยาบาลทั่วไป">การพยาบาลทั่วไป</option>
+                      <option value="การพยาบาลผู้ใหญ่">การพยาบาลผู้ใหญ่</option>
+                      <option value="การพยาบาลเด็ก">การพยาบาลเด็ก</option>
+                      <option value="การพยาบาลมารดาและทารก">การพยาบาลมารดาและทารก</option>
+                      <option value="การพยาบาลจิตเวช">การพยาบาลจิตเวช</option>
+                      <option value="การพยาบาลชุมชน">การพยาบาลชุมชน</option>
+                      <option value="การพยาบาลผู้สูงอายุ">การพยาบาลผู้สูงอายุ</option>
+                      <option value="การพยาบาลฉุกเฉิน">การพยาบาลฉุกเฉิน</option>
+                      <option value="อื่นๆ">อื่นๆ</option>
+                    </select>
+                    {errors.nursingSpecialization && <p className="text-red-500 text-sm mt-1">{errors.nursingSpecialization}</p>}
+                  </div>
+
+                  <div>
+                    <label htmlFor="nursingDepartment" className="block text-sm font-medium text-gray-700 mb-2">
+                      แผนก *
+                    </label>
+                    <input
+                      id="nursingDepartment"
+                      name="nursingDepartment"
+                      type="text"
+                      value={formData.nursingDepartment}
+                      onChange={handleInputChange}
+                      placeholder="กรอกแผนก"
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                        errors.nursingDepartment ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                      required
+                    />
+                    {errors.nursingDepartment && <p className="text-red-500 text-sm mt-1">{errors.nursingDepartment}</p>}
+                  </div>
+
+                  <div>
+                    <label htmlFor="nursingPosition" className="block text-sm font-medium text-gray-700 mb-2">
+                      ตำแหน่ง *
+                    </label>
+                    <select
+                      id="nursingPosition"
+                      name="nursingPosition"
+                      value={formData.nursingPosition}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors text-gray-900 ${
+                        errors.nursingPosition ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                      required
+                    >
+                      <option value="">เลือกตำแหน่ง</option>
+                      <option value="พยาบาลวิชาชีพ">พยาบาลวิชาชีพ</option>
+                      <option value="พยาบาลผู้เชี่ยวชาญ">พยาบาลผู้เชี่ยวชาญ</option>
+                      <option value="พยาบาลผู้เชี่ยวชาญเฉพาะทาง">พยาบาลผู้เชี่ยวชาญเฉพาะทาง</option>
+                      <option value="หัวหน้าพยาบาล">หัวหน้าพยาบาล</option>
+                      <option value="ผู้อำนวยการการพยาบาล">ผู้อำนวยการการพยาบาล</option>
+                      <option value="อื่นๆ">อื่นๆ</option>
+                    </select>
+                    {errors.nursingPosition && <p className="text-red-500 text-sm mt-1">{errors.nursingPosition}</p>}
+                  </div>
+
+                  <div>
+                    <label htmlFor="nursingHospitalAffiliation" className="block text-sm font-medium text-gray-700 mb-2">
+                      สถานพยาบาลที่สังกัด *
+                    </label>
+                    <input
+                      id="nursingHospitalAffiliation"
+                      name="nursingHospitalAffiliation"
+                      type="text"
+                      value={formData.nursingHospitalAffiliation}
+                      onChange={handleInputChange}
+                      placeholder="กรอกสถานพยาบาล"
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                        errors.nursingHospitalAffiliation ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                      required
+                    />
+                    {errors.nursingHospitalAffiliation && <p className="text-red-500 text-sm mt-1">{errors.nursingHospitalAffiliation}</p>}
+                  </div>
+
+                  <div>
+                    <label htmlFor="nursingYearsOfExperience" className="block text-sm font-medium text-gray-700 mb-2">
+                      ประสบการณ์การทำงาน (ปี) *
+                    </label>
+                    <input
+                      id="nursingYearsOfExperience"
+                      name="nursingYearsOfExperience"
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={formData.nursingYearsOfExperience}
+                      onChange={handleInputChange}
+                      placeholder="กรอกจำนวนปี"
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors text-gray-900 placeholder-gray-500 ${
+                        errors.nursingYearsOfExperience ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                      required
+                    />
+                    {errors.nursingYearsOfExperience && <p className="text-red-500 text-sm mt-1">{errors.nursingYearsOfExperience}</p>}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Terms and Conditions */}
             <div className="space-y-4 border-t border-gray-200 pt-6">

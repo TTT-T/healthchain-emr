@@ -9,6 +9,7 @@ import {
   completeProfileSetup,
   verifyEmail,
   resendVerification,
+  resendEmailVerification,
   forgotPassword,
   resetPassword
 } from '../controllers/authController';
@@ -245,6 +246,41 @@ router.post('/verify-email', verifyEmail);
  *               $ref: '#/components/schemas/Error'
  */
 router.post('/resend-verification', resendVerification);
+
+/**
+ * @swagger
+ * /api/auth/resend-email-verification:
+ *   post:
+ *     summary: Resend email verification (New endpoint)
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *     responses:
+ *       200:
+ *         description: Verification email sent
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/resend-email-verification', resendEmailVerification);
 
 /**
  * @swagger

@@ -84,7 +84,7 @@ export const createDocument = asyncHandler(async (req: Request, res: Response) =
     const client = await databaseManager.getClient();
     
     // Check if patient exists
-    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM patients WHERE id = $1';
+    const patientQuery = 'SELECT id, thai_first_name, national_id, hn FROM patients WHERE id = $1';
     const patientResult = await client.query(patientQuery, [patientId]);
     
     if (patientResult.rows.length === 0) {
@@ -107,36 +107,26 @@ export const createDocument = asyncHandler(async (req: Request, res: Response) =
         patient_id,
         visit_id,
         record_type,
-        document_type,
-        document_title,
+        title,
         content,
-        attachments,
-        status,
         notes,
         recorded_by,
         recorded_time,
-        issued_date,
-        valid_until,
         created_at,
         updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW() AT TIME ZONE 'Asia/Bangkok', NOW() AT TIME ZONE 'Asia/Bangkok')
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW() AT TIME ZONE 'Asia/Bangkok', NOW() AT TIME ZONE 'Asia/Bangkok')
       RETURNING *
     `;
 
     const values = [
       patientId,
       visitId || null,
-      'document',
-      documentType,
+      'other',
       documentTitle,
       content,
-      attachments ? JSON.stringify(attachments) : null,
-      status || 'draft',
       notes || null,
-      issuedBy, // This goes to recorded_by column
-      new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }),
-      issuedDate || new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }),
-      validUntil || null
+      issuedBy,
+      new Date().toISOString()
     ];
 
     const result = await client.query(insertQuery, values);
@@ -155,17 +145,17 @@ export const createDocument = asyncHandler(async (req: Request, res: Response) =
       
       await NotificationService.sendPatientNotification({
         patientId: patient.id,
-        patientHn: patient.hospital_number || '',
-        patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+        patientHn: patient.hn || '',
+        patientName: patient.thai_first_name || `${patient.first_name} ${patient.last_name}`,
         patientPhone: patient.phone,
         patientEmail: patient.email,
         notificationType: 'document_created',
         title: `เอกสารใหม่: ${documentTitle}`,
-        message: `มีเอกสารใหม่ "${documentTitle}" สำหรับคุณ ${patient.thai_name || patient.first_name}`,
+        message: `มีเอกสารใหม่ "${documentTitle}" สำหรับคุณ ${patient.thai_first_name || patient.first_name}`,
         recordType: 'document',
         recordId: documentRecord.id,
         createdBy: user.id,
-        createdByName: user.thai_name || `${user.first_name} ${user.last_name}`,
+        createdByName: user.thai_first_name || `${user.first_name} ${user.last_name}`,
         metadata: {
           documentType,
           documentTitle,
@@ -208,9 +198,9 @@ export const createDocument = asyncHandler(async (req: Request, res: Response) =
       meta: {
         patient: {
           id: patient.id,
-          thaiName: patient.thai_name,
+          thaiName: patient.thai_first_name,
           nationalId: patient.national_id,
-          hospitalNumber: patient.hospital_number
+          hospitalNumber: patient.hn
         }
       }
     });
@@ -277,22 +267,22 @@ export const getDocumentsByPatient = asyncHandler(async (req: Request, res: Resp
     const client = await databaseManager.getClient();
     
     let query = `
-      SELECT mr.*, p.thai_name, p.national_id, p.hospital_number,
-             u.thai_name as issued_by_name, u.first_name, u.last_name
+      SELECT mr.*, p.thai_first_name, p.national_id, p.hn,
+             u.thai_first_name as issued_by_name, u.first_name, u.last_name
       FROM medical_records mr
       LEFT JOIN patients p ON mr.patient_id = p.id
       LEFT JOIN users u ON mr.recorded_by = u.id
-      WHERE mr.patient_id = $1 AND mr.record_type = 'document'
+      WHERE mr.patient_id = $1 AND mr.record_type = 'other'
     `;
     
     const values = [actualPatientId];
     
     if (documentType) {
-      query += ` AND mr.document_type = $2`;
+      query += ` AND mr.record_type = $2`;
       values.push(documentType as string);
     }
     
-    query += ` ORDER BY mr.issued_date DESC, mr.created_at DESC`;
+    query += ` ORDER BY mr.recorded_time DESC, mr.created_at DESC`;
 
     const result = await client.query(query, values);
 
@@ -324,22 +314,15 @@ export const getDocumentsByPatient = asyncHandler(async (req: Request, res: Resp
       status: record.status,
       notes: record.notes,
       issuedBy: record.issued_by_name || (record.first_name && record.last_name ? `${record.first_name} ${record.last_name}` : record.recorded_by),
-      issuedDate: record.issued_date,
-      validUntil: record.valid_until,
-      recipientInfo: record.recipient_info ? (() => {
-        try {
-          return JSON.parse(record.recipient_info);
-        } catch (e) {
-          logger.warn('Failed to parse recipientInfo JSON:', e);
-          return null;
-        }
-      })() : null,
+      issuedDate: record.recorded_time || record.created_at,
+      validUntil: record.valid_until || null,
+      recipientInfo: null, // recipient_info column doesn't exist
       createdAt: record.created_at,
       updatedAt: record.updated_at,
       patient: {
-        thaiName: record.thai_name,
+        thaiName: record.thai_first_name,
         nationalId: record.national_id,
-        hospitalNumber: record.hospital_number
+        hospitalNumber: record.hn
       }
     }));
 
@@ -377,7 +360,7 @@ export const getDocumentById = asyncHandler(async (req: Request, res: Response) 
     const client = await databaseManager.getClient();
     
     const query = `
-      SELECT mr.*, p.thai_name, p.national_id, p.hospital_number
+      SELECT mr.*, p.thai_first_name, p.national_id, p.hn
       FROM medical_records mr
       JOIN patients p ON mr.patient_id = p.id
       WHERE mr.id = $1 AND mr.record_type = 'document'
@@ -432,20 +415,13 @@ export const getDocumentById = asyncHandler(async (req: Request, res: Response) 
         issuedBy: record.recorded_by,
         issuedDate: record.issued_date,
         validUntil: record.valid_until,
-        recipientInfo: record.recipient_info ? (() => {
-          try {
-            return JSON.parse(record.recipient_info);
-          } catch (e) {
-            logger.warn('Failed to parse recipientInfo JSON:', e);
-            return null;
-          }
-        })() : null,
+        recipientInfo: null, // recipient_info column doesn't exist
         createdAt: record.created_at,
         updatedAt: record.updated_at,
         patient: {
-          thaiName: record.thai_name,
+          thaiName: record.thai_first_name,
           nationalId: record.national_id,
-          hospitalNumber: record.hospital_number
+          hospitalNumber: record.hn
         }
       }
     });
@@ -572,14 +548,7 @@ export const updateDocument = asyncHandler(async (req: Request, res: Response) =
         issuedBy: updatedRecord.recorded_by,
         issuedDate: updatedRecord.issued_date,
         validUntil: updatedRecord.valid_until,
-        recipientInfo: updatedRecord.recipient_info ? (() => {
-          try {
-            return JSON.parse(updatedRecord.recipient_info);
-          } catch (e) {
-            logger.warn('Failed to parse recipientInfo JSON:', e);
-            return null;
-          }
-        })() : null,
+        recipientInfo: null, // recipient_info column doesn't exist
         createdAt: updatedRecord.created_at,
         updatedAt: updatedRecord.updated_at
       }

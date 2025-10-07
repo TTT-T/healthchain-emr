@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { databaseManager } from '../database/connection';
 import { v4 as uuidv4 } from 'uuid';
+import { NotificationService } from '../services/notificationService';
+import { logger } from '../utils/logger';
+import { getCurrentThailandTimeForDB } from '../utils/thailandTime';
 
 /**
  * Consent Requests Controller
@@ -281,41 +284,48 @@ export const respondToConsentRequest = async (req: Request, res: Response) => {
       WHERE cr.id = $1
     `, [requestId]);
 
-    // Create notification for requester
-    if (response === 'approved') {
-      await databaseManager.query(`
-        INSERT INTO notifications (
-          patient_id, title, message, notification_type, priority, 
-          action_required, action_url, created_by
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      `, [
-        actualPatientId,
-        'คำขอเข้าถึงข้อมูลได้รับการอนุมัติ',
-        `คำขอเข้าถึงข้อมูลของคุณได้รับการอนุมัติแล้ว`,
-        'consent_approved',
-        'normal',
-        true,
-        '/consent-requests',
-        userId
-      ]);
-    } else {
-      await databaseManager.query(`
-        INSERT INTO notifications (
-          patient_id, title, message, notification_type, priority, 
-          action_required, action_url, created_by
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      `, [
-        actualPatientId,
-        'คำขอเข้าถึงข้อมูลถูกปฏิเสธ',
-        `คำขอเข้าถึงข้อมูลของคุณถูกปฏิเสธ: ${reason || 'ไม่มีเหตุผลระบุ'}`,
-        'consent_rejected',
-        'normal',
-        false,
-        null,
-        userId
-      ]);
+    // Get patient information for notification
+    const patientInfo = await databaseManager.query(`
+      SELECT p.id, p.hn, p.first_name, p.last_name, p.phone, p.email, u.email as user_email
+      FROM patients p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.id = $1
+    `, [actualPatientId]);
+
+    if (patientInfo.rows.length > 0) {
+      const patient = patientInfo.rows[0];
+      
+      // Get requester information
+      const requesterInfo = await databaseManager.query(`
+        SELECT u.id, u.first_name, u.last_name, u.email
+        FROM users u
+        WHERE u.id = $1
+      `, [updatedConsentRequest.rows[0].requester_id]);
+
+      if (requesterInfo.rows.length > 0) {
+        const requester = requesterInfo.rows[0];
+        
+        // Send notification to external requester about the response
+        try {
+          await NotificationService.sendConsentResponseNotification({
+            patientId: actualPatientId,
+            patientHn: patient.hn || 'N/A',
+            patientName: `${patient.first_name} ${patient.last_name}`,
+            patientPhone: patient.phone,
+            patientEmail: patient.user_email || patient.email,
+            requesterName: `${requester.first_name} ${requester.last_name}`,
+            requesterOrganization: 'External Organization', // This should be fetched from external_data_requests
+            consentRequestId: requestId,
+            response: response,
+            responseReason: reason,
+            createdBy: userId
+          });
+          
+          logger.info(`📧 Consent response notification sent to requester: ${requester.email}`);
+        } catch (notificationError) {
+          logger.error('❌ Failed to send consent response notification:', notificationError);
+        }
+      }
     }
 
     res.json({

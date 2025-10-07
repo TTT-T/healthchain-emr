@@ -10,7 +10,7 @@ const THAI_PHONE_REGEX = /^[0-9]{10}$/;
 const THAI_NATIONAL_ID_REGEX = /^\d{13}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export const BloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const;
+export const BloodTypes = ['A', 'B', 'AB', 'O'] as const;
 export const Genders = ['male', 'female', 'other'] as const;
 export const MaritalStatuses = ['single', 'married', 'divorced', 'widowed'] as const;
 export const UserRoles = ['patient', 'doctor', 'nurse', 'admin', 'staff'] as const;
@@ -147,7 +147,7 @@ export const UpdateProfileSchema = z.object({
   lastName: ProfileFieldValidators.lastName.optional(),
   email: ProfileFieldValidators.email.optional(),
   phone: ProfileFieldValidators.phone,
-  thaiName: ProfileFieldValidators.thaiName,
+  thaiFirstName: z.string().min(1).max(100).optional().nullable(),
   thaiLastName: z.string().min(1).max(100).optional().nullable(),
   title: z.string().max(50).optional().nullable(),
   
@@ -212,7 +212,7 @@ export const ProfileTransformers = {
     last_name: data.lastName,
     email: data.email,
     phone: data.phone && data.phone !== '' ? data.phone : null,
-    thai_name: data.thaiName && data.thaiName !== '' ? data.thaiName : null,
+    thai_first_name: data.thaiFirstName && data.thaiFirstName !== '' ? data.thaiFirstName : null,
     thai_last_name: data.thaiLastName && data.thaiLastName !== '' ? data.thaiLastName : null,
     title: data.title && data.title !== '' ? data.title : null,
     
@@ -276,7 +276,7 @@ export const ProfileTransformers = {
     firstName: data.first_name,
     lastName: data.last_name,
     phone: data.phone,
-    thaiName: data.thai_name,
+    thaiFirstName: data.thai_first_name,
     thaiLastName: data.thai_last_name,
     title: data.title,
     role: data.role,
@@ -294,6 +294,7 @@ export const ProfileTransformers = {
     // Address Info
     address: data.address,
     idCardAddress: data.id_card_address,
+    currentAddress: data.current_address,
     
     // Contact Info
     emergencyContactName: data.emergency_contact_name,

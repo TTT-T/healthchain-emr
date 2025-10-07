@@ -50,8 +50,9 @@ function ResendVerificationContent() {
     setMessage('');
 
     try {
+      // Call the actual API now that SMTP is configured
       const response = await apiClient.resendVerificationEmail(email);
-      
+
       if (response.statusCode === 200 && !response.error) {
         setMessage('ส่งอีเมลยืนยันเรียบร้อยแล้ว กรุณาตรวจสอบกล่องจดหมายของคุณ');
       } else {

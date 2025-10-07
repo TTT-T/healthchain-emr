@@ -83,7 +83,7 @@ export const createHistoryTaking = asyncHandler(async (req: Request, res: Respon
     const client = await databaseManager.getClient();
     
     // Check if patient exists
-    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM patients WHERE id = $1';
+    const patientQuery = 'SELECT id, thai_first_name, national_id, hn FROM patients WHERE id = $1';
     const patientResult = await client.query(patientQuery, [patientId]);
     
     if (patientResult.rows.length === 0) {
@@ -182,7 +182,7 @@ export const createHistoryTaking = asyncHandler(async (req: Request, res: Respon
       
       // ดึงข้อมูลผู้ป่วยเพิ่มเติม
       const patientDetailQuery = `
-        SELECT p.id, p.hospital_number, p.first_name, p.last_name, p.thai_name, p.phone, p.email
+        SELECT p.id, p.hn, p.first_name, p.last_name, p.thai_first_name, p.phone, p.email
         FROM patients p
         WHERE p.id = $1
       `;
@@ -193,17 +193,17 @@ export const createHistoryTaking = asyncHandler(async (req: Request, res: Respon
         
         await NotificationService.sendPatientNotification({
           patientId: patientDetail.id,
-          patientHn: patientDetail.hospital_number || '',
-          patientName: patientDetail.thai_name || `${patientDetail.first_name} ${patientDetail.last_name}`,
+          patientHn: patientDetail.hn || '',
+          patientName: patientDetail.thai_first_name || `${patientDetail.first_name} ${patientDetail.last_name}`,
           patientPhone: patientDetail.phone,
           patientEmail: patientDetail.email,
           notificationType: 'history_taking_recorded',
-          title: `บันทึกประวัติการซักประวัติ: ${patientDetail.hospital_number || 'HN'}`,
-          message: `มีการบันทึกประวัติการซักประวัติใหม่สำหรับคุณ ${patientDetail.thai_name || patientDetail.first_name} โดย ${user?.thai_name || `${user?.first_name} ${user?.last_name}` || 'เจ้าหน้าที่'}`,
+          title: `บันทึกประวัติการซักประวัติ: ${patientDetail.hn || 'HN'}`,
+          message: `มีการบันทึกประวัติการซักประวัติใหม่สำหรับคุณ ${patientDetail.thai_first_name || patientDetail.first_name} โดย ${user?.thai_first_name || `${user?.first_name} ${user?.last_name}` || 'เจ้าหน้าที่'}`,
           recordType: 'history_taking',
           recordId: historyRecord.id,
           createdBy: user?.id || recordedBy,
-          createdByName: user?.thai_name || `${user?.first_name} ${user?.last_name}` || recordedBy,
+          createdByName: user?.thai_first_name || `${user?.first_name} ${user?.last_name}` || recordedBy,
           metadata: {
             chiefComplaint: historyRecord.chief_complaint,
             presentIllness: historyRecord.present_illness,
@@ -246,9 +246,9 @@ export const createHistoryTaking = asyncHandler(async (req: Request, res: Respon
       meta: {
         patient: {
           id: patient.id,
-          thaiName: patient.thai_name,
+          thaiName: patient.thai_first_name,
           nationalId: patient.national_id,
-          hospitalNumber: patient.hospital_number
+          hospitalNumber: patient.hn
         }
       }
     });
@@ -299,9 +299,9 @@ export const getHistoryTakingByPatient = asyncHandler(async (req: Request, res: 
         mr.recorded_time,
         mr.created_at,
         mr.updated_at,
-        p.thai_name, 
+        p.thai_first_name, 
         p.national_id, 
-        p.hospital_number
+        p.hn
       FROM medical_records mr
       JOIN patients p ON mr.patient_id = p.id
       WHERE mr.patient_id = $1 AND mr.record_type = 'history_taking'
@@ -333,9 +333,9 @@ export const getHistoryTakingByPatient = asyncHandler(async (req: Request, res: 
       createdAt: record.created_at,
       updatedAt: record.updated_at,
       patient: {
-        thaiName: record.thai_name,
+        thaiName: record.thai_first_name,
         nationalId: record.national_id,
-        hospitalNumber: record.hospital_number
+        hospitalNumber: record.hn
       }
     }));
 
@@ -394,9 +394,9 @@ export const getHistoryTakingById = asyncHandler(async (req: Request, res: Respo
         mr.recorded_time,
         mr.created_at,
         mr.updated_at,
-        p.thai_name, 
+        p.thai_first_name, 
         p.national_id, 
-        p.hospital_number
+        p.hn
       FROM medical_records mr
       JOIN patients p ON mr.patient_id = p.id
       WHERE mr.id = $1 AND mr.record_type = 'history_taking'
@@ -444,9 +444,9 @@ export const getHistoryTakingById = asyncHandler(async (req: Request, res: Respo
         createdAt: record.created_at,
         updatedAt: record.updated_at,
         patient: {
-          thaiName: record.thai_name,
+          thaiName: record.thai_first_name,
           nationalId: record.national_id,
-          hospitalNumber: record.hospital_number
+          hospitalNumber: record.hn
         }
       }
     });

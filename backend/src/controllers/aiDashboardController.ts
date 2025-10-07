@@ -33,17 +33,17 @@ export const getAIDashboardOverview = async (req: Request, res: Response) => {
         p.id,
         p.first_name,
         p.last_name,
-        p.thai_name,
+        p.thai_first_name,
         p.date_of_birth,
         p.gender,
-        p.hospital_number,
+        p.hn,
         p.created_at,
         COUNT(v.id) as visit_count,
         MAX(v.visit_date) as last_visit_date
       FROM patients p
       LEFT JOIN visits v ON p.id = v.patient_id
       ${whereClause}
-      GROUP BY p.id, p.first_name, p.last_name, p.thai_name, p.date_of_birth, p.gender, p.hospital_number, p.created_at
+      GROUP BY p.id, p.first_name, p.last_name, p.thai_first_name, p.date_of_birth, p.gender, p.hn, p.created_at
       ORDER BY p.created_at DESC
       LIMIT $${queryParams.length + 1}
     `;
@@ -59,6 +59,7 @@ export const getAIDashboardOverview = async (req: Request, res: Response) => {
           
           return {
             ...patient,
+            hospital_number: patient.hn,
             diabetesRisk: riskResult,
             age: calculateAge(patient.date_of_birth)
           };
@@ -66,6 +67,7 @@ export const getAIDashboardOverview = async (req: Request, res: Response) => {
           logger.warn('Failed to assess risk for patient:', patient.id, error);
           return {
             ...patient,
+            hospital_number: patient.hn,
             diabetesRisk: null,
             age: calculateAge(patient.date_of_birth)
           };
@@ -138,7 +140,7 @@ export const getPatientDiabetesRisk = async (req: Request, res: Response) => {
 
     // ตรวจสอบว่าผู้ป่วยมีอยู่จริง
     const patientResult = await databaseManager.query(
-      'SELECT id, first_name, last_name, thai_name, date_of_birth, gender FROM patients WHERE id = $1',
+      'SELECT id, first_name, last_name, thai_first_name, date_of_birth, gender FROM patients WHERE id = $1',
       [patientId]
     );
 
@@ -408,7 +410,7 @@ async function getPatientAdditionalData(patientId: string) {
 
     // ดึงข้อมูล Lab Results ล่าสุด
     const labResultsResult = await databaseManager.query(`
-      SELECT lr.*, lo._name as test_name 
+      SELECT lr.*, lo.test_name as test_name 
       FROM lab_results lr
       INNER JOIN lab_orders lo ON lr.lab_order_id = lo.id
       WHERE lo.patient_id = $1

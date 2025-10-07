@@ -314,7 +314,7 @@ export default function SetupProfile() {
           setFormData({
             // Names (5 fields)
             title: profile.title || '',
-            thaiFirstName: profile.thaiName || '',
+            thaiFirstName: profile.thaiFirstName || '',
             thaiLastName: profile.thaiLastName || '',
             englishFirstName: profile.firstName || '',
             englishLastName: profile.lastName || '',
@@ -508,11 +508,14 @@ export default function SetupProfile() {
         const hasDataToSave = Object.values(formData).some(value => value && value.trim() !== '');
         
         if (hasDataToSave) {
+          // Debug logging
+          console.log('Form data before sending:', formData);
+          
           // Transform all form data to backend format (using correct field names)
           const profileData = {
             // Names (5 fields)
             title: formData.title,
-            thaiName: formData.thaiFirstName,
+            thaiFirstName: formData.thaiFirstName,
             thaiLastName: formData.thaiLastName,
             firstName: formData.englishFirstName,
             lastName: formData.englishLastName,
@@ -569,6 +572,7 @@ export default function SetupProfile() {
             profileCompleted: true
           };
           
+          console.log('Profile data being sent:', profileData);
           const profileResponse = await apiClient.updateCompleteProfile(profileData as any);
           
           if (profileResponse.statusCode !== 200) {
@@ -743,6 +747,10 @@ export default function SetupProfile() {
                       <option value="นางสาว">นางสาว</option>
                       <option value="เด็กชาย">เด็กชาย</option>
                       <option value="เด็กหญิง">เด็กหญิง</option>
+                      <option value="Mr.">Mr.</option>
+                      <option value="Mrs.">Mrs.</option>
+                      <option value="Miss">Miss</option>
+                      <option value="Ms.">Ms.</option>
                     </select>
                     {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
                   </div>
@@ -995,14 +1003,10 @@ export default function SetupProfile() {
                   }`}
                 >
                   <option value="">เลือกหมู่เลือด</option>
-                  <option value="A+">A+</option>
-                  <option value="A-">A-</option>
-                  <option value="B+">B+</option>
-                  <option value="B-">B-</option>
-                  <option value="AB+">AB+</option>
-                  <option value="AB-">AB-</option>
-                  <option value="O+">O+</option>
-                  <option value="O-">O-</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="AB">AB</option>
+                  <option value="O">O</option>
                 </select>
                 {errors.bloodType && <p className="text-red-500 text-sm mt-1">{errors.bloodType}</p>}
               </div>

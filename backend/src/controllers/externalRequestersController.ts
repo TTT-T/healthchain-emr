@@ -485,7 +485,7 @@ export const searchPatientsForRequest = async (req: Request, res: Response) => {
         p.hn,
         p.first_name,
         p.last_name,
-        p.thai_name,
+        p.thai_first_name,
         p.age,
         p.gender,
         p.created_at,
@@ -493,7 +493,7 @@ export const searchPatientsForRequest = async (req: Request, res: Response) => {
       FROM patients p
       LEFT JOIN medical_records mr ON p.id = mr.patient_id
       ${whereClause}
-      GROUP BY p.id, p.hn, p.first_name, p.last_name, p.thai_name, p.age, p.gender, p.created_at
+      GROUP BY p.id, p.hn, p.first_name, p.last_name, p.thai_first_name, p.age, p.gender, p.created_at
       ORDER BY p.created_at DESC
       LIMIT $${paramCount + 1}
     `;
@@ -504,7 +504,7 @@ export const searchPatientsForRequest = async (req: Request, res: Response) => {
     const patients = result.rows.map(patient => ({
       id: patient.id,
       hn: patient.hn,
-      name: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+      name: patient.thai_first_name || `${patient.first_name} ${patient.last_name}`,
       age: patient.age,
       gender: patient.gender,
       recordCount: parseInt(patient.record_count),
@@ -575,7 +575,7 @@ export const generateDataRequestReport = async (req: Request, res: Response) => 
         p.hn,
         p.first_name,
         p.last_name,
-        p.thai_name,
+        p.thai_first_name,
         p.age,
         p.gender,
         p.phone,
@@ -626,7 +626,7 @@ export const generateDataRequestReport = async (req: Request, res: Response) => 
           p.hn,
           p.first_name,
           p.last_name,
-          p.thai_name
+          p.thai_first_name
         FROM medical_records mr
         JOIN patients p ON mr.patient_id = p.id
         WHERE mr.patient_id = ANY($1)
@@ -658,7 +658,7 @@ export const generateDataRequestReport = async (req: Request, res: Response) => 
       patients: patientsResult.rows.map(patient => ({
         id: patient.id,
         hn: patient.hn,
-        name: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+        name: patient.thai_first_name || `${patient.first_name} ${patient.last_name}`,
         age: patient.age,
         gender: patient.gender,
         phone: patient.phone,
@@ -668,7 +668,7 @@ export const generateDataRequestReport = async (req: Request, res: Response) => 
       medical_records: medicalRecords.map(record => ({
         id: record.id,
         patient_hn: record.hn,
-        patient_name: record.thai_name || `${record.first_name} ${record.last_name}`,
+        patient_name: record.thai_first_name || `${record.first_name} ${record.last_name}`,
         diagnosis: record.diagnosis,
         treatment: record.treatment,
         created_at: record.created_at

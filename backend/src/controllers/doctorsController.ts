@@ -61,7 +61,7 @@ export const getAllDoctors = async (req: Request, res: Response) => {
         u.id as user_id,
         u.first_name,
         u.last_name,
-        u.thai_name,
+        u.thai_first_name,
         u.email,
         u.phone,
         u.role,
@@ -156,7 +156,7 @@ export const getAllDoctors = async (req: Request, res: Response) => {
         return {
           id: doctor.user_id, // Use user_id for appointments compatibility
           userId: doctor.user_id,
-          name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
+          name: doctor.thai_first_name || `${doctor.first_name} ${doctor.last_name}`,
           department: doctor.department || 'อายุรกรรม',
           specialization: doctor.specialization || 'อายุรกรรม',
           isAvailable: doctor.is_active,
@@ -179,7 +179,7 @@ export const getAllDoctors = async (req: Request, res: Response) => {
         
         return {
           id: doctor.user_id, // Use user_id for appointments compatibility
-          name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
+          name: doctor.thai_first_name || `${doctor.first_name} ${doctor.last_name}`,
           department: doctor.department || 'ไม่ระบุ',
           specialization: doctor.specialization || 'ไม่ระบุ',
           isAvailable: doctor.is_active,
@@ -270,7 +270,7 @@ export const getDoctorById = async (req: Request, res: Response) => {
         u.id as user_id,
         u.first_name,
         u.last_name,
-        u.thai_name,
+        u.thai_first_name,
         u.email,
         u.phone,
         u.role,
@@ -318,7 +318,7 @@ export const getDoctorById = async (req: Request, res: Response) => {
     
     const formattedDoctor = {
       id: doctor.user_id, // Use user_id instead of doctor.id for foreign key compatibility
-      name: doctor.thai_name || `${doctor.first_name} ${doctor.last_name}`,
+      name: doctor.thai_first_name || `${doctor.first_name} ${doctor.last_name}`,
       department: doctor.department || 'ไม่ระบุ',
       specialization: doctor.specialization || 'ไม่ระบุ',
       isAvailable: doctor.is_active,

@@ -1,333 +1,455 @@
-'use client'
+'use client';
 
-import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
-import { CheckCircle, Clock, UserCheck, AlertCircle, Mail, Shield, ArrowRight } from 'lucide-react'
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { 
+  ArrowLeft, 
+  CheckCircle, 
+  Clock, 
+  XCircle, 
+  AlertCircle,
+  Mail,
+  RefreshCw,
+  ExternalLink,
+  FileText,
+  User,
+  Building2,
+  Calendar,
+  Shield
+} from 'lucide-react';
 
 interface RegistrationStatus {
-  id: string
-  requestId: string
-  email: string
-  organizationName: string
-  status: 'pending_email_verification' | 'pending_admin_approval' | 'approved' | 'rejected'
-  emailVerified: boolean
-  adminApproved: boolean
-  created_at: string
-  updated_at: string
+  requestId: string;
+  email: string;
+  status: 'pending' | 'approved' | 'rejected' | 'under_review';
+  organizationName: string;
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  reviewNotes?: string;
+  requiresEmailVerification: boolean;
+  emailVerified: boolean;
+  nextSteps: string[];
+  estimatedReviewTime: string;
 }
 
-function RegistrationStatusContent() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const [status, setStatus] = useState<RegistrationStatus | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+const statusConfig = {
+  pending: { 
+    label: 'รอการตรวจสอบ', 
+    color: 'text-yellow-600 bg-yellow-100', 
+    icon: Clock,
+    description: 'คำขอของคุณอยู่ระหว่างการตรวจสอบจากทีมงาน'
+  },
+  under_review: { 
+    label: 'กำลังตรวจสอบ', 
+    color: 'text-blue-600 bg-blue-100', 
+    icon: RefreshCw,
+    description: 'ทีมงานกำลังตรวจสอบข้อมูลและเอกสารประกอบ'
+  },
+  approved: { 
+    label: 'อนุมัติแล้ว', 
+    color: 'text-green-600 bg-green-100', 
+    icon: CheckCircle,
+    description: 'คำขอของคุณได้รับการอนุมัติแล้ว สามารถเข้าสู่ระบบได้'
+  },
+  rejected: { 
+    label: 'ปฏิเสธ', 
+    color: 'text-red-600 bg-red-100', 
+    icon: XCircle,
+    description: 'คำขอของคุณถูกปฏิเสธ กรุณาตรวจสอบเหตุผลและส่งใหม่'
+  }
+};
 
+export default function RegistrationStatusPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestId = searchParams.get('requestId');
+  const email = searchParams.get('email');
+  
+  const [status, setStatus] = useState<RegistrationStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Check localStorage for registration data first
   useEffect(() => {
-    const requestId = searchParams.get('requestId')
-    const email = searchParams.get('email')
-    
-    if (requestId && email) {
-      fetchStatus(requestId, email)
-    } else {
-      setError('ไม่พบข้อมูลการลงทะเบียน')
-      setIsLoading(false)
-    }
-  }, [searchParams])
-
-  const fetchStatus = async (requestId: string, email: string) => {
-    try {
-      const response = await fetch(`/api/external-requesters/status?requestId=${requestId}&email=${email}`)
-      const result = await response.json()
-      
-      if (result.success) {
-        setStatus(result.data)
-      } else {
-        setError(result.message || 'ไม่พบข้อมูลการลงทะเบียน')
+    const savedData = localStorage.getItem('registrationStatus');
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        if (parsedData.success && parsedData.requestId) {
+          setStatus({
+            requestId: parsedData.requestId,
+            email: parsedData.email || email || '',
+            status: 'pending',
+            organizationName: 'องค์กรของคุณ',
+            submittedAt: new Date().toISOString(),
+            requiresEmailVerification: parsedData.requiresEmailVerification || true,
+            emailVerified: false,
+            nextSteps: [
+              'ตรวจสอบอีเมลและยืนยันบัญชี',
+              'รอการอนุมัติจากผู้ดูแลระบบ',
+              'เข้าสู่ระบบด้วย Username และ Password ที่ตั้งไว้'
+            ],
+            estimatedReviewTime: '3-5 วันทำการ'
+          });
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.error('Error parsing saved registration data:', err);
       }
-    } catch (error) {
-      setError('เกิดข้อผิดพลาดในการดึงข้อมูลสถานะ')
+    }
+
+    // If no saved data, try to fetch from API
+    if (requestId) {
+      fetchRegistrationStatus();
+    } else {
+      setError('ไม่พบรหัสคำขอ กรุณาตรวจสอบ URL');
+      setLoading(false);
+    }
+  }, [requestId, email]);
+
+  const fetchRegistrationStatus = async () => {
+    try {
+      setRefreshing(true);
+      setError(null);
+
+      const response = await fetch(`/api/external-requesters/register/${requestId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('ไม่พบคำขอที่ระบุ');
+        }
+        throw new Error('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+      }
+
+      const data = await response.json();
+      setStatus(data.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด');
     } finally {
-      setIsLoading(false)
+      setLoading(false);
+      setRefreshing(false);
     }
-  }
+  };
 
-  const getStatusInfo = (status: RegistrationStatus['status']) => {
-    switch (status) {
-      case 'pending_email_verification':
-        return {
-          title: 'รอการยืนยันอีเมล',
-          description: 'กรุณาตรวจสอบอีเมลและคลิกลิงก์ยืนยัน',
-          icon: <Mail className="h-8 w-8 text-blue-500" />,
-          color: 'blue',
-          bgColor: 'bg-blue-50',
-          borderColor: 'border-blue-200',
-          textColor: 'text-blue-800'
-        }
-      case 'pending_admin_approval':
-        return {
-          title: 'รอการอนุมัติจาก Admin',
-          description: 'บัญชีของคุณอยู่ระหว่างการตรวจสอบจากผู้ดูแลระบบ',
-          icon: <Shield className="h-8 w-8 text-yellow-500" />,
-          color: 'yellow',
-          bgColor: 'bg-yellow-50',
-          borderColor: 'border-yellow-200',
-          textColor: 'text-yellow-800'
-        }
-      case 'approved':
-        return {
-          title: 'อนุมัติแล้ว - พร้อมเข้าสู่ระบบ',
-          description: 'บัญชีของคุณได้รับการอนุมัติแล้ว สามารถเข้าสู่ระบบได้',
-          icon: <CheckCircle className="h-8 w-8 text-green-500" />,
-          color: 'green',
-          bgColor: 'bg-green-50',
-          borderColor: 'border-green-200',
-          textColor: 'text-green-800'
-        }
-      case 'rejected':
-        return {
-          title: 'การลงทะเบียนถูกปฏิเสธ',
-          description: 'บัญชีของคุณไม่ได้รับการอนุมัติ กรุณาติดต่อผู้ดูแลระบบ',
-          icon: <AlertCircle className="h-8 w-8 text-red-500" />,
-          color: 'red',
-          bgColor: 'bg-red-50',
-          borderColor: 'border-red-200',
-          textColor: 'text-red-800'
-        }
+  const handleRefresh = () => {
+    if (requestId) {
+      fetchRegistrationStatus();
     }
-  }
+  };
 
-  const handleGoToLogin = () => {
-    router.push('/external-requesters/login')
-  }
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('th-TH', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
-  const handleResendEmail = async () => {
+  const getStatusConfig = (status: string) => {
+    return statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+  };
 
-    alert('ฟีเจอร์ส่งอีเมลซ้ำจะเปิดใช้งานเร็วๆ นี้')
-  }
-
-  const handleContactSupport = () => {
-
-    alert('ฟีเจอร์ติดต่อสนับสนุนจะเปิดใช้งานเร็วๆ นี้')
-  }
-
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">กำลังโหลดสถานะ...</p>
+          <div className="w-16 h-16 bg-blue-400 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-white font-bold text-xl">H</span>
+          </div>
+          <p className="text-gray-600">กำลังโหลดสถานะการลงทะเบียน...</p>
         </div>
       </div>
-    )
+    );
   }
 
-  if (error || !status) {
+  if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="max-w-md mx-auto text-center">
-          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">ไม่พบข้อมูลการลงทะเบียน</h1>
-          <p className="text-gray-600 mb-6">{error || 'กรุณาลองลงทะเบียนใหม่อีกครั้ง'}</p>
-          <button
-            onClick={() => router.push('/external-requesters/register')}
-            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="text-red-600 mb-4">
+            <AlertCircle className="h-16 w-16 mx-auto" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">เกิดข้อผิดพลาด</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <div className="space-y-3">
+            <button
+              onClick={handleRefresh}
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              ลองใหม่
+            </button>
+            <Link
+              href="/external-requesters/register"
+              className="block w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-center"
+            >
+              ลงทะเบียนใหม่
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!status) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="text-gray-400 mb-4">
+            <FileText className="h-16 w-16 mx-auto" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">ไม่พบข้อมูล</h2>
+          <p className="text-gray-600 mb-6">ไม่พบข้อมูลการลงทะเบียนที่ระบุ</p>
+          <Link
+            href="/external-requesters/register"
+            className="block w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center"
           >
             ลงทะเบียนใหม่
-          </button>
+          </Link>
         </div>
       </div>
-    )
+    );
   }
 
-  const statusInfo = getStatusInfo(status.status)
+  const statusInfo = getStatusConfig(status.status);
+  const StatusIcon = statusInfo.icon;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            สถานะการลงทะเบียน
-          </h1>
-          <p className="text-lg text-gray-600">
-            ติดตามสถานะการลงทะเบียนของคุณ
-          </p>
-        </div>
-
-        {/* Status Card */}
-        <div className={`${statusInfo.bgColor} ${statusInfo.borderColor} border-2 rounded-xl p-8 mb-8`}>
-          <div className="flex items-center mb-6">
-            {statusInfo.icon}
-            <div className="ml-4">
-              <h2 className={`text-2xl font-bold ${statusInfo.textColor}`}>
-                {statusInfo.title}
-              </h2>
-              <p className={`${statusInfo.textColor} opacity-80`}>
-                {statusInfo.description}
-              </p>
-            </div>
-          </div>
-
-          {/* Request Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <h3 className="font-semibold text-gray-700 mb-2">ข้อมูลการลงทะเบียน</h3>
-              <div className="space-y-2">
-                <p><span className="font-medium">รหัสคำขอ:</span> {status.requestId}</p>
-                <p><span className="font-medium">อีเมล:</span> {status.email}</p>
-                <p><span className="font-medium">องค์กร:</span> {status.organizationName}</p>
-                 <p><span className="font-medium">วันที่ลงทะเบียน:</span> {new Date(status.created_at).toLocaleString('th-TH')}</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-6">
+            <div className="flex items-center">
+              <Link
+                href="/"
+                className="mr-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5 text-gray-600" />
+              </Link>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">สถานะการลงทะเบียน</h1>
+                <p className="text-gray-600 mt-1">รหัสคำขอ: {status.requestId}</p>
               </div>
             </div>
             
-            <div>
-              <h3 className="font-semibold text-gray-700 mb-2">สถานะปัจจุบัน</h3>
-              <div className="space-y-2">
-                <div className="flex items-center">
-                  <Mail className={`h-4 w-4 mr-2 ${status.emailVerified ? 'text-green-500' : 'text-gray-400'}`} />
-                  <span className={status.emailVerified ? 'text-green-600' : 'text-gray-500'}>
-                    {status.emailVerified ? 'ยืนยันอีเมลแล้ว' : 'ยังไม่ยืนยันอีเมล'}
-                  </span>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              {refreshing ? (
+                <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              รีเฟรช
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Status Card */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900">สถานะปัจจุบัน</h2>
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusInfo.color}`}>
+                  <StatusIcon className="h-4 w-4 mr-1" />
+                  {statusInfo.label}
+                </span>
+              </div>
+              
+              <p className="text-gray-600 mb-6">{statusInfo.description}</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">วันที่ส่งคำขอ</label>
+                  <p className="text-gray-900">{formatDate(status.submittedAt)}</p>
                 </div>
-                <div className="flex items-center">
-                  <Shield className={`h-4 w-4 mr-2 ${status.adminApproved ? 'text-green-500' : 'text-gray-400'}`} />
-                  <span className={status.adminApproved ? 'text-green-600' : 'text-gray-500'}>
-                    {status.adminApproved ? 'อนุมัติแล้ว' : 'รอการอนุมัติ'}
-                  </span>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">เวลาตรวจสอบโดยประมาณ</label>
+                  <p className="text-gray-900">{status.estimatedReviewTime}</p>
+                </div>
+                {status.reviewedAt && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500">วันที่ตรวจสอบ</label>
+                    <p className="text-gray-900">{formatDate(status.reviewedAt)}</p>
+                  </div>
+                )}
+                {status.reviewedBy && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500">ผู้ตรวจสอบ</label>
+                    <p className="text-gray-900">{status.reviewedBy}</p>
+                  </div>
+                )}
+              </div>
+
+              {status.reviewNotes && (
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                  <label className="block text-sm font-medium text-gray-500 mb-2">หมายเหตุจากผู้ตรวจสอบ</label>
+                  <p className="text-gray-900">{status.reviewNotes}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Organization Information */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                <Building2 className="h-5 w-5 mr-2" />
+                ข้อมูลองค์กร
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">ชื่อองค์กร</label>
+                  <p className="text-gray-900">{status.organizationName}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">อีเมลติดต่อ</label>
+                  <div className="flex items-center">
+                    <Mail className="h-4 w-4 text-gray-400 mr-2" />
+                    <p className="text-gray-900">{status.email}</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Progress Steps */}
-        <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">ขั้นตอนการลงทะเบียน</h3>
-          
+            {/* Next Steps */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">ขั้นตอนต่อไป</h3>
+              
+              <div className="space-y-4">
+                {status.nextSteps.map((step, index) => (
+                  <div key={index} className="flex items-start">
+                    <div className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium mr-3 mt-0.5">
+                      {index + 1}
+                    </div>
+                    <p className="text-gray-700">{step}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Email Verification Status */}
+            {status.requiresEmailVerification && (
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                  <Mail className="h-5 w-5 mr-2" />
+                  สถานะการยืนยันอีเมล
+                </h3>
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-700">
+                      {status.emailVerified ? 'อีเมลได้รับการยืนยันแล้ว' : 'รอการยืนยันอีเมล'}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      กรุณาตรวจสอบอีเมลและคลิกลิงก์ยืนยัน
+                    </p>
+                  </div>
+                  <div className={`p-2 rounded-full ${status.emailVerified ? 'bg-green-100' : 'bg-yellow-100'}`}>
+                    {status.emailVerified ? (
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <Clock className="h-5 w-5 text-yellow-600" />
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Step 1: Email Verification */}
-            <div className="flex items-start space-x-4">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                status.emailVerified ? 'bg-green-100' : 'bg-gray-100'
-              }`}>
-                {status.emailVerified ? (
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                ) : (
-                  <span className="text-gray-600 font-semibold text-sm">1</span>
-                )}
-              </div>
-              <div className="flex-1">
-                <h4 className={`font-medium ${status.emailVerified ? 'text-green-800' : 'text-gray-900'}`}>
-                  ยืนยันอีเมล
-                </h4>
-                <p className="text-sm text-gray-600 mb-3">
-                  ตรวจสอบอีเมลและคลิกลิงก์ยืนยันที่ส่งไปให้
-                </p>
-                {!status.emailVerified && (
-                  <button
-                    onClick={handleResendEmail}
-                    className="text-sm text-blue-600 hover:text-blue-700 underline"
+            {/* Quick Actions */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">การดำเนินการ</h3>
+              
+              <div className="space-y-3">
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  {refreshing ? (
+                    <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  รีเฟรชสถานะ
+                </button>
+                
+                {status.status === 'approved' && (
+                  <Link
+                    href="/external-requesters/login"
+                    className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    ส่งอีเมลยืนยันซ้ำ
-                  </button>
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    เข้าสู่ระบบ
+                  </Link>
                 )}
+                
+                {status.status === 'rejected' && (
+                  <Link
+                    href="/external-requesters/register"
+                    className="w-full flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    ส่งคำขอใหม่
+                  </Link>
+                )}
+                
+                <Link
+                  href="/"
+                  className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  กลับหน้าแรก
+                </Link>
               </div>
             </div>
 
-            {/* Step 2: Admin Approval */}
-            <div className="flex items-start space-x-4">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                status.adminApproved ? 'bg-green-100' : 'bg-gray-100'
-              }`}>
-                {status.adminApproved ? (
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                ) : (
-                  <span className="text-gray-600 font-semibold text-sm">2</span>
-                )}
-              </div>
-              <div className="flex-1">
-                <h4 className={`font-medium ${status.adminApproved ? 'text-green-800' : 'text-gray-900'}`}>
-                  รอการอนุมัติจาก Admin
-                </h4>
-                <p className="text-sm text-gray-600">
-                  ระบบจะส่งคำขอไปยังผู้ดูแลระบบเพื่อตรวจสอบและอนุมัติ
-                </p>
+            {/* Contact Information */}
+            <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
+              <h3 className="text-lg font-medium text-blue-900 mb-2">ต้องการความช่วยเหลือ?</h3>
+              <p className="text-sm text-blue-800 mb-4">
+                หากมีคำถามหรือต้องการความช่วยเหลือเกี่ยวกับการลงทะเบียน
+              </p>
+              <div className="space-y-2 text-sm text-blue-700">
+                <p>📧 อีเมล: support@hospital.com</p>
+                <p>📞 โทรศัพท์: 02-123-4567</p>
+                <p>🕒 เวลาทำการ: จันทร์-ศุกร์ 8:00-17:00</p>
               </div>
             </div>
 
-            {/* Step 3: Login */}
-            <div className="flex items-start space-x-4">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                status.status === 'approved' ? 'bg-green-100' : 'bg-gray-100'
-              }`}>
-                {status.status === 'approved' ? (
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                ) : (
-                  <span className="text-gray-600 font-semibold text-sm">3</span>
-                )}
-              </div>
-              <div className="flex-1">
-                <h4 className={`font-medium ${status.status === 'approved' ? 'text-green-800' : 'text-gray-900'}`}>
-                  เข้าสู่ระบบ
-                </h4>
-                <p className="text-sm text-gray-600">
-                  หลังจากยืนยันอีเมลและได้รับการอนุมัติแล้ว สามารถเข้าสู่ระบบได้
-                </p>
-              </div>
+            {/* Security Notice */}
+            <div className="bg-yellow-50 rounded-lg border border-yellow-200 p-6">
+              <h3 className="text-lg font-medium text-yellow-900 mb-2 flex items-center">
+                <Shield className="h-5 w-5 mr-2" />
+                ข้อควรระวัง
+              </h3>
+              <p className="text-sm text-yellow-800">
+                อย่าแชร์รหัสคำขอหรือข้อมูลส่วนตัวกับผู้อื่น 
+                ระบบจะส่งการแจ้งเตือนทางอีเมลเท่านั้น
+              </p>
             </div>
           </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          {status.status === 'approved' ? (
-            <button
-              onClick={handleGoToLogin}
-              className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center"
-            >
-              <ArrowRight className="h-5 w-5 mr-2" />
-              เข้าสู่ระบบ
-            </button>
-          ) : status.status === 'rejected' ? (
-            <button
-              onClick={handleContactSupport}
-              className="bg-red-600 text-white px-8 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
-            >
-              ติดต่อสนับสนุน
-            </button>
-          ) : (
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-              รีเฟรชสถานะ
-            </button>
-          )}
-          
-          <button
-            onClick={() => router.push('/external-requesters')}
-            className="bg-gray-600 text-white px-8 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium"
-          >
-            กลับหน้าหลัก
-          </button>
         </div>
       </div>
     </div>
-  )
-}
-
-export default function RegistrationStatusPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">กำลังโหลด...</p>
-        </div>
-      </div>
-    }>
-      <RegistrationStatusContent />
-    </Suspense>
-  )
+  );
 }

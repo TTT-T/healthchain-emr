@@ -95,9 +95,6 @@ import {
   deleteLabResult
 } from '../controllers/labResultController';
 import {
-  getAllAppointments
-} from '../controllers/appointmentsController';
-import {
   createDocument,
   getDocumentsByPatient,
   getDocumentById,

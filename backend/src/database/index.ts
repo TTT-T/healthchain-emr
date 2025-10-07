@@ -2,19 +2,19 @@ import { databaseManager } from './connection';
 
 /**
  * Database Schema Management
+ * NOTE: This file is being deprecated. Use migration files instead.
+ * Tables are now managed through migration files in database/migrations/
  */
 export class DatabaseSchema {
   private static db = databaseManager;
 
   /**
    * Initialize database schema
+   * NOTE: Table creation is now handled by migration system
    */
   static async initialize(): Promise<void> {
     try {
-      // Create tables in order
-      await this.createTables();
-      
-      // Insert default data
+      // Insert default data only (tables are created by migrations)
       await this.insertDefaultData();
     } catch (error) {
       console.error('❌ Error initializing database schema:', error);
@@ -23,28 +23,13 @@ export class DatabaseSchema {
   }
 
   /**
-   * Create all tables
+   * @deprecated Use migration files instead
+   * Create all tables - DEPRECATED
    */
   private static async createTables(): Promise<void> {
-    const tables = [
-      this.createUsersTable(),
-      this.createUserSessionsTable(),
-      this.createPasswordResetTokensTable(),
-      this.createEmailVerificationTokensTable(),
-      this.createUserSecuritySettingsTable(),
-      this.createAuditLogsTable(),
-      this.createDepartmentsTable(),
-      this.createPatientsTable(),
-      // Medical Records Tables
-      this.createMedicalTables(),
-    ];
-
-    for (const table of tables) {
-      await this.db.query(table);
-    }
-    
-    // Create medical-specific functions and sequences
-    await this.createMedicalFunctions();
+    console.warn('⚠️ createTables() is deprecated. Use migration files instead.');
+    // Tables are now created by migration system
+    // This method is kept for backward compatibility only
   }
 
   /**
@@ -169,9 +154,11 @@ export class DatabaseSchema {
     return `
       CREATE TABLE IF NOT EXISTS email_verification_tokens (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         token VARCHAR(255) UNIQUE NOT NULL,
+        email VARCHAR(100) NOT NULL,
         expires_at TIMESTAMP NOT NULL,
+        is_used BOOLEAN DEFAULT FALSE,
         used_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -606,7 +593,7 @@ export class DatabaseSchema {
   /**
    * Create email verification token
    */
-  static async createEmailVerificationToken(userId: string, token: string): Promise<void> {
+  static async createEmailVerificationToken(userId: string, token: string, email: string): Promise<void> {
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     
     // First, delete any existing token for this user
@@ -616,9 +603,9 @@ export class DatabaseSchema {
     
     // Then insert the new token
     await this.db.query(`
-      INSERT INTO email_verification_tokens (user_id, token, expires_at)
-      VALUES ($1, $2, $3)
-    `, [userId, token, expiresAt]);
+      INSERT INTO email_verification_tokens (user_id, token, email, expires_at, is_used)
+      VALUES ($1, $2, $3, $4, false)
+    `, [userId, token, email, expiresAt]);
   }
 
   /**
@@ -630,7 +617,7 @@ export class DatabaseSchema {
       const tokenResult = await this.db.query(`
         SELECT user_id, expires_at
         FROM email_verification_tokens
-        WHERE token = $1 AND used_at IS NULL
+        WHERE token = $1 AND is_used = false
       `, [token]);
 
       if (tokenResult.rows.length === 0) {
@@ -654,7 +641,7 @@ export class DatabaseSchema {
       // Mark token as used
       await this.db.query(`
         UPDATE email_verification_tokens
-        SET used_at = CURRENT_TIMESTAMP
+        SET is_used = true, used_at = CURRENT_TIMESTAMP
         WHERE token = $1
       `, [token]);
 

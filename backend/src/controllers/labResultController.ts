@@ -87,7 +87,7 @@ export const createLabResult = asyncHandler(async (req: Request, res: Response) 
     const client = await databaseManager.getClient();
     
     // Check if patient exists
-    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM patients WHERE id = $1';
+    const patientQuery = 'SELECT id, thai_first_name, national_id, hn FROM patients WHERE id = $1';
     const patientResult = await client.query(patientQuery, [patientId]);
     
     if (patientResult.rows.length === 0) {
@@ -110,19 +110,14 @@ export const createLabResult = asyncHandler(async (req: Request, res: Response) 
         patient_id,
         visit_id,
         record_type,
-        test_type,
-        test_name,
-        test_results,
-        overall_result,
-        interpretation,
-        recommendations,
-        attachments,
+        title,
+        content,
         notes,
         recorded_by,
         recorded_time,
         created_at,
         updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
       RETURNING *
     `;
 
@@ -130,13 +125,14 @@ export const createLabResult = asyncHandler(async (req: Request, res: Response) 
       patientId,
       visitId || null,
       'lab_result',
-      Type,
-      Name,
-      JSON.stringify(Results),
-      overallResult,
-      interpretation || null,
-      recommendations || null,
-      attachments ? JSON.stringify(attachments) : null,
+      `${Type} - ${Name}`, // title
+      JSON.stringify({
+        results: Results,
+        overallResult,
+        interpretation,
+        recommendations,
+        attachments
+      }), // content
       notes || null,
       edBy,
       edTime || new Date().toISOString()
@@ -169,7 +165,7 @@ export const createLabResult = asyncHandler(async (req: Request, res: Response) 
         patientId: labResultRecord.patient_id,
         visitId: labResultRecord.visit_id,
         recordType: labResultRecord.record_type,
-        Type: labResultRecord.test_type,
+        Type: labResultRecord.record_type,
         Name: labResultRecord.test_name,
         Results: typeof labResultRecord.test_results === 'string' ? JSON.parse(labResultRecord.test_results || '[]') : labResultRecord.test_results || [],
         overallResult: labResultRecord.overall_result,
@@ -185,9 +181,9 @@ export const createLabResult = asyncHandler(async (req: Request, res: Response) 
       meta: {
         patient: {
           id: patient.id,
-          thaiName: patient.thai_name,
+          thaiName: patient.thai_first_name,
           nationalId: patient.national_id,
-          hospitalNumber: patient.hospital_number
+          hospitalNumber: patient.hn
         }
       }
     });
@@ -216,7 +212,7 @@ export const getLabResultsByPatient = asyncHandler(async (req: Request, res: Res
     const client = await databaseManager.getClient();
     
     const query = `
-      SELECT mr.*, p.thai_name, p.national_id, p.hospital_number
+      SELECT mr.*, p.thai_first_name, p.national_id, p.hn
       FROM medical_records mr
       JOIN patients p ON mr.patient_id = p.id
       WHERE mr.patient_id = $1 AND mr.record_type = 'lab_result'
@@ -230,7 +226,7 @@ export const getLabResultsByPatient = asyncHandler(async (req: Request, res: Res
       patientId: record.patient_id,
       visitId: record.visit_id,
       recordType: record.record_type,
-      Type: record.test_type,
+      Type: record.record_type,
       Name: record.test_name,
       Results: typeof record.test_results === 'string' ? JSON.parse(record.test_results || '[]') : record.test_results || [],
       overallResult: record.overall_result,
@@ -243,9 +239,9 @@ export const getLabResultsByPatient = asyncHandler(async (req: Request, res: Res
       createdAt: record.created_at,
       updatedAt: record.updated_at,
       patient: {
-        thaiName: record.thai_name,
+        thaiName: record.thai_first_name,
         nationalId: record.national_id,
-        hospitalNumber: record.hospital_number
+        hospitalNumber: record.hn
       }
     }));
 
@@ -282,7 +278,7 @@ export const getLabResultById = asyncHandler(async (req: Request, res: Response)
     const client = await databaseManager.getClient();
     
     const query = `
-      SELECT mr.*, p.thai_name, p.national_id, p.hospital_number
+      SELECT mr.*, p.thai_first_name, p.national_id, p.hn
       FROM medical_records mr
       JOIN patients p ON mr.patient_id = p.id
       WHERE mr.id = $1 AND mr.record_type = 'lab_result'
@@ -312,7 +308,7 @@ export const getLabResultById = asyncHandler(async (req: Request, res: Response)
         patientId: record.patient_id,
         visitId: record.visit_id,
         recordType: record.record_type,
-        Type: record.test_type,
+        Type: record.record_type,
         Name: record.test_name,
         Results: typeof record.test_results === 'string' ? JSON.parse(record.test_results || '[]') : record.test_results || [],
         overallResult: record.overall_result,
@@ -325,9 +321,9 @@ export const getLabResultById = asyncHandler(async (req: Request, res: Response)
         createdAt: record.created_at,
         updatedAt: record.updated_at,
         patient: {
-          thaiName: record.thai_name,
+          thaiName: record.thai_first_name,
           nationalId: record.national_id,
-          hospitalNumber: record.hospital_number
+          hospitalNumber: record.hn
         }
       }
     });
@@ -429,7 +425,7 @@ export const updateLabResult = asyncHandler(async (req: Request, res: Response) 
         patientId: updatedRecord.patient_id,
         visitId: updatedRecord.visit_id,
         recordType: updatedRecord.record_type,
-        Type: updatedRecord.test_type,
+        Type: updatedRecord.record_type,
         Name: updatedRecord.test_name,
         Results: typeof updatedRecord.test_results === 'string' ? JSON.parse(updatedRecord.test_results || '[]') : updatedRecord.test_results || [],
         overallResult: updatedRecord.overall_result,
@@ -512,7 +508,7 @@ async function sendPatientLabResultNotification(labResultRecord: any, patient: a
     // Get patient contact information
     const patientQuery = `
       SELECT 
-        p.id, p.thai_name, p.first_name, p.last_name, p.hospital_number, 
+        p.id, p.thai_first_name, p.first_name, p.last_name, p.hn, 
         p.national_id, p.phone, p.email
       FROM patients p 
       WHERE p.id = $1
@@ -527,17 +523,17 @@ async function sendPatientLabResultNotification(labResultRecord: any, patient: a
     const patientData = patientResult.rows[0];
     
     // Get user information for recordedBy
-    const userQuery = 'SELECT thai_name, first_name, last_name FROM users WHERE id = $1';
+    const userQuery = 'SELECT thai_first_name, first_name, last_name FROM users WHERE id = $1';
     const userResult = await databaseManager.query(userQuery, [recordedBy]);
-    const userData = userResult.rows[0] || { thai_name: null, first_name: 'เจ้าหน้าที่', last_name: 'แลบ' };
+    const userData = userResult.rows[0] || { thai_first_name: null, first_name: 'เจ้าหน้าที่', last_name: 'แลบ' };
     
-    const recordedByName = userData.thai_name || `${userData.first_name} ${userData.last_name}`;
-    const patientName = patientData.thai_name || `${patientData.first_name} ${patientData.last_name}`;
+    const recordedByName = userData.thai_first_name || `${userData.first_name} ${userData.last_name}`;
+    const patientName = patientData.thai_first_name || `${patientData.first_name} ${patientData.last_name}`;
     
     // Prepare notification data
     const notificationData = {
       patientId: patientData.id,
-      patientHn: patientData.hospital_number,
+      patientHn: patientData.hn,
       patientName: patientName,
       patientPhone: patientData.phone,
       patientEmail: patientData.email,
@@ -549,7 +545,7 @@ async function sendPatientLabResultNotification(labResultRecord: any, patient: a
       createdBy: recordedBy,
       createdByName: recordedByName,
       metadata: {
-        testType: labResultRecord.test_type,
+        testType: labResultRecord.record_type,
         testName: labResultRecord.test_name,
         overallResult: labResultRecord.overall_result,
         recordedTime: labResultRecord.recorded_time
@@ -561,7 +557,7 @@ async function sendPatientLabResultNotification(labResultRecord: any, patient: a
     
     logger.info('Lab result notification sent successfully', {
       patientId: patientData.id,
-      patientHn: patientData.hospital_number,
+      patientHn: patientData.hn,
       recordId: labResultRecord.id
     });
     

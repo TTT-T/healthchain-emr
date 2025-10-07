@@ -32,19 +32,19 @@ export const getAllAppointments = async (req: Request, res: Response) => {
 
     if (startDate) {
       paramCount++;
-      whereClause += ` AND DATE(a.start_time) >= $${paramCount}`;
+      whereClause += ` AND a.appointment_date >= $${paramCount}`;
       queryParams.push(startDate);
     }
 
     if (endDate) {
       paramCount++;
-      whereClause += ` AND DATE(a.start_time) <= $${paramCount}`;
+      whereClause += ` AND a.appointment_date <= $${paramCount}`;
       queryParams.push(endDate);
     }
 
     if (type) {
       paramCount++;
-      whereClause += ` AND a.type_id = $${paramCount}`;
+      // whereClause += ` AND a.type_id = $${paramCount}`; // Commented out as appointment_types table doesn't exist
       queryParams.push(type);
     }
 
@@ -66,29 +66,24 @@ export const getAllAppointments = async (req: Request, res: Response) => {
         a.id,
         a.patient_id,
         a.doctor_id,
-        a.type_id,
-        a.start_time,
-        a.end_time,
+        a.department_id,
+        a.appointment_date,
+        a.appointment_time,
         a.status,
         a.notes,
         a.reason,
         a.created_at,
         a.updated_at,
-        a.cancelled_at,
-        a.cancelled_by,
-        a.cancellation_reason,
+        a.created_by,
+        a.updated_by,
         u.first_name as doctor_first_name,
         u.last_name as doctor_last_name,
         u.phone as doctor_phone,
-        u.email as doctor_email,
-        at.name as appointment_type_name,
-        at.duration_minutes,
-        at.color as appointment_type_color
+        u.email as doctor_email
       FROM appointments a
       LEFT JOIN users u ON a.doctor_id = u.id
-      LEFT JOIN appointment_types at ON a.type_id = at.id
       ${whereClause}
-      ORDER BY a.start_time DESC
+      ORDER BY a.appointment_date DESC, a.appointment_time DESC
       LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
     `;
 
@@ -113,10 +108,8 @@ export const getAllAppointments = async (req: Request, res: Response) => {
       let appointmentTime = null;
       
       try {
-        if (appointment.start_time) {
-          const dateObj = typeof appointment.start_time === 'string' 
-            ? new Date(appointment.start_time) 
-            : appointment.start_time;
+        if (appointment.appointment_date && appointment.appointment_time) {
+          const dateObj = new Date(`${appointment.appointment_date}T${appointment.appointment_time}`);
           
           if (!isNaN(dateObj.getTime())) {
             const isoString = dateObj.toISOString();
@@ -130,9 +123,9 @@ export const getAllAppointments = async (req: Request, res: Response) => {
       
       return {
         id: appointment.id,
-        title: appointment.appointment_type_name || 'นัดหมาย',
+        title: 'นัดหมาย',
         description: appointment.notes || appointment.reason,
-        appointmentType: appointment.appointment_type_name,
+        appointmentType: 'นัดหมาย',
         status: appointment.status,
         priority: 'normal',
         appointmentDate,
@@ -198,13 +191,32 @@ export const getPatientAppointments = async (req: Request, res: Response) => {
     let patient: any;
     
     if (user?.role === 'patient') {
-      // For patient role, use the user's ID directly
-      actualPatientId = user.id;
-      patient = {
-        id: user.id,
-        first_name: user.first_name,
-        last_name: user.last_name
-      };
+      // For patient role, find the patient record using user_id
+      const patientQuery = `
+        SELECT p.id, p.user_id, u.first_name, u.last_name 
+        FROM patients p 
+        LEFT JOIN users u ON p.user_id = u.id 
+        WHERE p.user_id = $1
+      `;
+      const patientResult = await databaseManager.query(patientQuery, [user.id]);
+      
+      if (patientResult.rows.length > 0) {
+        const patientData = patientResult.rows[0];
+        actualPatientId = patientData.id; // Use patient ID, not user ID
+        patient = {
+          id: patientData.id,
+          first_name: patientData.first_name,
+          last_name: patientData.last_name
+        };
+      } else {
+        // If no patient record found, use user ID as fallback
+        actualPatientId = user.id;
+        patient = {
+          id: user.id,
+          first_name: user.first_name,
+          last_name: user.last_name
+        };
+      }
     } else {
       // For doctors/nurses/admins, first check if it's a patient ID from patients table
       const patientFromPatientsTable = await databaseManager.query(
@@ -255,19 +267,19 @@ export const getPatientAppointments = async (req: Request, res: Response) => {
 
     if (startDate) {
       const paramIndex = queryParams.length + 1;
-      whereClause += ` AND DATE(a.start_time) >= $${paramIndex}`;
+      whereClause += ` AND a.appointment_date >= $${paramIndex}`;
       queryParams.push(startDate);
     }
 
     if (endDate) {
       const paramIndex = queryParams.length + 1;
-      whereClause += ` AND DATE(a.start_time) <= $${paramIndex}`;
+      whereClause += ` AND a.appointment_date <= $${paramIndex}`;
       queryParams.push(endDate);
     }
 
     if (type) {
       const paramIndex = queryParams.length + 1;
-      whereClause += ` AND a.type_id = $${paramIndex}`;
+      // whereClause += ` AND a.type_id = $${paramIndex}`; // Commented out as appointment_types table doesn't exist
       queryParams.push(type);
     }
 
@@ -277,29 +289,24 @@ export const getPatientAppointments = async (req: Request, res: Response) => {
         a.id,
         a.patient_id,
         a.doctor_id,
-        a.type_id,
-        a.start_time,
-        a.end_time,
+        a.department_id,
+        a.appointment_date,
+        a.appointment_time,
         a.status,
         a.notes,
         a.reason,
         a.created_at,
         a.updated_at,
-        a.cancelled_at,
-        a.cancelled_by,
-        a.cancellation_reason,
+        a.created_by,
+        a.updated_by,
         u.first_name as doctor_first_name,
         u.last_name as doctor_last_name,
         u.phone as doctor_phone,
-        u.email as doctor_email,
-        at.name as appointment_type_name,
-        at.duration_minutes,
-        at.color as appointment_type_color
+        u.email as doctor_email
       FROM appointments a
       LEFT JOIN users u ON a.doctor_id = u.id
-      LEFT JOIN appointment_types at ON a.type_id = at.id
       ${whereClause}
-      ORDER BY a.start_time DESC
+      ORDER BY a.appointment_date DESC, a.appointment_time DESC
       LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
     `;
 
@@ -320,27 +327,17 @@ export const getPatientAppointments = async (req: Request, res: Response) => {
     // Format appointments
     const formattedAppointments = appointments.map(appointment => ({
       id: appointment.id,
-      title: appointment.title,
-      description: appointment.description,
-      appointment_type: appointment.appointment_type,
+      appointment_type: 'นัดหมาย',
       status: appointment.status,
-      priority: appointment.priority,
       appointment_date: appointment.appointment_date,
       appointment_time: appointment.appointment_time,
-      duration_minutes: appointment.duration_minutes,
-      location: appointment.location,
+      duration_minutes: appointment.duration_minutes || 30,
       notes: appointment.notes,
-      preparations: appointment.preparations,
-      follow_up_required: appointment.follow_up_required,
-      follow_up_notes: appointment.follow_up_notes,
-      reminder_sent: appointment.reminder_sent,
-      reminder_sent_at: appointment.reminder_sent_at,
-      can_reschedule: appointment.can_reschedule,
-      can_cancel: appointment.can_cancel,
+      reason: appointment.reason,
       created_at: appointment.created_at,
       updated_at: appointment.updated_at,
       physician: {
-        name: `${appointment.doctor_first_name} ${appointment.doctor_last_name}`,
+        name: `${appointment.doctor_first_name || ''} ${appointment.doctor_last_name || ''}`.trim(),
         phone: appointment.doctor_phone,
         email: appointment.doctor_email
       }
@@ -389,7 +386,6 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
     const {
       title,
       description,
-      appointment_type,
       priority = 'normal',
       appointment_date,
       appointment_time,
@@ -447,9 +443,10 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
     const conflictingAppointment = await databaseManager.query(`
       SELECT id FROM appointments 
       WHERE doctor_id = $1 
-      AND start_time = $2 
+      AND appointment_date = $2 
+      AND appointment_time = $3
       AND status IN ('scheduled', 'confirmed')
-    `, [doctor_id, startTime]);
+    `, [doctor_id, appointment_date, appointment_time]);
 
     if (conflictingAppointment.rows.length > 0) {
       return res.status(409).json({
@@ -460,29 +457,18 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
       });
     }
 
-    // Map Thai appointment_type to type_id
-    const appointmentTypeMap: { [key: string]: number } = {
-      'ตรวจสุขภาพ': 1,
-      'ตรวจติดตาม': 2,
-      'ตรวจรักษา': 3,
-      'ตรวจเลือด': 1,
-      'ฉุกเฉิน': 4,
-      'ปรึกษา': 1,
-      'นัดหมาย': 1
-    };
-
-    const typeId = appointmentTypeMap[appointment_type] || 1;
+    // appointment_type is not stored in appointments table
 
     // Insert appointment and get the generated ID
     const insertResult = await databaseManager.query(`
       INSERT INTO appointments (
-        patient_id, doctor_id, type_id, start_time, end_time,
+        patient_id, doctor_id, appointment_date, appointment_time, duration_minutes,
         status, reason, notes
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING id
     `, [
-      patientId, doctor_id, typeId, startTime, endTime,
+      patientId, doctor_id, appointment_date, appointment_time, duration_minutes,
       'scheduled', reason, notes
     ]);
 
@@ -491,13 +477,11 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
     // Get created appointment
     const createdAppointment = await databaseManager.query(`
       SELECT 
-        a.id, a.patient_id, a.doctor_id, a.type_id, a.start_time, a.end_time,
+        a.id, a.patient_id, a.doctor_id, a.appointment_date, a.appointment_time, a.duration_minutes,
         a.status, a.reason, a.notes, a.created_at,
-        u.first_name as doctor_first_name, u.last_name as doctor_last_name,
-        at.name as appointment_type_name
+        u.first_name as doctor_first_name, u.last_name as doctor_last_name
       FROM appointments a
       LEFT JOIN users u ON a.doctor_id = u.id
-      LEFT JOIN appointment_types at ON a.type_id = at.id
       WHERE a.id = $1
     `, [appointmentId]);
 
@@ -507,7 +491,7 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
       
       // ดึงข้อมูลผู้ป่วย
       const patientResult = await databaseManager.query(`
-        SELECT p.id, p.hospital_number, p.first_name, p.last_name, p.thai_name, p.phone, p.email
+        SELECT p.id, p.hn, p.first_name, p.last_name, p.thai_first_name, p.phone, p.email
         FROM patients p
         WHERE p.id = $1
       `, [patientId]);
@@ -517,19 +501,19 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
         
         await NotificationService.sendPatientNotification({
           patientId: patient.id,
-          patientHn: patient.hospital_number || '',
-          patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+          patientHn: patient.hn || '',
+          patientName: patient.thai_first_name || `${patient.first_name} ${patient.last_name}`,
           patientPhone: patient.phone,
           patientEmail: patient.email,
           notificationType: 'appointment_created',
-          title: `นัดหมายใหม่: ${createdAppointment.rows[0].appointment_type_name}`,
-          message: `คุณ ${patient.thai_name || patient.first_name} มีนัดหมายใหม่ "${createdAppointment.rows[0].appointment_type_name}" กับ ${createdAppointment.rows[0].doctor_first_name} ${createdAppointment.rows[0].doctor_last_name} ในวันที่ ${appointment_date} เวลา ${appointment_time}`,
+          title: `นัดหมายใหม่: นัดหมาย`,
+          message: `คุณ ${patient.thai_first_name || patient.first_name} มีนัดหมายใหม่ "นัดหมาย" กับ ${createdAppointment.rows[0].doctor_first_name} ${createdAppointment.rows[0].doctor_last_name} ในวันที่ ${appointment_date} เวลา ${appointment_time}`,
           recordType: 'appointment',
           recordId: appointmentId.toString(), // แปลง integer เป็น string
           createdBy: user?.id,
-          createdByName: user?.thai_name || `${user?.first_name} ${user?.last_name}`,
+          createdByName: user?.thai_first_name || `${user?.first_name} ${user?.last_name}`,
           metadata: {
-            appointmentType: createdAppointment.rows[0].appointment_type_name,
+            appointmentType: 'นัดหมาย',
             appointmentDate: appointment_date,
             appointmentTime: appointment_time,
             doctorName: `${createdAppointment.rows[0].doctor_first_name} ${createdAppointment.rows[0].doctor_last_name}`,
@@ -549,7 +533,7 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
         id: appointment.id,
         patientId: appointment.patient_id,
         doctorId: appointment.doctor_id,
-        appointmentType: appointment.appointment_type_name,
+        appointmentType: 'นัดหมาย',
         appointmentDate: appointment_date,
         appointmentTime: appointment_time,
         duration: duration_minutes,
@@ -558,7 +542,7 @@ export const createPatientAppointment = async (req: Request, res: Response) => {
         status: appointment.status,
         priority: priority,
         location: location,
-        createdBy: user?.thai_name || `${user?.first_name} ${user?.last_name}`,
+        createdBy: user?.thai_first_name || `${user?.first_name} ${user?.last_name}`,
         created_at: appointment.created_at,
         doctor: {
           thaiName: `${appointment.doctor_first_name} ${appointment.doctor_last_name}`
@@ -593,7 +577,6 @@ export const updatePatientAppointment = async (req: Request, res: Response) => {
     const {
       title,
       description,
-      appointment_type,
       status,
       priority,
       appointment_date,
@@ -681,10 +664,7 @@ export const updatePatientAppointment = async (req: Request, res: Response) => {
       updateFields.push(`description = $${paramCount++}`);
       updateValues.push(description);
     }
-    if (appointment_type !== undefined) {
-      updateFields.push(`appointment_type = $${paramCount++}`);
-      updateValues.push(appointment_type);
-    }
+    // appointment_type column doesn't exist in appointments table
     if (status !== undefined) {
       updateFields.push(`status = $${paramCount++}`);
       updateValues.push(status);
@@ -755,7 +735,7 @@ export const updatePatientAppointment = async (req: Request, res: Response) => {
     // Get updated appointment
     const updatedAppointment = await databaseManager.query(`
       SELECT 
-        a.id, a.title, a.description, a.appointment_type, a.status, a.priority,
+        a.id, a.title, a.description, a.status, a.priority,
         a.appointment_date, a.appointment_time, a.duration_minutes, a.location,
         a.notes, a.preparations, a.follow_up_required, a.follow_up_notes,
         a.can_reschedule, a.can_cancel, a.updated_at,

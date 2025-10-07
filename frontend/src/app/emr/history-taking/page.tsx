@@ -160,7 +160,7 @@ export default function HistoryTaking() {
     });
   }, [isAuthenticated, user]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchType, setSearchType] = useState<"hn" | "queue">("queue");
+  const [searchType, setSearchType] = useState<"hn" | "queue">("hn");
   const [isSearching, setIsSearching] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<MedicalPatient | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -303,10 +303,10 @@ export default function HistoryTaking() {
           setSelectedPatient(exactMatch);
           setSuccess("พบข้อมูลผู้ป่วยแล้ว");
         } else {
-          setError("ไม่พบข้อมูลผู้ป่วยในคิว กรุณาตรวจสอบข้อมูล");
+          setError("ไม่พบข้อมูลผู้ป่วย กรุณาตรวจสอบข้อมูล");
         }
       } else {
-        setError("ไม่พบข้อมูลผู้ป่วยในคิว กรุณาตรวจสอบข้อมูล");
+        setError("ไม่พบข้อมูลผู้ป่วย กรุณาตรวจสอบข้อมูล");
       }
       
     } catch (error) {
@@ -638,8 +638,7 @@ export default function HistoryTaking() {
         message: `มีการบันทึกประวัติการซักประวัติใหม่สำหรับคุณ ${patient.thaiName && patient.thaiLastName ? `${patient.thaiName} ${patient.thaiLastName}` : patient.thaiName || `${patient.firstName} ${patient.lastName}`} โดย ${user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'}`
       };
 
-      await NotificationService.notifyPatientRecordUpdate(notificationData);
-      logger.info('Patient notification sent for history taking', {
+      logger.info('History taking record created successfully', {
         patientHn: notificationData.patientHn,
         recordId: historyRecord.id
       });

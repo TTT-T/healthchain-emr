@@ -153,7 +153,7 @@ export class DiabetesRiskAssessmentService {
         SELECT 
           p.id, p.first_name, p.last_name, p.thai_name,
           p.date_of_birth, p.gender, p.weight, p.height,
-          p.blood_group, p.drug_allergies, p.food_allergies,
+          p.blood_type, p.drug_allergies, p.food_allergies,
           p.chronic_diseases, p.current_medications,
           p.created_at
         FROM patients p
@@ -176,7 +176,7 @@ export class DiabetesRiskAssessmentService {
       // ดึงข้อมูลสัญญาณชีพล่าสุด
       const vitalSignsResult = await databaseManager.query(`
         SELECT 
-          systolic_bp, diastolic_bp, weight, height, bmi,
+          blood_pressure_systolic, blood_pressure_diastolic, weight, height, bmi,
           measurement_time
         FROM vital_signs
         WHERE patient_id = $1
@@ -189,12 +189,12 @@ export class DiabetesRiskAssessmentService {
       // ดึงข้อมูล Lab Results ล่าสุด
       const labResultsResult = await databaseManager.query(`
         SELECT 
-          lr.result_value, lr.result_numeric, lr.result_unit,
-          lo._name as test_name, lr.result_date
+          lr.result_value, lr.result_unit,
+          lo.test_name, lr.result_date
         FROM lab_results lr
         INNER JOIN lab_orders lo ON lr.lab_order_id = lo.id
         WHERE lo.patient_id = $1
-        AND lo._name ILIKE ANY(ARRAY['%glucose%', '%hba1c%', '%a1c%', '%sugar%'])
+        AND lo.test_name ILIKE ANY(ARRAY['%glucose%', '%hba1c%', '%a1c%', '%sugar%'])
         ORDER BY lr.result_date DESC
         LIMIT 5
       `, [patientId]);
@@ -216,13 +216,24 @@ export class DiabetesRiskAssessmentService {
       // ดึงข้อมูล Critical Lab Values ล่าสุด (ถ้ามี)
       let criticalLabs = {};
       try {
-        const criticalLabResult = await databaseManager.query(`
-          SELECT * FROM critical_lab_values
-          WHERE patient_id = $1
-          ORDER BY test_date DESC
-          LIMIT 1
-        `, [patientId]);
-        criticalLabs = criticalLabResult.rows[0] || {};
+        // Check if table exists first
+        const tableCheck = await databaseManager.query(`
+          SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'critical_lab_values'
+          )
+        `);
+        
+        if (tableCheck.rows[0].exists) {
+          const criticalLabResult = await databaseManager.query(`
+            SELECT * FROM critical_lab_values
+            WHERE patient_id = $1
+            ORDER BY test_date DESC
+            LIMIT 1
+          `, [patientId]);
+          criticalLabs = criticalLabResult.rows[0] || {};
+        }
       } catch (error) {
         logger.warn('Critical lab values table not found or accessible:', error);
       }
@@ -230,13 +241,24 @@ export class DiabetesRiskAssessmentService {
       // ดึงข้อมูล Detailed Nutrition ล่าสุด (ถ้ามี)
       let nutrition = {};
       try {
-        const nutritionResult = await databaseManager.query(`
-          SELECT * FROM detailed_nutrition
-          WHERE patient_id = $1
-          ORDER BY assessment_date DESC
-          LIMIT 1
-        `, [patientId]);
-        nutrition = nutritionResult.rows[0] || {};
+        // Check if table exists first
+        const tableCheck = await databaseManager.query(`
+          SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'detailed_nutrition'
+          )
+        `);
+        
+        if (tableCheck.rows[0].exists) {
+          const nutritionResult = await databaseManager.query(`
+            SELECT * FROM detailed_nutrition
+            WHERE patient_id = $1
+            ORDER BY assessment_date DESC
+            LIMIT 1
+          `, [patientId]);
+          nutrition = nutritionResult.rows[0] || {};
+        }
       } catch (error) {
         logger.warn('Detailed nutrition table not found or accessible:', error);
       }
@@ -244,13 +266,24 @@ export class DiabetesRiskAssessmentService {
       // ดึงข้อมูล Detailed Exercise ล่าสุด (ถ้ามี)
       let exercise = {};
       try {
-        const exerciseResult = await databaseManager.query(`
-          SELECT * FROM detailed_exercise
-          WHERE patient_id = $1
-          ORDER BY assessment_date DESC
-          LIMIT 1
-        `, [patientId]);
-        exercise = exerciseResult.rows[0] || {};
+        // Check if table exists first
+        const tableCheck = await databaseManager.query(`
+          SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'detailed_exercise'
+          )
+        `);
+        
+        if (tableCheck.rows[0].exists) {
+          const exerciseResult = await databaseManager.query(`
+            SELECT * FROM detailed_exercise
+            WHERE patient_id = $1
+            ORDER BY assessment_date DESC
+            LIMIT 1
+          `, [patientId]);
+          exercise = exerciseResult.rows[0] || {};
+        }
       } catch (error) {
         logger.warn('Detailed exercise table not found or accessible:', error);
       }
@@ -266,8 +299,8 @@ export class DiabetesRiskAssessmentService {
         familyHistoryHypertension: this.extractFamilyHistory(history.family_history, 'hypertension'),
         
         bloodPressure: {
-          systolic: vitalSigns.systolic_bp || 120,
-          diastolic: vitalSigns.diastolic_bp || 80
+          systolic: vitalSigns.blood_pressure_systolic || 120,
+          diastolic: vitalSigns.blood_pressure_diastolic || 80
         },
         fastingGlucose: this.extractLabValue(labResultsResult.rows, 'glucose'),
         hba1c: this.extractLabValue(labResultsResult.rows, 'hba1c'),
@@ -299,52 +332,52 @@ export class DiabetesRiskAssessmentService {
         qualityOfLifeScore: vitalSigns.quality_of_life_score,
         
         // Critical Lab Values (duplicate removed)
-        fastingInsulin: criticalLabs.fasting_insulin,
-        cPeptide: criticalLabs.c_peptide,
-        totalCholesterol: criticalLabs.total_cholesterol,
-        hdlCholesterol: criticalLabs.hdl_cholesterol,
-        ldlCholesterol: criticalLabs.ldl_cholesterol,
-        triglycerides: criticalLabs.triglycerides,
-        bun: criticalLabs.bun,
-        creatinine: criticalLabs.creatinine,
-        egfr: criticalLabs.egfr,
-        alt: criticalLabs.alt,
-        ast: criticalLabs.ast,
-        alp: criticalLabs.alp,
-        bilirubin: criticalLabs.bilirubin,
-        tsh: criticalLabs.tsh,
-        t3: criticalLabs.t3,
-        t4: criticalLabs.t4,
-        crp: criticalLabs.crp,
-        esr: criticalLabs.esr,
-        vitaminD: criticalLabs.vitamin_d,
-        b12: criticalLabs.b12,
-        folate: criticalLabs.folate,
-        iron: criticalLabs.iron,
-        ferritin: criticalLabs.ferritin,
-        uricAcid: criticalLabs.uric_acid,
+        fastingInsulin: (criticalLabs as any).fasting_insulin,
+        cPeptide: (criticalLabs as any).c_peptide,
+        totalCholesterol: (criticalLabs as any).total_cholesterol,
+        hdlCholesterol: (criticalLabs as any).hdl_cholesterol,
+        ldlCholesterol: (criticalLabs as any).ldl_cholesterol,
+        triglycerides: (criticalLabs as any).triglycerides,
+        bun: (criticalLabs as any).bun,
+        creatinine: (criticalLabs as any).creatinine,
+        egfr: (criticalLabs as any).egfr,
+        alt: (criticalLabs as any).alt,
+        ast: (criticalLabs as any).ast,
+        alp: (criticalLabs as any).alp,
+        bilirubin: (criticalLabs as any).bilirubin,
+        tsh: (criticalLabs as any).tsh,
+        t3: (criticalLabs as any).t3,
+        t4: (criticalLabs as any).t4,
+        crp: (criticalLabs as any).crp,
+        esr: (criticalLabs as any).esr,
+        vitaminD: (criticalLabs as any).vitamin_d,
+        b12: (criticalLabs as any).b12,
+        folate: (criticalLabs as any).folate,
+        iron: (criticalLabs as any).iron,
+        ferritin: (criticalLabs as any).ferritin,
+        uricAcid: (criticalLabs as any).uric_acid,
         
         // Detailed Nutrition
-        dailyCalorieIntake: nutrition.daily_calorie_intake,
-        carbohydrateIntake: nutrition.carbohydrate_intake,
-        proteinIntake: nutrition.protein_intake,
-        fatIntake: nutrition.fat_intake,
-        fiberIntake: nutrition.fiber_intake,
-        sugarIntake: nutrition.sugar_intake,
-        sodiumIntake: nutrition.sodium_intake,
-        waterIntake: nutrition.water_intake,
-        mealFrequency: nutrition.meal_frequency,
-        alcoholConsumptionNumeric: nutrition.alcohol_consumption,
-        caffeineConsumption: nutrition.caffeine_consumption,
+        dailyCalorieIntake: (nutrition as any).daily_calorie_intake,
+        carbohydrateIntake: (nutrition as any).carbohydrate_intake,
+        proteinIntake: (nutrition as any).protein_intake,
+        fatIntake: (nutrition as any).fat_intake,
+        fiberIntake: (nutrition as any).fiber_intake,
+        sugarIntake: (nutrition as any).sugar_intake,
+        sodiumIntake: (nutrition as any).sodium_intake,
+        waterIntake: (nutrition as any).water_intake,
+        mealFrequency: (nutrition as any).meal_frequency,
+        alcoholConsumptionNumeric: (nutrition as any).alcohol_consumption,
+        caffeineConsumption: (nutrition as any).caffeine_consumption,
         
         // Detailed Exercise
-        exerciseType: exercise.exercise_type,
-        exerciseDuration: exercise.exercise_duration,
-        exerciseFrequency: exercise.exercise_frequency,
-        exerciseIntensity: exercise.exercise_intensity,
-        mets: exercise.mets,
-        vo2Max: exercise.vo2_max,
-        walkingSteps: exercise.walking_steps
+        exerciseType: (exercise as any).exercise_type,
+        exerciseDuration: (exercise as any).exercise_duration,
+        exerciseFrequency: (exercise as any).exercise_frequency,
+        exerciseIntensity: (exercise as any).exercise_intensity,
+        mets: (exercise as any).mets,
+        vo2Max: (exercise as any).vo2_max,
+        walkingSteps: (exercise as any).walking_steps
       };
       
       logger.info('Gathered risk factors:', riskFactors);
@@ -708,8 +741,8 @@ export class DiabetesRiskAssessmentService {
       r.test_name.toLowerCase().includes(testType.toLowerCase())
     );
     
-    if (result && result.result_numeric) {
-      return result.result_numeric;
+    if (result && result.result_value) {
+      return parseFloat(result.result_value);
     }
     
     return undefined;

@@ -43,6 +43,15 @@ import {
   getNotificationStats
 } from '../controllers/externalRequestersNotificationsController';
 
+// Import external consent requests controllers
+import {
+  createExternalConsentRequest,
+  getExternalConsentRequests,
+  getExternalConsentRequestById,
+  updateExternalConsentRequest,
+  cancelExternalConsentRequest
+} from '../controllers/externalConsentRequestsController';
+
 const router = express.Router();
 
 /**
@@ -108,5 +117,14 @@ router.get('/notifications', authorize(['external_requester', 'external_admin'])
 router.put('/notifications/:id/read', authorize(['external_requester', 'external_admin']), asyncHandler(markNotificationAsRead));
 router.put('/notifications/mark-all-read', authorize(['external_requester', 'external_admin']), asyncHandler(markAllNotificationsAsRead));
 router.get('/notifications/stats', authorize(['external_requester', 'external_admin']), asyncHandler(getNotificationStats));
+
+/**
+ * Consent Requests Management Routes
+ */
+router.post('/consent-requests', authorize(['external_requester', 'external_admin']), asyncHandler(createExternalConsentRequest));
+router.get('/consent-requests', authorize(['external_requester', 'external_admin']), asyncHandler(getExternalConsentRequests));
+router.get('/consent-requests/:id', authorize(['external_requester', 'external_admin']), asyncHandler(getExternalConsentRequestById));
+router.put('/consent-requests/:id', authorize(['external_requester', 'external_admin']), asyncHandler(updateExternalConsentRequest));
+router.delete('/consent-requests/:id', authorize(['external_requester', 'external_admin']), asyncHandler(cancelExternalConsentRequest));
 
 export default router;

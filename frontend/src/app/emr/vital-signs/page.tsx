@@ -842,13 +842,10 @@ ${visit.visitNumber ? '🔄 ใช้ Visit ที่มีอยู่แล้
         message: `มีการบันทึกสัญญาณชีพใหม่สำหรับคุณ ${patient.thaiName} โดย ${user?.thaiName || `${user?.firstName} ${user?.lastName}` || 'เจ้าหน้าที่'}`
       };
 
-      // ส่งการแจ้งเตือนผ่าน NotificationService
-      await NotificationService.notifyPatientRecordUpdate(notificationData);
-      
       // สร้างเอกสารให้ผู้ป่วย
       await createPatientDocument(patient, vitalSignsData);
       
-      logger.info('Patient notification sent successfully for vital signs', { 
+      logger.info('Patient document created successfully for vital signs', { 
         patientHn: notificationData.patientHn,
         recordType: 'vital_signs'
       });

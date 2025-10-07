@@ -67,11 +67,11 @@ export const getAllUsers = async (req: Request, res: Response) => {
         u.last_login,
         u.created_at,
         u.updated_at,
-        d.department_name,
+        u.phone,
+        u.address,
         COALESCE(visit_counts.visit_count, 0) as visit_count,
         0 as appointment_count
       FROM users u
-      LEFT JOIN departments d ON u.department_id = d.id
       LEFT JOIN (
         SELECT attending_doctor_id, COUNT(*) as visit_count 
         FROM visits 
@@ -104,7 +104,9 @@ export const getAllUsers = async (req: Request, res: Response) => {
       email: user.email,
       role: user.role,
       status: user.is_active ? 'active' : 'inactive',
-      department: user.department_name,
+      department: null, // No department table available
+      phone: user.phone,
+      address: user.address,
       last_login: user.last_login,
       visit_count: parseInt(user.visit_count),
       appointment_count: parseInt(user.appointment_count),

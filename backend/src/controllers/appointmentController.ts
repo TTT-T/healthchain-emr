@@ -76,7 +76,7 @@ export const createAppointment = asyncHandler(async (req: Request, res: Response
     const client = await databaseManager.getClient();
     
     // Check if patient exists
-    const patientQuery = 'SELECT id, thai_name, national_id, hospital_number FROM patients WHERE id = $1';
+    const patientQuery = 'SELECT id, thai_first_name, national_id, hn FROM patients WHERE id = $1';
     const patientResult = await client.query(patientQuery, [patientId]);
     
     if (patientResult.rows.length === 0) {
@@ -95,7 +95,7 @@ export const createAppointment = asyncHandler(async (req: Request, res: Response
 
     // Check if doctor exists (if provided)
     if (doctorId) {
-      const doctorQuery = 'SELECT id, thai_name FROM users WHERE id = $1 AND role = $2';
+      const doctorQuery = 'SELECT id, thai_first_name FROM users WHERE id = $1 AND role = $2';
       const doctorResult = await client.query(doctorQuery, [doctorId, 'doctor']);
       
       if (doctorResult.rows.length === 0) {
@@ -193,9 +193,9 @@ export const createAppointment = asyncHandler(async (req: Request, res: Response
       meta: {
         patient: {
           id: patient.id,
-          thaiName: patient.thai_name,
+          thaiName: patient.thai_first_name,
           nationalId: patient.national_id,
-          hospitalNumber: patient.hospital_number
+          hospitalNumber: patient.hn
         }
       }
     });
@@ -225,11 +225,11 @@ export const getAppointmentsByPatient = asyncHandler(async (req: Request, res: R
     
     const query = `
       SELECT mr.*, 
-             p.thai_name as patient_name, p.national_id, p.hospital_number,
-             d.thai_name as doctor_name
+             p.thai_first_name as patient_name, p.national_id, p.hn,
+             d.thai_first_name as doctor_name
       FROM medical_records mr
       JOIN patients p ON mr.patient_id = p.id
-      LEFT JOIN users d ON mr.doctor_id = d.id
+      LEFT JOIN users d ON mr.created_by = d.id
       WHERE mr.patient_id = $1 AND mr.record_type = 'appointment'
       ORDER BY mr.appointment_date DESC, mr.appointment_time DESC
     `;
@@ -259,7 +259,7 @@ export const getAppointmentsByPatient = asyncHandler(async (req: Request, res: R
       patient: {
         thaiName: record.patient_name,
         nationalId: record.national_id,
-        hospitalNumber: record.hospital_number
+        hospitalNumber: record.hn
       },
       doctor: record.doctor_name ? {
         thaiName: record.doctor_name
@@ -301,10 +301,10 @@ export const getAppointmentsByDoctor = asyncHandler(async (req: Request, res: Re
     
     let query = `
       SELECT mr.*, 
-             p.thai_name as patient_name, p.national_id, p.hospital_number
+             p.thai_first_name as patient_name, p.national_id, p.hn
       FROM medical_records mr
       JOIN patients p ON mr.patient_id = p.id
-      WHERE mr.doctor_id = $1 AND mr.record_type = 'appointment'
+      WHERE mr.created_by = $1 AND mr.record_type = 'appointment'
     `;
     
     const values = [doctorId];
@@ -341,7 +341,7 @@ export const getAppointmentsByDoctor = asyncHandler(async (req: Request, res: Re
       patient: {
         thaiName: record.patient_name,
         nationalId: record.national_id,
-        hospitalNumber: record.hospital_number
+        hospitalNumber: record.hn
       }
     }));
 
@@ -380,11 +380,11 @@ export const getAppointmentById = asyncHandler(async (req: Request, res: Respons
     
     const query = `
       SELECT mr.*, 
-             p.thai_name as patient_name, p.national_id, p.hospital_number,
-             d.thai_name as doctor_name
+             p.thai_first_name as patient_name, p.national_id, p.hn,
+             d.thai_first_name as doctor_name
       FROM medical_records mr
       JOIN patients p ON mr.patient_id = p.id
-      LEFT JOIN users d ON mr.doctor_id = d.id
+      LEFT JOIN users d ON mr.created_by = d.id
       WHERE mr.id = $1 AND mr.record_type = 'appointment'
     `;
 
@@ -430,7 +430,7 @@ export const getAppointmentById = asyncHandler(async (req: Request, res: Respons
         patient: {
           thaiName: record.patient_name,
           nationalId: record.national_id,
-          hospitalNumber: record.hospital_number
+          hospitalNumber: record.hn
         },
         doctor: record.doctor_name ? {
           thaiName: record.doctor_name

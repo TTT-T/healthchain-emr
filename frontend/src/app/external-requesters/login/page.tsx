@@ -1,291 +1,289 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { useAuth } from '@/contexts/AuthContext'
-import { apiClient } from '@/lib/api'
-import { logger } from '@/lib/logger'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { 
-  Building2, 
-  Shield, 
+  ArrowLeft, 
   Eye, 
-  EyeOff,
-  LogIn,
-  Mail,
-  Lock,
-  AlertTriangle,
-  CheckCircle
-} from 'lucide-react'
+  EyeOff, 
+  Mail, 
+  Lock, 
+  AlertCircle,
+  CheckCircle,
+  Building2,
+  Shield,
+  ExternalLink
+} from 'lucide-react';
 
-export default function ExternalRequesterLogin() {
+export default function ExternalRequesterLoginPage() {
+  const { user, isAuthenticated, login, isLoading } = useAuth();
+  const router = useRouter();
+  
   const [formData, setFormData] = useState({
     email: '',
     password: ''
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [loginResult, setLoginResult] = useState<{
-    success: boolean
-    message: string
-  } | null>(null)
+  });
+  
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  const handleInputChange = (field: string, value: string) => {
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user) {
+      if (['external_requester', 'external_admin'].includes(user.role)) {
+        router.push('/external-requesters/dashboard');
+      } else {
+        router.push('/');
+      }
+    }
+  }, [isAuthenticated, isLoading, user, router]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [field]: value
-    }))
-  }
+      [name]: value
+    }));
+    
+    // Clear error when user starts typing
+    if (error) {
+      setError(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setLoginResult(null)
+    e.preventDefault();
+    
+    if (!formData.email || !formData.password) {
+      setError('กรุณากรอกอีเมลและรหัสผ่าน');
+      return;
+    }
 
     try {
-      // Client-side validation
-      if (!formData.email.trim() || !formData.password.trim()) {
-        setLoginResult({
-          success: false,
-          message: 'กรุณากรอกอีเมลและรหัสผ่าน'
-        })
-        return
-      }
+      setLoading(true);
+      setError(null);
 
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (!emailRegex.test(formData.email)) {
-        setLoginResult({
-          success: false,
-          message: 'รูปแบบอีเมลไม่ถูกต้อง'
-        })
-        return
-      }
-
-      // Submit to API
-      const response = await apiClient.loginExternalRequester({
-        username: formData.email,
-        email: formData.email,
-        password: formData.password
-      })
-
-      if (response.statusCode === 200) {
-        setLoginResult({
-          success: true,
-          message: 'เข้าสู่ระบบสำเร็จ! กำลังนำไปยังหน้าหลัก...'
-        })
+      const response = await login(formData.email, formData.password);
+      
+      if (response.success) {
+        setSuccess(true);
         
-        // Store token/session and redirect
-        if (response.data?.accessToken) {
-          localStorage.setItem('external-requester-token', response.data.accessToken)
-        }
-        
-        // Redirect to dashboard after 2 seconds
+        // Redirect to dashboard after 1 second
         setTimeout(() => {
-          window.location.href = '/external-requesters/dashboard'
-        }, 2000)
-        
+          router.push('/external-requesters/dashboard');
+        }, 1000);
       } else {
-        setLoginResult({
-          success: false,
-          message: response.error?.message || 'การเข้าสู่ระบบล้มเหลว'
-        })
+        setError(response.message || 'เข้าสู่ระบบไม่สำเร็จ');
       }
-
-    } catch (error) {
-      logger.error('Login error:', error)
-      setLoginResult({
-        success: false,
-        message: 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง'
-      })
+    } catch (err) {
+      setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
     } finally {
-      setIsLoading(false)
+      setLoading(false);
     }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-blue-400 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-white font-bold text-xl">H</span>
+          </div>
+          <p className="text-gray-600">กำลังโหลด...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated && user) {
+    return null; // Will redirect
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <Link 
-              href="/" 
-              className="inline-flex items-center gap-2 text-gray-600 hover:text-amber-600 transition-colors"
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              กลับไปหน้าแรก
-            </Link>
+        <div className="text-center">
+          <Link 
+            href="/" 
+            className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors mb-6"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            กลับไปหน้าแรก
+          </Link>
+          
+          <div className="mx-auto h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
+            <Building2 className="h-8 w-8 text-white" />
           </div>
-          <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-r from-amber-500 to-orange-600 rounded-3xl flex items-center justify-center shadow-xl">
-              <Building2 className="h-10 w-10 text-white" />
-            </div>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-            Organization Portal
-          </h1>
-          <p className="text-gray-600 text-lg">
-            ระบบขอข้อมูลสำหรับองค์กร
+          
+          <h2 className="text-3xl font-bold text-gray-900">
+            เข้าสู่ระบบ
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            สำหรับผู้ขอเข้าถึงข้อมูลจากภายนอก
           </p>
         </div>
 
         {/* Login Form */}
-        <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm rounded-3xl">
-          <CardHeader className="text-center pb-6">
-            <CardTitle className="text-2xl font-semibold text-gray-900 flex items-center justify-center gap-2">
-              <Building2 className="h-6 w-6 text-amber-600" />
-              เข้าสู่ระบบ
-            </CardTitle>
-            <CardDescription className="text-gray-600">
-              สำหรับองค์กรที่ได้รับการอนุมัติแล้ว
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6 p-8">
-            <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-white py-8 px-6 shadow-xl rounded-lg">
+          {success ? (
+            <div className="text-center">
+              <div className="text-green-600 mb-4">
+                <CheckCircle className="h-16 w-16 mx-auto" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">เข้าสู่ระบบสำเร็จ!</h3>
+              <p className="text-gray-600 mb-4">
+                กำลังเปลี่ยนเส้นทางไปยังแดชบอร์ด...
+              </p>
+              <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            </div>
+          ) : (
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {/* Error Message */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
+                    <p className="text-red-800 text-sm">{error}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Email Field */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  อีเมลองค์กร
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  อีเมล
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Mail className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
+                    id="email"
+                    name="email"
                     type="email"
-                    className="w-full pl-12 pr-4 py-4 text-gray-900 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200 bg-white hover:border-gray-300"
-                    placeholder="your-email@organization.com"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    autoComplete="email"
                     required
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    placeholder="กรอกอีเมลของคุณ"
                   />
                 </div>
               </div>
 
+              {/* Password Field */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                   รหัสผ่าน
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Lock className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
+                    id="password"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
-                    className="w-full pl-12 pr-12 py-4 text-gray-900 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200 bg-white hover:border-gray-300"
-                    placeholder="••••••••"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange('password', e.target.value)}
+                    autoComplete="current-password"
                     required
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    placeholder="กรอกรหัสผ่านของคุณ"
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
+                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
                     ) : (
-                      <Eye className="h-5 w-5" />
+                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
                     )}
                   </button>
                 </div>
               </div>
 
-              {/* Login Result */}
-              {loginResult && (
-                <Alert className={`${loginResult.success ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'}`}>
-                  {loginResult.success ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+              {/* Submit Button */}
+              <div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      กำลังเข้าสู่ระบบ...
+                    </>
                   ) : (
-                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <>
+                      <Shield className="h-5 w-5 mr-2" />
+                      เข้าสู่ระบบ
+                    </>
                   )}
-                  <AlertDescription className={`${loginResult.success ? 'text-green-800' : 'text-red-800'} font-medium`}>
-                    {loginResult.message}
-                  </AlertDescription>
-                </Alert>
-              )}
+                </button>
+              </div>
 
-              <button
-                type="submit"
-                disabled={isLoading || (loginResult?.success === true)}
-                className={`w-full flex justify-center items-center py-4 px-6 border border-transparent text-lg font-semibold rounded-2xl text-white transition-all duration-200 transform ${
-                  isLoading || loginResult?.success === true
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-amber-200'
-                }`}
-              >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin h-6 w-6 mr-3 border-2 border-white border-t-transparent rounded-full"></div>
-                    กำลังเข้าสู่ระบบ...
-                  </>
-                ) : loginResult?.success ? (
-                  <>
-                    <CheckCircle className="h-6 w-6 mr-3" />
-                    เข้าสู่ระบบสำเร็จ
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="h-6 w-6 mr-3" />
-                    เข้าสู่ระบบ
-                  </>
-                )}
-              </button>
-            </form>
-
-            <div className="text-center space-y-6">
-              <div className="text-sm text-gray-600">
-                <Link href="/external-requesters/forgot-password" className="text-amber-600 hover:text-amber-800 font-medium">
+              {/* Additional Links */}
+              <div className="text-center space-y-3">
+                <Link
+                  href="/external-requesters/forgot-password"
+                  className="text-sm text-blue-600 hover:text-blue-500 transition-colors"
+                >
                   ลืมรหัสผ่าน?
                 </Link>
-              </div>
-              
-              <div className="border-t border-gray-200 pt-6">
-                <p className="text-sm text-gray-600 mb-4">
-                  ยังไม่ได้ลงทะเบียน?
-                </p>
-                <div className="space-y-3">
-                  <Link href="/external-requesters/register">
-                    <button className="w-full py-3 px-4 border-2 border-amber-300 text-amber-700 hover:bg-amber-50 rounded-2xl font-medium transition-all duration-200">
-                      ลงทะเบียนองค์กร
-                    </button>
+                
+                <div className="text-sm text-gray-600">
+                  ยังไม่มีบัญชี?{' '}
+                  <Link
+                    href="/external-requesters/register"
+                    className="text-blue-600 hover:text-blue-500 font-medium transition-colors"
+                  >
+                    ลงทะเบียนที่นี่
                   </Link>
-                  <div className="text-xs text-gray-500 text-center">
-                    หรือเข้าสู่ระบบสำหรับ{' '}
-                    <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-                      ผู้ป่วย
-                    </Link>
-                    {' '}|{' '}
-                    <Link href="/doctor/login" className="font-medium text-emerald-600 hover:text-emerald-500 transition-colors">
-                      บุคลากรทางการแพทย์
-                    </Link>
-                    {' '}|{' '}
-                    <Link href="/admin/login" className="font-medium text-purple-600 hover:text-purple-500 transition-colors">
-                      ผู้ดูแลระบบ
-                    </Link>
-                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </form>
+          )}
+        </div>
 
-        {/* Additional Info */}
-        <div className="mt-8 text-center">
-          <div className="flex items-center justify-center space-x-2 text-sm text-gray-600 mb-4">
-            <Shield className="h-4 w-4" />
-            <span>การเชื่อมต่อที่ปลอดภัยด้วย SSL</span>
+        {/* Info Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <div className="flex items-center mb-2">
+              <Shield className="h-5 w-5 text-green-600 mr-2" />
+              <h3 className="font-medium text-gray-900">ปลอดภัย</h3>
+            </div>
+            <p className="text-sm text-gray-600">
+              ข้อมูลของคุณได้รับการปกป้องด้วยมาตรฐานความปลอดภัยระดับสูง
+            </p>
           </div>
-          <div className="space-y-2 text-xs text-gray-500">
-            <p>ต้องการความช่วยเหลือ? ติดต่อ support@healthchain.com</p>
-            <p>หรือโทร 02-123-4567 (วันจันทร์-ศุกร์ 8:00-17:00)</p>
+          
+          <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <div className="flex items-center mb-2">
+              <ExternalLink className="h-5 w-5 text-blue-600 mr-2" />
+              <h3 className="font-medium text-gray-900">เข้าถึงง่าย</h3>
+            </div>
+            <p className="text-sm text-gray-600">
+              เข้าถึงระบบได้ทุกที่ทุกเวลาผ่านเว็บเบราว์เซอร์
+            </p>
           </div>
+        </div>
+
+        {/* Footer */}
+        <div className="text-center">
+          <p className="text-xs text-gray-500">
+            หากมีปัญหาในการเข้าสู่ระบบ กรุณาติดต่อทีมสนับสนุน
+          </p>
         </div>
       </div>
     </div>
-  )
+  );
 }

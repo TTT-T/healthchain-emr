@@ -37,7 +37,7 @@ export const getPendingUsers = async (req: Request, res: Response) => {
       queryParams.push(`%${search}%`);
     }
 
-    // Get pending users with professional info
+    // Get pending users with basic info
     const usersQuery = `
       SELECT 
         u.id,
@@ -48,17 +48,9 @@ export const getPendingUsers = async (req: Request, res: Response) => {
         u.role,
         u.created_at,
         u.updated_at,
-        d.medical_license_number,
-        d.specialization,
-        d.department,
-        d.position,
-        n.nursing_license_number,
-        n.specialization as nurse_specialization,
-        n.department as nurse_department,
-        n.position as nurse_position
+        u.phone,
+        u.address
       FROM users u
-      LEFT JOIN doctors d ON u.id = d.user_id
-      LEFT JOIN nurses n ON u.id = n.user_id
       ${whereClause}
       ORDER BY u.created_at ASC
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
@@ -84,11 +76,13 @@ export const getPendingUsers = async (req: Request, res: Response) => {
       name: `${user.first_name} ${user.last_name}`,
       role: user.role,
       createdAt: user.created_at,
+      phone: user.phone,
+      address: user.address,
       professionalInfo: {
-        licenseNumber: user.medical_license_number || user.nursing_license_number,
-        specialization: user.specialization || user.nurse_specialization,
-        department: user.department || user.nurse_department,
-        position: user.position || user.nurse_position
+        licenseNumber: null,
+        specialization: null,
+        department: null,
+        position: null
       }
     }));
 
@@ -171,8 +165,8 @@ export const approveUser = async (req: Request, res: Response) => {
     // Log approval action
     await databaseManager.query(`
       INSERT INTO audit_logs (
-        user_id, action, resource, resource_id, details, ip_address, user_agent, success
-      ) VALUES ($1, 'APPROVE_USER', 'USER', $2, $3, $4, $5, true)
+        user_id, action, resource, resource_id, details, ip_address, user_agent
+      ) VALUES ($1, 'APPROVE_USER', 'USER', $2, $3, $4, $5)
     `, [
       approvedBy,
       id,
@@ -282,8 +276,8 @@ export const rejectUser = async (req: Request, res: Response) => {
     // Log rejection action
     await databaseManager.query(`
       INSERT INTO audit_logs (
-        user_id, action, resource, resource_id, details, ip_address, user_agent, success
-      ) VALUES ($1, 'REJECT_USER', 'USER', $2, $3, $4, $5, true)
+        user_id, action, resource, resource_id, details, ip_address, user_agent
+      ) VALUES ($1, 'REJECT_USER', 'USER', $2, $3, $4, $5)
     `, [
       rejectedBy,
       id,

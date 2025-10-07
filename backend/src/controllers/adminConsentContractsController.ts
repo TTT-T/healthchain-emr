@@ -90,7 +90,7 @@ export const getAllConsentContracts = async (req: Request, res: Response) => {
         cc.status,
         cc.updated_at as last_accessed,
         p.first_name || ' ' || p.last_name as patient_name,
-        p.hospital_number as patient_hn,
+        p.hn as patient_hn,
         u.first_name || ' ' || u.last_name as requester_name
       FROM consent_contracts cc
       LEFT JOIN patients p ON cc.patient_id = p.id
@@ -269,7 +269,7 @@ export const getConsentContractById = async (req: Request, res: Response) => {
         cc.status,
         cc.updated_at as last_accessed,
         p.first_name || ' ' || p.last_name as patient_name,
-        p.hospital_number as patient_hn,
+        p.hn as patient_hn,
         u.first_name || ' ' || u.last_name as requester_name
       FROM consent_contracts cc
       LEFT JOIN patients p ON cc.patient_id = p.id

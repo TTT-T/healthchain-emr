@@ -231,7 +231,7 @@ export const getConsentRequestById = async (req: Request, res: Response) => {
         u.first_name || ' ' || u.last_name as requester_name,
         'hospital' as requester_type,
         p.first_name || ' ' || p.last_name as patient_name,
-        p.hospital_number as patient_hn,
+        p.hn as patient_hn,
         cr.request_type,
         cr.data_types as requested_data_types,
         cr.purpose,

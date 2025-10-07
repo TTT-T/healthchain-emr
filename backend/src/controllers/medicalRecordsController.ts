@@ -144,7 +144,7 @@ export const getPatientRecords = async (req: Request, res: Response) => {
           SELECT 
             lo.id as lab_order_id,
             lo.order_number,
-            lo._name,
+            lo.test_name,
             lo._category,
             lo.status as order_status,
             lr.id as result_id,
@@ -206,8 +206,8 @@ export const getPatientRecords = async (req: Request, res: Response) => {
         const vitalSigns = await databaseManager.query(`
           SELECT 
             id,
-            systolic_bp,
-            diastolic_bp,
+            blood_pressure_systolic,
+            blood_pressure_diastolic,
             heart_rate,
             respiratory_rate,
             temperature,
@@ -338,14 +338,14 @@ export const createPatientRecord = async (req: Request, res: Response) => {
         const vitalSignsId = uuidv4();
         await databaseManager.query(`
           INSERT INTO vital_signs (
-            id, visit_id, patient_id, systolic_bp, diastolic_bp, heart_rate,
+            id, visit_id, patient_id, blood_pressure_systolic, blood_pressure_diastolic, heart_rate,
             respiratory_rate, temperature, oxygen_saturation, weight, height,
             bmi, pain_scale, pain_location, blood_glucose, measured_by
           )
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         `, [
-          vitalSignsId, visitId, patientId, vital_signs.systolic_bp,
-          vital_signs.diastolic_bp, vital_signs.heart_rate, vital_signs.respiratory_rate,
+          vitalSignsId, visitId, patientId, vital_signs.blood_pressure_systolic,
+          vital_signs.blood_pressure_diastolic, vital_signs.heart_rate, vital_signs.respiratory_rate,
           vital_signs.temperature, vital_signs.oxygen_saturation, vital_signs.weight,
           vital_signs.height, vital_signs.bmi, vital_signs.pain_scale,
           vital_signs.pain_location, vital_signs.blood_glucose, userId

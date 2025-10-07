@@ -37,7 +37,7 @@ interface CompleteProfile {
   phone: string;
   
   // Names (4 fields)
-  thaiName?: string;
+  thaiFirstName?: string;
   thaiLastName?: string;
   englishFirstName?: string;
   englishLastName?: string;
@@ -412,9 +412,9 @@ const EnhancedProfilePage: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   {profile?.firstName} {profile?.lastName}
                 </h3>
-                {(profile?.thaiName || profile?.thaiLastName) && (
+                {(profile?.thaiFirstName || profile?.thaiLastName) && (
                   <p className="text-gray-600 mb-2">
-                    {profile.thaiName} {profile.thaiLastName}
+                    {profile.thaiFirstName} {profile.thaiLastName}
                   </p>
                 )}
                 <p className="text-sm text-gray-500 mb-2">{profile?.email}</p>

@@ -134,7 +134,7 @@ export const createPrescription = async (req: Request, res: Response) => {
       const user = (req as any).user;
       
       // Get patient information
-      const patientQuery = 'SELECT id, thai_name, first_name, last_name, hospital_number, phone, email FROM patients WHERE id = $1';
+      const patientQuery = 'SELECT id, thai_first_name, first_name, last_name, hn, phone, email FROM patients WHERE id = $1';
       const patientResult = await databaseManager.query(patientQuery, [visit.patient_id]);
       
       if (patientResult.rows.length > 0) {
@@ -142,17 +142,17 @@ export const createPrescription = async (req: Request, res: Response) => {
         
         await NotificationService.sendPatientNotification({
           patientId: patient.id,
-          patientHn: patient.hospital_number || '',
-          patientName: patient.thai_name || `${patient.first_name} ${patient.last_name}`,
+          patientHn: patient.hn || '',
+          patientName: patient.thai_first_name || `${patient.first_name} ${patient.last_name}`,
           patientPhone: patient.phone,
           patientEmail: patient.email,
           notificationType: 'prescription_ready',
           title: `ยาเตรียมพร้อม: ${prescriptionItems[0]?.medication_name || 'ยาตามใบสั่ง'}`,
-          message: `ยาเตรียมพร้อมสำหรับคุณ ${patient.thai_name || patient.first_name} แล้ว กรุณามารับยาได้ที่แผนกเภสัชกรรม`,
+          message: `ยาเตรียมพร้อมสำหรับคุณ ${patient.thai_first_name || patient.first_name} แล้ว กรุณามารับยาได้ที่แผนกเภสัชกรรม`,
           recordType: 'prescription',
           recordId: prescriptionId,
           createdBy: user.id,
-          createdByName: user.thai_name || `${user.first_name} ${user.last_name}`,
+          createdByName: user.thai_first_name || `${user.first_name} ${user.last_name}`,
           metadata: {
             prescriptionNumber: prescriptionNumber,
             itemsCount: prescriptionItems.length,

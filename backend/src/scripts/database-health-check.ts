@@ -90,8 +90,11 @@ class DatabaseHealthChecker {
       console.log('\n📋 Check 3: Essential Tables...');
       try {
         const essentialTables = [
-          'users', 'patients', 'visits', 'appointments', 
-          'notifications', 'migrations', 'medical_records'
+          'users', 'patients', 'visits', 'vital_signs', 'lab_orders', 'lab_results',
+          'prescriptions', 'prescription_items', 'visit_attachments', 'departments',
+          'appointments', 'notifications', 'medical_records', 'audit_logs', 
+          'user_sessions', 'password_reset_tokens', 'email_verification_tokens', 
+          'user_security_settings', 'migrations'
         ];
         
         for (const table of essentialTables) {
@@ -234,10 +237,20 @@ class DatabaseHealthChecker {
   private async checkIndexes(): Promise<boolean> {
     const essentialIndexes = [
       'idx_users_email',
-      'idx_patients_hospital_number',
+      'idx_users_username',
+      'idx_patients_patient_number',
+      'idx_patients_user_id',
       'idx_visits_patient_id',
+      'idx_visits_date',
+      'idx_vital_signs_visit_id',
+      'idx_lab_orders_visit_id',
+      'idx_lab_results_visit_id',
+      'idx_prescriptions_visit_id',
+      'idx_prescription_items_prescription_id',
+      'idx_visit_attachments_visit_id',
       'idx_appointments_patient_id',
-      'idx_notifications_patient_id'
+      'idx_notifications_user_id',
+      'idx_medical_records_patient_id'
     ];
 
     for (const indexName of essentialIndexes) {

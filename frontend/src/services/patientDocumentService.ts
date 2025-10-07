@@ -106,9 +106,6 @@ export class PatientDocumentService {
       // บันทึกเอกสาร
       await this.saveDocument(document);
 
-      // ส่งการแจ้งเตือนให้ผู้ป่วย
-      await this.notifyPatientNewDocument(document);
-
       logger.info('Patient document created successfully', { documentId: document.id });
       return document;
     } catch (error) {
@@ -293,32 +290,6 @@ export class PatientDocumentService {
     }
   }
 
-  /**
-   * ส่งการแจ้งเตือนให้ผู้ป่วยเมื่อมีเอกสารใหม่
-   */
-  private static async notifyPatientNewDocument(document: PatientDocument): Promise<void> {
-    try {
-      // ส่งการแจ้งเตือนผ่าน NotificationService
-      const { NotificationService } = await import('./notificationService');
-      
-      await NotificationService.notifyPatientRecordUpdate({
-        patientHn: document.patientHn,
-        patientNationalId: document.patientNationalId,
-        patientName: '', // จะต้องดึงจากฐานข้อมูล
-        patientPhone: '',
-        patientEmail: '',
-        recordType: 'document',
-        recordId: document.id,
-        recordedBy: document.createdBy || 'system',
-        recordedTime: document.created_at || new Date().toISOString(),
-        message: `มีเอกสารใหม่: ${document.documentTitle}`
-      });
-
-      logger.info('Patient notified of new document', { documentId: document.id });
-    } catch (error) {
-      logger.error('Failed to notify patient of new document:', error);
-    }
-  }
 
   /**
    * ดึงการตั้งค่าเอกสารตามประเภท

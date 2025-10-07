@@ -240,11 +240,17 @@ export default function EMRDashboard() {
           // Type guard to ensure it's a MedicalVisit
           if ('visit_number' in visit && 'status' in visit) {
             // Get patient name from visit data directly (since it's already included in the API response)
-            const patientName = visit.patient?.name || 'ไม่ระบุ';
-            const hospitalNumber = visit.patient?.hospital_number || 'ไม่ระบุ';
+            const patientName = visit.patient?.thai_first_name && visit.patient?.thai_last_name 
+              ? `${visit.patient.thai_first_name} ${visit.patient.thai_last_name}`
+              : visit.patient?.name || 'ไม่ระบุ';
+            const hospitalNumber = visit.patient?.hospital_number || visit.patient?.hn || 'ไม่ระบุ';
             
-            // Get department from visit data
-            const department = visit.department || 'ไม่ระบุ';
+            // Get department from visit data or doctor
+            const department = visit.department?.name || 
+                              visit.department || 
+                              visit.doctor?.department_name || 
+                              visit.doctor?.department || 
+                              'อายุรกรรม'; // Default to internal medicine
             
             // Calculate wait time based on visit time
             const visitTime = visit.visit_time || '00:00:00';
@@ -322,8 +328,10 @@ export default function EMRDashboard() {
         // Type guard to check if it's a MedicalVisit
         if ('visit_date' in visit && 'status' in visit) {
           // Get patient name from visit data directly
-          const patientName = visit.patient?.name || 'ไม่ระบุ';
-          const hospitalNumber = visit.patient?.hospital_number || 'ไม่ระบุ';
+          const patientName = visit.patient?.thai_first_name && visit.patient?.thai_last_name 
+            ? `${visit.patient.thai_first_name} ${visit.patient.thai_last_name}`
+            : visit.patient?.name || 'ไม่ระบุ';
+          const hospitalNumber = visit.patient?.hospital_number || visit.patient?.hn || 'ไม่ระบุ';
           const visitType = visit.visit_type === 'walk_in' ? 'มาโดยไม่นัด' : visit.visit_type === 'appointment' ? 'นัดหมาย' : visit.visit_type || 'ไม่ระบุ';
           const priority = visit.priority === 'normal' ? 'ปกติ' : visit.priority === 'urgent' ? 'ด่วน' : visit.priority === 'high' ? 'สูง' : visit.priority === 'low' ? 'ต่ำ' : visit.priority === 'emergency' ? 'ฉุกเฉิน' : visit.priority || 'ไม่ระบุ';
           
@@ -793,7 +801,7 @@ export default function EMRDashboard() {
                     <div className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(queue.status)}`}>
                       กำลังตรวจ
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">รอ {queue.waitTime} นาที</p>
+                    <p className="text-xs text-gray-500 mt-1">คิว: {queue.queueNumber}</p>
                     <button
                       onClick={() => handleCompleteVisit(queue.id)}
                       className="mt-2 px-3 py-1 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-colors font-medium"
@@ -837,7 +845,7 @@ export default function EMRDashboard() {
                     <div className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(queue.status)}`}>
                       รอตรวจ
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">รอ {queue.waitTime} นาที</p>
+                    <p className="text-xs text-gray-500 mt-1">คิว: {queue.queueNumber}</p>
                     <button
                       onClick={() => handleCompleteVisit(queue.id)}
                       className="mt-2 px-3 py-1 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-colors font-medium"

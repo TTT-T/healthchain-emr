@@ -1,263 +1,319 @@
-# EMR System - Electronic Medical Records
+# 🏥 EMR System - Electronic Medical Records
 
-**ระบบบริหารจัดการเวชระเบียนอิเล็กทรอนิกส์ที่ครบครัน**
+ระบบบันทึกข้อมูลทางการแพทย์อิเล็กทรอนิกส์ที่สมบูรณ์ พร้อมใช้งาน
 
-## ภาพรวมระบบ
+## 🚀 Quick Start
 
-EMR System เป็นระบบบริหารจัดการเวชระเบียนอิเล็กทรอนิกส์ที่ออกแบบมาสำหรับโรงพยาบาลและสถานพยาบาล ระบบประกอบด้วยฟีเจอร์หลักดังนี้:
-
-- **Patient Management** - ระบบจัดการผู้ป่วย
-- **Medical Records** - เวชระเบียนอิเล็กทรอนิกส์
-- **Multi-Role System** - ระบบบทบาทหลายระดับ
-- **Database Management** - ระบบจัดการฐานข้อมูล
-- **AI Risk Assessment** - ระบบประเมินความเสี่ยงด้วย AI
-- **Notification System** - ระบบแจ้งเตือนแบบเรียลไทม์
-- **AI Research Data Collection** - ระบบเก็บข้อมูลสำหรับ AI
-- **Critical Lab Values Tracking** - ระบบติดตามค่าผลแลบสำคัญ
-- **Enhanced Data Management** - ระบบจัดการข้อมูลโภชนาการและการออกกำลังกาย
-- **Timezone Support** - รองรับเวลาไทย (Asia/Bangkok)
-- **Docker Support** - รองรับการใช้งานด้วย Docker
-
-## 🚀 การติดตั้งและเริ่มใช้งาน
-
-### ข้อกำหนดของระบบ
-- **Node.js** >= 18.0.0
-- **Docker Desktop** >= 4.0.0
-- **Windows 10/11** หรือ **macOS/Linux**
-
-### 🎯 การติดตั้งแบบง่าย (แนะนำ)
-
-#### สำหรับเครื่องใหม่หรือการรันในเครื่องอื่น:
-```bash
-# 1. รัน setup script (จะสร้างไฟล์ environment และติดตั้ง dependencies อัตโนมัติ)
-setup.bat
-
-# 2. หรือใช้ start.bat
-start.bat
-# เลือกตัวเลือก 1 (START)
-```
-
-### 📋 การติดตั้งแบบแมนนวล
-
-#### 1. ติดตั้ง Node.js
-- ดาวน์โหลดจาก: https://nodejs.org/
-- เลือกเวอร์ชัน LTS (แนะนำ v18.x หรือ v20.x)
-- ติดตั้งตามขั้นตอนปกติ
-- รีสตาร์ทคอมพิวเตอร์หลังติดตั้ง
-- ตรวจสอบการติดตั้ง: `node --version`
-
-#### 2. ติดตั้ง Docker Desktop
-- ดาวน์โหลดจาก: https://www.docker.com/products/docker-desktop
-- ติดตั้ง Docker Desktop
-- เริ่ม Docker Desktop และรอให้เริ่มทำงานเสร็จ
-- ตรวจสอบการติดตั้ง: `docker --version`
-- ตรวจสอบ Docker Compose: `docker compose version`
-
-#### 3. สร้างไฟล์ Environment (สำคัญ!)
-```bash
-# สร้างไฟล์ backend/.env
-# คัดลอกจาก backend/env.example
-
-# สร้างไฟล์ frontend/.env.local  
-# คัดลอกจาก frontend/env.default
-```
-
-#### 4. ติดตั้ง Dependencies ของโปรเจค
-```bash
-# ติดตั้ง Frontend dependencies
-cd frontend
-npm install
-cd ..
-
-# ติดตั้ง Backend dependencies
-cd backend
-npm install
-cd ..
-```
-
-### 🔧 การแก้ไขปัญหาการรันในเครื่องอื่น
-
-#### ปัญหาที่พบบ่อย:
-1. **ไฟล์ .env หายไป** → ใช้ `setup.bat` หรือสร้างไฟล์ environment ตามขั้นตอนด้านบน
-2. **node_modules หายไป** → รัน `npm install` ในโฟลเดอร์ backend และ frontend
-3. **Port ถูกใช้งาน** → ใช้ `start.bat` option [14] FIX CONTAINERS
-4. **API request failed** → ปัญหานี้แก้ไขแล้วในโค้ด
-
-#### ไฟล์ที่จำเป็นสำหรับการรัน:
-- `docker-compose.yml`
-- `start.bat`
-- `setup.bat`
-- `backend/package.json` และ `frontend/package.json`
-- `backend/Dockerfile` และ `frontend/Dockerfile`
-- ไฟล์ environment (จะถูกสร้างโดย setup.bat)
-
-### การเริ่มใช้งาน
-```bash
-# เริ่มต้นทันที
-start.bat
-# เลือกตัวเลือก 1 (START)
-```
-
-### การเข้าถึงระบบ
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:3001
-- **Database Manager (pgAdmin)**: http://localhost:8080
-
-### การตั้งค่า pgAdmin (Database Manager)
-
-#### 1. เข้าสู่ระบบ pgAdmin
-- เปิดเบราว์เซอร์ไปที่: http://localhost:8080
-- **Email**: admin@admin.com
-- **Password**: admin
-
-#### 2. เพิ่มเซิร์ฟเวอร์ฐานข้อมูล
-1. คลิกขวาที่ "Servers" ในหน้าซ้าย
-2. เลือก "Register" > "Server..."
-3. ตั้งค่าดังนี้:
-   - **Name**: EMR Database
-   - **Host name/address**: emr_postgres
-   - **Port**: 5432
-   - **Maintenance database**: emr_development
-   - **Username**: postgres
-   - **Password**: 12345
-4. คลิก "Save"
-
-#### 3. การใช้งาน pgAdmin
-- ดูข้อมูลในตารางต่างๆ
-- รัน SQL queries
-- จัดการฐานข้อมูล
-- สำรองข้อมูล
-
-### บัญชีทดสอบ
-- **Admin**: admin / password123
-- **Doctor**: doctor / password123
-- **Patient**: patient / password123
-
-## คู่มือการใช้งาน
-
-### การจัดการระบบด้วย start.bat
-1. **เริ่มระบบ**: เลือกตัวเลือก 1 (START)
-2. **หยุดระบบ**: เลือกตัวเลือก 2 (STOP)
-3. **ตรวจสอบสถานะ**: เลือกตัวเลือก 3 (STATUS)
-4. **ออกจากโปรแกรม**: เลือกตัวเลือก 4 (END)
-
-### การจัดการระบบด้วย Docker
+### เริ่มต้นใช้งาน
 ```bash
 # เริ่มระบบ
-docker compose up -d
+start.bat start
 
-# หยุดระบบ
-docker compose down
+# สร้าง Admin User
+start.bat admin
 
-# หยุดและลบข้อมูล
-docker compose down -v
-
-# ดู logs
-docker compose logs -f
-
-# ตรวจสอบสถานะ
-docker compose ps
+# เปิดเว็บไซต์
+# Frontend: http://localhost:3000
+# Backend:  http://localhost:3001
+# pgAdmin:  http://localhost:8080
 ```
 
-## สถานะการพัฒนา
+### บัญชี Admin เริ่มต้น
+- **Username:** `admin`
+- **Password:** `admin123`
+- **Email:** `admin@admin.com`
 
-### ส่วนที่เสร็จแล้ว
-- **Backend System** - API และ Database พร้อมใช้งาน
-- **Frontend UI** - Interface ครบถ้วน
-- **Authentication** - ระบบล็อกอิน/ลงทะเบียน
-- **Database Schema** - โครงสร้างฐานข้อมูลครบถ้วน
-- **AI Risk Assessment** - ระบบประเมินความเสี่ยงเบาหวานด้วย AI
-- **Notification System** - ระบบแจ้งเตือนแบบเรียลไทม์
-- **AI Research Data Collection** - ระบบเก็บข้อมูลสำหรับ AI
-- **Critical Lab Values** - ระบบติดตามค่าผลแลบสำคัญ
-- **Enhanced Data Management** - ระบบจัดการข้อมูลโภชนาการและการออกกำลังกาย
-- **Timezone Support** - รองรับเวลาไทย (Asia/Bangkok)
-- **Docker Support** - รองรับการใช้งานด้วย Docker
-- **start.bat** - ไฟล์จัดการระบบสำหรับ Windows
+## 📋 ฟีเจอร์หลัก
 
-## โครงสร้างโปรเจค
+### 🏥 EMR Dashboard
+- **URL:** http://localhost:3000/emr/dashboard
+- **ฟีเจอร์:** แดชบอร์ดหลักสำหรับแพทย์และพยาบาล
+- **ข้อมูล:** สถานะคิว, จำนวนผู้ป่วย, กิจกรรมล่าสุด
 
+### 📝 Patient Check-in
+- **URL:** http://localhost:3000/emr/checkin
+- **ฟีเจอร์:** ระบบลงทะเบียนผู้ป่วย
+- **ข้อมูล:** เลือกแผนก, ข้อมูลผู้ป่วย, การนัดหมาย
+
+### 💊 Vital Signs
+- **URL:** http://localhost:3000/emr/vital-signs
+- **ฟีเจอร์:** บันทึกสัญญาณชีพ
+- **ข้อมูล:** ความดัน, ชีพจร, อุณหภูมิ, น้ำหนัก, ส่วนสูง
+
+### 📋 History Taking
+- **URL:** http://localhost:3000/emr/history-taking
+- **ฟีเจอร์:** บันทึกประวัติการเจ็บป่วย
+- **ข้อมูล:** อาการหลัก, ประวัติการเจ็บป่วย, การตรวจร่างกาย
+
+### 🧪 Lab Results
+- **URL:** http://localhost:3000/emr/lab-result
+- **ฟีเจอร์:** บันทึกผลการตรวจแลป
+- **ข้อมูล:** ผลการตรวจ, การแปลผล, คำแนะนำ
+
+### 📅 Appointments
+- **URL:** http://localhost:3000/emr/appointments
+- **ฟีเจอร์:** จัดการการนัดหมาย
+- **ข้อมูล:** สร้างนัดหมาย, ดูรายการนัดหมาย, จัดการเวลา
+
+### 📄 Documents
+- **URL:** http://localhost:3000/emr/documents
+- **ฟีเจอร์:** ออกเอกสารทางการแพทย์
+- **ข้อมูล:** ใบรับรองแพทย์, ใบส่งตัว, เอกสารอื่นๆ
+
+### 👤 Patient Portal
+- **URL:** http://localhost:3000/accounts/patient
+- **ฟีเจอร์:** พอร์ทัลสำหรับผู้ป่วย
+- **ข้อมูล:** ดูประวัติ, ผลแลป, การนัดหมาย
+
+### 🔧 Admin Panel
+- **URL:** http://localhost:3000/admin
+- **ฟีเจอร์:** จัดการระบบ
+- **ข้อมูล:** จัดการผู้ใช้, ตั้งค่าระบบ, รายงาน
+
+## 🛠️ การติดตั้งและใช้งาน
+
+### ความต้องการของระบบ
+- **Docker Desktop** (Windows/Mac/Linux)
+- **Node.js 18+** (สำหรับ development)
+- **PostgreSQL 15+** (ผ่าน Docker)
+- **Redis 7+** (ผ่าน Docker)
+
+### การติดตั้ง
+1. **Clone โปรเจกต์**
+   ```bash
+   git clone <repository-url>
+   cd Project
+   ```
+
+2. **เริ่มระบบ**
+   ```bash
+   start.bat start
+   ```
+
+3. **สร้าง Admin User**
+```bash
+start.bat admin
+```
+
+4. **เปิดเว็บไซต์**
+- Frontend: http://localhost:3000
+- Backend: http://localhost:3001
+- pgAdmin: http://localhost:8080
+
+### คำสั่งที่ใช้ได้
+```bash
+start.bat start      # เริ่มระบบ
+start.bat stop       # หยุดระบบ
+start.bat restart    # รีสตาร์ทระบบ
+start.bat clean      # ล้างข้อมูล Docker
+start.bat admin      # สร้าง Admin User
+start.bat help       # แสดงความช่วยเหลือ
+```
+
+## 🗄️ ฐานข้อมูล
+
+### ตารางหลัก
+- **users** - ข้อมูลผู้ใช้งาน
+- **patients** - ข้อมูลผู้ป่วย
+- **visits** - การมาโรงพยาบาล
+- **medical_records** - บันทึกทางการแพทย์
+- **vital_signs** - สัญญาณชีพ
+- **appointments** - การนัดหมาย
+- **prescriptions** - ใบสั่งยา
+- **lab_orders** - คำสั่งแลป
+- **lab_results** - ผลแลป
+- **notifications** - การแจ้งเตือน
+- **departments** - แผนก
+- **queue_history** - ประวัติคิว
+
+### ตารางเพิ่มเติม
+- **detailed_nutrition** - ข้อมูลโภชนาการ
+- **detailed_exercise** - ข้อมูลการออกกำลังกาย
+- **critical_lab_values** - ผลแลปสำคัญ
+- **external_requesters** - ผู้ขอข้อมูลภายนอก
+- **consent_contracts** - สัญญายินยอม
+- **audit_logs** - บันทึกการตรวจสอบ
+
+## 🔧 การพัฒนา
+
+### โครงสร้างโปรเจกต์
 ```
 Project/
 ├── backend/                 # Backend API (Node.js + Express)
 │   ├── src/
-│   │   ├── controllers/    # API Controllers
-│   │   ├── database/       # Database connection & schema
-│   │   ├── middleware/     # Express middleware
-│   │   ├── routes/         # API routes
-│   │   ├── types/          # TypeScript types
-│   │   └── utils/          # Utility functions
-│   ├── Dockerfile          # Backend Docker configuration
-│   └── package.json
-├── frontend/               # Frontend App (Next.js + React)
+│   │   ├── controllers/     # API Controllers
+│   │   ├── routes/         # API Routes
+│   │   ├── services/       # Business Logic
+│   │   ├── database/       # Database Connection & Migrations
+│   │   └── middleware/     # Express Middleware
+├── frontend/               # Frontend (Next.js + React)
 │   ├── src/
-│   │   ├── app/            # Next.js App Router
-│   │   ├── components/     # React components
-│   │   ├── contexts/       # React contexts
-│   │   ├── lib/            # Library functions
-│   │   └── types/          # TypeScript types
-│   ├── Dockerfile          # Frontend Docker configuration
-│   └── package.json
-├── docker-compose.yml      # Docker Compose configuration
-├── start.bat              # Windows startup script
-└── README.md              # เอกสารหลัก
+│   │   ├── app/           # Next.js App Router
+│   │   ├── components/    # React Components
+│   │   ├── services/      # API Services
+│   │   └── contexts/      # React Contexts
+├── docker-compose.yml      # Docker Configuration
+├── start.bat              # Management Script
+└── README.md              # Documentation
 ```
 
-## เทคโนโลยีที่ใช้
+### การพัฒนา
+1. **Backend Development**
+   ```bash
+   cd backend
+   npm install
+   npm run dev
+   ```
 
-### Backend
-- **Node.js** + Express.js
-- **TypeScript** - Type safety
-- **PostgreSQL** - ฐานข้อมูลหลัก
-- **JWT Authentication** - ระบบยืนยันตัวตน
+2. **Frontend Development**
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+3. **Database Management**
+   - pgAdmin: http://localhost:8080
+   - Username: admin@admin.com
+   - Password: admin
+
+## 🔐 ความปลอดภัย
+
+### การยืนยันตัวตน
+- **JWT Authentication** - Token-based authentication
+- **Role-based Access Control** - ควบคุมการเข้าถึงตามบทบาท
+- **Password Hashing** - bcrypt สำหรับรหัสผ่าน
+
+### บทบาทผู้ใช้
+- **admin** - ผู้ดูแลระบบ
+- **doctor** - แพทย์
+- **nurse** - พยาบาล
+- **patient** - ผู้ป่วย
+- **pharmacist** - เภสัชกร
+- **lab_tech** - นักเทคนิคการแพทย์
+
+## 📊 การแจ้งเตือน
+
+### ระบบแจ้งเตือน
+- **Email Notifications** - ส่งอีเมลแจ้งเตือน
+- **SMS Notifications** - ส่ง SMS แจ้งเตือน
+- **In-App Notifications** - แจ้งเตือนในแอป
+- **Real-time Updates** - อัปเดตแบบเรียลไทม์
+
+### ประเภทการแจ้งเตือน
+- การนัดหมายใหม่
+- ผลแลปพร้อม
+- ใบสั่งยาพร้อม
+- เอกสารออกแล้ว
+- การแจ้งเตือนระบบ
+
+## 🤖 AI Features
+
+### การประเมินความเสี่ยง
+- **Diabetes Risk Assessment** - ประเมินความเสี่ยงเบาหวาน
+- **Critical Lab Values** - วิเคราะห์ผลแลปสำคัญ
+- **Health Insights** - ข้อมูลเชิงลึกด้านสุขภาพ
+
+### การวิเคราะห์ข้อมูล
+- **Nutrition Analysis** - วิเคราะห์ข้อมูลโภชนาการ
+- **Exercise Tracking** - ติดตามการออกกำลังกาย
+- **Health Trends** - แนวโน้มสุขภาพ
+
+## 🌐 External Requester System
+
+### ระบบผู้ขอข้อมูลภายนอก
+- **Registration** - ลงทะเบียนผู้ขอข้อมูล
+- **Consent Management** - จัดการการยินยอม
+- **Data Request** - ขอข้อมูลผู้ป่วย
+- **Audit Trail** - บันทึกการตรวจสอบ
+
+## 📱 Responsive Design
+
+### การรองรับอุปกรณ์
+- **Desktop** - คอมพิวเตอร์
+- **Tablet** - แท็บเล็ต
+- **Mobile** - มือถือ
+- **Cross-browser** - รองรับทุกเบราว์เซอร์
+
+## 🚀 Production Deployment
+
+### การเตรียม Production
+1. **Environment Variables**
+```bash
+   # Backend
+   NODE_ENV=production
+   JWT_SECRET=your-production-secret
+   DB_PASSWORD=your-secure-password
+   
+   # Frontend
+   NEXT_PUBLIC_API_URL=https://your-api-domain.com/api
+   ```
+
+2. **Security Settings**
+   - เปลี่ยน JWT secrets
+   - ตั้งรหัสผ่านฐานข้อมูลที่ปลอดภัย
+   - เปิดใช้ HTTPS
+   - ตั้งค่า CORS
+
+3. **Database Backup**
+   ```bash
+   # Backup database
+   docker exec emr_postgres pg_dump -U postgres emr_development > backup.sql
+   
+   # Restore database
+   docker exec -i emr_postgres psql -U postgres emr_development < backup.sql
+   ```
+
+## 📞 การสนับสนุน
+
+### การแก้ไขปัญหา
+1. **ตรวจสอบ Logs**
+   ```bash
+   # Backend logs
+   docker logs emr_backend
+   
+   # Frontend logs
+   docker logs emr_frontend
+   
+   # Database logs
+   docker logs emr_postgres
+   ```
+
+2. **รีสตาร์ทระบบ**
+   ```bash
+   start.bat restart
+   ```
+
+3. **ล้างข้อมูลและเริ่มใหม่**
+   ```bash
+   start.bat clean
+   start.bat start
+   start.bat admin
+   ```
+
+### การติดต่อ
+- **Email:** support@emr-system.com
+- **Documentation:** [Wiki](https://github.com/your-repo/wiki)
+- **Issues:** [GitHub Issues](https://github.com/your-repo/issues)
+
+## 📄 License
+
+MIT License - ดูรายละเอียดใน [LICENSE](LICENSE) file
+
+## 🙏 Acknowledgments
+
+- **Next.js** - React Framework
+- **Express.js** - Node.js Framework
+- **PostgreSQL** - Database
 - **Docker** - Containerization
-
-### Frontend
-- **Next.js 15** - React Framework
-- **TypeScript** - Type safety
 - **Tailwind CSS** - Styling
-- **Docker** - Containerization
-
-### Database
-- **PostgreSQL** - ฐานข้อมูลหลัก
-- **pgAdmin** - Database management
-- **Redis** - Caching (optional)
-
-## การมีส่วนร่วม
-
-1. Fork โปรเจค
-2. สร้าง feature branch
-3. Commit การเปลี่ยนแปลง
-4. Push ไป branch
-5. สร้าง Pull Request
-
-## License
-
-MIT License
+- **TypeScript** - Type Safety
 
 ---
 
-**Version:** 1.1.0  
-**Status:** Production Ready  
-**Last Updated:** October 2025
+**🏥 EMR System - Electronic Medical Records**  
+*ระบบบันทึกข้อมูลทางการแพทย์อิเล็กทรอนิกส์ที่สมบูรณ์ พร้อมใช้งาน*
 
-## 🆕 Latest Updates (v1.1.0)
-
-### New Features
-- **AI Research Data Collection** - ระบบเก็บข้อมูลสำหรับ AI model training
-- **Critical Lab Values Tracking** - ระบบติดตามค่าผลแลบสำคัญ
-- **Enhanced Data Management** - ระบบจัดการข้อมูลโภชนาการและการออกกำลังกาย
-- **Mark All Notifications as Read** - ฟีเจอร์อ่านการแจ้งเตือนทั้งหมด
-- **Timezone Support** - รองรับเวลาไทย (Asia/Bangkok)
-
-### Bug Fixes
-- **Fixed Notification Count Sync** - แก้ไขปัญหาการแสดงจำนวนการแจ้งเตือนไม่สอดคล้องกัน
-- **Fixed Timezone Display** - แก้ไขปัญหาการแสดงเวลาที่ไม่ถูกต้อง
-- **Fixed API Endpoints** - แก้ไขปัญหา API endpoints สำหรับ enhanced data
-- **Fixed Database Migrations** - ปรับปรุงระบบ migration ให้เสถียรขึ้น
-
-### Improvements
-- **Enhanced Error Handling** - ปรับปรุงการจัดการข้อผิดพลาด
-- **Better Database Health Checks** - ระบบตรวจสอบสุขภาพฐานข้อมูลที่ดีขึ้น
-- **Improved Notification System** - ระบบแจ้งเตือนที่เสถียรและแม่นยำขึ้น
-- **Updated Documentation** - อัปเดตเอกสารให้ครบถ้วน
+**Version:** 1.0.0  
+**Last Updated:** January 2025  
+**Status:** Production Ready ✅

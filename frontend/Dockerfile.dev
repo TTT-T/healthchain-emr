@@ -1,0 +1,35 @@
+# Frontend Development Dockerfile - Fast builds for development
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install curl for health check
+RUN apk add --no-cache curl
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy package files first for better caching
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY --chown=nextjs:nodejs . .
+
+# Create .next directory with proper permissions
+RUN mkdir -p /app/.next && chown -R nextjs:nodejs /app/.next
+
+USER nextjs
+
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000 || exit 1
+
+# Start application (development mode)
+CMD ["npm", "run", "dev"]

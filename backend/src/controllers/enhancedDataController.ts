@@ -434,7 +434,7 @@ export const getComprehensivePatientData = async (req: Request, res: Response) =
 
     // Get patient basic info
     const patientResult = await databaseManager.query(`
-      SELECT p.*, u.first_name, u.last_name, u.thai_name
+      SELECT p.*, u.first_name, u.last_name, u.thai_first_name
       FROM patients p
       LEFT JOIN users u ON p.user_id = u.id
       WHERE p.id = $1

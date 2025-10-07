@@ -322,7 +322,7 @@ async function getPatientDataForAssessment(patientId: string): Promise<RiskFacto
     // Get la vital signs
     const vitalSignsResult = await databaseManager.query(`
       SELECT 
-        systolic_bp, diastolic_bp, heart_rate, temperature,
+        blood_pressure_systolic, blood_pressure_diastolic, heart_rate, temperature,
         weight, height, bmi, blood_glucose
       FROM vital_signs
       WHERE patient_id = $1
@@ -335,11 +335,11 @@ async function getPatientDataForAssessment(patientId: string): Promise<RiskFacto
     // Get la lab results
     const labResultsResult = await databaseManager.query(`
       SELECT 
-        lr.result_numeric, lr.result_unit, lo._name
+        lr.result_value, lr.result_unit, lo.test_name
       FROM lab_results lr
       INNER JOIN lab_orders lo ON lr.lab_order_id = lo.id
       WHERE lo.patient_id = $1
-      AND lo._name IN ('Cholesterol', 'HDL', 'LDL', 'Triglycerides', 'Blood Glucose')
+      AND lo.test_name IN ('Cholesterol', 'HDL', 'LDL', 'Triglycerides', 'Blood Glucose')
       ORDER BY lr.result_date DESC
       LIMIT 10
     `, [patientId]);
@@ -348,19 +348,19 @@ async function getPatientDataForAssessment(patientId: string): Promise<RiskFacto
 
     // Extract cholesterol value (use total cholesterol if available)
     const cholesterolResult = labResults.find(r => r._name === 'Cholesterol');
-    const cholesterol = cholesterolResult ? parseFloat(cholesterolResult.result_numeric) : 200;
+    const cholesterol = cholesterolResult ? parseFloat(cholesterolResult.result_value) : 200;
 
     // Extract blood glucose
     const glucoseResult = labResults.find(r => r._name === 'Blood Glucose');
-    const bloodGlucose = glucoseResult ? parseFloat(glucoseResult.result_numeric) : (vitalSigns.blood_glucose || 100);
+    const bloodGlucose = glucoseResult ? parseFloat(glucoseResult.result_value) : (vitalSigns.blood_glucose || 100);
 
     return {
       age: patient.age || 30,
       gender: patient.gender || 'unknown',
       bmi: vitalSigns.bmi || 25,
       bloodPressure: {
-        systolic: vitalSigns.systolic_bp || 120,
-        diastolic: vitalSigns.diastolic_bp || 80
+        systolic: vitalSigns.blood_pressure_systolic || 120,
+        diastolic: vitalSigns.blood_pressure_diastolic || 80
       },
       bloodGlucose: bloodGlucose,
       cholesterol: cholesterol,
@@ -866,7 +866,7 @@ export const getAIDashboardOverview = async (req: Request, res: Response) => {
         ra.*,
         u.first_name,
         u.last_name,
-        p.thai_name
+        p.thai_first_name
       FROM risk_assessments ra
       LEFT JOIN users u ON ra.assessed_by = u.id
       LEFT JOIN patients p ON ra.patient_id = p.created_by
@@ -902,7 +902,7 @@ export const getAIDashboardOverview = async (req: Request, res: Response) => {
       },
       recentAssessments: recentAssessmentsResult.rows.map(row => ({
         id: row.id,
-        patientName: row.thai_name || `${row.first_name} ${row.last_name}`,
+        patientName: row.thai_first_name || `${row.first_name} ${row.last_name}`,
         assessmentType: row.assessment_type,
         riskLevel: row.risk_level,
         probability: row.probability,
