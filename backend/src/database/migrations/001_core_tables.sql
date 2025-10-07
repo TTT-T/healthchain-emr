@@ -535,11 +535,7 @@ CREATE TRIGGER update_prescription_items_updated_at BEFORE UPDATE ON prescriptio
 CREATE TRIGGER update_visit_attachments_updated_at BEFORE UPDATE ON visit_attachments
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_detailed_nutrition_updated_at BEFORE UPDATE ON detailed_nutrition
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_detailed_exercise_updated_at BEFORE UPDATE ON detailed_exercise
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =============================================================================
 -- ENHANCED DATA TABLES - ตารางข้อมูลเพิ่มเติม
@@ -578,6 +574,13 @@ CREATE TABLE IF NOT EXISTS detailed_exercise (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Triggers for enhanced data tables
+CREATE TRIGGER update_detailed_nutrition_updated_at BEFORE UPDATE ON detailed_nutrition
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_detailed_exercise_updated_at BEFORE UPDATE ON detailed_exercise
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- =============================================================================
 -- COMMENTS
 -- =============================================================================
@@ -594,6 +597,8 @@ COMMENT ON TABLE lab_results IS 'ผลตรวจแลป - Laboratory test r
 COMMENT ON TABLE prescriptions IS 'ใบสั่งยา - Medical prescriptions';
 COMMENT ON TABLE prescription_items IS 'รายการยาในใบสั่ง - Prescription items';
 COMMENT ON TABLE visit_attachments IS 'ไฟล์แนบการมาพบ - Visit attachments';
+COMMENT ON TABLE detailed_nutrition IS 'ข้อมูลโภชนาการรายละเอียด - Detailed nutrition assessment';
+COMMENT ON TABLE detailed_exercise IS 'ข้อมูลการออกกำลังกายรายละเอียด - Detailed exercise assessment';
 
 -- =============================================================================
 -- 11. APPOINTMENTS TABLE - การนัดหมาย
@@ -1896,6 +1901,27 @@ ALTER TABLE queue_history
   DROP CONSTRAINT IF EXISTS fk_queue_history_created_by,
   ADD CONSTRAINT fk_queue_history_created_by 
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
+
+-- Enhanced data foreign keys
+ALTER TABLE detailed_nutrition
+  DROP CONSTRAINT IF EXISTS fk_detailed_nutrition_patient,
+  ADD CONSTRAINT fk_detailed_nutrition_patient 
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE;
+
+ALTER TABLE detailed_nutrition
+  DROP CONSTRAINT IF EXISTS fk_detailed_nutrition_assessed_by,
+  ADD CONSTRAINT fk_detailed_nutrition_assessed_by 
+    FOREIGN KEY (assessed_by) REFERENCES users(id) ON DELETE SET NULL;
+
+ALTER TABLE detailed_exercise
+  DROP CONSTRAINT IF EXISTS fk_detailed_exercise_patient,
+  ADD CONSTRAINT fk_detailed_exercise_patient 
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE;
+
+ALTER TABLE detailed_exercise
+  DROP CONSTRAINT IF EXISTS fk_detailed_exercise_assessed_by,
+  ADD CONSTRAINT fk_detailed_exercise_assessed_by 
+    FOREIGN KEY (assessed_by) REFERENCES users(id) ON DELETE SET NULL;
 
 -- Activity Logs Table Foreign Keys
 ALTER TABLE activity_logs
