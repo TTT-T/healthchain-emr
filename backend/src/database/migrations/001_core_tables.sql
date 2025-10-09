@@ -2190,6 +2190,58 @@ CREATE INDEX IF NOT EXISTS idx_ai_insights_is_active ON ai_insights(is_active);
 COMMENT ON TABLE ai_insights IS 
   'Stores AI-generated insights and risk assessments for patients';
 
+-- =============================================================================
+-- AI DIABETES PREDICTION TABLE
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS ai_diabetes_predictions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    
+    -- Patient Reference
+    patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    
+    -- Prediction Data
+    risk_score INTEGER NOT NULL CHECK (risk_score >= 0 AND risk_score <= 100),
+    risk_level VARCHAR(20) NOT NULL CHECK (risk_level IN ('LOW', 'MODERATE', 'HIGH', 'VERY_HIGH')),
+    probability DECIMAL(5,2) NOT NULL CHECK (probability >= 0 AND probability <= 100),
+    
+    -- Risk Factors (JSONB for flexibility)
+    risk_factors JSONB NOT NULL,
+    
+    -- Recommendations (JSONB for flexibility)
+    recommendations JSONB NOT NULL,
+    
+    -- Timeline (JSONB for flexibility)
+    timeline JSONB NOT NULL,
+    
+    -- Health Metrics
+    bmi DECIMAL(4,1),
+    bmi_category VARCHAR(20),
+    blood_pressure_category VARCHAR(20),
+    heart_rate_category VARCHAR(20),
+    oxygen_level_category VARCHAR(20),
+    
+    -- Metadata
+    model_version VARCHAR(50) DEFAULT '1.0.0',
+    generated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for AI Diabetes Predictions
+CREATE INDEX IF NOT EXISTS idx_ai_diabetes_predictions_patient_id ON ai_diabetes_predictions(patient_id);
+CREATE INDEX IF NOT EXISTS idx_ai_diabetes_predictions_risk_level ON ai_diabetes_predictions(risk_level);
+CREATE INDEX IF NOT EXISTS idx_ai_diabetes_predictions_risk_score ON ai_diabetes_predictions(risk_score);
+CREATE INDEX IF NOT EXISTS idx_ai_diabetes_predictions_generated_at ON ai_diabetes_predictions(generated_at);
+CREATE INDEX IF NOT EXISTS idx_ai_diabetes_predictions_is_active ON ai_diabetes_predictions(is_active);
+
+-- Trigger for updated_at
+CREATE TRIGGER update_ai_diabetes_predictions_updated_at BEFORE UPDATE ON ai_diabetes_predictions
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+COMMENT ON TABLE ai_diabetes_predictions IS 'AI Diabetes Risk Predictions - การคาดการณ์ความเสี่ยงโรคเบาหวานด้วย AI';
+
 -- Deprecation tracking table
 CREATE TABLE IF NOT EXISTS deprecated_api_usage (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -2315,7 +2367,7 @@ COMMENT ON COLUMN critical_lab_values.ast IS 'AST - Aspartate Aminotransferase (
 -- DATABASE SUMMARY
 -- =============================================================================
 -- 
--- 📊 TABLES CREATED: 25+ tables
+-- 📊 TABLES CREATED: 26+ tables
 -- 🏥 CORE TABLES:
 --   - users (ผู้ใช้งานระบบ)
 --   - patients (ข้อมูลผู้ป่วย)
@@ -2332,6 +2384,7 @@ COMMENT ON COLUMN critical_lab_values.ast IS 'AST - Aspartate Aminotransferase (
 --   - detailed_nutrition (ข้อมูลโภชนาการ)
 --   - detailed_exercise (ข้อมูลการออกกำลังกาย)
 --   - critical_lab_values (ผลแลปสำคัญ)
+--   - ai_diabetes_predictions (การคาดการณ์โรคเบาหวานด้วย AI)
 -- 
 -- 🔧 FEATURES INCLUDED:
 --   - Complete EMR functionality
@@ -2343,6 +2396,7 @@ COMMENT ON COLUMN critical_lab_values.ast IS 'AST - Aspartate Aminotransferase (
 --   - Document management
 --   - Notification system
 --   - AI data collection
+--   - AI Diabetes Prediction
 --   - External requester system
 --   - Consent management
 --   - Audit logging

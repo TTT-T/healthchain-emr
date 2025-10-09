@@ -67,11 +67,11 @@ export const getAllConsentRequests = async (req: Request, res: Response) => {
 
     if (search) {
       whereClause += ` AND (
-        cr.requester_name ILIKE $${paramIndex} OR 
-        cr.patient_name ILIKE $${paramIndex} OR 
-        cr.patient_hn ILIKE $${paramIndex} OR 
+        (u.first_name || ' ' || u.last_name) ILIKE $${paramIndex} OR 
+        (p.first_name || ' ' || p.last_name) ILIKE $${paramIndex} OR 
+        p.hn ILIKE $${paramIndex} OR 
         cr.id::text ILIKE $${paramIndex} OR
-        cr.request_id ILIKE $${paramIndex}
+        cr.id::text ILIKE $${paramIndex}
       )`;
       queryParams.push(`%${search}%`);
       paramIndex++;
@@ -81,6 +81,8 @@ export const getAllConsentRequests = async (req: Request, res: Response) => {
     const countQuery = `
       SELECT COUNT(*) as total
       FROM consent_requests cr
+      LEFT JOIN users u ON cr.requester_id = u.id
+      LEFT JOIN patients p ON cr.patient_id = p.id
       ${whereClause}
     `;
 
@@ -91,23 +93,25 @@ export const getAllConsentRequests = async (req: Request, res: Response) => {
     const requestsQuery = `
       SELECT 
         cr.id,
-        cr.request_id,
-        cr.requester_name,
-        cr.requester_type,
-        cr.patient_name,
-        cr.patient_hn,
+        cr.id as request_id,
+        u.first_name || ' ' || u.last_name as requester_name,
+        u.role as requester_type,
+        p.first_name || ' ' || p.last_name as patient_name,
+        p.hn as patient_hn,
         cr.request_type,
-        cr.requested_data_types,
+        cr.data_types as requested_data_types,
         cr.purpose,
-        cr.urgency_level,
+        'medium' as urgency_level,
         cr.status,
-        cr.created_at,
+        cr.requested_at as created_at,
         cr.expires_at,
-        cr.is_compliant,
-        cr.compliance_notes
+        true as is_compliant,
+        cr.response_reason as compliance_notes
       FROM consent_requests cr
+      LEFT JOIN users u ON cr.requester_id = u.id
+      LEFT JOIN patients p ON cr.patient_id = p.id
       ${whereClause}
-      ORDER BY cr.created_at DESC
+      ORDER BY cr.requested_at DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 

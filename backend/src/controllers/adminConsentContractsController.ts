@@ -70,7 +70,7 @@ export const getAllConsentContracts = async (req: Request, res: Response) => {
     }
 
     // Validate sortBy
-    const allowedSortFields = ['created_at', 'expires_at', 'contract_id', 'status', 'last_accessed'];
+    const allowedSortFields = ['created_at', 'valid_until', 'contract_id', 'status', 'last_accessed'];
     const validSortBy = allowedSortFields.includes(sortBy as string) ? sortBy : 'created_at';
     const validSortOrder = sortOrder === 'asc' ? 'ASC' : 'DESC';
 
@@ -81,10 +81,10 @@ export const getAllConsentContracts = async (req: Request, res: Response) => {
         cc.contract_id,
         cc.patient_id,
         cc.requester_id,
-        cc.data_types as allowed_data_types,
+        cc.allowed_data_types as allowed_data_types,
         cc.purpose as contract_type,
         cc.created_at as valid_from,
-        cc.expires_at as valid_until,
+        cc.valid_until as valid_until,
         0 as access_count,
         NULL as max_access_count,
         cc.status,
@@ -185,8 +185,8 @@ export const getConsentContractStats = async (req: Request, res: Response) => {
     const statsQuery = `
       SELECT 
         COUNT(*) as total_contracts,
-        COUNT(CASE WHEN status = 'approved' AND (expires_at IS NULL OR expires_at > NOW()) THEN 1 END) as active_contracts,
-        COUNT(CASE WHEN status = 'approved' AND expires_at IS NOT NULL AND expires_at <= NOW() THEN 1 END) as expired_contracts,
+        COUNT(CASE WHEN status = 'approved' AND (valid_until IS NULL OR valid_until > NOW()) THEN 1 END) as active_contracts,
+        COUNT(CASE WHEN status = 'approved' AND valid_until IS NOT NULL AND valid_until <= NOW() THEN 1 END) as expired_contracts,
         COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_contracts
       FROM consent_contracts
     `;
@@ -260,10 +260,10 @@ export const getConsentContractById = async (req: Request, res: Response) => {
         cc.contract_id,
         cc.patient_id,
         cc.requester_id,
-        cc.data_types as allowed_data_types,
+        cc.allowed_data_types as allowed_data_types,
         cc.purpose as contract_type,
         cc.created_at as valid_from,
-        cc.expires_at as valid_until,
+        cc.valid_until as valid_until,
         0 as access_count,
         NULL as max_access_count,
         cc.status,

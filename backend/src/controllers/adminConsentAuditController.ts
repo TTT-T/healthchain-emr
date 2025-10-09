@@ -135,20 +135,42 @@ export class AdminConsentAuditController {
         });
       }
 
-      // Get violation alerts from audit trail
-      const violations = await databaseManager.query(`
-        SELECT 
-          id,
-          action as type,
-          timestamp,
-          change_reason as description,
-          changed_by as user_id,
-          contract_id as consent_request_id
-        FROM consent_audit_trail
-        WHERE action IN ('data_breach', 'unauthorized_access', 'consent_violation', 'policy_violation')
-        ORDER BY timestamp DESC
-        LIMIT $1
-      `, [limit]);
+      // First check what columns exist in the table
+      const columnCheck = await databaseManager.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'consent_audit_trail'
+      `);
+      
+      const existingColumns = columnCheck.rows.map(row => row.column_name);
+      
+      // Build query based on available columns
+      let violationsQuery = `SELECT id, action as type`;
+      let orderClause = `ORDER BY id DESC`; // fallback ordering
+      
+      if (existingColumns.includes('timestamp')) {
+        violationsQuery += `, timestamp`;
+        orderClause = `ORDER BY timestamp DESC`;
+      } else if (existingColumns.includes('created_at')) {
+        violationsQuery += `, created_at as timestamp`;
+        orderClause = `ORDER BY created_at DESC`;
+      }
+      
+      if (existingColumns.includes('change_reason')) {
+        violationsQuery += `, change_reason as description`;
+      }
+      
+      if (existingColumns.includes('changed_by')) {
+        violationsQuery += `, changed_by as user_id`;
+      }
+      
+      if (existingColumns.includes('contract_id')) {
+        violationsQuery += `, contract_id as consent_request_id`;
+      }
+      
+      violationsQuery += ` FROM consent_audit_trail WHERE action IN ('data_breach', 'unauthorized_access', 'consent_violation', 'policy_violation') ${orderClause} LIMIT $1`;
+
+      const violations = await databaseManager.query(violationsQuery, [limit]);
 
       // Transform to violation alerts format
       const violationAlerts = violations.rows.map((violation, index) => ({
@@ -203,13 +225,27 @@ export class AdminConsentAuditController {
         });
       }
 
+      // First check what columns exist in the consent_requests table
+      const columnCheck = await databaseManager.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'consent_requests'
+      `);
+      
+      const existingColumns = columnCheck.rows.map(row => row.column_name);
+      
+      // Use the correct column name based on what exists
+      const roleColumn = existingColumns.includes('requester_type') ? 'requester_type' : 
+                        existingColumns.includes('request_type') ? 'request_type' : 
+                        'id'; // fallback
+      
       // Get usage by user type from consent requests
       const usageData = await databaseManager.query(`
         SELECT 
-          cr.requester_type as role,
+          cr.${roleColumn} as role,
           COUNT(cr.id) as count
         FROM consent_requests cr
-        GROUP BY cr.requester_type
+        GROUP BY cr.${roleColumn}
         ORDER BY count DESC
       `);
 
@@ -425,20 +461,42 @@ export class AdminConsentAuditController {
       return [];
     }
 
-    // Get violation alerts from audit trail
-    const violations = await databaseManager.query(`
-      SELECT 
-        id,
-        action as type,
-        timestamp,
-        change_reason as description,
-        changed_by as user_id,
-        contract_id as consent_request_id
-      FROM consent_audit_trail
-      WHERE action IN ('data_breach', 'unauthorized_access', 'consent_violation', 'policy_violation')
-      ORDER BY timestamp DESC
-      LIMIT $1
-    `, [limit]);
+    // First check what columns exist in the table
+    const columnCheck = await databaseManager.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'consent_audit_trail'
+    `);
+    
+    const existingColumns = columnCheck.rows.map(row => row.column_name);
+    
+    // Build query based on available columns
+    let violationsQuery = `SELECT id, action as type`;
+    let orderClause = `ORDER BY id DESC`; // fallback ordering
+    
+    if (existingColumns.includes('timestamp')) {
+      violationsQuery += `, timestamp`;
+      orderClause = `ORDER BY timestamp DESC`;
+    } else if (existingColumns.includes('created_at')) {
+      violationsQuery += `, created_at as timestamp`;
+      orderClause = `ORDER BY created_at DESC`;
+    }
+    
+    if (existingColumns.includes('change_reason')) {
+      violationsQuery += `, change_reason as description`;
+    }
+    
+    if (existingColumns.includes('changed_by')) {
+      violationsQuery += `, changed_by as user_id`;
+    }
+    
+    if (existingColumns.includes('contract_id')) {
+      violationsQuery += `, contract_id as consent_request_id`;
+    }
+    
+    violationsQuery += ` FROM consent_audit_trail WHERE action IN ('data_breach', 'unauthorized_access', 'consent_violation', 'policy_violation') ${orderClause} LIMIT $1`;
+
+    const violations = await databaseManager.query(violationsQuery, [limit]);
 
     // Transform to violation alerts format
     return violations.rows.map((violation, index) => ({
@@ -468,13 +526,27 @@ export class AdminConsentAuditController {
       return [];
     }
 
+    // First check what columns exist in the consent_requests table
+    const columnCheck = await databaseManager.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'consent_requests'
+    `);
+    
+    const existingColumns = columnCheck.rows.map(row => row.column_name);
+    
+    // Use the correct column name based on what exists
+    const roleColumn = existingColumns.includes('requester_type') ? 'requester_type' : 
+                      existingColumns.includes('request_type') ? 'request_type' : 
+                      'id'; // fallback
+    
     // Get usage by user type from consent requests
     const usageData = await databaseManager.query(`
       SELECT 
-        cr.requester_type as role,
+        cr.${roleColumn} as role,
         COUNT(cr.id) as count
       FROM consent_requests cr
-      GROUP BY cr.requester_type
+      GROUP BY cr.${roleColumn}
       ORDER BY count DESC
     `);
 

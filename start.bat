@@ -272,6 +272,7 @@ echo [INFO] 📅 Appointments: %FRONTEND_URL%/emr/appointments
 echo [INFO] 📄 Documents: %FRONTEND_URL%/emr/documents
 echo [INFO] 👤 Patient Portal: %FRONTEND_URL%/accounts/patient
 echo [INFO] 🔧 Admin Panel: %FRONTEND_URL%/admin
+echo [INFO] 🤖 AI Diabetes Prediction: %FRONTEND_URL%/admin/ai-diabetes
 echo [INFO] ============================================
 ) else (
     echo [ERROR] Failed to create admin user!

@@ -39,8 +39,14 @@ const getApiBaseUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL;
   }
   
-  // Use localhost for browser requests (from host machine)
-  return 'http://localhost:3001/api';
+  // Check if we're running in browser (client-side) or server-side
+  if (typeof window !== 'undefined') {
+    // Client-side: use localhost for browser requests
+    return 'http://localhost:3001/api';
+  } else {
+    // Server-side: use container name for internal Docker communication
+    return 'http://emr_backend:3001/api';
+  }
 };
 
 const API_BASE_URL = getApiBaseUrl();

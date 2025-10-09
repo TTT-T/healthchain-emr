@@ -1,104 +1,64 @@
-# 🏥 EMR System - Electronic Medical Records
+# EMR System - Electronic Medical Records
 
-ระบบบันทึกข้อมูลทางการแพทย์อิเล็กทรอนิกส์ที่สมบูรณ์ พร้อมใช้งาน
+ระบบจัดการเวชระเบียนอิเล็กทรอนิกส์ (EMR) ที่ครบถ้วน พร้อมระบบ AI สำหรับการคาดการณ์โรคเบาหวาน
 
-## 🚀 Quick Start
+## 🏥 ฟีเจอร์หลัก
 
-### เริ่มต้นใช้งาน
-```bash
-# เริ่มระบบ
-start.bat start
+### ระบบ EMR หลัก
+- **Patient Management** - จัดการข้อมูลผู้ป่วย
+- **Doctor Workflows** - ระบบการทำงานของแพทย์
+- **Nurse Workflows** - ระบบการทำงานของพยาบาล
+- **Appointment Scheduling** - ระบบนัดหมาย
+- **Lab Management** - จัดการแลปและผลตรวจ
+- **Prescription System** - ระบบใบสั่งยา
+- **Document Management** - จัดการเอกสารทางการแพทย์
+- **Vital Signs** - บันทึกสัญญาณชีพ
+- **History Taking** - การซักประวัติ
+- **Queue Management** - จัดการคิวผู้ป่วย
 
-# สร้าง Admin User
-start.bat admin
+### ระบบ AI
+- **AI Diabetes Prediction** - คาดการณ์ความเสี่ยงโรคเบาหวาน
+- **Risk Assessment** - ประเมินความเสี่ยงสุขภาพ
+- **Personalized Recommendations** - คำแนะนำเฉพาะบุคคล
+- **Treatment Timeline** - แผนการรักษาระยะยาว
 
-# เปิดเว็บไซต์
-# Frontend: http://localhost:3000
-# Backend:  http://localhost:3001
-# pgAdmin:  http://localhost:8080
-```
+### ระบบ Admin
+- **User Management** - จัดการผู้ใช้งาน
+- **Role & Permissions** - จัดการสิทธิ์และบทบาท
+- **System Monitoring** - ตรวจสอบระบบ
+- **Database Management** - จัดการฐานข้อมูล
+- **Activity Logs** - บันทึกกิจกรรม
+- **Notifications** - ระบบแจ้งเตือน
 
-### บัญชี Admin เริ่มต้น
-- **Username:** `admin`
-- **Password:** `admin123`
-- **Email:** `admin@admin.com`
+### ระบบ External Requesters
+- **Consent Management** - จัดการความยินยอม
+- **Data Request System** - ระบบขอข้อมูล
+- **Audit Trail** - ติดตามการใช้งาน
+- **Compliance Monitoring** - ตรวจสอบการปฏิบัติตามกฎระเบียบ
 
-## 📋 ฟีเจอร์หลัก
+## 🚀 การติดตั้งและใช้งาน
 
-### 🏥 EMR Dashboard
-- **URL:** http://localhost:3000/emr/dashboard
-- **ฟีเจอร์:** แดชบอร์ดหลักสำหรับแพทย์และพยาบาล
-- **ข้อมูล:** สถานะคิว, จำนวนผู้ป่วย, กิจกรรมล่าสุด
-
-### 📝 Patient Check-in
-- **URL:** http://localhost:3000/emr/checkin
-- **ฟีเจอร์:** ระบบลงทะเบียนผู้ป่วย
-- **ข้อมูล:** เลือกแผนก, ข้อมูลผู้ป่วย, การนัดหมาย
-
-### 💊 Vital Signs
-- **URL:** http://localhost:3000/emr/vital-signs
-- **ฟีเจอร์:** บันทึกสัญญาณชีพ
-- **ข้อมูล:** ความดัน, ชีพจร, อุณหภูมิ, น้ำหนัก, ส่วนสูง
-
-### 📋 History Taking
-- **URL:** http://localhost:3000/emr/history-taking
-- **ฟีเจอร์:** บันทึกประวัติการเจ็บป่วย
-- **ข้อมูล:** อาการหลัก, ประวัติการเจ็บป่วย, การตรวจร่างกาย
-
-### 🧪 Lab Results
-- **URL:** http://localhost:3000/emr/lab-result
-- **ฟีเจอร์:** บันทึกผลการตรวจแลป
-- **ข้อมูล:** ผลการตรวจ, การแปลผล, คำแนะนำ
-
-### 📅 Appointments
-- **URL:** http://localhost:3000/emr/appointments
-- **ฟีเจอร์:** จัดการการนัดหมาย
-- **ข้อมูล:** สร้างนัดหมาย, ดูรายการนัดหมาย, จัดการเวลา
-
-### 📄 Documents
-- **URL:** http://localhost:3000/emr/documents
-- **ฟีเจอร์:** ออกเอกสารทางการแพทย์
-- **ข้อมูล:** ใบรับรองแพทย์, ใบส่งตัว, เอกสารอื่นๆ
-
-### 👤 Patient Portal
-- **URL:** http://localhost:3000/accounts/patient
-- **ฟีเจอร์:** พอร์ทัลสำหรับผู้ป่วย
-- **ข้อมูล:** ดูประวัติ, ผลแลป, การนัดหมาย
-
-### 🔧 Admin Panel
-- **URL:** http://localhost:3000/admin
-- **ฟีเจอร์:** จัดการระบบ
-- **ข้อมูล:** จัดการผู้ใช้, ตั้งค่าระบบ, รายงาน
-
-## 🛠️ การติดตั้งและใช้งาน
-
-### ความต้องการของระบบ
-- **Docker Desktop** (Windows/Mac/Linux)
-- **Node.js 18+** (สำหรับ development)
-- **PostgreSQL 15+** (ผ่าน Docker)
-- **Redis 7+** (ผ่าน Docker)
+### ข้อกำหนดระบบ
+- Docker Desktop
+- Node.js 18+ (สำหรับ development)
+- PostgreSQL 15+ (ถ้าไม่ใช้ Docker)
 
 ### การติดตั้ง
-1. **Clone โปรเจกต์**
-   ```bash
-   git clone <repository-url>
-   cd Project
-   ```
+1. Clone repository:
+```bash
+git clone <repository-url>
+cd Project
+```
 
-2. **เริ่มระบบ**
-   ```bash
-   start.bat start
-   ```
+2. เริ่มระบบ:
+```bash
+start.bat start
+```
 
-3. **สร้าง Admin User**
+3. สร้าง Admin User:
 ```bash
 start.bat admin
 ```
-
-4. **เปิดเว็บไซต์**
-- Frontend: http://localhost:3000
-- Backend: http://localhost:3001
-- pgAdmin: http://localhost:8080
 
 ### คำสั่งที่ใช้ได้
 ```bash
@@ -110,210 +70,156 @@ start.bat admin      # สร้าง Admin User
 start.bat help       # แสดงความช่วยเหลือ
 ```
 
-## 🗄️ ฐานข้อมูล
+## 🌐 URLs ระบบ
 
-### ตารางหลัก
-- **users** - ข้อมูลผู้ใช้งาน
-- **patients** - ข้อมูลผู้ป่วย
-- **visits** - การมาโรงพยาบาล
-- **medical_records** - บันทึกทางการแพทย์
-- **vital_signs** - สัญญาณชีพ
-- **appointments** - การนัดหมาย
-- **prescriptions** - ใบสั่งยา
-- **lab_orders** - คำสั่งแลป
-- **lab_results** - ผลแลป
-- **notifications** - การแจ้งเตือน
-- **departments** - แผนก
-- **queue_history** - ประวัติคิว
+### Frontend
+- **Main Application**: http://localhost:3000
+- **Admin Panel**: http://localhost:3000/admin
+- **EMR Dashboard**: http://localhost:3000/emr/dashboard
+- **AI Diabetes Prediction**: http://localhost:3000/admin/ai-diabetes
 
-### ตารางเพิ่มเติม
-- **detailed_nutrition** - ข้อมูลโภชนาการ
-- **detailed_exercise** - ข้อมูลการออกกำลังกาย
-- **critical_lab_values** - ผลแลปสำคัญ
-- **external_requesters** - ผู้ขอข้อมูลภายนอก
-- **consent_contracts** - สัญญายินยอม
-- **audit_logs** - บันทึกการตรวจสอบ
+### Backend
+- **API**: http://localhost:3001/api
+- **Health Check**: http://localhost:3001/health
+
+### Database Management
+- **pgAdmin**: http://localhost:8080
+
+## 👤 บัญชี Admin เริ่มต้น
+
+```
+Username: admin
+Password: admin123
+Email: admin@admin.com
+```
+
+## 🏗️ สถาปัตยกรรมระบบ
+
+### Backend (Node.js + Express)
+- **API Routes**: RESTful API
+- **Database**: PostgreSQL
+- **Cache**: Redis
+- **Authentication**: JWT
+- **Validation**: Zod
+- **Logging**: Winston
+
+### Frontend (Next.js + React)
+- **Framework**: Next.js 14
+- **UI Library**: Tailwind CSS
+- **State Management**: React Context
+- **Authentication**: JWT + HTTP-only cookies
+- **Real-time**: WebSocket
+
+### Database Schema
+- **26+ Tables**: ครอบคลุมทุกฟีเจอร์
+- **AI Tables**: ai_diabetes_predictions, ai_insights, ai_research_data
+- **Audit Trail**: ครบถ้วนทุกการเปลี่ยนแปลง
+- **Performance**: Indexes และ constraints ที่เหมาะสม
+
+## 🤖 ระบบ AI Diabetes Prediction
+
+### ฟีเจอร์
+- **Risk Assessment**: ประเมินความเสี่ยงจาก 6 ปัจจัยหลัก
+- **Personalized Recommendations**: คำแนะนำเฉพาะบุคคล
+- **Treatment Timeline**: แผนการรักษา 3 ระยะ
+- **Real-time Analysis**: วิเคราะห์ข้อมูลแบบ real-time
+- **Data Visualization**: แสดงผลด้วยกราฟและ charts
+
+### ปัจจัยความเสี่ยง
+1. **อายุ** - อายุที่เพิ่มขึ้น
+2. **น้ำหนัก** - BMI และน้ำหนัก
+3. **ความดันโลหิต** - ค่าความดัน
+4. **ประวัติครอบครัว** - ประวัติโรคเบาหวานในครอบครัว
+5. **ไลฟ์สไตล์** - การออกกำลังกาย, สูบบุหรี่, ดื่มแอลกอฮอล์
+6. **โรคเรื้อรัง** - โรคประจำตัว
+
+### ระดับความเสี่ยง
+- **LOW** (ต่ำ): 0-25 คะแนน
+- **MODERATE** (ปานกลาง): 26-50 คะแนน
+- **HIGH** (สูง): 51-75 คะแนน
+- **VERY_HIGH** (สูงมาก): 76-100 คะแนน
+
+## 📊 ข้อมูลตัวอย่าง
+
+ระบบมาพร้อมกับข้อมูลผู้ป่วย 29 คน จากไฟล์ `เวิร์กบุ๊ก3.csv`:
+- **อายุ**: 18-25 ปี
+- **เพศ**: ชาย 18 คน, หญิง 11 คน
+- **ข้อมูลสุขภาพ**: น้ำหนัก, ส่วนสูง, ความดัน, อุณหภูมิ, อัตราการเต้นหัวใจ
+- **ไลฟ์สไตล์**: การออกกำลังกาย, สูบบุหรี่, ดื่มแอลกอฮอล์
+- **ประวัติ**: ประวัติครอบครัว, โรคเรื้อรัง, แพ้อาหาร
 
 ## 🔧 การพัฒนา
 
-### โครงสร้างโปรเจกต์
-```
-Project/
-├── backend/                 # Backend API (Node.js + Express)
-│   ├── src/
-│   │   ├── controllers/     # API Controllers
-│   │   ├── routes/         # API Routes
-│   │   ├── services/       # Business Logic
-│   │   ├── database/       # Database Connection & Migrations
-│   │   └── middleware/     # Express Middleware
-├── frontend/               # Frontend (Next.js + React)
-│   ├── src/
-│   │   ├── app/           # Next.js App Router
-│   │   ├── components/    # React Components
-│   │   ├── services/      # API Services
-│   │   └── contexts/      # React Contexts
-├── docker-compose.yml      # Docker Configuration
-├── start.bat              # Management Script
-└── README.md              # Documentation
-```
-
-### การพัฒนา
-1. **Backend Development**
-   ```bash
-   cd backend
-   npm install
-   npm run dev
-   ```
-
-2. **Frontend Development**
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-
-3. **Database Management**
-   - pgAdmin: http://localhost:8080
-   - Username: admin@admin.com
-   - Password: admin
-
-## 🔐 ความปลอดภัย
-
-### การยืนยันตัวตน
-- **JWT Authentication** - Token-based authentication
-- **Role-based Access Control** - ควบคุมการเข้าถึงตามบทบาท
-- **Password Hashing** - bcrypt สำหรับรหัสผ่าน
-
-### บทบาทผู้ใช้
-- **admin** - ผู้ดูแลระบบ
-- **doctor** - แพทย์
-- **nurse** - พยาบาล
-- **patient** - ผู้ป่วย
-- **pharmacist** - เภสัชกร
-- **lab_tech** - นักเทคนิคการแพทย์
-
-## 📊 การแจ้งเตือน
-
-### ระบบแจ้งเตือน
-- **Email Notifications** - ส่งอีเมลแจ้งเตือน
-- **SMS Notifications** - ส่ง SMS แจ้งเตือน
-- **In-App Notifications** - แจ้งเตือนในแอป
-- **Real-time Updates** - อัปเดตแบบเรียลไทม์
-
-### ประเภทการแจ้งเตือน
-- การนัดหมายใหม่
-- ผลแลปพร้อม
-- ใบสั่งยาพร้อม
-- เอกสารออกแล้ว
-- การแจ้งเตือนระบบ
-
-## 🤖 AI Features
-
-### การประเมินความเสี่ยง
-- **Diabetes Risk Assessment** - ประเมินความเสี่ยงเบาหวาน
-- **Critical Lab Values** - วิเคราะห์ผลแลปสำคัญ
-- **Health Insights** - ข้อมูลเชิงลึกด้านสุขภาพ
-
-### การวิเคราะห์ข้อมูล
-- **Nutrition Analysis** - วิเคราะห์ข้อมูลโภชนาการ
-- **Exercise Tracking** - ติดตามการออกกำลังกาย
-- **Health Trends** - แนวโน้มสุขภาพ
-
-## 🌐 External Requester System
-
-### ระบบผู้ขอข้อมูลภายนอก
-- **Registration** - ลงทะเบียนผู้ขอข้อมูล
-- **Consent Management** - จัดการการยินยอม
-- **Data Request** - ขอข้อมูลผู้ป่วย
-- **Audit Trail** - บันทึกการตรวจสอบ
-
-## 📱 Responsive Design
-
-### การรองรับอุปกรณ์
-- **Desktop** - คอมพิวเตอร์
-- **Tablet** - แท็บเล็ต
-- **Mobile** - มือถือ
-- **Cross-browser** - รองรับทุกเบราว์เซอร์
-
-## 🚀 Production Deployment
-
-### การเตรียม Production
-1. **Environment Variables**
+### Backend Development
 ```bash
-   # Backend
-   NODE_ENV=production
-   JWT_SECRET=your-production-secret
-   DB_PASSWORD=your-secure-password
-   
-   # Frontend
-   NEXT_PUBLIC_API_URL=https://your-api-domain.com/api
-   ```
+cd backend
+npm install
+npm run dev
+```
 
-2. **Security Settings**
-   - เปลี่ยน JWT secrets
-   - ตั้งรหัสผ่านฐานข้อมูลที่ปลอดภัย
-   - เปิดใช้ HTTPS
-   - ตั้งค่า CORS
+### Frontend Development
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-3. **Database Backup**
-   ```bash
-   # Backup database
-   docker exec emr_postgres pg_dump -U postgres emr_development > backup.sql
-   
-   # Restore database
-   docker exec -i emr_postgres psql -U postgres emr_development < backup.sql
-   ```
+### Database Migration
+```bash
+# รัน migrations
+npm run migrate
 
-## 📞 การสนับสนุน
+# รีเซ็ตฐานข้อมูล
+npm run reset-db
+```
 
-### การแก้ไขปัญหา
-1. **ตรวจสอบ Logs**
-   ```bash
-   # Backend logs
-   docker logs emr_backend
-   
-   # Frontend logs
-   docker logs emr_frontend
-   
-   # Database logs
-   docker logs emr_postgres
-   ```
+## 📦 การย้ายฐานข้อมูลไปเครื่องใหม่
 
-2. **รีสตาร์ทระบบ**
-   ```bash
-   start.bat restart
-   ```
+### 🔄 **Backup ฐานข้อมูล (เครื่องเก่า)**
+```bash
+# เริ่มระบบ
+start.bat start
 
-3. **ล้างข้อมูลและเริ่มใหม่**
-   ```bash
-   start.bat clean
-   start.bat start
-   start.bat admin
-   ```
+# สร้าง backup
+docker exec emr_postgres pg_dump -U postgres -d emr_development > emr_backup.sql
+```
 
-### การติดต่อ
-- **Email:** support@emr-system.com
-- **Documentation:** [Wiki](https://github.com/your-repo/wiki)
-- **Issues:** [GitHub Issues](https://github.com/your-repo/issues)
+### 📥 **Restore ฐานข้อมูล (เครื่องใหม่)**
+```bash
+# เริ่มระบบ
+start.bat start
 
-## 📄 License
+# Restore ข้อมูล
+docker exec -i emr_postgres psql -U postgres -d emr_development < emr_backup.sql
+```
 
-MIT License - ดูรายละเอียดใน [LICENSE](LICENSE) file
+### 📁 **ไฟล์ที่ต้องคัดลอก**
+- `emr_backup.sql` - ไฟล์ backup ฐานข้อมูล
+- `เวิร์กบุ๊ก3.csv` - ข้อมูลผู้ป่วย 29 คน
 
-## 🙏 Acknowledgments
+### ✅ **ตรวจสอบการย้าย**
+1. เข้า `http://localhost:3000/admin`
+2. ตรวจสอบข้อมูลผู้ป่วย 29 คน
+3. ทดสอบ AI Diabetes Prediction
 
-- **Next.js** - React Framework
-- **Express.js** - Node.js Framework
-- **PostgreSQL** - Database
-- **Docker** - Containerization
-- **Tailwind CSS** - Styling
-- **TypeScript** - Type Safety
+## 📝 License
+
+MIT License
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch
+3. Commit changes
+4. Push to branch
+5. Create Pull Request
+
+## 📞 Support
+
+สำหรับการสนับสนุนหรือคำถาม:
+- Email: admin@admin.com
+- Documentation: ดูในไฟล์ README นี้
 
 ---
 
-**🏥 EMR System - Electronic Medical Records**  
-*ระบบบันทึกข้อมูลทางการแพทย์อิเล็กทรอนิกส์ที่สมบูรณ์ พร้อมใช้งาน*
-
-**Version:** 1.0.0  
-**Last Updated:** January 2025  
-**Status:** Production Ready ✅
+**EMR System** - ระบบจัดการเวชระเบียนอิเล็กทรอนิกส์ที่ทันสมัย พร้อมระบบ AI สำหรับการดูแลสุขภาพ

@@ -22,7 +22,8 @@ import {
   BarChart3,
   Menu,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  Brain
 } from 'lucide-react';
 
 interface MenuItem {
@@ -130,6 +131,13 @@ const menuItems: MenuItem[] = [
     icon: Activity,
     label: 'Activity Logs',
     description: 'บันทึกกิจกรรม',
+    category: 'monitoring'
+  },
+  {
+    href: '/admin/ai-diabetes',
+    icon: Brain,
+    label: 'AI Diabetes Prediction',
+    description: 'คาดการณ์โรคเบาหวานด้วย AI',
     category: 'monitoring'
   },
   {

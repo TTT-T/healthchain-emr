@@ -546,14 +546,20 @@ export const createAppError = (message: string, statusCode: number, code?: strin
 };
 
 /**
- * Generate Hospital Number (HN)
+ * DEPRECATED: Generate Hospital Number (HN) - This function is deprecated
+ * Use the centralized HN generation in patientRegistrationController or patientManagementController
+ * This function used random numbers which could cause duplicates
+ * 
+ * @deprecated Use generateHospitalNumber from patient controllers instead
  */
 export const generateHospitalNumber = async (): Promise<string> => {
+  console.warn('DEPRECATED: generateHospitalNumber in utils/index.ts is deprecated. Use the centralized version instead.');
+  
   // Get the current year in Thai Buddhist era
   const thaiYear = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' })).getFullYear() + 543;
   const yearSuffix = thaiYear.toString().slice(-2); // Last 2 digits
   
-  // Generate random 6-digit number
+  // Generate random 6-digit number (DEPRECATED - can cause duplicates)
   const randomNumber = Math.floor(100000 + Math.random() * 900000);
   
   // Format: YY-XXXXXX (e.g., 68-123456)

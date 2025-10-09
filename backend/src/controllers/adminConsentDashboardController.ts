@@ -86,14 +86,14 @@ export const getConsentDashboardStats = async (req: Request, res: Response) => {
         databaseManager.query(`
           SELECT COUNT(*) as active_contracts
           FROM consent_contracts
-          WHERE status = 'approved' AND (expires_at IS NULL OR expires_at > NOW())
+          WHERE status = 'approved' AND (valid_until IS NULL OR valid_until > NOW())
         `),
         
         // Expired contracts
         databaseManager.query(`
           SELECT COUNT(*) as expired_contracts
           FROM consent_contracts
-          WHERE status = 'expired' OR expires_at <= NOW()
+          WHERE status = 'expired' OR valid_until <= NOW()
         `)
       );
     } else {
@@ -109,7 +109,7 @@ export const getConsentDashboardStats = async (req: Request, res: Response) => {
         databaseManager.query(`
           SELECT COUNT(*) as daily_access
           FROM consent_access_logs
-          WHERE DATE(timestamp) = CURRENT_DATE
+          WHERE DATE(accessed_at) = CURRENT_DATE
         `)
       );
     } else {
@@ -190,22 +190,24 @@ export const getRecentConsentRequests = async (req: Request, res: Response) => {
     const requestsQuery = `
       SELECT 
         cr.id,
-        cr.request_id,
-        cr.requester_name,
-        cr.requester_type,
-        cr.patient_name,
-        cr.patient_hn,
+        cr.id as request_id,
+        u.first_name || ' ' || u.last_name as requester_name,
+        u.role as requester_type,
+        p.first_name || ' ' || p.last_name as patient_name,
+        p.hn as patient_hn,
         cr.request_type,
-        cr.requested_data_types,
+        cr.data_types as requested_data_types,
         cr.purpose,
-        cr.urgency_level,
+        'medium' as urgency_level,
         cr.status,
-        cr.created_at,
-        cr.expires_at,
-        cr.is_compliant,
-        cr.compliance_notes
+        cr.requested_at as created_at,
+        cr.expires_at as valid_until,
+        true as is_compliant,
+        cr.response_reason as compliance_notes
       FROM consent_requests cr
-      ORDER BY cr.created_at DESC
+      LEFT JOIN users u ON cr.requester_id = u.id
+      LEFT JOIN patients p ON cr.patient_id = p.id
+      ORDER BY cr.requested_at DESC
       LIMIT $1
     `;
 
@@ -260,10 +262,10 @@ export const getActiveConsentContracts = async (req: Request, res: Response) => 
         cc.contract_id,
         cc.patient_id,
         cc.requester_id,
-        cc.data_types as allowed_data_types,
+        cc.allowed_data_types as allowed_data_types,
         cc.purpose as contract_type,
         cc.created_at as valid_from,
-        cc.expires_at as valid_until,
+        cc.valid_until as valid_until,
         0 as access_count,
         NULL as max_access_count,
         cc.status,
@@ -274,8 +276,8 @@ export const getActiveConsentContracts = async (req: Request, res: Response) => 
       FROM consent_contracts cc
       LEFT JOIN patients p ON cc.patient_id = p.id
       LEFT JOIN users u ON cc.requester_id = u.id
-      WHERE cc.status = 'approved' AND (cc.expires_at IS NULL OR cc.expires_at > NOW())
-      ORDER BY cc.expires_at ASC NULLS LAST
+      WHERE cc.status = 'approved' AND (cc.valid_until IS NULL OR cc.valid_until > NOW())
+      ORDER BY cc.valid_until ASC NULLS LAST
       LIMIT $1
     `;
 
@@ -329,14 +331,14 @@ export const getComplianceAlerts = async (req: Request, res: Response) => {
         cat.id,
         cat.action as type,
         'System Alert' as title,
-        cat.change_reason as description,
-        cat.contract_id,
+        cat.change_description as description,
+        cat.consent_contract_id,
         CASE 
           WHEN cat.action = 'violation' THEN 'high'
           WHEN cat.action = 'warning' THEN 'medium'
           ELSE 'low'
         END as severity,
-        cat.timestamp as created_at,
+        cat.created_at as created_at,
         false as is_read,
         false as is_resolved
       FROM consent_audit_trail cat
@@ -346,7 +348,7 @@ export const getComplianceAlerts = async (req: Request, res: Response) => {
           WHEN cat.action = 'warning' THEN 2 
           ELSE 3 
         END,
-        cat.timestamp DESC
+        cat.created_at DESC
       LIMIT $1
     `;
 
@@ -429,8 +431,8 @@ export const getConsentDashboardOverview = async (req: Request, res: Response) =
     
     if (existingTables.includes('consent_contracts')) {
       statsQuery += `
-        (SELECT COUNT(*) FROM consent_contracts WHERE status = 'approved' AND (expires_at IS NULL OR expires_at > NOW())) as active_contracts,
-        (SELECT COUNT(*) FROM consent_contracts WHERE status = 'expired' OR expires_at <= NOW()) as expired_contracts,
+        (SELECT COUNT(*) FROM consent_contracts WHERE status = 'approved' AND (valid_until IS NULL OR valid_until > NOW())) as active_contracts,
+        (SELECT COUNT(*) FROM consent_contracts WHERE status = 'expired' OR valid_until <= NOW()) as expired_contracts,
       `;
     } else {
       statsQuery += '0 as active_contracts, 0 as expired_contracts, ';
@@ -438,7 +440,7 @@ export const getConsentDashboardOverview = async (req: Request, res: Response) =
     
     if (existingTables.includes('consent_access_logs')) {
       statsQuery += `
-        (SELECT COUNT(*) FROM consent_access_logs WHERE DATE(timestamp) = CURRENT_DATE) as daily_access,
+        (SELECT COUNT(*) FROM consent_access_logs WHERE DATE(accessed_at) = CURRENT_DATE) as daily_access,
       `;
     } else {
       statsQuery += '0 as daily_access, ';
@@ -459,22 +461,24 @@ export const getConsentDashboardOverview = async (req: Request, res: Response) =
       queries.push(databaseManager.query(`
         SELECT 
           cr.id,
-          cr.request_id,
-          cr.requester_name,
-          cr.requester_type,
-          cr.patient_name,
-          cr.patient_hn,
+          cr.id as request_id,
+          u.first_name || ' ' || u.last_name as requester_name,
+          u.role as requester_type,
+          p.first_name || ' ' || p.last_name as patient_name,
+          p.hn as patient_hn,
           cr.request_type,
-          cr.requested_data_types,
+          cr.data_types as requested_data_types,
           cr.purpose,
-          cr.urgency_level,
+          'medium' as urgency_level,
           cr.status,
-          cr.created_at,
-          cr.expires_at,
-          cr.is_compliant,
-          cr.compliance_notes
+          cr.requested_at as created_at,
+          cr.expires_at as valid_until,
+          true as is_compliant,
+          cr.response_reason as compliance_notes
         FROM consent_requests cr
-        ORDER BY cr.created_at DESC
+        LEFT JOIN users u ON cr.requester_id = u.id
+        LEFT JOIN patients p ON cr.patient_id = p.id
+        ORDER BY cr.requested_at DESC
         LIMIT 5
       `));
     } else {
@@ -489,10 +493,10 @@ export const getConsentDashboardOverview = async (req: Request, res: Response) =
           cc.contract_id,
           cc.patient_id,
           cc.requester_id,
-          cc.data_types as allowed_data_types,
+          cc.allowed_data_types as allowed_data_types,
           cc.purpose as contract_type,
           cc.created_at as valid_from,
-          cc.expires_at as valid_until,
+          cc.valid_until as valid_until,
           0 as access_count,
           NULL as max_access_count,
           cc.status,
@@ -503,8 +507,8 @@ export const getConsentDashboardOverview = async (req: Request, res: Response) =
         FROM consent_contracts cc
         LEFT JOIN patients p ON cc.patient_id = p.id
         LEFT JOIN users u ON cc.requester_id = u.id
-        WHERE cc.status = 'approved' AND (cc.expires_at IS NULL OR cc.expires_at > NOW())
-        ORDER BY cc.expires_at ASC NULLS LAST
+        WHERE cc.status = 'approved' AND (cc.valid_until IS NULL OR cc.valid_until > NOW())
+        ORDER BY cc.valid_until ASC NULLS LAST
         LIMIT 10
       `));
     } else {
@@ -518,14 +522,14 @@ export const getConsentDashboardOverview = async (req: Request, res: Response) =
           cat.id,
           cat.action as type,
           'System Alert' as title,
-          cat.change_reason as description,
-          cat.contract_id,
+          cat.change_description as description,
+          cat.consent_contract_id,
           CASE 
             WHEN cat.action = 'violation' THEN 'high'
             WHEN cat.action = 'warning' THEN 'medium'
             ELSE 'low'
           END as severity,
-          cat.timestamp as created_at,
+          cat.created_at as created_at,
           false as is_read,
           false as is_resolved
         FROM consent_audit_trail cat
@@ -535,7 +539,7 @@ export const getConsentDashboardOverview = async (req: Request, res: Response) =
             WHEN cat.action = 'warning' THEN 2 
             ELSE 3 
           END,
-          cat.timestamp DESC
+          cat.created_at DESC
         LIMIT 10
       `));
     } else {

@@ -80,6 +80,7 @@ services:
       DB_CONNECTION_TIMEOUT: 30000
       # AI and notification settings
       AI_RISK_ASSESSMENT_ENABLED: true
+      AI_DIABETES_PREDICTION_ENABLED: true
       NOTIFICATION_SYSTEM_ENABLED: true
       # External Requester System settings
       EXTERNAL_REQUESTER_SYSTEM_ENABLED: true
@@ -135,7 +136,7 @@ services:
       NEXT_PUBLIC_API_URL: http://localhost:3001/api
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       NEXT_PUBLIC_BACKEND_URL: http://localhost:3001
-      BACKEND_URL: http://backend:3001
+      BACKEND_URL: http://emr_backend:3001
       TZ: Asia/Bangkok
       TIMEZONE: Asia/Bangkok
     ports:

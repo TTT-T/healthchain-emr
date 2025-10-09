@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { databaseManager } from '../database/connection';
 import { v4 as uuidv4 } from 'uuid';
+import { HnGenerationService } from '../services/hnGenerationService';
 
 /**
  * Patient Management Controller
@@ -1561,18 +1562,17 @@ export const deletePatient = async (req: Request, res: Response) => {
 };
 
 /**
- * Helper function to generate hospital number
+ * Helper function to generate hospital number using centralized service
+ * Format: HN + YY + 6-digit sequential number (e.g., HN250001, HN250002, ...)
  */
 async function generateHospitalNumber(): Promise<string> {
-  const year = new Date().getFullYear();
-  const result = await databaseManager.query(`
-    SELECT COUNT(*) as count 
-    FROM patients 
-    WHERE hn LIKE $1
-  `, [`HN${year}%`]);
-  
-  const count = parseInt(result.rows[0].count) + 1;
-  return `HN${year}${count.toString().padStart(6, '0')}`;
+  try {
+    const result = await HnGenerationService.generateHospitalNumber();
+    return result.hn;
+  } catch (error) {
+    console.error('Failed to generate hospital number:', error);
+    throw error;
+  }
 }
 
 /**

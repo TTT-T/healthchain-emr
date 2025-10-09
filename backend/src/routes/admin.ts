@@ -19,6 +19,21 @@ import {
 } from '../controllers/adminApprovalController';
 
 import {
+  analyzeSinglePatient,
+  analyzeMultiplePatients,
+  analyzeCSVData,
+  getAnalysisSummary
+} from '../controllers/aiDiabetesController';
+
+import {
+  generateHospitalNumber,
+  validateHospitalNumber,
+  getHospitalNumberStats,
+  getHospitalNumbers,
+  checkHospitalNumber
+} from '../controllers/hnManagementController';
+
+import {
   getSystemHealth,
   getSystemStats
 } from '../controllers/adminSystemMonitoringController';
@@ -264,6 +279,23 @@ router.get('/system-monitoring/services', authenticate, asyncHandler(getServiceS
 router.get('/system-monitoring/alerts', authenticate, asyncHandler(getSystemAlerts));
 router.get('/system-monitoring/all', authenticate, asyncHandler(getAllSystemData));
 router.post('/system-monitoring/alerts/:alertId/resolve', authenticate, asyncHandler(resolveAlert));
+
+/**
+ * Hospital Number (HN) Management Routes
+ */
+router.post('/hn/generate', authenticate, asyncHandler(generateHospitalNumber));
+router.post('/hn/validate', authenticate, asyncHandler(validateHospitalNumber));
+router.get('/hn/stats', authenticate, asyncHandler(getHospitalNumberStats));
+router.get('/hn/list', authenticate, asyncHandler(getHospitalNumbers));
+router.get('/hn/check/:hn', authenticate, asyncHandler(checkHospitalNumber));
+
+/**
+ * AI Diabetes Prediction Routes
+ */
+router.post('/ai-diabetes/analyze-single', authenticate, asyncHandler(analyzeSinglePatient));
+router.post('/ai-diabetes/analyze-multiple', authenticate, asyncHandler(analyzeMultiplePatients));
+router.get('/ai-diabetes/analyze-csv', authenticate, asyncHandler(analyzeCSVData));
+router.get('/ai-diabetes/summary', authenticate, asyncHandler(getAnalysisSummary));
 
 /**
  * Activity Logs Routes

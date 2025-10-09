@@ -7,6 +7,8 @@ import {
 import { databaseManager } from '../database/connection';
 import { NotificationService } from '../services/notificationService';
 import { BloodTypes } from '../schemas/profile';
+import { HnGenerationService } from '../services/hnGenerationService';
+import { logger } from '../utils/logger';
 
 // Create a database helper
 const db = {
@@ -48,7 +50,7 @@ const emrPatientRegistrationSchema = z.object({
   race: z.string().max(50).optional(),
   occupation: z.string().max(100).optional(),
   education: z.string().max(100).optional(),
-  maritalStatus: z.string().max(20).optional(),
+  maritalStatus: z.enum(['single', 'married', 'divorced', 'widowed']).optional(),
   currentAddress: z.string().max(500).optional(),
   insuranceType: z.string().max(50).optional(),
   insuranceNumber: z.string().max(50).optional(),
@@ -56,23 +58,18 @@ const emrPatientRegistrationSchema = z.object({
 });
 
 /**
- * Generate unique hospital number (HR number)
+ * Generate unique hospital number using centralized service
+ * Format: HN + YY + 6-digit sequential number (e.g., HN250001, HN250002, ...)
  */
 const generateHospitalNumber = async (): Promise<string> => {
-  const currentYear = new Date().getFullYear();
-  const yearSuffix = currentYear.toString().slice(-2); // Last 2 digits of year
-  
-  // Get the next sequence number for this year
-  const result = await db.query(`
-    SELECT COALESCE(MAX(CAST(SUBSTRING(hn FROM 3 FOR 6) AS INTEGER)), 0) + 1 as next_number
-    FROM patients 
-    WHERE hn LIKE $1
-  `, [`HN${yearSuffix}%`]);
-  
-  const nextNumber = result.rows[0]?.next_number || 1;
-  const paddedNumber = nextNumber.toString().padStart(4, '0');
-  
-  return `HN${yearSuffix}${paddedNumber}`;
+  try {
+    const result = await HnGenerationService.generateHospitalNumber();
+    logger.info('Hospital number generated', { hn: result.hn, sequenceNumber: result.sequenceNumber });
+    return result.hn;
+  } catch (error) {
+    logger.error('Failed to generate hospital number', { error: error.message });
+    throw error;
+  }
 };
 
 /**

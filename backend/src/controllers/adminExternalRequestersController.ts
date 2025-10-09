@@ -196,7 +196,7 @@ export const getExternalRequesterById = async (req: Request, res: Response) => {
         dr.approved_at,
         dr.rejected_at,
         dr.rejection_reason
-      FROM data_requests dr
+      FROM external_data_requests dr
       WHERE dr.requester_id = $1
       ORDER BY dr.created_at DESC
       LIMIT 10
@@ -365,7 +365,7 @@ export const getExternalRequestersStats = async (req: Request, res: Response) =>
         COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_requests,
         COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_requests,
         SUM(CASE WHEN status = 'approved' THEN data_volume ELSE 0 END) as total_data_transferred
-      FROM data_requests
+      FROM external_data_requests
     `);
 
     res.status(200).json({
